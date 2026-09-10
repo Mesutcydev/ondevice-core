@@ -1,0 +1,102 @@
+# macOS
+.DS_Store
+Icon?
+
+# Xcode
+DerivedData/
+build/
+*.xcarchive
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.xcresult
+*.xccheckout
+*.xcscmblueprint
+*.moved-aside
+*.hmap
+*.ipa
+xcuserdata/
+*.xcuserstate
+*.xcsettings
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods and Ruby tooling
+Pods/
+/vendor/
+.bundle/
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# Generated native frameworks and build trees
+ThirdParty/llama.cpp/build*/
+ThirdParty/whisper.cpp/build*/
+
+# Downloaded and generated AI models. These have their own licenses and are
+# intentionally not redistributed by this repository.
+IOSLocalLLM/Models/FastVLM-0.5B-fp16/
+IOSLocalLLM/Models/tokenizer.json
+IOSLocalLLM/Models/vocab.json
+IOSLocalLLM/Models/merges.txt
+IOSLocalLLM/Models/preprocessor_config.json
+IOSLocalLLM/Resources/BundledVLM/
+IOSLocalLLM/Resources/BundledVoiceModels/
+GeneratedFastVLMModels/
+VoiceModels/
+scripts/.fastvlm_work/
+*.gguf
+*.safetensors
+*.mlmodelc/
+*.mlpackage/
+*.onnx
+*.npz
+
+# Signing, release, and local account state
+ExportOptions.plist
+*.mobileprovision
+*.p8
+*.p12
+*.cer
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+.wrangler/
+.claude/
+**/.claude/
+XcodePublisher_Logs/
+
+# Local project/operator notes
+MEMORY.md
+CLAUDE.rtf
+
+# Local binaries and installers
+*.pkg
+
+# Generated marketing exports and local App Store operations
+AppStoreScreenshots/
+AppStoreListing.md
+fastlane/
+metadata/
+Docs/marketing/
+new-app-icon.png
+
+# Temporary files
+tmp/
+*.tmp
+*.bak
+*.swp
+*~
+# Local GitHub Pages preview output and Codex workspace notes. The published
+# site is maintained on the gh-pages branch, not in the source checkout.
+/.zcode/
+/index.html
+/codelens.html
+/script*.js
+/styles*.css
+/site-assets/

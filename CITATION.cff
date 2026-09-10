@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If this software supports your work, please cite the repository."
+title: "OnDevice LLM"
+type: software
+authors:
+  - family-names: "Yagci"
+    given-names: "Mesut"
+    website: "https://mesut.uk"
+repository-code: "https://github.com/Mesutcydev/ios-local-llm"
+url: "https://mesutcydev.github.io/ios-local-llm/"
+license: MIT
+version: 3.2.6
+date-released: 2026-07-29
+keywords:
+  - OnDevice
+  - OnDevice LLM
+  - on-device AI
+  - local LLM
+  - iOS
+  - Swift
+  - AI agents
