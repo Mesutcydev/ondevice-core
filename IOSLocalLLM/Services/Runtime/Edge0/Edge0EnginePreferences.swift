@@ -59,6 +59,10 @@ enum Edge0EnginePreferences {
     /// (per-token eval). The math per token is unchanged (M=1 QMM); only the
     /// completion boundary and lease lifetime are windowed. Clamped 1...8
     /// and further bounded by pool capacity at runtime.
+    ///
+    /// Device A/B verdict (2026-09-17): no win — staged prefill w1
+    /// 6.91/7.07 s vs w4 6.91/7.70 s, decode within noise. w1 stays the
+    /// production default.
     private static var _edge0_35BStagedEvalWindow = 1
 
     static var edge0_35BStagedEvalWindow: Int {
@@ -78,6 +82,10 @@ enum Edge0EnginePreferences {
     /// the frozen review threshold). 1 = per-token routed execution
     /// (diagnostic/reference, selectable). Effective group is further
     /// bounded by pool capacity / topK at runtime. Clamped 1...4.
+    ///
+    /// Build-47 device confirmation (iPhone18,2 · 2026-09-17): staged·g4
+    /// prefill 6.83–7.07 s vs staged·g1 8.23–8.25 s (−16%), decode
+    /// unchanged within noise — the promotion reconfirmed.
     private static var _edge0_35BMicrobatchGroupSize = 4
 
     static var edge0_35BMicrobatchGroupSize: Int {
@@ -96,6 +104,11 @@ enum Edge0EnginePreferences {
     /// artifact is present, decode steps issue speculative expert loads for
     /// the NEXT token off the critical path. The true router remains the
     /// sole authority; execution stays byte-identical either way.
+    ///
+    /// Device A/B verdict (iPhone18,2 · build 47 · 2026-09-17, 2×2
+    /// counterbalanced, 118-token prompt): **rejected** — decode 6.85–7.27
+    /// tok/s off vs 6.51–6.65 on, expert loads 9.6k → 12.3k (+28% wasted
+    /// reads, ~4.8 GB per 64-token run). Stays OFF.
     private static var _edge0_35BAdvisoryPrerouter = false
 
     static var edge0_35BAdvisoryPrerouter: Bool {

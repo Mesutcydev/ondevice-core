@@ -113,11 +113,35 @@ All five release-process findings were fixed on 2026-09-17 (same day):
    (scan doc §8, `scripts/patch-mlx-disable-nax.sh`). Until traced, treat
    all MLX-side performance claims as unconfirmed.
 7. **5M readahead A/B remains the scheduled device experiment** (toggle in
-   Diagnostics; engine captures it once per load).
+   Diagnostics; engine captures it once per load). The prerouter,
+   eval-window, and microbatch A/Bs have since run on device — see
+   "Build-47 device A/B session" below.
 8. **A19-specific hazards on record** (mlx#3702 fp32 wrongness for certain
    shapes; TF32 default on NAX devices; Xcode 26.5 metalfe context) — see
    the scan doc §3. The frozen nine-ID oracle passing on device is the
    current mitigation evidence.
+
+### Build-47 device A/B session (iPhone18,2 · 2026-09-17, Diagnostics runner)
+
+Five counterbalanced runs on the production pool (512 MiB · reads 4 ·
+greedy · 118-token prompt · 64 output tokens · 60 s idle recovery ·
+thermal nominal throughout; identical router hash and expert counts in
+every trial):
+
+| Experiment | Result | Verdict |
+| --- | --- | --- |
+| Exact vs Bounded decode | decode 4.83 → 6.97 tok/s (+44%) | Bounded decode confirmed (the staged default's decode path) |
+| Staged vs bounded/exact prefill | 6.9–7.1 s vs 10.3–11.8 s | Staged prefill confirmed as the production default |
+| Staged microbatch g1 vs g4 | prefill 8.24 s → 6.95 s (−16%) | g4 promotion reconfirmed |
+| Staged eval window w1 vs w4 | 6.91/7.07 s vs 6.91/7.70 s | No win — w1 stays |
+| Advisory prerouter off vs on | decode 6.85–7.27 vs 6.51–6.65 tok/s; expert loads 9.6k → 12.3k (+28%, ~4.8 GB wasted reads per run) | **Rejected** — stays OFF |
+
+Sequence parity held in every trial (`sequence match: identical`), so no
+candidate ever touched routing or outputs. Still open on device: the 5M
+readahead A/B (the remaining acquire-wait lever) and the NAX engagement
+trace. The hoist itself is invisible in these numbers, as expected: >50%
+of prefill MoE time is expert-load acquire wait (I/O), not metadata
+resolution.
 
 ## 6. Verdict
 
