@@ -100,6 +100,13 @@ and intends to use semantic version tags for source releases.
 
 ### Fixed
 
+- Session-reuse probe dispatch: the 35B engine's probe method returned a
+  non-optional result while the `RuntimeParityProbing` requirement is
+  optional, so existential calls could resolve to the protocol-extension
+  nil default — the build-52 device validation reported "Session-reuse
+  probe unavailable" (stage 11, 0.01s). The engine method now matches the
+  requirement exactly, breadcrumbs name every nil site, and two new tests
+  pin the managed-wrapper → backend dispatch chain.
 - Edge0 A/B acceptance comparators compared the time-delta metrics
   (prefill/TTFT) as if positive meant faster — a latent sign inversion
   that would have accepted a slower prefill. Both rules are now

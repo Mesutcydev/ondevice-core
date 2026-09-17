@@ -1070,8 +1070,21 @@ final class CodingAssistantService: ObservableObject {
     /// engine. nil when Edge0 is not active or the family has no session
     /// state to reuse.
     func runEdge0SessionReuseProbe() async throws -> Edge0SessionReuseProbeResult? {
-        guard isEdge0Execution else { return nil }
-        return try await edge0Engine?.runSessionReuseProbe()
+        guard isEdge0Execution else {
+            Diagnostics.shared.breadcrumb(
+                "session-reuse probe skipped: not an Edge0 execution",
+                category: "edge0"
+            )
+            return nil
+        }
+        let result = try await edge0Engine?.runSessionReuseProbe()
+        if result == nil {
+            Diagnostics.shared.breadcrumb(
+                "session-reuse probe: engine chain returned nil",
+                category: "edge0"
+            )
+        }
+        return result
     }
 
     /// Typed run-boundary resource snapshot from the loaded engine.

@@ -276,4 +276,37 @@ final class Edge0SessionReuseTests: XCTestCase {
             keyMatches: true, promptTokens: [1, 2, 3, 4]
         ))
     }
+
+    /// The device validation once found the probe returning nil instantly.
+    /// This pins the dispatch chain: a managed wrapper must reach the
+    /// backend's guard (which throws noActiveModel when no model is loaded)
+    /// instead of falling through to the protocol-extension nil default.
+    func testSessionReuseProbeDispatchReachesTheBackend() async {
+        let backend = Edge0RuntimeBackend()
+        let managed = ManagedRuntimeEngine(
+            id: "dispatch-test",
+            runtime: .edge0MLX,
+            capabilities: RuntimeCapabilities(),
+            backend: backend
+        )
+        do {
+            let result = try await managed.runSessionReuseProbe()
+            XCTFail(
+                "expected the backend's noActiveModel guard to throw; got "
+                    + String(describing: result)
+            )
+        } catch {
+            // Reached the backend (its family guard threw) — chain wired.
+        }
+    }
+
+    func testBackendSessionReuseProbeGuardThrowsWithoutFamily() async {
+        let backend = Edge0RuntimeBackend()
+        do {
+            let result = try await backend.runSessionReuseProbe()
+            XCTFail("expected noActiveModel; got \(String(describing: result))")
+        } catch {
+            // Expected: loadedFamily is nil before any load.
+        }
+    }
 }

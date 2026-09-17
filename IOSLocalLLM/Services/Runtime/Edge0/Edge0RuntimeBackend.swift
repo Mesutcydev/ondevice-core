@@ -224,8 +224,19 @@ final class Edge0RuntimeBackend: RuntimeEngineBackend, RuntimeParityProbing {
         switch family {
         case .qwen35MoE:
             guard let engine35B else { throw RuntimeError.noActiveModel }
-            return try await engine35B.runSessionReuseProbe()
+            let result = try await engine35B.runSessionReuseProbe()
+            if result == nil {
+                Diagnostics.shared.breadcrumb(
+                    "session-reuse probe: 35B engine returned nil",
+                    category: "edge0"
+                )
+            }
+            return result
         case .bailing8B:
+            Diagnostics.shared.breadcrumb(
+                "session-reuse probe: 8B family has no session state",
+                category: "edge0"
+            )
             return nil
         }
     }

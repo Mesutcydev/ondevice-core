@@ -1000,7 +1000,12 @@ final class Edge0_35BEngine: @unchecked Sendable {
     /// conversation is regenerated from a cleared snapshot (full prefill).
     /// The two answers must be byte-identical, and reuse must have applied
     /// on turn 2 — a probe that silently fell back would prove nothing.
-    func runSessionReuseProbe() async throws -> Edge0SessionReuseProbeResult {
+    ///
+    /// Returns Optional to match the `RuntimeParityProbing` requirement
+    /// exactly, so this method is the conformance witness (a non-optional
+    /// signature would leave the protocol-extension nil default as the
+    /// witness for existential calls).
+    func runSessionReuseProbe() async throws -> Edge0SessionReuseProbeResult? {
         let previousReuse = Edge0EnginePreferences.edge0_35BSessionReuse
         Edge0EnginePreferences.edge0_35BSessionReuse = true
         defer {
