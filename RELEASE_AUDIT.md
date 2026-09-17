@@ -1,5 +1,47 @@
 # OnDevice Core AI Studio — Release Audit 1.0.0
 
+## Build 48 — 2026-09-17 (readahead fix + A/B diagnostic)
+
+Follow-up to build 47 after the first device A/B session surfaced the 5M
+readahead crash and the decision-stage gap:
+
+- **Crash fix**: the `F_RDADVISE` `radvisory` struct fill wrote 4 bytes past
+  the 16-byte struct (`ra_count` treated as an `off_t` plus a phantom third
+  field); the imported `ra_offset`/`ra_count` fields are now set directly.
+  The path had zero execution coverage before; new
+  `Edge0TensorStoreAdviseTests` (3 cases) pin it.
+- **Readahead A/B diagnostic**: the `35B Readahead A/B (off vs hints)` kind
+  with a reload-per-arm lifecycle, the engine-exported requested/effective
+  proof pair (SETUP-BLOCKED on a missed reload), a frozen acceptance rule
+  (decode ≥ +5%, prefill/TTFT ≥ −5%), and a per-kind population gate that
+  fixes the empty-DECISION exports from the build-47 session. New
+  `Edge0SpeedABDecisionTests` (6 cases) pin the gate, plan, acceptance rule,
+  metric pair, and load-capture.
+
+| Check | Result |
+| --- | --- |
+| Version metadata | Consistent: 1.0.0 (**48**) in `project.yml` (app + extension) |
+| Open-source validator | **Passed** — "Repository hygiene checks passed" |
+| Focused Edge0 unit tests (simulator) | **Executed**: 30 passed / 29 skipped / 0 failures / 0 aborts, exit 0 (`build/simcompat-tests48.log`; includes the 6 decision tests and 3 advise tests; MLX-allocating cases skip by design) |
+| UI polish (splash, onboarding, agreement) | Unchanged from build 47 (still verified on the simulator) |
+| Real-checkpoint 35B regressions | **Not run** (no checkpoint staged on this machine) |
+| IPA packaging | **Packaged** — 51 independent artifact checks passed; ZIP member paths identical to build 47 |
+
+Artifact: `build/releases/OnDeviceCoreAIStudio-sideload-entitled-1.0.0-48.ipa`
+(`...-latest.ipa` identical)
+
+- Version **1.0.0 (48)**; the share extension also uses build **48**.
+- Size: **53,210,799 bytes**.
+- SHA-256: `2f170235bdb4d2ea22073e9310e4322e69b243be6b9b3c6877b2ab061e01e037`.
+- **51 independent artifact checks passed** (`verification-1.0.0-48/`). ZIP
+  member paths exactly match build 47; the llama and whisper framework
+  binaries are byte-identical; entitlements match builds 43–47 exactly
+  (PCC, increased memory, extended virtual addressing, CloudKit/iCloud,
+  shared App Group). Bundle IDs and minimum iOS 27.0 unchanged.
+- Unlocks the device follow-up: the readahead A/B runs safely now — the
+  fix makes the hints-ON arm viable, and the new kind prints a DECISION
+  section.
+
 ## Build 47 — 2026-09-17
 
 Sideload build covering the uncommitted work since build 46: the Phase 5M
