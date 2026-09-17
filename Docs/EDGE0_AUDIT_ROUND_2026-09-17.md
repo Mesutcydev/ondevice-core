@@ -121,9 +121,9 @@ All five release-process findings were fixed on 2026-09-17 (same day):
    the scan doc §3. The frozen nine-ID oracle passing on device is the
    current mitigation evidence.
 
-### Build-47 device A/B session (iPhone18,2 · 2026-09-17, Diagnostics runner)
+### Build-47/49 device A/B session (iPhone18,2 · 2026-09-17, Diagnostics runner)
 
-Five counterbalanced runs on the production pool (512 MiB · reads 4 ·
+Six counterbalanced runs on the production pool (512 MiB · reads 4 ·
 greedy · 118-token prompt · 64 output tokens · 60 s idle recovery ·
 thermal nominal throughout; identical router hash and expert counts in
 every trial):
@@ -136,11 +136,13 @@ every trial):
 | Staged eval window w1 vs w4 | 6.91/7.07 s vs 6.91/7.70 s | No win — w1 stays |
 | Advisory prerouter off vs on | decode 6.85–7.27 vs 6.51–6.65 tok/s; expert loads 9.6k → 12.3k (+28%, ~4.8 GB wasted reads per run) | **Rejected** — stays OFF |
 | Advisory readahead (5M) off vs hints | decode 7.29 → 5.69 tok/s median (−22.1%); prefill/TTFT −0.7% (noise) | **Rejected** — stays OFF |
+| Expert reads 4 vs 6 (build 49) | prefill 7.00 → 6.90 s (1.5% faster, below the 3% bar); decode 7.05 → 6.80 tok/s (−3.5%, beyond the −3% floor) | **Rejected** — reads 4 stays |
 
 Sequence parity held in every trial (`sequence match: identical`), so no
-candidate ever touched routing or outputs. The 5M readahead A/B is now
-closed (rejected with evidence, build 48's reload-per-arm runner); the
-NAX engagement trace remains the one open device item. The hoist itself is
+candidate ever touched routing or outputs. The 5M readahead and
+expert-reads A/Bs are now closed (both rejected with evidence, build 48/49
+reload-per-arm runners); the NAX engagement trace remains the one open
+device item. The hoist itself is
 invisible in these numbers, as expected: >50% of prefill MoE time is
 expert-load acquire wait (I/O), not metadata resolution.
 

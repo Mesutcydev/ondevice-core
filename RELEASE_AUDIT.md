@@ -33,6 +33,21 @@ Artifact: `build/releases/OnDeviceCoreAIStudio-sideload-entitled-1.0.0-49.ipa`
   (PCC, increased memory, extended virtual addressing, CloudKit/iCloud,
   shared App Group). Bundle IDs and minimum iOS 27.0 unchanged.
 
+**Device outcome (2026-09-17):** the expert-reads A/B ran on device and
+rejected reads 6 — prefill 7.00 → 6.90 s (1.5% faster, below the +3% bar)
+and decode 7.05 → 6.80 tok/s (−3.5%, beyond the −3% floor); sequence
+parity 2/2 in both arms, all requested-6 trials load-captured 6. Reads 4
+stays. While recording the verdict, both acceptance comparators
+(`readaheadAcceptance`, `readsAcceptance`) were found to have inverted
+sign conventions for the time-delta metrics; fixed to time-delta form
+(`<= 5` / `<= -3`) with the conventions documented and pinned by tests.
+This is a post-build-49 source fix — build 49's IPA carries the original
+comparators, which reach the same verdict for both this result and the
+readahead result; the fix rides the next build. The readahead device
+verdict (decode −22.1%) is unchanged under the fixed rule. The knob space for the 35B runtime is now fully closed — every
+device-measured lever has a verdict; the only remaining upside is the
+upstream MLX 0.32/NAX path (watched by a daily cron job).
+
 ## Build 48 — 2026-09-17 (readahead fix + A/B diagnostic)
 
 Follow-up to build 47 after the first device A/B session surfaced the 5M

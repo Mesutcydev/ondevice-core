@@ -199,26 +199,34 @@ struct Edge0DiagnosticPlan: Sendable {
     /// at least +5%, with prefill and TTFT not degrading by more than 5%.
     /// Sequence parity and arm effectiveness are separate gates in the
     /// runner.
+    ///
+    /// Conventions: `decodeDeltaPercent` is a THROUGHPUT delta (positive =
+    /// faster); `prefillDeltaPercent`/`ttftDeltaPercent` are TIME deltas
+    /// (negative = faster, so "not slower than +5%" is `<= 5`).
     static func readaheadAcceptance(
         prefillDeltaPercent: Double,
         ttftDeltaPercent: Double,
         decodeDeltaPercent: Double
     ) -> Bool {
         decodeDeltaPercent >= 5
-            && prefillDeltaPercent >= -5
-            && ttftDeltaPercent >= -5
+            && prefillDeltaPercent <= 5
+            && ttftDeltaPercent <= 5
     }
 
     /// Frozen acceptance rule for the expert-read concurrency A/B (4 vs 6).
     /// Read concurrency widens the pread fan-out on the I/O-bound expert
-    /// path, so the primary metric is prefill: at least +3%, with decode
-    /// not degrading by more than 3%. Sequence parity and arm effectiveness
-    /// are separate gates in the runner.
+    /// path, so the primary metric is prefill: at least 3% faster, with
+    /// decode not degrading by more than 3%. Sequence parity and arm
+    /// effectiveness are separate gates in the runner.
+    ///
+    /// Conventions: `prefillDeltaPercent` is a TIME delta (negative =
+    /// faster, so "at least 3% faster" is `<= -3`); `decodeDeltaPercent`
+    /// is a THROUGHPUT delta (positive = faster).
     static func readsAcceptance(
         prefillDeltaPercent: Double,
         decodeDeltaPercent: Double
     ) -> Bool {
-        prefillDeltaPercent >= 3 && decodeDeltaPercent >= -3
+        prefillDeltaPercent <= -3 && decodeDeltaPercent >= -3
     }
 
     /// Recovery status text with remaining time and the next trial.

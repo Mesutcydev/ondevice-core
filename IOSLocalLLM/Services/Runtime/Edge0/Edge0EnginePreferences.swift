@@ -167,6 +167,12 @@ enum Edge0EnginePreferences {
     /// Hard bound on concurrent expert preads. Clamped to the verified safe
     /// range (2/4/6 experiment set); the tensor store enforces it with its
     /// read semaphore.
+    ///
+    /// Device A/B (2026-09-17, build 49, `35B Expert reads A/B (4 vs 6)`):
+    /// reads 6 rejected — prefill 7.00 → 6.90 s (1.5% faster, below the 3%
+    /// bar) and decode 7.05 → 6.80 tok/s (−3.5%, beyond the −3% floor).
+    /// Four concurrent preads already saturate the flash path; wider
+    /// fan-out only adds contention. Default stays 4.
     static var expertLoadConcurrency: Int {
         get { lock.lock(); defer { lock.unlock() }; return _expertLoadConcurrency }
         set {

@@ -95,12 +95,16 @@ final class Edge0SpeedABDecisionTests: XCTestCase {
         XCTAssertFalse(Edge0DiagnosticPlan.readaheadAcceptance(
             prefillDeltaPercent: -1, ttftDeltaPercent: -1, decodeDeltaPercent: 4.9
         ))
-        // Prefill/TTFT must not degrade beyond -5%.
+        // Prefill/TTFT are TIME deltas: slower than +5% is a fail, faster
+        // is fine.
         XCTAssertFalse(Edge0DiagnosticPlan.readaheadAcceptance(
-            prefillDeltaPercent: -5.1, ttftDeltaPercent: 0, decodeDeltaPercent: 10
+            prefillDeltaPercent: 5.1, ttftDeltaPercent: 0, decodeDeltaPercent: 10
         ))
         XCTAssertFalse(Edge0DiagnosticPlan.readaheadAcceptance(
-            prefillDeltaPercent: 0, ttftDeltaPercent: -5.1, decodeDeltaPercent: 10
+            prefillDeltaPercent: 0, ttftDeltaPercent: 5.1, decodeDeltaPercent: 10
+        ))
+        XCTAssertTrue(Edge0DiagnosticPlan.readaheadAcceptance(
+            prefillDeltaPercent: -10, ttftDeltaPercent: -10, decodeDeltaPercent: 10
         ))
         // The advisory-on decode regression observed on device
         // (-6.8% decode) would be rejected by this rule.
@@ -156,19 +160,28 @@ final class Edge0SpeedABDecisionTests: XCTestCase {
     }
 
     func testReadsAcceptanceRule() {
-        // Prefill is the primary metric: +3% required.
+        // Prefill is a TIME delta: -3% (faster) meets the bar.
         XCTAssertTrue(Edge0DiagnosticPlan.readsAcceptance(
-            prefillDeltaPercent: 3, decodeDeltaPercent: 0
+            prefillDeltaPercent: -3, decodeDeltaPercent: 0
         ))
         XCTAssertTrue(Edge0DiagnosticPlan.readsAcceptance(
-            prefillDeltaPercent: 10, decodeDeltaPercent: -3
+            prefillDeltaPercent: -10, decodeDeltaPercent: -3
         ))
         XCTAssertFalse(Edge0DiagnosticPlan.readsAcceptance(
-            prefillDeltaPercent: 2.9, decodeDeltaPercent: 10
+            prefillDeltaPercent: -2.9, decodeDeltaPercent: 10
+        ))
+        // A SLOWER prefill can never pass, however good decode is.
+        XCTAssertFalse(Edge0DiagnosticPlan.readsAcceptance(
+            prefillDeltaPercent: 5, decodeDeltaPercent: 10
         ))
         // Decode must not degrade beyond -3%.
         XCTAssertFalse(Edge0DiagnosticPlan.readsAcceptance(
-            prefillDeltaPercent: 10, decodeDeltaPercent: -3.1
+            prefillDeltaPercent: -10, decodeDeltaPercent: -3.1
+        ))
+        // The device result (2026-09-17: prefill -1.5%, decode -3.5%)
+        // is rejected on both terms.
+        XCTAssertFalse(Edge0DiagnosticPlan.readsAcceptance(
+            prefillDeltaPercent: -1.5, decodeDeltaPercent: -3.5
         ))
     }
 }
