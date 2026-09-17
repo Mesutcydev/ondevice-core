@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import AVFoundation
+import QuartzCore
 
 // MARK: - VoiceConversationService
 // Hands-free voice loop with an industry-standard VAD pipeline.
@@ -497,6 +498,7 @@ final class VoiceConversationService: ObservableObject {
         let detector = VADFactory.makeDetector()
         let endpointer = TurnEndpointer()
         var orbLevel: Float = 0
+        var lastOrbLevelAt = CACurrentMediaTime()
         var lastPhase: Phase = .idle
 
         while !Task.isCancelled {
@@ -535,8 +537,14 @@ final class VoiceConversationService: ObservableObject {
 
             let raw = dictation.levelMeter
             // Orb pulse rides its own light EMA so the animation stays smooth
-            // and responsive independent of how the detector smooths.
-            orbLevel = 0.35 * raw + 0.65 * orbLevel
+            // and responsive independent of how the detector smooths. The
+            // coefficient is dt-normalized: this loop's period is not fixed (it
+            // awaits neural VAD inference below), and a constant 0.35 per tick
+            // made the pulse speed up and slow down with inference latency.
+            let sampledAt = CACurrentMediaTime()
+            let dt = Float(min(max(sampledAt - lastOrbLevelAt, 0), 0.25))
+            lastOrbLevelAt = sampledAt
+            orbLevel += (raw - orbLevel) * (1 - exp(-dt / 0.045))
             // Hot path for orb TimelineView — no SwiftUI invalidation.
             VoiceVisualLevelStore.shared.micLevel = orbLevel
 

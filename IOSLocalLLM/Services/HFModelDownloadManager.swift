@@ -26,6 +26,13 @@ extension Notification.Name {
 //
 // Thread safety: all @Published mutations happen on MainActor.
 
+/// Carries a diagnosable path/errno failure through the downloader's generic
+/// error channel instead of a collapsed localizedDescription.
+struct DownloadPathError: LocalizedError {
+    let message: String
+    var errorDescription: String? { message }
+}
+
 @MainActor
 final class HFModelDownloadManager: ObservableObject, Identifiable {
 
@@ -291,6 +298,53 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
         LocalModelFileValidator.hasCompleteGGUFVLMPair(in: dir)
     }
 
+    /// Creates the app-owned destination directory tree (root first, then the
+    /// model folder), verifies each component is a directory, refuses any URL
+    /// outside the current sandbox, and runs a tiny write/read/delete probe.
+    private func prepareDestination() throws {
+        guard ModelStoragePaths.isInsideSandbox(destination) else {
+            throw DownloadPathError(message:
+                "Refusing to write outside the app container: "
+                + ModelStoragePaths.sandboxRelativePath(destination)
+            )
+        }
+        let root = destination.deletingLastPathComponent()
+        for directory in [root, destination] {
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(
+                atPath: directory.path, isDirectory: &isDirectory
+            ) {
+                guard isDirectory.boolValue else {
+                    throw DownloadPathError(message:
+                        "\(ModelStoragePaths.sandboxRelativePath(directory)) exists but is not a directory."
+                    )
+                }
+                continue
+            }
+            do {
+                try FileManager.default.createDirectory(
+                    at: directory,
+                    withIntermediateDirectories: true,
+                    attributes: nil
+                )
+            } catch {
+                throw DownloadPathError(message: ModelStoragePathError.describeFailure(
+                    path: ModelStoragePaths.sandboxRelativePath(directory),
+                    error: error
+                ))
+            }
+        }
+        do {
+            try ModelStoragePaths.probeWritability(of: destination)
+        } catch {
+            throw DownloadPathError(message: error.localizedDescription)
+        }
+        Diagnostics.shared.breadcrumb(
+            "Download destination ready · \(ModelStoragePaths.sandboxRelativePath(destination))",
+            category: "models"
+        )
+    }
+
     // MARK: - Core download loop
 
     private func run() async {
@@ -320,6 +374,10 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
                 state = .failed("No matching files found in repo \(repoID). Check the repo path or allowlist.")
                 return
             }
+
+            // 2b. Prove the destination is a writable app-owned directory
+            // BEFORE any multi-GB transfer starts.
+            try prepareDestination()
             persistExpectedSizes(files)
 
             guard !Task.isCancelled else { return }
@@ -383,9 +441,7 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
             // Start a Dynamic Island / Lock Screen Live Activity for this download
             _ = DownloadLiveActivityManager.shared.start(repoID: repoID)
 
-            // 4. Create destination directory
-            try FileManager.default.createDirectory(
-                at: destination, withIntermediateDirectories: true)
+            // 4. Destination directory was prepared (and probed) above.
             // Model weights are large and re-downloadable — keep them out
             // of iCloud/iTunes backups. Directory-level exclusion covers
             // every file written beneath it.
@@ -407,8 +463,17 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
                 let dest = destination.appendingPathComponent(meta.path)
 
                 let parent = dest.deletingLastPathComponent()
-                try FileManager.default.createDirectory(
-                    at: parent, withIntermediateDirectories: true)
+                do {
+                    try FileManager.default.createDirectory(
+                        at: parent,
+                        withIntermediateDirectories: true,
+                        attributes: nil
+                    )
+                } catch {
+                    throw DownloadPathError(message: ModelStoragePathError.describeFailure(
+                        path: parent.path, error: error
+                    ))
+                }
 
                 // Snapshot the byte counter so the per-file progress callback
                 // can update from a stable baseline.
@@ -983,10 +1048,10 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
     // MARK: - Helpers
 
     private func persistExpectedSizes(_ files: [HFFileMeta]) {
-        let map = Dictionary(uniqueKeysWithValues: files.compactMap { file -> (String, Int64)? in
-            guard file.size > 0 else { return nil }
-            return (file.path, file.size)
-        })
+        var map = expectedSizesOnDisk()
+        for file in files where file.size > 0 {
+            map[file.path] = file.size
+        }
         guard !map.isEmpty,
               let data = try? JSONEncoder().encode(map) else { return }
         try? FileManager.default.createDirectory(

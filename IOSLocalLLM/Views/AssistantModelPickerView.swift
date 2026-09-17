@@ -490,7 +490,11 @@ struct AssistantModelPickerView: View {
             switch MemoryAdvisor.fit(forFootprint: MemoryAdvisor.estimatedFootprint(for: model.id)) {
             case .fits:  return true
             case .tight: return settings.showEdgeModels
-            case .over:  return false
+            case .over:
+                // Storage-backed runtimes (Edge0) admit dynamically at load
+                // time and refuse safely, so they stay visible rather than
+                // vanishing from the picker when live memory is tight.
+                return model.runtime == .edge0MLX
             }
         }
         let recommendedID = recommendedAssistant?.id

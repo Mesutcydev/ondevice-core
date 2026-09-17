@@ -4,15 +4,17 @@ import SwiftUI
 // Full voice settings screen. Studio-style sections + KRow.
 
 struct VoiceSettingsView: View {
+    var isStandalone: Bool = true
 
     @StateObject private var vm = VoiceSettingsViewModel()
     @ObservedObject private var voiceSettings = VoiceSettingsStore.shared
     @ObservedObject private var voiceService = VoiceService.shared
     @ObservedObject private var assistant = CodingAssistantService.shared
     @State private var showEnginePicker = false
-    @State private var showPerModelOverrides = false
+    @State private var overridesRevision = 0
     @Environment(\.dismiss) private var dismiss
     @Environment(\.koduTheme) private var T
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Echo-cancellation / voice-processing toggle for the
     /// voice-conversation mic. ON: barge-in works (mic ignores the
@@ -35,17 +37,16 @@ struct VoiceSettingsView: View {
     @AppStorage("voiceAnswerEnabled") private var voiceAnswerEnabled: Bool = true
 
     var body: some View {
-        NavigationStack {
+        if isStandalone {
+            NavigationStack { settingsContent }
+        } else {
+            settingsContent
+        }
+    }
+
+    private var settingsContent: some View {
             ScrollView {
                 VStack(spacing: 0) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        KCaption(text: "SYSTEM")
-                        KPageTitle(title: "voice", size: 28)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 4)
-
                     engineSection
                     voiceSection
                     appearanceSection
@@ -56,10 +57,13 @@ struct VoiceSettingsView: View {
                 }
                 .padding(.bottom, 32)
             }
+            .navigationTitle("Voice & playback")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }.foregroundColor(T.ink)
+                if isStandalone {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { dismiss() }.foregroundColor(T.ink)
+                    }
                 }
             }
             .toolbarBackground(.hidden, for: .navigationBar)
@@ -67,7 +71,6 @@ struct VoiceSettingsView: View {
             .sheet(isPresented: $showEnginePicker) {
                 VoiceModelPickerView()
             }
-        }
     }
 
     // MARK: - Engine
@@ -76,15 +79,15 @@ struct VoiceSettingsView: View {
     // loading, and selecting an engine all happen there now — this row
     // just shows the current pick + its live status and opens it.
     private var engineSection: some View {
-        KSection(title: "engine") {
+        SettingsCard(title: "engine") {
             Button {
                 showEnginePicker = true
             } label: {
                 HStack(spacing: 10) {
                     VStack(alignment: .leading, spacing: 3) {
-                        KMono(text: "tts engine", size: 11.5, color: T.ink)
+                        KMono(text: "tts engine", size: 14, color: T.ink)
                         KMono(text: vm.selectedEngineKind.shortName.lowercased(),
-                               size: 10, color: T.ink3)
+                               size: 14, color: T.ink3)
                     }
                     Spacer()
                     if voiceSettings.availabilityState == .loading {
@@ -95,7 +98,7 @@ struct VoiceSettingsView: View {
                         engineStateBadge(vm.selectedEngineState)
                     }
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(T.ink3)
                 }
                 .padding(.horizontal, 14)
@@ -109,14 +112,14 @@ struct VoiceSettingsView: View {
     // MARK: - Voice
 
     private var voiceSection: some View {
-        KSection(title: "voice") {
+        SettingsCard(title: "voice") {
             if vm.voices.isEmpty {
                 Text("No voices available for this engine.")
-                    .font(T.sans(11))
+                    .font(T.sans(14))
                     .foregroundColor(T.ink3)
                     .padding(14)
             } else {
-                KRow(label: "voice", trailing: {
+                SettingsControlRow(label: "voice", trailing: {
                     Picker("", selection: Binding(
                         get: { vm.selectedVoiceID },
                         set: { vm.selectedVoiceID = $0 }
@@ -136,10 +139,10 @@ struct VoiceSettingsView: View {
             } label: {
                 HStack {
                     Image(systemName: voiceService.isPlaying ? "stop.circle" : "speaker.wave.2")
-                        .font(.system(size: 12))
+                        .font(.system(size: 14))
                         .foregroundColor(voiceService.isPlaying ? T.warn : T.accent)
                     KMono(text: voiceService.isPlaying ? "stop preview" : "preview voice",
-                           size: 11.5, color: voiceService.isPlaying ? T.warn : T.accent)
+                           size: 14, color: voiceService.isPlaying ? T.warn : T.accent)
                     Spacer()
                 }
                 .padding(.horizontal, 14)
@@ -152,27 +155,28 @@ struct VoiceSettingsView: View {
     // MARK: - Appearance
 
     private var appearanceSection: some View {
-        KSection(title: "appearance") {
+        SettingsCard(title: "appearance") {
             HStack(spacing: 14) {
+                // `samplesLiveAudio: false` keeps this preview off the shared
+                // level store. Writing 0.35 into it from here fed a fake constant
+                // level to the live orb, and the value outlived this screen.
                 VoiceActivityOrb(
                     phase: .listening,
                     micLevel: 0.35,
-                    reduceMotion: false
+                    reduceMotion: reduceMotion,
+                    samplesLiveAudio: false
                 )
                 .frame(width: 72, height: 72)
                 .allowsHitTesting(false)
-                .onAppear {
-                    VoiceVisualLevelStore.shared.micLevel = 0.35
-                }
 
                 VStack(alignment: .leading, spacing: 4) {
                     KMono(text: "thinking orbs",
-                          size: 11.5, color: T.ink)
+                          size: 14, color: T.ink)
                     KMono(text: "state-driven dotted activity",
-                          size: 10, color: T.ink3)
+                          size: 14, color: T.ink3)
                     Link(destination: URL(string: "https://orbs.jakubantalik.com")!) {
                         KMono(text: "thanks to creator Jakub Antalik",
-                              size: 9.5, color: T.accent)
+                              size: 14, color: T.accent)
                     }
                     .buttonStyle(.plain)
                 }
@@ -186,7 +190,7 @@ struct VoiceSettingsView: View {
     // MARK: - Audio
 
     private var audioSection: some View {
-        KSection(title: "audio") {
+        SettingsCard(title: "audio") {
             sliderBlock(
                 label: "speed",
                 value: Binding(get: { vm.speed }, set: { vm.speed = $0 }),
@@ -215,31 +219,29 @@ struct VoiceSettingsView: View {
     // MARK: - Behaviour
 
     private var behaviorSection: some View {
-        KSection(title: "behaviour") {
-            KRow(label: "speak in assistant", trailing: {
-                KToggle(isOn: $voiceAnswerEnabled)
+        SettingsCard(title: "behaviour") {
+            SettingsControlRow(label: "speak in assistant", trailing: {
+                SettingsToggle(isOn: $voiceAnswerEnabled)
             })
-            Rectangle().fill(T.rule).frame(height: 1)
-            KRow(label: "speak in lens", trailing: {
-                KToggle(isOn: $voiceSpeakInLens)
+            SettingsControlRow(label: "speak in lens", trailing: {
+                SettingsToggle(isOn: $voiceSpeakInLens)
             })
-            Rectangle().fill(T.rule).frame(height: 1)
             KMono(
                 text: voiceSpeakInLens
                     ? "narrates the camera caption clause-by-clause. the frame-rate guard skips re-narration when the scene hasn't changed."
                     : "speaks the full caption once per frame instead of streaming. enable this for low-vision or hands-free use.",
-                size: 10, color: T.ink3
+                size: 14, color: T.ink3
             )
             .padding(14)
             Rectangle().fill(T.rule).frame(height: 1)
-            KRow(label: "auto-read analysis results", trailing: {
-                KToggle(isOn: Binding(
+            SettingsControlRow(label: "auto-read analysis results", trailing: {
+                SettingsToggle(isOn: Binding(
                     get: { vm.autoRead },
                     set: { vm.autoRead = $0 }
                 ))
             })
-            KRow(label: "read code blocks aloud", trailing: {
-                KToggle(isOn: Binding(
+            SettingsControlRow(label: "read code blocks aloud", trailing: {
+                SettingsToggle(isOn: Binding(
                     get: { vm.readCodeBlocks },
                     set: { vm.readCodeBlocks = $0 }
                 ))
@@ -247,19 +249,19 @@ struct VoiceSettingsView: View {
             if !vm.readCodeBlocks {
                 Rectangle().fill(T.rule).frame(height: 1)
                 KMono(text: "code blocks are skipped; only prose and review text are read.",
-                       size: 10, color: T.ink3)
+                       size: 14, color: T.ink3)
                     .padding(14)
             }
             Rectangle().fill(T.rule).frame(height: 1)
-            KRow(label: "echo cancellation (barge-in)", trailing: {
-                KToggle(isOn: $voiceProcessingEnabled)
+            SettingsControlRow(label: "echo cancellation (barge-in)", trailing: {
+                SettingsToggle(isOn: $voiceProcessingEnabled)
             }, last: true)
             Rectangle().fill(T.rule).frame(height: 1)
             KMono(
                 text: voiceProcessingEnabled
                     ? "mic ignores the assistant's own voice — you can interrupt by speaking."
                     : "off for clean tts on routes that distort voice processing. barge-in is disabled.",
-                size: 10, color: T.ink3
+                size: 14, color: T.ink3
             )
             .padding(14)
         }
@@ -288,32 +290,15 @@ struct VoiceSettingsView: View {
         let displayName = assistant.activeModel.displayName
         let profile = VoiceProfileRegistry.profile(for: modelId)
 
-        return KSection(title: "per-model overrides") {
-            Button {
-                withAnimation(.easeInOut(duration: 0.18)) {
-                    showPerModelOverrides.toggle()
-                }
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: showPerModelOverrides ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(T.ink3)
-                    VStack(alignment: .leading, spacing: 2) {
-                        KMono(text: "customize for this model", size: 11.5, color: T.ink)
-                        KMono(text: displayName.lowercased(), size: 9.5, color: T.ink3)
-                            .lineLimit(1)
-                    }
-                    Spacer()
-                }
-                .padding(.horizontal, 14).padding(.vertical, 10)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            if showPerModelOverrides {
-                Rectangle().fill(T.rule).frame(height: 1)
-                perModelControls(modelId: modelId, profile: profile)
-            }
+        return SettingsDisclosureCard(title: "Model overrides") {
+            Text(displayName)
+                .font(.subheadline)
+                .foregroundStyle(T.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+            perModelControls(modelId: modelId, profile: profile)
+                .id(overridesRevision)
         }
     }
 
@@ -321,7 +306,7 @@ struct VoiceSettingsView: View {
     private func perModelControls(modelId: String, profile: VoiceProfile) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             // Engine override
-            KRow(label: "engine", trailing: {
+            SettingsControlRow(label: "engine", trailing: {
                 Picker("", selection: engineBinding(for: modelId, profile: profile)) {
                     Text("auto").tag(Optional<VoiceEngineKind>.none)
                     ForEach(VoiceEngineKind.userSelectableCases) { k in
@@ -331,19 +316,15 @@ struct VoiceSettingsView: View {
                 .labelsHidden()
             })
 
-            Rectangle().fill(T.rule).frame(height: 1)
-
             // Chunking strategy override (sentence/clause only —
             // minWords is internal-only)
-            KRow(label: "chunking", trailing: {
+            SettingsControlRow(label: "chunking", trailing: {
                 Picker("", selection: strategyBinding(for: modelId, profile: profile)) {
                     Text("sentence").tag(SemanticChunker.Strategy.sentence)
                     Text("clause").tag(SemanticChunker.Strategy.clause)
                 }
                 .labelsHidden()
             })
-
-            Rectangle().fill(T.rule).frame(height: 1)
 
             // Rate / pitch — saved to the registry. The current
             // synthesis pipeline still reads AppSettings.voiceSpeed,
@@ -369,17 +350,13 @@ struct VoiceSettingsView: View {
 
             Button(role: .destructive) {
                 VoiceProfileRegistry.clearOverrides(for: modelId)
-                // Force re-read of bindings by ticking the disclosure
-                // state — SwiftUI's @AppStorage doesn't observe raw
-                // UserDefaults keys, so a tap-elsewhere would refresh
-                // anyway, but this gives immediate feedback.
-                showPerModelOverrides.toggle()
-                showPerModelOverrides.toggle()
+                // Refresh controls after clearing the UserDefaults-backed overrides.
+                overridesRevision += 1
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.uturn.backward")
-                        .font(.system(size: 11))
-                    KMono(text: "reset to profile defaults", size: 11, color: T.bad)
+                        .font(.system(size: 14))
+                    KMono(text: "reset to profile defaults", size: 14, color: T.bad)
                     Spacer()
                 }
                 .foregroundColor(T.bad)
@@ -391,7 +368,7 @@ struct VoiceSettingsView: View {
 
             KMono(
                 text: "engine + chunking apply on next utterance. rate + pitch saved here; voice tab's global sliders still control playback for this build.",
-                size: 9.5, color: T.ink3
+                size: 14, color: T.ink3
             )
             .fixedSize(horizontal: false, vertical: true)
             .padding(14)
@@ -454,10 +431,10 @@ struct VoiceSettingsView: View {
                             format: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                KMono(text: label, size: 11.5, color: T.ink)
+                KMono(text: label, size: 14, color: T.ink)
                 Spacer()
                 KMono(text: String(format: format, value.wrappedValue),
-                       size: 11, color: T.ink2)
+                       size: 14, color: T.ink2)
             }
             Slider(value: value, in: range, step: 0.05)
                 .tint(T.accent)
@@ -468,7 +445,7 @@ struct VoiceSettingsView: View {
     // MARK: - Model status
 
     private var modelsSection: some View {
-        KSection(title: "engine_status") {
+        SettingsCard(title: "engine_status") {
             VoiceStatusView().padding(.horizontal, 14)
         }
     }
@@ -486,10 +463,10 @@ struct VoiceSettingsView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                KMono(text: label, size: 11.5, color: T.ink)
+                KMono(text: label, size: 14, color: T.ink)
                 Spacer()
                 KMono(text: String(format: format, value.wrappedValue * scale),
-                       size: 11, color: T.ink2)
+                       size: 14, color: T.ink2)
             }
             Slider(value: value, in: range, step: 0.05)
                 .tint(T.accent)

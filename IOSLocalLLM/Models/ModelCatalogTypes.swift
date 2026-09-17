@@ -180,6 +180,11 @@ public enum ModelRuntime: String, Codable, Hashable, CaseIterable, Sendable {
     case mlx        // Apple MLX (MLXLLM / MLXVLM) — safetensors
     case llamaCpp   // llama.cpp + GGUF (LlamaCppBridge / mtmd)
     case coreAI     // Apple Core AI + .aimodel resource pack (iOS 27+)
+    // Reserved for the Edge0 MLX expert-streaming runtime. Declared so
+    // catalog/model metadata can opt in explicitly; not executable yet.
+    // `RuntimeEngineFactory` refuses to build an engine for it and no
+    // directory heuristic ever selects it.
+    case edge0MLX
 
     /// Short badge label shown on picker rows and result cards.
     var label: String {
@@ -187,6 +192,7 @@ public enum ModelRuntime: String, Codable, Hashable, CaseIterable, Sendable {
         case .mlx:      return "MLX"
         case .llamaCpp: return "GGUF"
         case .coreAI:   return "CORE AI"
+        case .edge0MLX: return "EDGE0"
         }
     }
 
@@ -196,6 +202,7 @@ public enum ModelRuntime: String, Codable, Hashable, CaseIterable, Sendable {
         case .mlx:      return "mlx"
         case .llamaCpp: return "gguf"
         case .coreAI:   return "coreai"
+        case .edge0MLX: return "edge0mlx"
         }
     }
 }
@@ -772,6 +779,10 @@ enum LocalModelRegistry {
         let repoID = model.sourceRepoID
         let runtime: ModelRuntime? = {
             if let explicit = model.runtime { return explicit }
+            // An installed Edge0 checkpoint wins over naming heuristics.
+            if Self.installedEdge0Directory(forRepoID: repoID) {
+                return .edge0MLX
+            }
             switch role {
             case .assistant, .vision:
                 return repoID.lowercased().contains("gguf") ? .llamaCpp : .mlx
@@ -844,12 +855,37 @@ enum LocalModelRegistry {
             origin: origin,
             vendor: ModelVendor.infer(from: repoID),
             capabilities: supportsThinking(repoID: repoID) ? [.thinking] : [],
-            runtime: repoID.lowercased().contains("gguf") ? .llamaCpp : .mlx,
+            runtime: installedEdge0Directory(forRepoID: repoID)
+                ? .edge0MLX
+                : (repoID.lowercased().contains("gguf") ? .llamaCpp : .mlx),
             approxRAMBytes: inferredAssistantRAMBytes(for: repoID),
             contextWindowTokens: inferredAssistantContextWindow(for: repoID),
             supportsTools: inferredAssistantSupportsTools(for: repoID),
             voiceEngine: nil
         )
+    }
+
+    /// Nonisolated on-disk probe for the descriptor fallbacks: does an
+    /// installed directory for `repoID` declare the Edge0 architecture?
+    /// Mirrors validateDirectory's explicit signal without touching the
+    /// MainActor registry, so picker descriptor construction stays safe.
+    static func installedEdge0Directory(forRepoID repoID: String) -> Bool {
+        let docs = ModelStoragePaths.documents
+        let tail = ModelStoragePaths.directoryName(forRepoID: repoID)
+        let flattened = ModelStoragePaths.flattenedRepoID(repoID)
+        for root in ["LLMModels", "HFModels", "Edge0Models"] {
+            for name in [tail, flattened] {
+                let config = docs
+                    .appendingPathComponent(root)
+                    .appendingPathComponent(name)
+                    .appendingPathComponent("config.json")
+                guard let data = try? Data(contentsOf: config),
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                else { continue }
+                if InstalledModelRegistry.isEdge0Architecture(json) { return true }
+            }
+        }
+        return false
     }
 
     private static func fallbackSubtitle(for role: LocalModelRole,
@@ -1160,7 +1196,7 @@ final class InstalledModelRegistry: ObservableObject {
         // 1. Rescan LLMModels directory (catalog presets)
         let fm = FileManager.default
         let docs = fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let llmRoot = docs.appendingPathComponent("LLMModels")
+        let llmRoot = ModelStoragePaths.llmModels
         reconcileDirectory(llmRoot, existing: existingByRepo, into: &updated, fm: fm)
 
         // 2. Rescan HFModels directory (custom downloads)
@@ -1228,7 +1264,20 @@ final class InstalledModelRegistry: ObservableObject {
         // treating them as not-downloaded / MLX.
         let isGGUFText = LocalModelFileValidator.hasValidGGUFTextModel(in: dir)
         let isGGUFPair = LocalModelFileValidator.hasCompleteGGUFVLMPair(in: dir)
-        let engine: ModelRuntime = (isGGUFText || isGGUFPair) ? .llamaCpp : .mlx
+
+        // Read config.json once: it decides both the engine and the metadata.
+        let configJSON: [String: Any]? = {
+            guard let data = try? Data(contentsOf: configPath) else { return nil }
+            return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        }()
+
+        // Explicit Edge0 detection: the DECLARED architecture, never a
+        // filename. BailingMoeV3ForCausalLM is the Edge0-8B MoE architecture
+        // and no other supported runtime can execute it.
+        let isEdge0 = Self.isEdge0Architecture(configJSON)
+        let engine: ModelRuntime = isEdge0
+            ? .edge0MLX
+            : ((isGGUFText || isGGUFPair) ? .llamaCpp : .mlx)
 
         guard fm.fileExists(atPath: configPath.path) || engine == .llamaCpp else {
             return nil  // Not a valid MLX model directory
@@ -1237,8 +1286,7 @@ final class InstalledModelRegistry: ObservableObject {
         // Read config for architecture info
         var arch: String? = nil
         var quant: String? = nil
-        if let data = try? Data(contentsOf: configPath),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+        if let json = configJSON {
             arch = (json["architectures"] as? [String])?.first
             quant = json["quantization"] as? String
                 ?? json["quant_method"] as? String
@@ -1304,7 +1352,18 @@ final class InstalledModelRegistry: ObservableObject {
                 || LocalModelFileValidator.hasCompleteGGUFVLMPair(in: dir)
         case .coreAI:
             return names.contains { $0.hasSuffix(".aimodel") || $0.hasSuffix(".aimodelc") }
+        case .edge0MLX:
+            // Reachable only via the explicit architecture check in
+            // validateDirectory. Requires the packed checkpoint file.
+            return names.contains("model.safetensors")
         }
+    }
+
+    /// True when config.json declares the Edge0-8B MoE architecture. This is
+    /// the only explicit, non-filename signal used to classify an installed
+    /// directory as `.edge0MLX`.
+    nonisolated static func isEdge0Architecture(_ json: [String: Any]?) -> Bool {
+        Edge0_35BModelConfiguration.isEdge0Architecture(json)
     }
 
     private static func inferQuantization(fromRepoID repoID: String) -> String? {
@@ -1324,7 +1383,48 @@ final class InstalledModelRegistry: ObservableObject {
               let decoded = try? JSONDecoder().decode([InstalledModelRecord].self, from: data) else {
             return
         }
-        records = decoded
+        records = decoded.compactMap(Self.reanchoredRecord)
+    }
+
+    /// Persisted records carry an absolute container URL. When the app's data
+    /// container changes (reinstall / re-sign / restored backup), those URLs
+    /// point outside the CURRENT sandbox. They must never be used as a write
+    /// destination: re-anchor to the current Documents root using the record's
+    /// folder name, or drop the record.
+    static func reanchoredRecord(
+        _ record: InstalledModelRecord
+    ) -> InstalledModelRecord? {
+        let fm = FileManager.default
+        if ModelStoragePaths.isInsideSandbox(record.localURL) {
+            var isDir: ObjCBool = false
+            if fm.fileExists(atPath: record.localURL.path, isDirectory: &isDir),
+               isDir.boolValue {
+                return record
+            }
+        }
+        // Stale or missing: look for the same folder name under the known
+        // app-owned roots in the CURRENT container.
+        let name = record.localURL.lastPathComponent
+        guard !name.isEmpty else { return nil }
+        for root in ModelStoragePaths.modelRoots {
+            let candidate = root.appendingPathComponent(name, isDirectory: true)
+            var isDir: ObjCBool = false
+            guard fm.fileExists(atPath: candidate.path, isDirectory: &isDir),
+                  isDir.boolValue else { continue }
+            guard let rebuilt = validateDirectory(candidate, repoID: record.repoID) else {
+                continue
+            }
+            Diagnostics.shared.breadcrumb(
+                "registry re-anchored stale container path · repoID=\(record.repoID) · path=\(ModelStoragePaths.sandboxRelativePath(candidate))",
+                category: "registry"
+            )
+            return rebuilt
+        }
+        Diagnostics.shared.breadcrumb(
+            "registry dropped record outside current sandbox · repoID=\(record.repoID)",
+            category: "registry"
+        )
+        return nil
     }
 
     private func saveToDisk() {

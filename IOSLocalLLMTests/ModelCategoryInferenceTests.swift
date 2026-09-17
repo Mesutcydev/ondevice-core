@@ -465,3 +465,26 @@ final class ModelCategoryInferenceTests: XCTestCase {
         }
     }
 }
+
+
+@MainActor
+final class SettingsNavigationTests: XCTestCase {
+    func testSearchFindsMovedPreferences() {
+        XCTAssertTrue(SettingsView.SettingsCategory.system.matches("FPS"))
+        XCTAssertFalse(SettingsView.SettingsCategory.appearance.matches("FPS"))
+        XCTAssertTrue(SettingsView.SettingsCategory.downloads.matches("wifi"))
+        XCTAssertTrue(SettingsView.SettingsCategory.downloads.matches("HF token"))
+        XCTAssertTrue(SettingsView.SettingsCategory.modelsAI.matches("response length"))
+    }
+
+    func testSearchIgnoresCaseAndWhitespaceAndRequiresAllTerms() {
+        XCTAssertTrue(SettingsView.SettingsCategory.downloads.matches("  hF   TOKEN  "))
+        XCTAssertFalse(SettingsView.SettingsCategory.downloads.matches("token thermal"))
+        XCTAssertTrue(SettingsView.SettingsCategory.voice.matches("   "))
+    }
+
+    func testHelpAndAboutFollowPreferences() {
+        XCTAssertEqual(Array(SettingsView.SettingsCategory.allCases.suffix(2)), [.userGuide, .about])
+        XCTAssertEqual(Set(SettingsView.SettingsCategory.allCases.map(\.id)).count, 9)
+    }
+}

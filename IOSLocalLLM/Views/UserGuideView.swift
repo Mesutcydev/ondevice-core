@@ -11,7 +11,7 @@ struct UserGuideView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     KCaption(text: "manual")
                     KPageTitle(title: "User Guide", size: 28)
-                    KMono(text: "On-device AI studio manual & workflows", size: 12, color: T.ink3)
+                    KMono(text: "Make OnDevice Core your own", size: 12, color: T.ink3)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
@@ -25,10 +25,10 @@ struct UserGuideView: View {
                         .frame(width: 32, height: 32)
                         .background(RoundedRectangle(cornerRadius: 8).fill(T.accentSoft))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("100% On-Device & Private")
+                        Text("Local by default. You choose what connects.")
                             .font(T.sans(14, .semibold))
                             .foregroundColor(T.ink)
-                        Text("All models run locally. No data leaves this device.")
+                        Text("Downloaded local models run on your device. Cloud models, web tools, sync, and Mac connections are optional and can send content off-device.")
                             .font(T.sans(11.5))
                             .foregroundColor(T.ink3)
                     }
@@ -41,20 +41,20 @@ struct UserGuideView: View {
                 // 1. Assistant View Section
                 KSection(title: "assistant") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Interactive Local Chat")
+                        Text("Ask, write, and explore")
                             .font(T.sans(15, .semibold))
                             .foregroundColor(T.ink)
                         
-                        Text("Engage in direct chats with your chosen reasoning model (e.g. Qwen, Llama). Code blocks are automatically formatted with syntax highlighting.")
+                        Text("Choose a model and start a conversation. Learn about a topic, draft a message, summarize a document, or work through an idea. You can also ask for help with code.")
                             .font(T.sans(12.5))
                             .foregroundColor(T.ink2)
                             .lineSpacing(3)
                         
                         visualImage("img_assistant")
                         
-                        bulletPoint("Composer Inputs", "Attach images, documents, or repositories. Access saved snip presets from the toolbar.")
+                        bulletPoint("Bring your own context", "Attach documents or add photos for a compatible vision model. Reuse saved prompts from the composer toolbar.")
                         bulletPoint("Conversation Search", "Filter local chat histories by keywords in real-time.")
-                        bulletPoint("Tool Integrations", "Supports local tool-calling like Web Search, with user approvals.")
+                        bulletPoint("Optional tools", "Enable tools when you need them. Web search uses a network connection; review requests before approving them.")
                     }
                     .padding(14)
                 }
@@ -85,11 +85,11 @@ struct UserGuideView: View {
                 // 3. Lens (Camera) Section
                 KSection(title: "camera_&_lens") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Real-Time Code & Vision")
+                        Text("Explore what you see")
                             .font(T.sans(15, .semibold))
                             .foregroundColor(T.ink)
                         
-                        Text("Use the viewfinder to scan source code from screens or whiteboards, or stream continuous descriptive VLM captions.")
+                        Text("Use Lens to describe objects, read text, and explore documents or scenes with a vision model. A separate Code mode helps you capture and understand source code.")
                             .font(T.sans(12.5))
                             .foregroundColor(T.ink2)
                             .lineSpacing(3)
@@ -106,19 +106,19 @@ struct UserGuideView: View {
                 // 4. Voice Section
                 KSection(title: "voice_assistant") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Hands-Free Conversational Loop")
+                        Text("Talk it through")
                             .font(T.sans(15, .semibold))
                             .foregroundColor(T.ink)
                         
-                        Text("Talk directly with models using robust voice activity detection (VAD) that filters out ambient background noise.")
+                        Text("Have a conversation with your selected model. Voice shows when it is listening, thinking, or speaking, and lets you interrupt to take another turn.")
                             .font(T.sans(12.5))
                             .foregroundColor(T.ink2)
                             .lineSpacing(3)
 
                         visualImage("img_voice")
 
-                        bulletPoint("Synchronized Audio", "Uses a single synchronized audio session for seamless transitions between listening and speaking.")
-                        bulletPoint("Neural TTS Engines", "Select between system voice synthesis and advanced local voices (KittenTTS, Kokoro).")
+                        bulletPoint("Follow the conversation", "The voice orb responds to speech and changes with each conversation state.")
+                        bulletPoint("Choose a voice", "Use a system voice or download a compatible local voice in Models. Adjust playback in Voice settings.")
                     }
                     .padding(14)
                 }
@@ -130,12 +130,12 @@ struct UserGuideView: View {
                             .font(T.sans(15, .semibold))
                             .foregroundColor(T.ink)
                         
-                        Text("The central hub for downloading models, searching HuggingFace, and tracking local disk space usage.")
+                        Text("Build your collection of chat, vision, voice, and image models. Discover compatible models on Hugging Face, import your own, and manage device storage.")
                             .font(T.sans(12.5))
                             .foregroundColor(T.ink2)
                             .lineSpacing(3)
 
-                        bulletPoint("Residency Gates", "Models automatically load and unload dynamically to protect your device from memory-related jetsam kills.")
+                        bulletPoint("Find the right fit", "Device guidance helps you choose models for the memory available. Larger models may need more space and time to respond.")
                         bulletPoint("Disk Management", "Segments total storage sizes per type (Language, Vision, Voice) and allows one-tap cleanups of orphaned files.")
                         bulletPoint("Hugging Face Search", "Find and download any compatible open-source model directly by entering its repository path.")
                     }
@@ -145,7 +145,7 @@ struct UserGuideView: View {
                 // 6. Mac Bridge Section
                 KSection(title: "mac_bridge") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Desktop Coupling")
+                        Text("Connect your Mac")
                             .font(T.sans(15, .semibold))
                             .foregroundColor(T.ink)
                         
@@ -156,7 +156,7 @@ struct UserGuideView: View {
 
                         visualImage("img_mac_bridge")
 
-                        bulletPoint("Dual Inference Routing", "Offload complex reasoning tasks from your Mac to your iOS device's Neural Engine.")
+                        bulletPoint("Local connection", "Use your iPhone's supported local models from your paired Mac over your network.")
                         bulletPoint("Visual Inspection", "Streams Mac screenshots, simulator boundaries, and Xcode logs directly to the iOS visual model.")
                     }
                     .padding(14)

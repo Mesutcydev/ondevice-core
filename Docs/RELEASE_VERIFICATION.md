@@ -71,3 +71,29 @@ profiles, certificates, or signing credentials to Git.
 If valid Apple profiles already exist for both bundle IDs, preserve the signed
 archive and package it with `scripts/package_sideloadable_ipa.sh` instead; that
 path verifies and retains the embedded profile and signed entitlements.
+
+
+## Data-preserving updates (downloaded models survive)
+
+The sideload IPA is profile-less and ad-hoc signed, so the installer must
+re-sign it. Whether an update keeps `Documents/LLMModels` depends entirely on
+that install path:
+
+- **Preserved** when the app is updated in place with the same
+  `TeamIdentifier.BundleIdentifier` (same Apple ID/team, same bundle id) and
+  the installer does not delete the app first. Preferred paths: Xcode
+  `Product > Run`, or
+  `xcrun devicectl device install app --device <UDID> <signed .app>`.
+- **Lost** when the installer uninstalls first, or re-signs with a different
+  application identifier. iOS then gives the app a fresh, empty container and
+  the multi-GB model downloads are gone.
+
+Tooling:
+
+- `scripts/verify_ipa_identity.sh <ipa>` — checks the bundle id/version,
+  signing style and entitlements, and prints the preservation checklist.
+- App > Diagnostics > **Deployment Persistence** — write a sentinel in build A,
+  install build B as an update, then Check. A missing sentinel proves the
+  container was deleted by the install path.
+- Recovery without re-downloading: keep one copy of a model folder in the
+  Files app / iCloud Drive and use Models > Import after a wipe.

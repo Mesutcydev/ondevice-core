@@ -6,6 +6,7 @@ import SwiftUI
 // invalidated at display-link rate. The orb renders independently in Metal.
 
 struct VoiceOrbContainer: View {
+    @Environment(\.koduTheme) private var theme
     @ObservedObject var orb: OrbPresentationModel
     let reduceMotion: Bool
     let onTap: () -> Void
@@ -25,24 +26,38 @@ struct VoiceOrbContainer: View {
                 .frame(width: diameter, height: diameter)
 
                 Circle()
-                    .fill(Color.white.opacity(flash ? 0.55 : 0))
+                    .stroke(theme.ink.opacity(flash && !reduceMotion ? 0.16 : 0), lineWidth: 1)
                     .frame(width: diameter, height: diameter)
                     .allowsHitTesting(false)
             }
-            .frame(width: proxy.size.width, height: diameter)
+            .frame(width: proxy.size.width, height: proxy.size.height)
             .contentShape(Circle())
-            .onTapGesture {
-                switch orb.phase {
-                case .idle:
-                    onTap()
-                case .speaking, .thinking, .preparingSpeech:
-                    onInterrupt()
-                case .listening, .speechDetected, .paused, .interrupted, .failed:
-                    break
-                }
-            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(orb.phase.statusLabel)
+            .accessibilityIdentifier("voiceOrb")
+            .accessibilityAddTraits(canActivate ? [.isButton] : [])
+            .accessibilityHint(canActivate ? (orb.phase == .idle ? "Start a voice conversation" : "Interrupt the current response") : "")
+            .onTapGesture { handleTap() }
+            .accessibilityAction { handleTap() }
         }
-        .frame(maxHeight: 280)
+        // Reserve the orb slot in a vertical ScrollView; GeometryReader
+        // otherwise reports its 10-point ideal height as transcript text grows.
+        .frame(height: 280)
+    }
+
+    private var canActivate: Bool {
+        switch orb.phase {
+        case .idle, .speaking, .thinking, .preparingSpeech: true
+        default: false
+        }
+    }
+
+    private func handleTap() {
+        switch orb.phase {
+        case .idle: onTap()
+        case .speaking, .thinking, .preparingSpeech: onInterrupt()
+        case .listening, .speechDetected, .paused, .interrupted, .failed: break
+        }
     }
 }
 

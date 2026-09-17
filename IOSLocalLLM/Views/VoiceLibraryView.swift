@@ -84,12 +84,13 @@ struct VoiceLibraryView: View {
                 chips
                 library
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 8)
+            .padding(.horizontal, AppSpacing.large)
+            .padding(.top, AppSpacing.large)
             .padding(.bottom, 28)
         }
         .background(LiquidPinkBackdrop())
         .scrollIndicators(.hidden)
+        .scrollDismissesKeyboard(.interactively)
         .onAppear { tabVisible = true }
         .onDisappear { tabVisible = false }
         .task {
@@ -114,19 +115,9 @@ struct VoiceLibraryView: View {
     // MARK: Header
 
     private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(loc.t("On-device speech").uppercased())
-                    .font(T.sans(13, .semibold)).tracking(0.7)
-                    .foregroundColor(T.accent)
-                Text(loc.t("Voices"))
-                    .font(T.display(32, .bold)).foregroundColor(T.ink)
-            }
-            Spacer()
+        KScreenHeader(title: loc.t("Voice"), eyebrow: loc.t("On-device speech")) {
+            EmptyView()
         }
-        .padding(.top, 6)
-
-        // (Search is provided inline below via the field in `chips`.)
     }
 
     // MARK: Active-voice hero
@@ -145,9 +136,9 @@ struct VoiceLibraryView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(loc.t("NOW USING"))
-                        .font(T.sans(11.5, .bold)).tracking(0.6).foregroundColor(T.accentStrong)
-                    Text(v.name).font(T.display(20, .bold)).foregroundColor(T.ink).lineLimit(1)
-                    Text(voiceSubtitle(v)).font(T.sans(13)).foregroundColor(T.ink2).lineLimit(1)
+                        .font(T.sans(11.5, .semibold)).foregroundColor(T.ink2)
+                    Text(v.name).font(T.display(20, .semibold)).foregroundColor(T.ink).fixedSize(horizontal: false, vertical: true)
+                    Text(voiceSubtitle(v)).font(T.sans(13)).foregroundColor(T.ink2).fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 6)
 
@@ -162,11 +153,10 @@ struct VoiceLibraryView: View {
                     .frame(width: 46, height: 46)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(loc.t("Preview voice"))
+                .accessibilityLabel(voice.isPlaying ? loc.t("Stop preview") : loc.t("Preview voice"))
             }
 
-            // Always-on animated equalizer (design 04 hero) — calmer when idle,
-            // more energetic while a preview is playing.
+            // Motion communicates playback; idle and reduced-motion states rest.
             EqualizerBars(playing: voice.isPlaying, active: isActive && tabVisible)
                 .frame(height: 30)
         }
@@ -182,24 +172,10 @@ struct VoiceLibraryView: View {
     // MARK: Conversation entry (keeps the live orb reachable)
 
     private var conversationCTA: some View {
-        Button(action: { HapticManager.impact(.medium); showConversation = true }) {
-            HStack(spacing: 11) {
-                Image(systemName: "mic.fill").font(.system(size: 16, weight: .semibold))
-                Text(loc.t("Start a voice conversation")).font(T.sans(15, .semibold))
-                Spacer()
-                Image(systemName: "arrow.right").font(.system(size: 14, weight: .semibold))
-            }
-            .foregroundColor(T.accentStrong)
-            .padding(.horizontal, 16).padding(.vertical, 14)
-            .kClearGlass(
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous),
-                tint: T.accentStrong.opacity(0.72),
-                interactive: true,
-                fallbackFill: T.accentStrong,
-                fallbackStroke: T.accent.opacity(0.35)
-            )
+        KPrimaryButton(label: loc.t("Start a voice conversation"), systemImage: "waveform") {
+            HapticManager.impact(.medium)
+            showConversation = true
         }
-        .buttonStyle(.plain)
     }
 
     // MARK: Voice engine selector
@@ -244,42 +220,15 @@ struct VoiceLibraryView: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(Filter.allCases) { f in
-                        let on = filter == f
-                        Button(action: { HapticManager.impact(.light); filter = f }) {
-                            Text(loc.t(f.label))
-                                .font(T.sans(13.5, on ? .semibold : .medium))
-                                .foregroundColor(on ? .white : T.ink2)
-                                .padding(.horizontal, 15).padding(.vertical, 7)
-                                .kClearGlass(
-                                    in: Capsule(),
-                                    tint: on ? T.accent.opacity(0.72) : nil,
-                                    interactive: true,
-                                    fallbackFill: on ? T.accent : T.surface,
-                                    fallbackStroke: T.rule
-                                )
+                        KFilterChip(title: loc.t(f.label), isSelected: filter == f) {
+                            HapticManager.selection()
+                            filter = f
                         }
-                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, 2)
             }
-            HStack(spacing: 9) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 15, weight: .regular)).foregroundColor(T.ink3)
-                TextField(loc.t("Search voices"), text: $query)
-                    .font(T.sans(15)).foregroundColor(T.ink).tint(T.accent)
-                if !query.isEmpty {
-                    Button(action: { query = "" }) {
-                        Image(systemName: "xmark.circle.fill").foregroundColor(T.ink4)
-                    }.buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 14).padding(.vertical, 11)
-            .kClearGlass(
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous),
-                fallbackFill: T.surface,
-                fallbackStroke: T.rule
-            )
+            KSearchField(placeholder: loc.t("Search voices"), text: $query)
         }
     }
 
@@ -295,13 +244,28 @@ struct VoiceLibraryView: View {
                 if filter == .cloned {
                     clonedEmptyRow
                 } else if filtered.isEmpty {
-                    Text(loc.t("No voices match."))
-                        .font(T.sans(14)).foregroundColor(T.ink3)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(15)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label(loc.t("No voices match."), systemImage: "magnifyingglass")
+                            .font(T.sans(15, .semibold)).foregroundStyle(T.ink)
+                        Text(loc.t("Try another name or language filter."))
+                            .font(T.sans(13)).foregroundStyle(T.ink2)
+                        Button {
+                            query = ""
+                            filter = .all
+                        } label: {
+                            Text(loc.t("Clear filters"))
+                                .font(T.sans(13, .semibold))
+                                .foregroundStyle(T.accent)
+                                .frame(minHeight: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
                 } else {
                     ForEach(filtered, id: \.id) { v in
-                        voiceRow(v, isLast: false)
+                        voiceRow(v)
                     }
                 }
                 cloneRow   // always the last row
@@ -314,7 +278,7 @@ struct VoiceLibraryView: View {
         }
     }
 
-    private func voiceRow(_ v: VoiceOption, isLast: Bool) -> some View {
+    private func voiceRow(_ v: VoiceOption) -> some View {
         let isCurrent = v.id == current?.id
         return Button(action: { preview(v) }) {
             HStack(spacing: 12) {
@@ -328,15 +292,15 @@ struct VoiceLibraryView: View {
                         }
                     }
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(v.name).font(T.sans(15.5, .semibold)).foregroundColor(T.ink).lineLimit(1)
-                    Text(voiceSubtitle(v)).font(T.sans(12.5)).foregroundColor(T.ink3).lineLimit(1)
+                    Text(v.name).font(T.sans(15.5, .semibold)).foregroundColor(T.ink).lineLimit(2)
+                    Text(voiceSubtitle(v)).font(T.sans(13)).foregroundColor(T.ink2).lineLimit(2)
                 }
                 Spacer(minLength: 6)
                 ZStack {
-                    Circle().fill(isCurrent ? T.accent : T.accentSoft).frame(width: 36, height: 36)
+                    Circle().fill(isCurrent ? T.ink : T.accentSoft).frame(width: 36, height: 36)
                     Image(systemName: isCurrent ? "checkmark" : "play.fill")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(isCurrent ? .white : T.accent)
+                        .foregroundColor(isCurrent ? T.bg : T.accent)
                         .offset(x: isCurrent ? 0 : 1)
                 }
             }
@@ -347,6 +311,8 @@ struct VoiceLibraryView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isCurrent ? .isSelected : [])
+        .accessibilityHint(loc.t("Selects this voice and plays a preview"))
     }
 
     // "Clone your voice" — Coming soon (big feature, no on-device backend yet)
@@ -436,11 +402,8 @@ struct VoiceLibraryView: View {
 }
 
 // MARK: - EqualizerBars
-// Always-on animated equalizer for the "now using" hero (design 04). Uses
-// TimelineView so it animates continuously while the Voice tab is on screen
-// (SwiftUI pauses the timeline when the tab is hidden, so there's no
-// background cost). Bars cycle through pink shades like the handoff and run
-// calmer when idle, more energetic while a preview is playing.
+// The hero animates only during visible playback, and respects Reduce Motion.
+// Pausing the timeline also avoids waking it behind another tab.
 private struct EqualizerBars: View {
     var playing: Bool = false
     /// False when the Voice tab is offscreen — freezes the animation. iOS 18
@@ -448,29 +411,29 @@ private struct EqualizerBars: View {
     /// burned CPU/GPU/battery behind whatever tab the user was actually on.
     var active: Bool = true
     @Environment(\.koduTheme) private var T
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        let shades = [T.accent, T.roseHi, T.accent.opacity(0.6)]
-        let speed = playing ? 6.0 : 3.2
-        let floor = playing ? 0.22 : 0.30
-        let amp   = playing ? 0.78 : 0.55
-        // ~24 fps when visible (vs .animation's 60–120 fps display link), and a
-        // 1-hour schedule (effectively frozen) + static bars when offscreen.
-        let schedule: PeriodicTimelineSchedule = active
-            ? .periodic(from: Date(), by: 1.0 / 24.0)
-            : .periodic(from: Date(), by: 3600)
-        return TimelineView(schedule) { ctx in
-            let t = ctx.date.timeIntervalSinceReferenceDate
-            HStack(alignment: .center, spacing: 4) {
-                ForEach(0..<13, id: \.self) { i in
-                    let phase = Double(i) * 0.55
-                    let h = active ? floor + amp * (0.5 + 0.5 * sin(t * speed + phase)) : 0.5
-                    Capsule()
-                        .fill(shades[i % shades.count])
-                        .frame(height: CGFloat(30 * h))
+        let animates = active && playing && !reduceMotion
+        return TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: !animates)) { ctx in
+            GeometryReader { proxy in
+                let count = max(1, min(44, Int(proxy.size.width / 7)))
+                let time = animates ? ctx.date.timeIntervalSinceReferenceDate : 0
+                HStack(alignment: .center, spacing: 4) {
+                    ForEach(0..<count, id: \.self) { index in
+                        let position = Double(index) / Double(max(count - 1, 1))
+                        let envelope = sin(position * .pi)
+                        let wave = 0.5 + 0.5 * sin(time * 5 + Double(index) * 0.65)
+                        let height = 4 + envelope * (animates ? 8 + 18 * wave : 7 + 10 * wave)
+                        Capsule()
+                            .fill(T.ink.opacity(animates ? 0.65 : 0.28))
+                            .frame(width: 3, height: height)
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 30, alignment: .center)
+            .frame(height: 30)
         }
+        .accessibilityHidden(true)
     }
 }

@@ -5,10 +5,10 @@ import SwiftUI
 /// Colors are stored per ``VoiceOrbStateKind`` so the orb never hardcodes
 /// state colors in the renderer. Each color has light and dark variants and
 /// is resolved against the active `ColorScheme` at draw time.
-public struct VoiceAgentOrbTheme: Sendable, Equatable {
+public struct VoiceAgentOrbTheme: Sendable, Equatable, Hashable {
 
     /// A color with light and dark appearance variants.
-    public struct AdaptiveColor: Sendable, Equatable {
+    public struct AdaptiveColor: Sendable, Equatable, Hashable {
         public var light: Color
         public var dark: Color
 
@@ -34,7 +34,7 @@ public struct VoiceAgentOrbTheme: Sendable, Equatable {
     }
 
     /// Colors for one state.
-    public struct Palette: Sendable, Equatable {
+    public struct Palette: Sendable, Equatable, Hashable {
         /// Central intelligence core (brightest point).
         public var core: AdaptiveColor
         /// Darker internal volume tint behind the energy.

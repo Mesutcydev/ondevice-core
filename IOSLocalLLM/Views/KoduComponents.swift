@@ -84,11 +84,131 @@ struct KStatusBadge: View {
 
 /// Reusable tactile feedback button style for the Kodu Studio design language.
 struct KTactileButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1.0)
             .opacity(configuration.isPressed ? 0.90 : 1.0)
-            .animation(.spring(response: 0.15, dampingFraction: 0.6), value: configuration.isPressed)
+            .animation(.easeOut(duration: 0.16), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Studio screen chrome
+
+/// Shared hierarchy for the studio's browsing screens. Actions move below the
+/// title at accessibility sizes instead of squeezing the heading.
+struct KScreenHeader<Actions: View>: View {
+    let title: String
+    let eyebrow: String
+    @ViewBuilder var actions: () -> Actions
+    @Environment(\.koduTheme) private var T
+    @Environment(\.dynamicTypeSize) private var textSize
+
+    var body: some View {
+        let layout = textSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+            : AnyLayout(HStackLayout(alignment: .center, spacing: 12))
+        layout {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(eyebrow)
+                    .font(T.sans(12, .medium))
+                    .foregroundStyle(T.ink2)
+                Text(title)
+                    .font(T.display(30, .semibold))
+                    .foregroundStyle(T.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityAddTraits(.isHeader)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            actions()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// A search field whose clear action has a full touch target without changing
+/// the row's height as text is entered.
+struct KSearchField: View {
+    let placeholder: String
+    @Binding var text: String
+    var onClear: () -> Void = {}
+    var onSubmit: () -> Void = {}
+    @FocusState private var focused: Bool
+    @Environment(\.koduTheme) private var T
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.body)
+                .foregroundStyle(T.ink3)
+                .accessibilityHidden(true)
+            TextField(placeholder, text: $text)
+                .font(T.sans(15))
+                .foregroundStyle(T.ink)
+                .tint(T.accent)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .submitLabel(.search)
+                .focused($focused)
+                .onSubmit {
+                    focused = false
+                    onSubmit()
+                }
+                .accessibilityLabel(placeholder)
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                    onClear()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.body)
+                        .foregroundStyle(T.ink2)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(LocalizationService.shared.t("Clear search"))
+            }
+        }
+        .padding(.leading, 14)
+        .padding(.trailing, text.isEmpty ? 14 : 2)
+        .frame(minHeight: 48)
+        .padding(.vertical, 2)
+        .kGlass(cornerRadius: AppRadius.control)
+    }
+}
+
+/// Selection stays legible on neutral glass in every palette. A checkmark and
+/// VoiceOver trait make selection independent of color.
+struct KFilterChip: View {
+    let title: String
+    let isSelected: Bool
+    var action: () -> Void
+    @Environment(\.koduTheme) private var T
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 5) {
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.caption.weight(.semibold))
+                        .accessibilityHidden(true)
+                }
+                Text(title)
+                    .font(T.sans(13, isSelected ? .semibold : .medium))
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            .foregroundStyle(isSelected ? T.ink : T.ink2)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(isSelected ? T.accentSoft : T.surface, in: Capsule())
+            .overlay(Capsule().strokeBorder(isSelected ? T.rule2 : T.rule, lineWidth: AppStroke.hairline))
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(KTactileButtonStyle())
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
@@ -138,24 +258,19 @@ struct KPrimaryButton: View {
                         .font(.system(size: 13, weight: .medium))
                 }
                 Text(label)
-                    .font(T.sans(15, .medium))
+                    .font(T.sans(15, .semibold))
                 Spacer(minLength: 0)
                 if let trailing {
                     Text(trailing)
                         .font(T.mono(10))
-                        .foregroundColor(T.ink4)
+                        .foregroundColor(T.bg.opacity(0.75))
                 }
             }
-            .foregroundColor(T.accentStrong)
-            .padding(.horizontal, 14)
-            .frame(height: 50)
-            .frame(maxWidth: .infinity)
-            .kClearGlass(
-                in: RoundedRectangle(cornerRadius: 10, style: .continuous),
-                tint: T.accentStrong,
-                interactive: true,
-                fallbackFill: T.accentStrong
-            )
+            .foregroundColor(T.bg)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(T.ink, in: RoundedRectangle(cornerRadius: AppRadius.control, style: .continuous))
             .opacity(disabled ? 0.45 : 1)
         }
         .buttonStyle(KTactileButtonStyle())
@@ -322,21 +437,22 @@ struct KRow<Trailing: View>: View {
     var stack: Bool = false
 
     @Environment(\.koduTheme) private var T
+    @Environment(\.dynamicTypeSize) private var textSize
 
     var body: some View {
         VStack(spacing: 0) {
             Group {
-                if stack {
+                if stack || textSize.isAccessibilitySize {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(label).font(T.sans(15)).foregroundColor(T.ink)
-                        trailing()
+                        trailing().accessibilityLabel(label)
                     }
                 } else {
                     HStack(spacing: 12) {
                         Text(label).font(T.sans(15)).foregroundColor(T.ink)
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 8)
-                        trailing()
+                        trailing().accessibilityLabel(label)
                     }
                 }
             }
@@ -707,10 +823,11 @@ struct KPageTitle: View {
 struct KToggle: View {
     @Binding var isOn: Bool
     @Environment(\.koduTheme) private var T
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) { isOn.toggle() }
+            withAnimation(reduceMotion ? nil : .spring(response: 0.25, dampingFraction: 0.85)) { isOn.toggle() }
         } label: {
             ZStack(alignment: isOn ? .trailing : .leading) {
                 RoundedRectangle(cornerRadius: 9)
@@ -721,6 +838,8 @@ struct KToggle: View {
                     .frame(width: 14, height: 14)
                     .padding(.horizontal, 2)
             }
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         // This is a custom switch, not a SwiftUI Toggle — without these traits

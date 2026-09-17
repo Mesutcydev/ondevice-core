@@ -171,7 +171,7 @@ enum CoreAIZooCatalog {
             hfRepo: "mlboydaisuke/MiniCPM5-1B-CoreAI",
             revision: "main",
             pathPrefix: "int8",
-            approxDownloadBytes: 1_092_313_209,
+            approxDownloadBytes: 1_158_613_345,
             contextWindow: 8_192,
             supportsThinking: true,
             supportsTools: false,

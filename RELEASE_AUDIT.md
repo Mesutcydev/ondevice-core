@@ -1,5 +1,105 @@
 # OnDevice Core AI Studio — Release Audit 1.0.0
 
+## Build 47 readiness audit — 2026-09-17 (no IPA packaged in this pass)
+
+Readiness audit for the next sideload build covering the uncommitted work
+since build 46: the Phase 5M readahead candidate and the 2026-09-17 pass
+(per-layer expert read plans in both Edge0 loaders, NAX gate mirror in
+Diagnostics, NAX-off A/B script, A18→A19 documentation errata). Full detail:
+`Docs/EDGE0_AUDIT_ROUND_2026-09-17.md` and
+`Docs/EDGE0_PERF_UPDATE_SCAN_2026-09-17.md`.
+
+| Check | Result |
+| --- | --- |
+| Version metadata | Consistent: 1.0.0 (**47**) in `project.yml` (app + extension) and the regenerated project; `Info.plist`, `CITATION.cff`, and `CHANGELOG.md` (`[1.0.0] - 2026-09-17` + populated `[Unreleased]`) |
+| Open-source validator | **Passed** — "Repository hygiene checks passed" (the previously recorded CITATION.cff version failure is resolved) |
+| Device compile gate (build-for-testing, full test target) | **Passed** — 0 errors, 0 Edge0 warnings; re-verified after `pod install` re-integration |
+| Focused Edge0 unit tests | **Executed on the iPhone 17 simulator** via the sim-compat project: **21 passed / 22 skipped / 7 MLX-eval aborts** (simulated Metal cannot back MLX evaluation; those cases + real-checkpoint suites run in the device session) |
+| Real-checkpoint 35B regressions | **Not run** (no checkpoint staged on this machine) |
+| IPA packaging | **Not performed in this pass** |
+
+Resolved before packaging: build number bumped to 47; `[Unreleased]` changelog
+entries written; stray root file `-` moved to `build/`; the full working set
+committed together with the regenerated `project.pbxproj` and the sim-compat
+project files. Remaining: device-session runs (MLX-eval cases, real
+checkpoints, 5M/NAX A/Bs) and the IPA packaging itself. Production Edge0
+defaults are unchanged (staged g4 prefill, per-token router readback `0`,
+boundedPrefetch decode, readahead and advisory prerouter OFF). Reminder:
+`xcodegen generate` **then** `pod install` for release builds.
+
+## Build 46 UI, voice orb, onboarding, and studio identity — 2026-09-16
+
+This release packages the current workbench with the Aperture voice orb,
+shared UI polish, three-step onboarding, broader Assistant copy, and the
+website/source links in Settings. See `Docs/UI_POLISH_AUDIT.md` for the UI
+validation and physical-device performance limitations.
+
+Artifact: `build/releases/OnDeviceCoreAIStudio-sideload-entitled-1.0.0-46.ipa`
+
+- Version **1.0.0 (46)**; the share extension also uses build **46**.
+- Size: **53,148,612 bytes**.
+- SHA-256: `992da6461e509715f3e83a3b0c7a2f0dda9d6111dd6660a7f27b464faedd6756`.
+- Built by the complete Xcode 27 Release sideload script. Catalog invariants,
+  direct-download preflight, archive, Foundation Models symbol preflight,
+  license collection, and packaging verification all passed.
+- **47 independent artifact checks passed.** The ZIP member paths exactly
+  match build 45. All nested code signatures verify; the app, share extension,
+  and native frameworks are ARM64 device binaries. The llama and whisper
+  framework binaries are byte-identical to build 45.
+- Exact app and extension entitlements match builds **43, 44, and 45**:
+  PCC, increased memory, extended virtual addressing, CloudKit/iCloud, and
+  the matching shared App Group remain intact. Bundle IDs and minimum iOS
+  **27.0** are unchanged. Privacy manifest, third-party notices, executable
+  permissions, and file-sharing flags are present and valid.
+- The packaged executable contains the updated Assistant welcome and app
+  links; `default.metallib` contains both Aperture shader entry points.
+- `latest.ipa` and the versioned IPA have the same checksum. Detailed evidence,
+  exported entitlements, source fingerprints, and build logs are under
+  `build/releases/verification-1.0.0-46/`.
+
+This is the established profile-less, ad-hoc signed format and requires
+installer-side re-signing with suitable profiles. Update the existing app
+using the same bundle ID and Apple signing team to preserve its data; do not
+uninstall first. This packaging pass does not establish physical-device model
+performance or run another inference benchmark. The previously recorded
+`CITATION.cff` version-metadata validator failure is unchanged.
+
+## Build 45 Phase 5K packaging closeout — 2026-09-14
+
+Build 45 is a packaging/cleanup closeout. The reported source change is the
+diagnostic preference capture/restore path; it does not add or promote a new
+inference optimization. Production 35B remains staged true-router prefill,
+routed microbatch 4, eval window 1, per-token router readback (`0`), and
+boundedPrefetch decode, with the learned prerouter off.
+
+Validation record:
+
+| Check | Result |
+| --- | --- |
+| Preference capture/restore helpers, including cancellation and errors | **5/5 executed and passed** |
+| Actual app runner end-to-end cleanup and single-run guard | **Compiled only — not executed** |
+| Full real-checkpoint model regressions for build 45 | **Not rerun** |
+| IPA signing and application-identity verification | **Passed** (`1.0.0 (45)`, bundle `com.mesutcydev.ondevicecore`) |
+| Open-source validator | Known, unchanged `CITATION.cff`/version failure |
+
+The helper tests support the restoration logic; they do not establish that the
+complete app runner restores preferences on a phone.
+
+The profile-less IPA is
+`build/releases/OnDeviceCoreAIStudio-sideload-entitled-1.0.0-45.ipa` and must
+be re-signed by the installer (SHA-256
+`78fadc1a1f297e59f98428c85b65191ea14efa4f24dc2cfbea67777d08253705`). Install
+it **as an update** over build 44,
+without deleting the app or downloaded models. After installation, check the
+developer router-readback setting in Diagnostics: ordinary use must be
+**per-token / `0`**. Restoration deliberately writes back the captured value,
+so an existing diagnostic value of `1` is preserved rather than reset.
+
+After that check, return to ordinary 35B chat. Do not run another speed A/B for
+this closeout. Future inference changes must restore the real-checkpoint
+harness and fixtures in persistent development storage; there is no need to
+redownload the checkpoint for this packaging-only change.
+
 ## Build 7 LFM answer-quality hotfix — 2026-08-22
 
 - Fixed LFM2.5 2.6B returning raw

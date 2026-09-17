@@ -3,6 +3,14 @@ import Combine
 
 // MARK: - Render quality
 
+/// Render tier for the orb.
+///
+/// The automatic policy (``VoiceOrbQualityController``) never selects `.full`:
+/// two `Canvas` surfaces at 60 Hz with the full particle and field budget is a
+/// frame-time risk on an ambient, always-on element, so `.balanced` is the
+/// ceiling for environment-driven selection. `.full` is an explicit host
+/// opt-in through `VoiceAgentOrb.init(qualityOverride:)` — for a large,
+/// foregrounded orb on a device the host has measured.
 public enum VoiceOrbRenderQuality: String, Sendable, CaseIterable, Comparable {
     case reduced
     case balanced
@@ -104,6 +112,7 @@ public struct VoiceOrbQualityController: Sendable, Equatable {
     public init() {}
 
     /// The quality the environment alone would want, without hysteresis.
+    /// Capped at `.balanced` — `.full` is only reachable via `qualityOverride`.
     public func desiredQuality(for inputs: Inputs) -> VoiceOrbRenderQuality {
         if !inputs.sceneActive || inputs.lowPowerMode || inputs.reduceMotion {
             return .reduced
@@ -171,10 +180,12 @@ public final class VoiceOrbPerformancePolicy: ObservableObject {
     var now: @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
 
     private var cancellables: Set<AnyCancellable> = []
+    private var recoveryTask: Task<Void, Never>?
 
     public init() {
         NotificationCenter.default
             .publisher(for: ProcessInfo.thermalStateDidChangeNotification)
+            .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 MainActor.assumeIsolated { self?.refresh() }
             }
@@ -182,6 +193,7 @@ public final class VoiceOrbPerformancePolicy: ObservableObject {
 
         NotificationCenter.default
             .publisher(for: .NSProcessInfoPowerStateDidChange)
+            .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 MainActor.assumeIsolated { self?.refresh() }
             }
@@ -200,6 +212,22 @@ public final class VoiceOrbPerformancePolicy: ObservableObject {
         let resolved = controller.evaluate(inputs, now: now())
         if resolved != quality {
             quality = resolved
+        }
+        // Notifications only arrive on changes. Without a scheduled check,
+        // a recovered device could remain reduced forever after the first
+        // favorable sample starts the controller's twelve-second hold.
+        if controller.desiredQuality(for: inputs) > resolved {
+            guard recoveryTask == nil else { return }
+            let delay = controller.upgradeHoldDuration
+            recoveryTask = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(delay))
+                guard !Task.isCancelled, let self else { return }
+                self.recoveryTask = nil
+                self.refresh()
+            }
+        } else {
+            recoveryTask?.cancel()
+            recoveryTask = nil
         }
     }
 }

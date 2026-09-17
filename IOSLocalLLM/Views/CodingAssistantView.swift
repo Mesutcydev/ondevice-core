@@ -42,6 +42,7 @@ struct CodingAssistantView: View {
     @StateObject private var store = ConversationStore.shared
     @StateObject private var bridge = AppBridge.shared
     @ObservedObject private var personaStore = PersonaStore.shared
+    @ObservedObject private var modelSettingsStore = AssistantModelSettingsStore.shared
     @ObservedObject private var legal = LegalAcceptanceManager.shared
     @ObservedObject private var loc = LocalizationService.shared
     @ObservedObject private var imageGen = ImageGenerationService.shared
@@ -188,6 +189,7 @@ struct CodingAssistantView: View {
     @State private var documentSearchPrompt: String?
     @State private var completionScrollTask: Task<Void, Never>?
     @State private var lastStreamScrollTime = 0.0
+    @ScaledMetric(relativeTo: .body) private var landingSuggestionWidth: CGFloat = 158
     @Environment(\.accessibilityReduceMotion) private var chatReduceMotion
     @Environment(\.koduTheme) private var T
 
@@ -234,7 +236,13 @@ struct CodingAssistantView: View {
                 // identity in its hero block so duplicating the
                 // status bar above the welcome screen would clutter.
                 if route == .chat {
-                    modelStatusBar
+                    HStack(spacing: 8) {
+                        modelStatusBar
+                        // Thinking toggle for supported models: tap to answer
+                        // directly, tap again to enable reasoning.
+                        thinkingChip
+                            .padding(.trailing, AppSpacing.large)
+                    }
 
                     if showConversationSearch {
                         conversationSearchBar
@@ -252,6 +260,7 @@ struct CodingAssistantView: View {
                                             && !conversationFilter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                                         modelName: assistant.activeDisplayName,
                                         modelStatus: modelStatusDescriptor.title,
+                                        usesPrivateCloud: assistant.activeExecutionLocation == .applePrivateCloud,
                                         loadFailure: modelLoadFailure,
                                         failureCanRetry: !hasPermanentModelCapacityFailure,
                                         onRetry: {
@@ -1299,7 +1308,7 @@ struct CodingAssistantView: View {
                 }
             }
             .padding(.horizontal, AppSpacing.large)
-            .frame(minHeight: 38)
+            .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -1424,6 +1433,10 @@ struct CodingAssistantView: View {
             .accessibilityLabel("Change model")
 
             Spacer(minLength: 2)
+            // Thinking toggle — only for models that support it. Direct
+            // answer is the default; this flips the per-model preference
+            // that the template renderer honors.
+            thinkingChip
             // Web Tool badge — appears when the Web Tool is active or paused.
             WebStatusBadge()
             // Memory chip — shows how many facts are in scope for the active
@@ -1526,6 +1539,71 @@ struct CodingAssistantView: View {
         .overlay(alignment: .bottom) {
             Rectangle().fill(T.rule).frame(height: 0.5)
         }
+    }
+
+    /// Compact thinking-mode toggle for supported models. Blends into the
+    /// header chip row; tapping persists a per-model preference so the
+    /// chat template actually renders thinking off for ordinary answers.
+    @ViewBuilder
+    private var thinkingChip: some View {
+        let model = assistant.activeModel
+        if model.supportsThinking {
+            let enabled = modelSettingsStore.effectiveSettings(
+                for: model.repoID,
+                supportsThinking: model.supportsThinking,
+                appSettings: AppSettings.shared
+            ).thinkingEnabled
+            let busy = isAssistantBusy
+            Button {
+                toggleThinking(for: model)
+                HapticManager.selection()
+            } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: enabled ? "brain.fill" : "brain")
+                        .font(.system(size: 9))
+                    Text("Think")
+                        .font(T.mono(10, .semibold))
+                }
+                .foregroundColor(enabled ? T.accent : T.ink2)
+                .padding(.horizontal, 5).padding(.vertical, 3)
+                .kGlass(
+                    cornerRadius: 4,
+                    tint: enabled ? T.accent.opacity(0.3) : T.ink3.opacity(0.2),
+                    fallbackFill: enabled ? T.accentSoft : .clear,
+                    fallbackStroke: enabled ? .clear : T.ink3.opacity(0.4)
+                )
+                .opacity(busy ? 0.5 : 1)
+            }
+            .buttonStyle(.plain)
+            .disabled(busy)
+            .accessibilityLabel(
+                enabled
+                    ? "Thinking on. Tap to answer directly."
+                    : "Thinking off. Tap to enable reasoning."
+            )
+        }
+    }
+
+    private var isAssistantBusy: Bool {
+        switch assistant.state {
+        case .generating, .loading: return true
+        default: return false
+        }
+    }
+
+    /// Persists the flipped thinking preference for the active model.
+    private func toggleThinking(for model: AssistantModel) {
+        var settings = modelSettingsStore.effectiveSettings(
+            for: model.repoID,
+            supportsThinking: model.supportsThinking,
+            appSettings: AppSettings.shared
+        )
+        settings.thinkingEnabled.toggle()
+        modelSettingsStore.save(
+            settings,
+            for: model.repoID,
+            supportsThinking: model.supportsThinking
+        )
     }
 
     // Memory chip — reflects how many facts are in scope for the active persona.
@@ -2084,7 +2162,7 @@ struct CodingAssistantView: View {
             Text(
                 assistant.activeExecutionLocation == .applePrivateCloud
                     ? "Advanced reasoning through Apple Private Cloud Compute. A network connection is required."
-                    : "Runs entirely on your device via \(assistant.activeModel.runtime.label). No servers, no API keys, no telemetry."
+                    : "Ask questions, write, and explore ideas with a model running on your device."
             )
                 .font(T.sans(13.5))
                 .foregroundColor(T.ink2)
@@ -2120,7 +2198,7 @@ struct CodingAssistantView: View {
 
     /// Curated suggestion chips — each is a tap-to-open shortcut that
     /// pre-fills the composer with a templated prompt and switches to
-    /// the chat route. Generic (Explain / Identify / Write / Review /
+    /// the chat route. Generic (Explain / Summarize / Write / Brainstorm /
     /// Translate) so they apply to any persona.
     private var landingSuggestionsRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -2132,10 +2210,10 @@ struct CodingAssistantView: View {
                     prompt: "Explain in simple terms: "
                 )
                 landingChip(
-                    title: "Identify",
-                    subtitle: "what this code does",
-                    systemImage: "eye.viewfinder",
-                    prompt: "Identify what this code does, line by line:\n\n```\n\n```"
+                    title: "Summarize",
+                    subtitle: "find the key points",
+                    systemImage: "doc.text",
+                    prompt: "Summarize the key points of this text:\n\n"
                 )
                 landingChip(
                     title: "Write",
@@ -2144,10 +2222,10 @@ struct CodingAssistantView: View {
                     prompt: "Write a professional version of: "
                 )
                 landingChip(
-                    title: "Review",
-                    subtitle: "for bugs",
-                    systemImage: "shield.checkered",
-                    prompt: "Review this code for bugs and edge cases:\n\n```\n\n```"
+                    title: "Brainstorm",
+                    subtitle: "explore a new idea",
+                    systemImage: "lightbulb",
+                    prompt: "Help me explore ideas for: "
                 )
                 landingChip(
                     title: "Translate",
@@ -2192,8 +2270,8 @@ struct CodingAssistantView: View {
                     Text(loc.t("Generate an image"))
                         .font(T.sans(15, .semibold))
                         .foregroundColor(T.ink)
-                    Text(loc.t("On-device text-to-image — SDXL Turbo & Stable Diffusion"))
-                        .font(T.mono(10))
+                    Text(loc.t("Create images privately with on-device models"))
+                        .font(T.sans(13))
                         .foregroundColor(T.ink3)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -2234,13 +2312,13 @@ struct CodingAssistantView: View {
                 }
                 
                 Text(loc.t(subtitle))
-                    .font(T.mono(10.5))
+                    .font(T.sans(13))
                     .foregroundColor(T.ink3)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(height: 32, alignment: .topLeading)
+                    .frame(minHeight: 32, alignment: .topLeading)
             }
-            .frame(width: 158, alignment: .leading)
+            .frame(width: landingSuggestionWidth, alignment: .leading)
             .padding(.horizontal, 14)
             .padding(.vertical, 14)
             .kGlass(
@@ -2261,7 +2339,7 @@ struct CodingAssistantView: View {
     /// the text composer instead. Splitting the interaction gives the icon its
     /// own hit region while keeping the visuals identical.
     private var askAnythingPill: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             // Body — opens the chat composer. `.contentShape(Rectangle())`
             // makes the whole zone (including the trailing Spacer) tappable.
             Button {
@@ -2269,17 +2347,18 @@ struct CodingAssistantView: View {
                 HapticManager.impact(.light)
             } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: "plus")
+                    Image(systemName: "square.and.pencil")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(T.ink3)
                         .frame(width: 30, height: 30)
                         .background(Circle().fill(T.surface2))
                         .overlay(Circle().stroke(T.glassBorder, lineWidth: 0.5))
                     Text(loc.t("Ask anything…"))
-                        .font(T.sans(14))
-                        .foregroundColor(T.ink3)
+                        .font(T.sans(15))
+                        .foregroundColor(T.ink2)
                     Spacer(minLength: 0)
                 }
+                .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -2293,10 +2372,11 @@ struct CodingAssistantView: View {
                 Image(systemName: "waveform")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(T.accent)
-                    .frame(width: 30, height: 30)
+                    .frame(width: 36, height: 36)
                     .background(Circle().fill(T.accentSoft))
                     .overlay(Circle().stroke(T.accent.opacity(0.40), lineWidth: 0.5))
-                    .contentShape(Circle())
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(loc.t("Voice conversation"))
@@ -2358,7 +2438,7 @@ struct CodingAssistantView: View {
                     Text(
                         assistant.activeExecutionLocation == .applePrivateCloud
                             ? "Advanced reasoning through Apple Private Cloud Compute. A network connection is required."
-                            : "\(assistant.activeModel.displayName) runs entirely on-device via \(assistant.activeModel.runtime.label). No servers. No keys. No telemetry."
+                            : "Ask questions, write, and explore ideas with \(assistant.activeDisplayName), running on your device."
                     )
                         .font(T.sans(14))
                         .foregroundColor(T.ink2)
@@ -4519,6 +4599,7 @@ private struct ChatThreadEmptyState: View {
     let isFiltering: Bool
     let modelName: String
     let modelStatus: String
+    let usesPrivateCloud: Bool
     let loadFailure: String?
     let failureCanRetry: Bool
     let onRetry: () -> Void
@@ -4527,11 +4608,12 @@ private struct ChatThreadEmptyState: View {
     let onSuggestion: (String) -> Void
 
     @Environment(\.koduTheme) private var T
+    @ObservedObject private var loc = LocalizationService.shared
 
-    private let suggestions = [
-        "Explain this code step by step",
-        "Review a file for bugs",
-        "Help me plan an implementation",
+    private let suggestions: [(title: String, symbol: String, prompt: String)] = [
+        ("Learn something", "book", "Explain this topic in simple terms: "),
+        ("Write something", "square.and.pencil", "Help me write a first draft of: "),
+        ("Explore an idea", "lightbulb", "Help me explore ideas for: "),
     ]
 
     var body: some View {
@@ -4608,7 +4690,7 @@ private struct ChatThreadEmptyState: View {
     private var emptyStateTitle: String {
         if isFiltering { return "No matching messages" }
         if loadFailure != nil { return "Choose a model that fits" }
-        return "What can I help you build?"
+        return loc.t("What would you like to explore?")
     }
 
     private var emptyStateSubtitle: String {
@@ -4620,8 +4702,14 @@ private struct ChatThreadEmptyState: View {
                 ? "The selected on-device model could not start."
                 : "\(modelName) exceeds this device's app memory limit."
         }
+        if usesPrivateCloud {
+            return "Ask, write, and explore with \(modelName). Uses Apple Private Cloud and requires a connection."
+        }
         if modelStatus == "Ready" {
-            return "Private, on-device assistance with \(modelName)."
+            return "Ask, write, and explore with \(modelName), running on your device."
+        }
+        if modelStatus == "Not loaded" {
+            return "Start with a question, a draft, or an idea."
         }
         if modelStatus.lowercased().contains("fail") || modelStatus.lowercased().contains("unavailable") {
             return "The on-device model needs attention before you can start."
@@ -4685,17 +4773,17 @@ private struct ChatThreadEmptyState: View {
 
     @ViewBuilder
     private var suggestionButtons: some View {
-        ForEach(suggestions, id: \.self) { suggestion in
+        ForEach(suggestions, id: \.title) { suggestion in
             Button {
-                onSuggestion(suggestion)
+                onSuggestion(loc.t(suggestion.prompt))
                 HapticManager.impact(.light)
             } label: {
                 HStack(spacing: AssistantSpacing.xxSmall) {
-                    Image(systemName: symbol(for: suggestion))
+                    Image(systemName: suggestion.symbol)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(T.accent)
                         .frame(width: 22)
-                    Text(shortLabel(for: suggestion))
+                    Text(loc.t(suggestion.title))
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(T.ink)
                         .lineLimit(2)
@@ -4712,17 +4800,6 @@ private struct ChatThreadEmptyState: View {
         }
     }
 
-    private func shortLabel(for suggestion: String) -> String {
-        if suggestion.hasPrefix("Explain") { return "Explain code" }
-        if suggestion.hasPrefix("Review") { return "Review a file" }
-        return "Plan a feature"
-    }
-
-    private func symbol(for suggestion: String) -> String {
-        if suggestion.hasPrefix("Explain") { return "chevron.left.forwardslash.chevron.right" }
-        if suggestion.hasPrefix("Review") { return "doc.text.magnifyingglass" }
-        return "list.bullet.clipboard"
-    }
 }
 
 private struct UnsafeModelLoadConfirmationSheet: View {

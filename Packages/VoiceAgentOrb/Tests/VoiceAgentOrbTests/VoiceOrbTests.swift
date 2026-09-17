@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import SwiftUI
 @testable import VoiceAgentOrb
 
 // MARK: - Audio normalization & smoothing
@@ -459,5 +460,59 @@ struct VoiceOrbEnergyFieldTests {
             let dy = p1.y - 0.5
             #expect(sqrt(dx * dx + dy * dy) < 0.5)
         }
+    }
+}
+
+// MARK: - Palette cache
+
+@Suite("Palette cache")
+struct VoiceOrbPaletteCacheTests {
+
+    @Test("Any theme color change rebuilds the resolution cache")
+    func invalidatesOnEveryField() {
+        var cache = VoiceOrbPaletteCache()
+        let base = VoiceAgentOrbTheme.default
+        var highlightChanged = base
+        highlightChanged.glassHighlight = .init(.red)
+        var shadowChanged = base
+        shadowChanged.contactShadow = .init(.orange)
+        // The identity used to be a hash of six of the theme's colors, so a
+        // theme differing anywhere else kept serving the stale resolution.
+        var darkChanged = base
+        darkChanged.idle.core.dark = .green
+
+        let first = cache.blend(from: .idle, to: .idle, t: 1, theme: base, colorScheme: .light)
+        #expect(cache.blend(from: .idle, to: .idle, t: 1,
+                            theme: highlightChanged, colorScheme: .light).glassHighlight != first.glassHighlight)
+        #expect(cache.blend(from: .idle, to: .idle, t: 1,
+                            theme: shadowChanged, colorScheme: .light).contactShadow != first.contactShadow)
+        #expect(cache.blend(from: .idle, to: .idle, t: 1,
+                            theme: darkChanged, colorScheme: .dark).core != first.core)
+    }
+
+    @Test("An unchanged theme reuses the cache and blends identically")
+    func stableThemeIsStable() {
+        var cache = VoiceOrbPaletteCache()
+        let theme = VoiceAgentOrbTheme.default
+        let a = cache.blend(from: .listening, to: .speaking, t: 0.4, theme: theme, colorScheme: .dark)
+        let b = cache.blend(from: .listening, to: .speaking, t: 0.4, theme: theme, colorScheme: .dark)
+        #expect(a == b)
+        // A mid-blend must sit strictly between its endpoints, not collapse
+        // onto either one.
+        let from = cache.blend(from: .listening, to: .speaking, t: 0, theme: theme, colorScheme: .dark)
+        let to = cache.blend(from: .listening, to: .speaking, t: 1, theme: theme, colorScheme: .dark)
+        #expect(from != to)
+        #expect(a != from)
+        #expect(a != to)
+    }
+
+    @Test("Appearance change re-resolves every palette")
+    func colorSchemeInvalidates() {
+        var cache = VoiceOrbPaletteCache()
+        let theme = VoiceAgentOrbTheme.default
+        let light = cache.blend(from: .idle, to: .idle, t: 1, theme: theme, colorScheme: .light)
+        let dark = cache.blend(from: .idle, to: .idle, t: 1, theme: theme, colorScheme: .dark)
+        #expect(light.inner != dark.inner)
+        #expect(light.glassHighlight == dark.glassHighlight)
     }
 }

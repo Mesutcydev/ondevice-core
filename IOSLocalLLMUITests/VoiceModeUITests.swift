@@ -48,6 +48,28 @@ final class VoiceModeUITests: XCTestCase {
                       || app.descendants(matching: .any)["voiceOrb"].exists)
     }
 
+    func testApertureModesAndRenderingPreferences() {
+        let app = launchApp(args: ["-orbShowcase"])
+        let orb = app.descendants(matching: .any)["voiceOrb"].firstMatch
+        XCTAssertTrue(orb.waitForExistence(timeout: 8))
+        let reduced = app.switches["Lighter rendering"].firstMatch
+        let still = app.switches["Reduce Motion"].firstMatch
+        reduced.tap()
+        still.tap()
+        XCTAssertEqual(reduced.value as? String, "1")
+        XCTAssertEqual(still.value as? String, "1")
+        for mode in ["Thinking", "Preparing", "Speaking", "Listening", "Paused", "Ready"] {
+            app.buttons["orbShowcaseState"].tap()
+            app.buttons[mode].tap()
+            XCTAssertTrue(app.staticTexts[mode].waitForExistence(timeout: 2))
+            XCTAssertTrue(orb.exists)
+        }
+        let capture = XCTAttachment(screenshot: app.screenshot())
+        capture.name = "Aperture reduced rendering and static motion"
+        capture.lifetime = .keepAlways
+        add(capture)
+    }
+
     func testReduceMotionLaunchDoesNotCrash() {
         let app = XCUIApplication()
         app.launchArguments = ["-voiceUITestMode", "-UITesting", "-mockDuration", "4"]

@@ -15,7 +15,7 @@ portable pieces and understand their dependencies.
 | Directory | Responsibility | Portability |
 | --- | --- | --- |
 | `Public/` | Configuration, request/response types, controller, and normalized errors | Mixed; configuration and errors are easiest to extract |
-| `Runtime/` | Runtime protocols and actor-isolated session primitive | Session actor is portable; protocols use app types |
+| `Runtime/` | Runtime protocols, capability values, the `ManagedRuntimeEngine` lifecycle actor, and the actor-isolated session primitive | Session actor is portable; protocols use app types |
 | `Streaming/` | Incremental UTF-8 decoding and coalesced response delivery | Highly portable |
 | `Storage/` | GGUF, VLM-pair, and safetensors validation | Highly portable |
 | `RAG/` | PII redaction and persistent pending-index queue | Highly portable |

@@ -2,19 +2,9 @@ import SwiftUI
 
 // MARK: - ModelsManagerView
 //
-// Unified replacement for the formerly fragmented model-management UI
-// (download center + assistant picker + visual picker + HF search + fix
-// repo sheet). One page, one search bar, four sections:
-//
-//   • Active     — what the lens and the assistant are currently set to
-//   • Installed  — every model whose weights are on disk and usable
-//   • Catalog    — curated entries from ModelDownloadCenter (FastVLM,
-//                  KittenTTS, every AssistantModelCatalog preset)
-//   • Discover   — live Hugging Face search, inline (no sheet hop)
-//
-// Reuses ModelDownloadCenter / CodingAssistantService / MLXVisionService /
-// HFSearchService — this view is pure composition over services that
-// already exist. Nothing here owns model state.
+// My Models owns the local inventory; Discover owns catalogs and online search.
+// Import, transfers, and storage stay available in the persistent toolbar.
+// All actions continue to use the existing runtime and download services.
 
 struct ModelsManagerView: View {
 
@@ -22,13 +12,7 @@ struct ModelsManagerView: View {
     /// Models-only navigation in response to downloads started elsewhere.
     var isActive: Bool = true
 
-    // Category-first navigation. The Models hub is organised around the four
-    // roles a model can play — Assistant (chat/code), Lens (vision/camera),
-    // Voice (TTS), Image (text-to-image) — rather than the old function-first
-    // split (Active / Installing / Installed / Catalog / Images / Discover).
-    // Each category page is self-contained: what's active, what's installed,
-    // compatible suggestions ranked for this device, and an inline HF search
-    // scoped to the category. One concept per tab; nothing to hunt across six.
+    // Shared role filters for local inventory and online discovery.
     enum Section: String, CaseIterable, Identifiable {
         case assistant = "Assistant"
         case lens      = "Lens"
@@ -74,14 +58,20 @@ struct ModelsManagerView: View {
     /// Collapsed-by-default disclosures that keep the page short. The user
     /// opens Recommended Setups / Tools & storage only when they want them.
     @State private var showRecommendedSetups = false
-    @State private var showUtilities = false
     @State private var showFutureVoiceIntegrations = false
     @State private var searchText: String = ""
     /// Global inventory mode requested by users with models spread across
     /// several role tabs. When enabled, the page becomes a local-only library
     /// and shows every downloaded model (Assistant, Lens, Voice, and Image)
     /// in one list instead of filtering by the selected role.
-    @State private var showDownloadedOnly = false
+    @State private var isLibrary = true
+    @State private var filterAllCategories = true
+    @State private var showingGuidedSetup = false
+    @State private var detailModel: DownloadableModel?
+    @State private var detailRole: DownloadableModel.Category?
+    @State private var afterDetailDismiss: (() -> Void)?
+    @State private var detailImage: ImageGenerationService.Model?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var searchTask: Task<Void, Never>?
     @State private var pendingDelete: DownloadableModel?
     @State private var showImportPicker = false
@@ -153,7 +143,6 @@ struct ModelsManagerView: View {
         ZStack {
             LiquidPinkBackdrop()
                 .allowsHitTesting(false)
-                .opacity(0.6)
 
             ScrollView {
                 // LazyVStack here so the catalog/installed/installing
@@ -164,18 +153,111 @@ struct ModelsManagerView: View {
                 // immediately; the win is on the long `activeContent`
                 // child whose nested ForEach blocks were previously
                 // building every row eagerly on each state change.
-                LazyVStack(spacing: 18) {
-                    header
+                LazyVStack(spacing: AppSpacing.large) {
+                    ModelsDestinationPicker(isLibrary: $isLibrary)
                     searchBar
-                    downloadedOnlyFilter
-                    if !showDownloadedOnly {
-                        sectionPicker
-                    }
+                    ModelsCategoryFilter(selection: Binding(
+                        get: { filterAllCategories ? "All" : selectedSection.rawValue },
+                        set: { value in
+                            filterAllCategories = value == "All"
+                            if let section = Section(rawValue: value) { selectedSection = section }
+                        }
+                    ))
                     activeContent
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 48)
-                .padding(.bottom, 140)   // clearance for tab bar
+                .padding(.top, 12)
+                .padding(.bottom, AppSpacing.xLarge)
+            }
+            .scrollIndicators(.hidden)
+            .scrollDismissesKeyboard(.interactively)
+        }
+        .transaction { transaction in
+            if reduceMotion { transaction.animation = nil }
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            ModelsLibraryToolbar(
+                downloadCount: activeDownloadCount,
+                onImport: { showImportPicker = true },
+                onDownloads: { showDownloads = true },
+                onStorage: { showStorageCleanup = true }
+            )
+        }
+        .onChange(of: isLibrary) { _, _ in
+            searchTask?.cancel()
+            searchText = ""
+        }
+        .sheet(isPresented: $showingGuidedSetup) {
+            NavigationStack {
+                OnboardingModelPickerView { showingGuidedSetup = false }
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button(loc.t("Close")) { showingGuidedSetup = false }
+                        }
+                    }
+            }
+            .preferredColorScheme(settings.resolvedColorScheme)
+        }
+        .sheet(item: $detailModel, onDismiss: {
+            let action = afterDetailDismiss
+            afterDetailDismiss = nil
+            action?()
+        }) { model in
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        if let runtime = LocalModelRegistry.descriptor(for: model).runtime {
+                            ModelRuntimeBadge(runtime: runtime)
+                        }
+                        Text(model.sourceRepoID).font(.subheadline.monospaced()).textSelection(.enabled)
+                        if let compatibility = model.platformCompatibility {
+                            platformCompatibilityBadge(compatibility)
+                        }
+                        fitBadge(forFootprint: modelFootprint(model))
+                        if model.isReady {
+                            installedDetailRow(model, activationCategory: detailRole)
+                        } else {
+                            catalogDetailRow(model, activationCategory: detailRole)
+                        }
+                        if isActiveModel(model, as: detailRole ?? model.category)
+                            || ((detailRole ?? model.category) == .assistant && assistant.activeModel.repoID == model.sourceRepoID) {
+                            activeRoleHeader(for: sectionFor(detailRole ?? model.category), displayModel: model)
+                        }
+                        if model.category == .assistant {
+                            smartHandlingCard
+                        }
+                    }.padding()
+                }
+                .navigationTitle(loc.t("Model details"))
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(loc.t("Done")) { detailModel = nil }
+                    }
+                }
+            }
+            .preferredColorScheme(settings.resolvedColorScheme)
+        }
+        .sheet(item: $detailImage, onDismiss: {
+            let action = afterDetailDismiss
+            afterDetailDismiss = nil
+            action?()
+        }) { model in
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        imageDetailRow(model)
+                        Button(loc.t("Open generator")) {
+                            afterDetailDismiss = { showImageGen = true }
+                            detailImage = nil
+                        }.buttonStyle(.borderedProminent)
+                    }.padding()
+                }
+                .navigationTitle(model.displayName)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(loc.t("Done")) { detailImage = nil }
+                    }
+                }
             }
         }
         .onAppear {
@@ -231,7 +313,14 @@ struct ModelsManagerView: View {
                 .preferredColorScheme(settings.resolvedColorScheme)
         }
         .sheet(item: $selectedVoiceCatalogEntry) { entry in
-            VoiceCatalogDetailView(entry: entry)
+            NavigationStack {
+                ScrollView { voiceCatalogDetailRow(entry).padding(20) }
+                    .background(T.bg)
+                    .navigationTitle(entry.name)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar { Button(loc.t("Done")) { selectedVoiceCatalogEntry = nil } }
+            }
+            .preferredColorScheme(settings.resolvedColorScheme)
         }
         .sheet(isPresented: $showImageGen) {
             ImageGenerationView()
@@ -299,7 +388,7 @@ struct ModelsManagerView: View {
         // sees preparation/progress instead of wondering whether the tap took.
         .onReceive(NotificationCenter.default.publisher(for: .hfModelDownloadStarted)) { _ in
             guard isActive, !showDownloads else { return }
-            showDownloads = true
+            presentAfterDetails { showDownloads = true }
         }
         .onReceive(NotificationCenter.default.publisher(for: .hfModelDownloadCompleted)) { note in
             guard let repoID = note.userInfo?["repoID"] as? String else { return }
@@ -313,6 +402,8 @@ struct ModelsManagerView: View {
 
     private func applyRequestedSection(_ requested: AppBridge.ModelsSection?) {
         guard let requested else { return }
+        filterAllCategories = false
+        searchText = ""
         switch requested {
         case .assistant: selectedSection = .assistant
         case .lens:      selectedSection = .lens
@@ -421,6 +512,7 @@ struct ModelsManagerView: View {
                             .font(T.mono(13, .semibold))
                             .foregroundColor(T.accent)
                     }
+                    CoreAITransfersSection()
                     if items.isEmpty && recentlyCompletedDownloads.isEmpty {
                         emptyState(icon: "arrow.down.circle",
                                    title: loc.t("No active downloads"),
@@ -500,7 +592,7 @@ struct ModelsManagerView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(T.warn)
                 Text(loc.t("Model downloads can grow quickly. Keep the ones you use and remove the rest without resetting the app."))
-                    .font(T.sans(11.5))
+                    .font(T.sans(13))
                     .foregroundColor(T.ink2)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
@@ -658,7 +750,7 @@ struct ModelsManagerView: View {
                 .fill(color)
                 .frame(width: 4, height: 4)
             Text(text)
-                .font(T.mono(10))
+                .font(T.mono(13))
                 .foregroundColor(T.ink2)
         }
         .padding(.horizontal, 9)
@@ -686,11 +778,11 @@ struct ModelsManagerView: View {
                     .font(T.display(20, .semibold))
                     .foregroundColor(T.ink)
                 Text(title)
-                    .font(T.mono(9.5, .semibold))
+                    .font(T.mono(13, .semibold))
                     .tracking(0.6)
                     .foregroundColor(T.ink3)
                 Text(detail)
-                    .font(T.mono(8.5))
+                    .font(T.mono(13))
                     .foregroundColor(T.ink3.opacity(0.75))
             }
             Spacer(minLength: 0)
@@ -729,54 +821,22 @@ struct ModelsManagerView: View {
     // MARK: - Search bar
 
     private var searchBar: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(T.ink3)
-            TextField(
-                showDownloadedOnly
-                    ? loc.t("Search downloaded models…")
-                    : loc.t("Search HuggingFace…"),
-                text: $searchText
-            )
-                .font(T.mono(12))
-                .foregroundColor(T.ink)
-                .tint(T.accent)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-                .submitLabel(.search)
-                .onSubmit { runSearch() }
-                .onChange(of: searchText) { _, new in
-                    // Search results render inline at the bottom of the
-                    // current category page, filtered to that category — no
-                    // tab hop. The query stays where the user is browsing.
-                    debouncedSearch(query: new)
-                }
-            if !searchText.isEmpty {
-                Button {
-                    searchText = ""
-                    searchTask?.cancel()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundColor(T.ink3)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 14)
-        .kClearGlass(
-            in: RoundedRectangle(cornerRadius: 18, style: .continuous),
-            tint: T.accent.opacity(0.05),
-            fallbackFill: T.surface,
-            fallbackStroke: T.accent.opacity(0.18)
+        KSearchField(
+            placeholder: isLibrary
+                ? loc.t("Search downloaded models…")
+                : loc.t("Search online · Hugging Face…"),
+            text: $searchText,
+            onClear: { searchTask?.cancel() },
+            onSubmit: runSearch
         )
+        .onChange(of: searchText) { _, new in
+            debouncedSearch(query: new)
+        }
     }
 
     private func debouncedSearch(query: String) {
         searchTask?.cancel()
-        guard !showDownloadedOnly else { return }
+        guard !isLibrary else { return }
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return }
         searchTask = Task {
@@ -788,7 +848,7 @@ struct ModelsManagerView: View {
 
     private func runSearch() {
         searchTask?.cancel()
-        guard !showDownloadedOnly else { return }
+        guard !isLibrary else { return }
         let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !q.isEmpty else { return }
         searchTask = Task { await search.search(query: q, filter: .all, limit: 30) }
@@ -796,128 +856,35 @@ struct ModelsManagerView: View {
 
     /// True when the user is actively searching Hugging Face.
     private var isSearching: Bool {
-        !showDownloadedOnly
+        !isLibrary
             && !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
-    /// A real switch rather than another role tab: this changes the data
-    /// source from category-scoped catalog browsing to the complete on-disk
-    /// inventory. The count includes image-generation models, which live
-    /// outside ModelDownloadCenter.
-    private var downloadedOnlyFilter: some View {
-        let downloadedCount = center.models.filter(\.isReady).count
-            + coreAIStore.installations.count
-            + ImageGenerationService.catalog.filter { imageGen.isInstalled($0) }.count
-        return Toggle(isOn: Binding(
-            get: { showDownloadedOnly },
-            set: { enabled in
-                withAnimation(.snappy(duration: 0.22)) {
-                    showDownloadedOnly = enabled
-                }
-                searchTask?.cancel()
-                HapticManager.impact(.light)
-            }
-        )) {
-            HStack(spacing: 9) {
-                Image(systemName: showDownloadedOnly ? "internaldrive.fill" : "internaldrive")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(showDownloadedOnly ? T.good : T.ink3)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(loc.t("Downloaded only"))
-                        .font(T.sans(13.5, .semibold))
-                        .foregroundColor(T.ink)
-                    Text(
-                        showDownloadedOnly
-                            ? loc.t("Showing every model stored on this device")
-                            : "\(downloadedCount) " + loc.t(downloadedCount == 1 ? "model downloaded" : "models downloaded")
-                    )
-                    .font(T.mono(9))
-                    .foregroundColor(T.ink3)
-                }
-            }
-        }
-        .tint(T.good)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .kClearGlass(
-            in: RoundedRectangle(cornerRadius: 16, style: .continuous),
-            tint: showDownloadedOnly ? T.good.opacity(0.07) : .clear,
-            fallbackFill: T.surface,
-            fallbackStroke: showDownloadedOnly ? T.good.opacity(0.28) : T.rule
-        )
-        .accessibilityIdentifier("modelsDownloadedOnlyToggle")
-    }
-
-    // MARK: - Section picker
-
-    /// Shared identity for the active-section pill so SwiftUI animates
-    /// its position smoothly between tabs via matchedGeometryEffect.
-    @Namespace private var sectionPillNS
-
-    // Fixed four-segment control. There are exactly four roles, and they all
-    // fit on one row — so the previous horizontal-scroll + edge-fade + ">"
-    // chevron (which implied hidden tabs that didn't exist) is gone. Each tab
-    // carries its category glyph and lights up in that category's colour.
-    private var sectionPicker: some View {
-        HStack(spacing: 4) {
-            ForEach(Section.allCases) { section in
-                sectionTab(section)
-                    .frame(maxWidth: .infinity)
-            }
-        }
-        .padding(5)
-        .kClearGlass(
-            in: RoundedRectangle(cornerRadius: 18, style: .continuous),
-            fallbackFill: T.surface2,
-            fallbackStroke: T.rule
-        )
-    }
-
-    @ViewBuilder
-    private func sectionTab(_ section: Section) -> some View {
-        let active = section == selectedSection
-        let tint = sectionAccent(for: section)
-        Button {
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                selectedSection = section
-            }
-            HapticManager.impact(.light)
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: section.glyph)
-                    .font(.system(size: 10, weight: .semibold))
-                Text(loc.t(section.rawValue))
-                    .font(T.mono(10.5, active ? .semibold : .medium))
-                    .tracking(0.2)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-            .foregroundColor(active ? tint : T.ink2)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 9)
-            // Gated on `active` so only the selected tab contributes a pill
-            // geometry; matchedGeometryEffect slides that single shape from
-            // the old tab to the new one.
-            .background {
-                if active {
-                    Capsule()
-                        .fill(tint.opacity(T.isDark ? 0.22 : 0.14))
-                        .overlay(Capsule().stroke(tint.opacity(0.32), lineWidth: 0.5))
-                        .matchedGeometryEffect(id: "sectionPill", in: sectionPillNS)
-                }
-            }
-        }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Section content router
 
     @ViewBuilder
     private var activeContent: some View {
-        if showDownloadedOnly {
+        if isLibrary {
             downloadedOnlyContent
         } else {
-            categoryPage(for: selectedSection)
+            VStack(spacing: 18) {
+                if !isSearching {
+                    Button(loc.t("Guided model setup")) { showingGuidedSetup = true }
+                        .buttonStyle(.bordered)
+                        .frame(minHeight: 44)
+                    if filterAllCategories || selectedSection == .assistant {
+                        recommendedSetupsCard
+                        CoreAIModelsSectionView(showsInstalled: false)
+                    }
+                }
+                if filterAllCategories {
+                    ForEach(Section.allCases) { section in
+                        categoryPage(for: section)
+                    }
+                } else {
+                    categoryPage(for: selectedSection)
+                }
+            }
         }
     }
 
@@ -928,27 +895,28 @@ struct ModelsManagerView: View {
     private var downloadedOnlyContent: some View {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         let downloaded = center.models.filter { model in
-            guard model.isReady else { return false }
+            guard model.isReady, filterAllCategories || model.supportsCategory(selectedSection.category) else { return false }
             guard !query.isEmpty else { return true }
             return model.displayName.localizedCaseInsensitiveContains(query)
                 || model.subtitle.localizedCaseInsensitiveContains(query)
                 || model.sourceRepoID.localizedCaseInsensitiveContains(query)
         }
         let downloadedImages = ImageGenerationService.catalog.filter { model in
-            guard imageGen.isInstalled(model) else { return false }
+            guard imageGen.isInstalled(model), filterAllCategories || selectedSection == .image else { return false }
             guard !query.isEmpty else { return true }
             return model.displayName.localizedCaseInsensitiveContains(query)
                 || model.subtitle.localizedCaseInsensitiveContains(query)
                 || model.id.localizedCaseInsensitiveContains(query)
         }
         let downloadedCoreAI = coreAIStore.installations.filter { installed in
+            guard filterAllCategories || selectedSection == .assistant else { return false }
             guard !query.isEmpty else { return true }
             return installed.manifest.displayName.localizedCaseInsensitiveContains(query)
                 || installed.manifest.id.localizedCaseInsensitiveContains(query)
                 || installed.manifest.modelFamily.localizedCaseInsensitiveContains(query)
         }
 
-        LazyVStack(spacing: 12) {
+        LazyVStack(spacing: 0) {
             if downloaded.isEmpty && downloadedImages.isEmpty && downloadedCoreAI.isEmpty {
                 emptyState(
                     icon: query.isEmpty ? "internaldrive" : "magnifyingglass",
@@ -956,9 +924,23 @@ struct ModelsManagerView: View {
                         ? loc.t("No models downloaded yet")
                         : loc.t("No downloaded models found"),
                     subtitle: query.isEmpty
-                        ? loc.t("Turn off this filter to browse models.")
+                        ? loc.t("Import a model from Files or discover a model to download.")
                         : loc.t("Try a broader search.")
                 )
+                if query.isEmpty {
+                    KPrimaryButton(label: loc.t("Import model"), systemImage: "square.and.arrow.down") {
+                        showImportPicker = true
+                    }
+                    .padding(.top, 12)
+                    Button { isLibrary = false } label: {
+                        Text(loc.t("Discover models"))
+                            .font(T.sans(14, .medium))
+                            .foregroundStyle(T.ink2)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(KTactileButtonStyle())
+                }
             } else {
                 sectionLabel(
                     loc.t("Downloaded").uppercased(),
@@ -1000,25 +982,7 @@ struct ModelsManagerView: View {
     private func categoryPage(for section: Section) -> some View {
         let category = section.category
         LazyVStack(spacing: 18) {
-            // Downloaded/installed models pinned to the very TOP of the page,
-            // above the active card and any recommended/suggested cards — the
-            // user's models should be the first thing they see, not buried
-            // under suggestions. (Hidden while searching, which has its own
-            // scoped result list.)
-            if !isSearching {
-                installedBlock(category)
-            }
-
-            if section == .assistant && !isSearching {
-                recommendedSetupsCard
-                // Core AI is a separate on-disk format/runtime, so it owns its
-                // download/install lifecycle while living on the same
-                // Assistant page as MLX/GGUF. None of the existing catalog
-                // rows or downloads are replaced.
-                CoreAIModelsSectionView()
-            }
-            activeRoleHeader(for: section)
-
+            sectionLabel(loc.t(section.rawValue), glyph: section.glyph, tint: T.accent)
             // In-flight downloads for this category.
             let inFlight = inFlightModels(category)
             if !inFlight.isEmpty {
@@ -1033,6 +997,7 @@ struct ModelsManagerView: View {
             if isSearching {
                 if section == .voice {
                     voiceCatalogBlock(query: searchText)
+                    scopedSearchResults(category)
                 } else {
                     scopedSearchResults(category)
                 }
@@ -1044,7 +1009,7 @@ struct ModelsManagerView: View {
                 } else {
                     suggestedBlock(category)
                 }
-                categoryUtilitiesFooter(section)
+
             }
         }
     }
@@ -1052,7 +1017,7 @@ struct ModelsManagerView: View {
     // MARK: - Active role header
 
     @ViewBuilder
-    private func activeRoleHeader(for section: Section) -> some View {
+    private func activeRoleHeader(for section: Section, displayModel: DownloadableModel? = nil) -> some View {
         switch section {
         case .assistant:
             VStack(spacing: 10) {
@@ -1060,17 +1025,18 @@ struct ModelsManagerView: View {
                 activeRow(
                     title: loc.t("assistant"),
                     icon: "brain",
-                    modelName: assistant.activeModel.displayName,
-                    modelRepoID: assistant.activeModel.repoID,
-                    phase: assistantLoadPhase,
+                    modelName: displayModel?.displayName ?? assistant.activeModel.displayName,
+                    modelRepoID: displayModel?.sourceRepoID ?? assistant.activeModel.repoID,
+                    phase: displayModel.map { $0.sourceRepoID != assistant.activeModel.repoID } == true ? .unloaded : assistantLoadPhase,
                     onLoad:   { loadAssistant() },
                     onUnload: { unloadAssistant() },
                     onCancel: { cancelAssistantLoad() },
-                    onSwap:   { showingAssistantPicker = true },
+                    onSwap:   { presentAfterDetails { showingAssistantPicker = true } },
                     onSettings: {
-                        assistantSettingsTarget = AssistantModelSettingsTarget(
-                            model: assistant.activeModel
-                        )
+                        presentAfterDetails {
+                            assistantSettingsTarget = displayModel.map { settingsTarget(for: $0) }
+                                ?? AssistantModelSettingsTarget(model: assistant.activeModel)
+                        }
                     }
                 )
             }
@@ -1086,7 +1052,7 @@ struct ModelsManagerView: View {
                     onLoad:   { loadVision() },
                     onUnload: { unloadVision() },
                     onCancel: { cancelVisionLoad() },
-                    onSwap:   { showingVisualPicker = true }
+                    onSwap:   { presentAfterDetails { showingVisualPicker = true } }
                 )
             }
         case .voice:
@@ -1101,7 +1067,7 @@ struct ModelsManagerView: View {
                     onLoad:   { loadVoice() },
                     onUnload: { unloadVoice() },
                     onCancel: { cancelVoiceLoad() },
-                    onSwap:   { showingVoicePicker = true }
+                    onSwap:   { presentAfterDetails { showingVoicePicker = true } }
                 )
             }
         case .image:
@@ -1266,27 +1232,37 @@ struct ModelsManagerView: View {
 
     private func voiceCatalogRow(_ entry: VoiceCatalogEntry) -> some View {
         let model = entry.legacyDownloadID.flatMap { id in center.models.first { $0.id == id } }
-        return modelCardShell(accent: T.accent, prominence: 0.09) {
-            VStack(alignment: .leading, spacing: 12) {
-                Button { selectedVoiceCatalogEntry = entry } label: {
-                    HStack(alignment: .top, spacing: 12) {
-                        categoryGlyph(.voice)
-                        VStack(alignment: .leading, spacing: 5) {
-                            KCaption(text: entry.task == .textToSpeech ? "TEXT TO SPEECH" : "SPEECH RECOGNITION", color: T.ink3)
-                            Text(entry.name).font(T.display(18, .semibold)).foregroundColor(T.ink)
-                            Text(entry.summary).font(T.mono(9.5)).foregroundColor(T.ink3)
-                                .fixedSize(horizontal: false, vertical: true)
-                            statusPill(text: entry.statusLabel, color: entry.isDownloadEnabled ? T.good : T.warn)
-                        }
-                        Spacer(minLength: 0)
-                        if let size = entry.sizeLabel { metricBadge(size) }
-                        Image(systemName: "chevron.right").foregroundColor(T.ink3)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
+        let status: String = {
+            guard let model else { return entry.statusLabel }
+            switch model.state {
+            case .ready: return loc.t("Installed")
+            case .downloading, .enumerating: return loc.t("Downloading")
+            case .failed: return loc.t("Download failed · Retry")
+            case .idle: return entry.statusLabel
+            }
+        }()
+        return ModelsCompactRow(
+            name: entry.name,
+            subtitle: [loc.t(entry.task == .textToSpeech ? "Text to speech" : "Speech recognition"), entry.sizeLabel].compactMap { $0 }.joined(separator: " · "),
+            status: status,
+            actionTitle: loc.t("Details and controls"),
+            action: { selectedVoiceCatalogEntry = entry }
+        )
+        .accessibilityIdentifier("modelsVoiceCatalogCard.\(entry.id)")
+    }
 
-                HStack(spacing: 8) {
+    private func voiceCatalogDetailRow(_ entry: VoiceCatalogEntry) -> some View {
+        let model = entry.legacyDownloadID.flatMap { id in center.models.first { $0.id == id } }
+        return VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(entry.task == .textToSpeech ? "Text to speech" : "Speech recognition")
+                    .font(.subheadline).foregroundStyle(T.ink2)
+                Text(entry.summary).font(.body).foregroundStyle(T.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let size = entry.sizeLabel { Text(size).font(.subheadline).foregroundStyle(T.ink2) }
+                Text(entry.statusLabel).font(.subheadline).foregroundStyle(T.ink2)
+            }
+                VStack(alignment: .leading, spacing: 16) {
                     if entry.id == "tts.apple.system" {
                         cardButton(label: loc.t("Select"), kind: .primary) {
                             VoiceSettingsStore.shared.selectEngine(.appleSystem)
@@ -1321,18 +1297,14 @@ struct ModelsManagerView: View {
                         cardButton(label: loc.t(entry.statusLabel), kind: .secondary) {}
                             .disabled(true)
                     }
-                    cardButton(label: loc.t("Details"), kind: .secondary) {
-                        selectedVoiceCatalogEntry = entry
-                    }
                     if let source = entry.sourceURL, let url = URL(string: source) {
                         Link(loc.t("Open Project"), destination: url)
-                            .font(T.mono(10, .semibold)).foregroundColor(T.accent)
+                            .font(T.mono(13, .semibold)).foregroundColor(T.accent)
                     }
-                    Spacer(minLength: 0)
                 }
-            }
         }
-        .accessibilityIdentifier("modelsVoiceCatalogCard.\(entry.id)")
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityIdentifier("modelsVoiceCatalogDetails.\(entry.id)")
     }
 
     /// "SUGGESTED · best fit first" eyebrow + live free-memory hint, then the
@@ -1350,7 +1322,7 @@ struct ModelsManagerView: View {
                 Spacer(minLength: 0)
                 if avail > 0 {
                     Text("~\(avail.formattedBytes) " + loc.t("free"))
-                        .font(T.mono(8.5, .semibold))
+                        .font(T.mono(13, .semibold))
                         .foregroundColor(T.ink3)
                 }
             }
@@ -1372,12 +1344,12 @@ struct ModelsManagerView: View {
                     .font(.system(size: 11, weight: .semibold))
                 VStack(alignment: .leading, spacing: 1) {
                     Text(loc.t(on ? "Edge / developer mode — ON" : "Edge / developer mode"))
-                        .font(T.mono(9.5, .semibold))
+                        .font(T.mono(13, .semibold))
                         .tracking(0.3)
                     Text(on
                          ? loc.t("Tight models shown — experimental, may be unstable")
                          : loc.t("Only models that safely fit this device are shown"))
-                        .font(T.mono(8.5))
+                        .font(T.mono(13))
                         .foregroundColor((on ? T.warn : T.ink3).opacity(0.9))
                 }
                 Spacer(minLength: 0)
@@ -1404,7 +1376,7 @@ struct ModelsManagerView: View {
                     .font(.system(size: 10))
                     .foregroundColor(T.ink3)
                 Text("\(count) " + loc.t("model(s) hidden that won't safely fit this device. Turn on Edge mode to try them."))
-                    .font(T.mono(9))
+                    .font(T.mono(13))
                     .foregroundColor(T.ink3)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
@@ -1462,7 +1434,7 @@ struct ModelsManagerView: View {
             .buttonStyle(.plain)
             if showRecommendedSetups {
                 Text(loc.t("Coherent Light · Medium · Heavy stacks for your device. Tap a model to open its category."))
-                    .font(T.mono(9))
+                    .font(T.mono(13))
                     .foregroundColor(T.ink3)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 ForEach(Self.modelCombos) { combo in
@@ -1500,7 +1472,7 @@ struct ModelsManagerView: View {
                                 fitBadge(forFootprint: maxRAM)
                             }
                             Text(loc.t(combo.tagline))
-                                .font(T.mono(9))
+                                .font(T.mono(13))
                                 .foregroundColor(T.ink3)
                                 .lineLimit(2)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -1531,7 +1503,7 @@ struct ModelsManagerView: View {
                             Text(loc.t("Download all"))
                             Spacer(minLength: 0)
                             Text(combo.totalDownload.formattedBytes)
-                                .font(T.mono(9.5, .semibold))
+                                .font(T.mono(13, .semibold))
                                 .foregroundColor(.white.opacity(0.78))
                         }
                         .font(T.sans(14, .semibold))
@@ -1564,12 +1536,12 @@ struct ModelsManagerView: View {
                     categoryGlyph(pick.role)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(pick.name)
-                            .font(T.mono(11, .semibold))
+                            .font(T.mono(13, .semibold))
                             .foregroundColor(T.ink)
                             .lineLimit(1)
                             .truncationMode(.middle)
                         Text(loc.t(pick.detail))
-                            .font(T.mono(8.5))
+                            .font(T.mono(13))
                             .foregroundColor(T.ink3)
                     }
                     Spacer(minLength: 0)
@@ -1695,7 +1667,7 @@ struct ModelsManagerView: View {
                 .tint(tint)
                 .frame(width: 28)
             Text("\(Int(progress * 100))%")
-                .font(T.mono(9, .semibold))
+                .font(T.mono(13, .semibold))
                 .foregroundColor(tint)
         }
         .frame(height: 30)
@@ -1745,7 +1717,7 @@ struct ModelsManagerView: View {
                             .font(T.display(18, .semibold))
                             .foregroundColor(T.ink)
                         Text(loc.t("SD / SDXL diffusion via MLX. FLUX is too large for iOS memory."))
-                            .font(T.mono(9.5))
+                            .font(T.mono(13))
                             .foregroundColor(T.ink3)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
@@ -1788,6 +1760,10 @@ struct ModelsManagerView: View {
             }
             if search.isSearching {
                 ProgressView().tint(T.accent).padding(.vertical, 20)
+            } else if let error = search.lastError {
+                Text(error).font(.subheadline).foregroundStyle(T.bad)
+                Button(loc.t("Retry search")) { runSearch() }
+                    .buttonStyle(.bordered)
             } else if results.isEmpty {
                 emptyState(
                     icon: "magnifyingglass",
@@ -1799,47 +1775,6 @@ struct ModelsManagerView: View {
             } else {
                 ForEach(results) { result in
                     discoverRow(result)
-                }
-            }
-        }
-    }
-
-    // MARK: - Per-category utilities footer
-
-    @ViewBuilder
-    private func categoryUtilitiesFooter(_ section: Section) -> some View {
-        VStack(spacing: 12) {
-            Button {
-                withAnimation(.snappy(duration: 0.22)) { showUtilities.toggle() }
-                HapticManager.impact(.light)
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "wrench.and.screwdriver")
-                        .font(.system(size: 11))
-                        .foregroundColor(T.ink3)
-                    KCaption(text: loc.t("Tools & storage").uppercased(), color: T.ink3)
-                    Rectangle().fill(T.rule).frame(height: 1)
-                    // Surface reclaimable bytes even while collapsed so the
-                    // user knows there's space to free without expanding.
-                    if center.orphanedDownloadBytes > 0 {
-                        Text(center.orphanedDownloadBytes.formattedBytes)
-                            .font(T.mono(9, .semibold))
-                            .foregroundColor(T.warn)
-                    }
-                    Image(systemName: showUtilities ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(T.ink3)
-                }
-            }
-            .buttonStyle(.plain)
-            if showUtilities {
-                importLocalRow
-                storageCleanupRow
-                cleanupRow
-                // Smart-handling (memory gate / load timeout) is global but
-                // lives on the Assistant page — where heavy loads happen.
-                if section == .assistant {
-                    smartHandlingCard
                 }
             }
         }
@@ -1864,7 +1799,7 @@ struct ModelsManagerView: View {
                             .font(T.sans(14, .semibold))
                             .foregroundColor(T.ink)
                         Text(loc.t("Review installed models together and safely remove everything you no longer need."))
-                            .font(T.mono(9.5))
+                            .font(T.mono(13))
                             .foregroundColor(T.ink3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -1881,13 +1816,12 @@ struct ModelsManagerView: View {
     /// Thin labelled divider used to head a block inside a category page.
     @ViewBuilder
     private func sectionLabel(_ title: String, glyph: String, tint: Color) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: glyph)
-                .font(.system(size: 11))
-                .foregroundColor(tint)
-            KCaption(text: title, color: tint)
-            Rectangle().fill(T.rule).frame(height: 1)
-        }
+        Text(title)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(T.ink2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 12)
+            .accessibilityAddTraits(.isHeader)
     }
 
     // MARK: - Active section
@@ -1970,7 +1904,7 @@ struct ModelsManagerView: View {
                             .font(T.sans(14, .semibold))
                             .foregroundColor(T.ink)
                         Text(loc.t("Refuse models too large for this device instead of crashing"))
-                            .font(T.mono(9.5))
+                            .font(T.mono(13))
                             .foregroundColor(T.ink3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -1985,7 +1919,7 @@ struct ModelsManagerView: View {
                             .font(T.sans(14, .semibold))
                             .foregroundColor(T.ink)
                         Text(loc.t("Experimental · MLX still loads all weights; GGUF can page weights from storage"))
-                            .font(T.mono(9.5))
+                            .font(T.mono(13))
                             .foregroundColor(T.ink3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -2002,7 +1936,7 @@ struct ModelsManagerView: View {
                         Text(settings.modelLoadTimeoutSeconds == 0
                              ? loc.t("Off — a stuck load won't auto-cancel")
                              : "\(settings.modelLoadTimeoutSeconds / 60) min before a stuck load auto-cancels")
-                            .font(T.mono(9.5))
+                            .font(T.mono(13))
                             .foregroundColor(T.ink3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -2389,7 +2323,7 @@ struct ModelsManagerView: View {
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
                         Text(modelRepoID)
-                            .font(T.mono(9.5))
+                            .font(T.mono(13))
                             .foregroundColor(T.ink3.opacity(0.82))
                             .lineLimit(1)
                             .truncationMode(.middle)
@@ -2465,11 +2399,11 @@ struct ModelsManagerView: View {
                 HStack(spacing: 6) {
                     if let p = progress {
                         Text("\(Int(p * 100))%")
-                            .font(T.mono(10, .semibold))
+                            .font(T.mono(13, .semibold))
                             .foregroundColor(T.accent)
                     }
                     Text(msg)
-                        .font(T.mono(10))
+                        .font(T.mono(13))
                         .foregroundColor(T.ink3)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -2486,7 +2420,7 @@ struct ModelsManagerView: View {
                             Image(systemName: "stop.fill")
                                 .font(.system(size: 9, weight: .semibold))
                             Text(loc.t("Stop"))
-                                .font(T.mono(10, .semibold))
+                                .font(T.mono(13, .semibold))
                         }
                         .foregroundColor(T.bad)
                         .padding(.horizontal, 8)
@@ -2511,7 +2445,7 @@ struct ModelsManagerView: View {
         case .failed(let msg):
             VStack(alignment: .leading, spacing: 6) {
                 Text(msg)
-                    .font(T.mono(10))
+                    .font(T.mono(13))
                     .foregroundColor(T.bad)
                     .lineLimit(3)
                 HStack(spacing: 6) {
@@ -2672,13 +2606,13 @@ struct ModelsManagerView: View {
                                 .font(T.sans(14, .semibold))
                                 .foregroundColor(T.ink)
                             Text("\(orphanBytes.formattedBytes) from cancelled or failed downloads")
-                                .font(T.mono(9.5))
+                                .font(T.mono(13))
                                 .foregroundColor(T.ink3)
                                 .lineLimit(2)
                         }
                         Spacer(minLength: 0)
                         Text(orphanBytes.formattedBytes)
-                            .font(T.mono(11, .semibold))
+                            .font(T.mono(13, .semibold))
                             .foregroundColor(T.warn)
                     }
                 }
@@ -2717,7 +2651,7 @@ struct ModelsManagerView: View {
                             .font(T.sans(14, .semibold))
                             .foregroundColor(T.ink)
                         Text("Add an MLX folder with `config.json` and weights, then surface it in Installed immediately.")
-                            .font(T.mono(9.5))
+                            .font(T.mono(13))
                             .foregroundColor(T.ink3)
                             .lineLimit(2)
                     }
@@ -2736,6 +2670,9 @@ struct ModelsManagerView: View {
             let repoID = try await LocalModelImportService.shared.importModel(from: url)
             await MainActor.run {
                 center.refreshAllStates()
+                isLibrary = true
+                filterAllCategories = true
+                searchText = ""
                 ToastCenter.shared.success("Model imported",
                                             detail: repoID)
                 HapticManager.impact(.medium)
@@ -2747,8 +2684,32 @@ struct ModelsManagerView: View {
         }
     }
 
-    @ViewBuilder
     private func installedRow(
+        _ model: DownloadableModel,
+        activationCategory: DownloadableModel.Category? = nil
+    ) -> some View {
+        let role = activationCategory ?? model.category
+        let selected = isActiveModel(model, as: role)
+        let loaded: Bool = {
+            switch role {
+            case .assistant: return assistant.state == .ready && assistant.activeModel.repoID == model.sourceRepoID
+            case .vlm: guard selected else { return false }; if case .ready = visionLoadPhase { return true }; return false
+            case .voice: guard selected else { return false }; if case .ready = voiceLoadPhase { return true }; return false
+            case .imageGen: return false
+            }
+        }()
+        return ModelsCompactRow(
+            name: model.displayName,
+            subtitle: loc.t(sectionFor(role).rawValue) + " · " + model.sizeLabel,
+            status: loc.t(loaded ? "Loaded" : selected ? "Selected" : "Installed"),
+            runtime: LocalModelRegistry.descriptor(for: model).runtime,
+            actionTitle: loc.t("Details"),
+            action: { detailRole = role; detailModel = model }
+        )
+    }
+
+    @ViewBuilder
+    private func installedDetailRow(
         _ model: DownloadableModel,
         activationCategory: DownloadableModel.Category? = nil
     ) -> some View {
@@ -2782,13 +2743,13 @@ struct ModelsManagerView: View {
                             }
                         }
                         Text(model.subtitle)
-                            .font(T.mono(9.5))
+                            .font(T.mono(13))
                             .foregroundColor(T.ink3.opacity(0.8))
                             .lineLimit(1)
                             .truncationMode(.middle)
                         if let description = model.longDescription {
                             Text(description)
-                                .font(T.mono(9.5))
+                                .font(T.mono(13))
                                 .foregroundColor(T.ink3)
                                 .lineLimit(2)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -2805,7 +2766,7 @@ struct ModelsManagerView: View {
                                 systemImage: "slider.horizontal.3",
                                 accessibilityLabel: loc.t("Model settings")
                             ) {
-                                assistantSettingsTarget = settingsTarget(for: model)
+                                presentAfterDetails { assistantSettingsTarget = settingsTarget(for: model) }
                             }
                         }
                     }
@@ -2827,7 +2788,7 @@ struct ModelsManagerView: View {
                             // Whisper & co. are speech-to-text (dictation / voice
                             // conversation), not a TTS voice — "ready", not a warning.
                             Text(loc.t("Speech-to-text · ready"))
-                                .font(T.mono(9.5, .semibold))
+                                .font(T.mono(13, .semibold))
                                 .foregroundColor(T.good)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 7)
@@ -2835,7 +2796,7 @@ struct ModelsManagerView: View {
                                 .overlay(Capsule().stroke(T.good.opacity(0.30), lineWidth: 0.5))
                         } else {
                             Text(loc.t("No in-app voice engine for this repo yet"))
-                                .font(T.mono(9.5, .semibold))
+                                .font(T.mono(13, .semibold))
                                 .foregroundColor(T.warn)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 7)
@@ -2845,13 +2806,13 @@ struct ModelsManagerView: View {
                     }
                     if model.downloader != nil {
                         cardButton(label: loc.t("Export to Files"), kind: .secondary) {
-                            exportingModel = model
+                            presentAfterDetails { exportingModel = model }
                             HapticManager.impact(.light)
                         }
                     }
                     if !model.isRequired {
                         cardButton(label: loc.t("Delete model"), kind: .destructive) {
-                            pendingDelete = model
+                            presentAfterDetails { pendingDelete = model }
                         }
                     }
                     Spacer(minLength: 0)
@@ -3017,7 +2978,7 @@ struct ModelsManagerView: View {
                             .font(T.display(18, .semibold))
                             .foregroundColor(T.ink)
                         Text("SD / SDXL diffusion via MLX. FLUX is too large for iOS memory.")
-                            .font(T.mono(9.5))
+                            .font(T.mono(13))
                             .foregroundColor(T.ink3)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
@@ -3048,8 +3009,19 @@ struct ModelsManagerView: View {
         }
     }
 
+    private func imageModelRow(_ model: ImageGenerationService.Model) -> some View {
+        ModelsCompactRow(
+            name: model.displayName,
+            subtitle: loc.t("Image") + " · " + model.sizeLabel,
+            status: loc.t(imageGen.isInstalled(model) ? "Installed" : "Available to download"),
+            runtime: .mlx,
+            actionTitle: loc.t("Model details"),
+            action: { detailImage = model }
+        )
+    }
+
     @ViewBuilder
-    private func imageModelRow(_ m: ImageGenerationService.Model) -> some View {
+    private func imageDetailRow(_ m: ImageGenerationService.Model) -> some View {
         let installed = imageGen.isInstalled(m)
         modelCardShell(accent: T.accent, prominence: 0.10) {
             HStack(alignment: .top, spacing: 12) {
@@ -3066,14 +3038,14 @@ struct ModelsManagerView: View {
                             .foregroundColor(T.ink)
                         if installed {
                             Text("INSTALLED")
-                                .font(T.mono(8, .semibold))
+                                .font(T.mono(13, .semibold))
                                 .foregroundColor(T.good)
                                 .padding(.horizontal, 6).padding(.vertical, 2)
                                 .background(Capsule().fill(T.good.opacity(0.14)))
                         }
                     }
                     Text(m.subtitle)
-                        .font(T.mono(9.5))
+                        .font(T.mono(13))
                         .foregroundColor(T.ink3.opacity(0.85))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -3262,7 +3234,7 @@ struct ModelsManagerView: View {
                     }
                     if let description = group.description {
                         Text(description)
-                            .font(T.mono(9.5))
+                            .font(T.mono(13))
                             .foregroundColor(T.ink3)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
@@ -3286,8 +3258,31 @@ struct ModelsManagerView: View {
         }
     }
 
-    @ViewBuilder
+    private func presentAfterDetails(_ action: @escaping () -> Void) {
+        if detailModel != nil {
+            afterDetailDismiss = action
+            detailModel = nil
+        } else {
+            action()
+        }
+    }
+
     private func catalogRow(
+        _ model: DownloadableModel,
+        activationCategory: DownloadableModel.Category? = nil
+    ) -> some View {
+        ModelsCompactRow(
+            name: model.displayName,
+            subtitle: loc.t(sectionFor(activationCategory ?? model.category).rawValue) + " · " + model.sizeLabel,
+            status: loc.t(model.isReady ? "Installed" : "View download details"),
+            runtime: LocalModelRegistry.descriptor(for: model).runtime,
+            actionTitle: loc.t("Review compatibility and download options"),
+            action: { detailRole = activationCategory ?? model.category; detailModel = model }
+        )
+    }
+
+    @ViewBuilder
+    private func catalogDetailRow(
         _ model: DownloadableModel,
         activationCategory: DownloadableModel.Category? = nil
     ) -> some View {
@@ -3324,7 +3319,7 @@ struct ModelsManagerView: View {
                         }
                         if model.isRequired {
                             Text("required")
-                                .font(T.mono(8, .semibold))
+                                .font(T.mono(13, .semibold))
                                 .tracking(0.4)
                                 .foregroundColor(T.warn)
                                 .padding(.horizontal, 5).padding(.vertical, 1)
@@ -3332,13 +3327,13 @@ struct ModelsManagerView: View {
                         }
                     }
                     Text(model.subtitle)
-                        .font(T.mono(9.5))
+                        .font(T.mono(13))
                         .foregroundColor(T.ink3.opacity(0.82))
                         .lineLimit(1)
                         .truncationMode(.middle)
                     if let description = model.longDescription {
                         Text(description)
-                            .font(T.mono(9.5))
+                            .font(T.mono(13))
                             .foregroundColor(T.ink3)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
@@ -3365,7 +3360,7 @@ struct ModelsManagerView: View {
                             systemImage: "slider.horizontal.3",
                             accessibilityLabel: loc.t("Model settings")
                         ) {
-                            assistantSettingsTarget = settingsTarget(for: model)
+                            presentAfterDetails { assistantSettingsTarget = settingsTarget(for: model) }
                         }
                     }
                 }
@@ -3406,7 +3401,7 @@ struct ModelsManagerView: View {
                         }
                     } else if model.category == .voice && supportedVoiceEngine(for: model) == nil {
                         Text("Stored only - runtime not implemented")
-                            .font(T.mono(9.5, .semibold))
+                            .font(T.mono(13, .semibold))
                             .foregroundColor(T.warn)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 7)
@@ -3416,7 +3411,7 @@ struct ModelsManagerView: View {
                     Spacer(minLength: 0)
                     if !model.isRequired {
                         cardButton(label: loc.t("Delete model"), kind: .destructive) {
-                            pendingDelete = model
+                            presentAfterDetails { pendingDelete = model }
                         }
                     }
                 }
@@ -3434,7 +3429,7 @@ struct ModelsManagerView: View {
                             .foregroundColor(ModelCapability.gated.tint)
                     }
                     Text(msg)
-                        .font(T.mono(10))
+                        .font(T.mono(13))
                         .foregroundColor(authFail ? T.ink2 : T.bad)
                         .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
@@ -3442,7 +3437,7 @@ struct ModelsManagerView: View {
                 HStack(spacing: 6) {
                     if authFail {
                         cardButton(label: loc.t("Set Token"), kind: .primary) {
-                            showingHFTokenSheet = true
+                            presentAfterDetails { showingHFTokenSheet = true }
                         }
                         cardButton(label: loc.t("Retry"), kind: .secondary) {
                             HapticManager.impact(.medium)
@@ -3486,17 +3481,17 @@ struct ModelsManagerView: View {
                 .progressViewStyle(.linear)
             HStack(spacing: 6) {
                 Text("\(Int(progress * 100))%")
-                    .font(T.mono(10, .semibold))
+                    .font(T.mono(13, .semibold))
                     .foregroundColor(T.accent)
                 if total > 0 {
                     Text("\(downloaded.formattedBytes) / \(total.formattedBytes)")
-                        .font(T.mono(9))
+                        .font(T.mono(13))
                         .foregroundColor(T.ink3)
                 }
                 Spacer(minLength: 0)
                 if !file.isEmpty {
                     Text(file)
-                        .font(T.mono(9))
+                        .font(T.mono(13))
                         .foregroundColor(T.ink3.opacity(0.7))
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -3514,7 +3509,7 @@ struct ModelsManagerView: View {
                     .font(.system(size: 11))
                     .foregroundColor(T.accent)
                 Text(loc.t("Live discovery — search any Hugging Face repo"))
-                    .font(T.mono(10))
+                    .font(T.mono(13))
                     .foregroundColor(T.ink3)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer()
@@ -3581,15 +3576,15 @@ struct ModelsManagerView: View {
                 HStack(spacing: 6) {
                     if let pipeline = result.pipelineTag {
                         Text(pipeline)
-                            .font(T.mono(9))
+                            .font(T.mono(13))
                             .foregroundColor(T.ink3)
                     }
                     Text("↓\(result.downloads.compactCount)")
-                        .font(T.mono(9))
+                        .font(T.mono(13))
                         .foregroundColor(T.ink3)
                     if result.isLikelyOnDeviceCompatible {
                         Text("on-device")
-                            .font(T.mono(8, .semibold))
+                            .font(T.mono(13, .semibold))
                             .tracking(0.4)
                             .foregroundColor(T.accent)
                             .padding(.horizontal, 4).padding(.vertical, 1)
@@ -3597,7 +3592,7 @@ struct ModelsManagerView: View {
                     }
                     if KnownGatedRepos.isGated(repoID: result.id) {
                         Text("gated")
-                            .font(T.mono(8, .semibold))
+                            .font(T.mono(13, .semibold))
                             .tracking(0.4)
                             .foregroundColor(ModelCapability.gated.tint)
                             .padding(.horizontal, 4).padding(.vertical, 1)
@@ -3660,6 +3655,7 @@ struct ModelsManagerView: View {
         // Jump to the category the model belongs to, clearing the search so
         // the in-flight download is visible at the top of that page.
         searchText = ""
+        filterAllCategories = false
         switch category {
         case .assistant: selectedSection = .assistant
         case .vlm:       selectedSection = .lens
@@ -3753,7 +3749,7 @@ struct ModelsManagerView: View {
     @ViewBuilder
     private func metricBadge(_ text: String) -> some View {
         Text(text)
-            .font(T.mono(10, .semibold))
+            .font(T.mono(13, .semibold))
             .foregroundColor(T.ink2)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -3784,7 +3780,7 @@ struct ModelsManagerView: View {
             Image(systemName: glyph)
                 .font(.system(size: 8, weight: .semibold))
             Text(loc.t(fit.label))
-                .font(T.mono(9, .semibold))
+                .font(T.mono(13, .semibold))
                 .tracking(0.3)
         }
         .foregroundColor(color)
@@ -3801,7 +3797,7 @@ struct ModelsManagerView: View {
             Image(systemName: compatibility.symbol)
                 .font(.system(size: 8, weight: .semibold))
             Text(compatibility.label)
-                .font(T.mono(8.5, .semibold))
+                .font(T.mono(13, .semibold))
                 .tracking(0.2)
         }
         .foregroundColor(color)
@@ -3830,7 +3826,7 @@ struct ModelsManagerView: View {
                 .fixedSize(horizontal: false, vertical: true)
             if let org {
                 Text(org)
-                    .font(T.mono(8.5))
+                    .font(T.mono(13))
                     .foregroundColor(T.ink3.opacity(0.75))
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -3853,7 +3849,7 @@ struct ModelsManagerView: View {
         }()
         return Button(action: action) {
             Text(label)
-                .font(T.mono(10, .semibold))
+                .font(T.mono(13, .semibold))
                 .tracking(0.4)
                 .foregroundColor(fg)
                 .padding(.horizontal, 10)
@@ -3924,7 +3920,7 @@ struct ModelsManagerView: View {
         HStack(spacing: 4) {
             Circle().fill(color).frame(width: 5, height: 5)
             Text(text)
-                .font(T.mono(10, .semibold))
+                .font(T.mono(13, .semibold))
                 .tracking(0.3)
                 .foregroundColor(color)
         }
@@ -4132,7 +4128,7 @@ private struct ComboModelDownloadControl: View {
                         .tint(tint)
                         .frame(width: 26)
                     Text("\(Int(downloader.progress * 100))%")
-                        .font(T.mono(9, .semibold))
+                        .font(T.mono(13, .semibold))
                         .foregroundColor(tint)
                 }
                 .frame(width: 58, height: 30)
@@ -4198,12 +4194,12 @@ private struct CompletedDownloadRow: View {
                     .font(T.sans(14, .semibold))
                     .foregroundColor(T.ink)
                 Text("Ready to use · \(model.sizeLabel)")
-                    .font(T.mono(9.5))
+                    .font(T.mono(13))
                     .foregroundColor(T.ink3)
             }
             Spacer()
             Text("100%")
-                .font(T.mono(11, .bold))
+                .font(T.mono(13, .bold))
                 .foregroundColor(T.good)
         }
         .padding(14)
@@ -4297,7 +4293,7 @@ private struct InstallingRow: View {
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(model.subtitle)
-                    .font(T.mono(9.5))
+                    .font(T.mono(13))
                     .foregroundColor(T.ink3.opacity(0.82))
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -4306,11 +4302,11 @@ private struct InstallingRow: View {
             // Percentage label — fades to "…" during indeterminate phase.
             if isIndeterminate {
                 Text("…")
-                    .font(T.mono(11, .semibold))
+                    .font(T.mono(13, .semibold))
                     .foregroundColor(accent)
             } else {
                 Text("\(Int(downloader.progress * 100))%")
-                    .font(T.mono(11, .semibold))
+                    .font(T.mono(13, .semibold))
                     .foregroundColor(accent)
                     .contentTransition(.numericText())
                     .animation(.easeOut(duration: 0.15), value: downloader.progress)
@@ -4343,14 +4339,14 @@ private struct InstallingRow: View {
             if !isIndeterminate {
                 HStack(spacing: 6) {
                     Text(bytesLine)
-                        .font(T.mono(10))
+                        .font(T.mono(13))
                         .foregroundColor(T.ink2)
                         .contentTransition(.numericText())
                         .animation(.easeInOut(duration: 0.2), value: downloader.downloadedBytes)
                     Spacer(minLength: 0)
                     if downloader.filesTotal > 0 {
                         Text("\(downloader.filesDone)/\(downloader.filesTotal) files")
-                            .font(T.mono(10))
+                            .font(T.mono(13))
                             .foregroundColor(T.ink3)
                             .contentTransition(.numericText())
                             .animation(.easeInOut(duration: 0.2), value: downloader.filesDone)
@@ -4358,7 +4354,7 @@ private struct InstallingRow: View {
                 }
             } else {
                 Text(loc.t("Preparing file list…"))
-                    .font(T.mono(10))
+                    .font(T.mono(13))
                     .foregroundColor(T.ink3)
             }
 
@@ -4367,7 +4363,7 @@ private struct InstallingRow: View {
             // there's nothing meaningful to show.
             if !downloader.currentFile.isEmpty {
                 Text(downloader.currentFile)
-                    .font(T.mono(9))
+                    .font(T.mono(13))
                     .foregroundColor(T.ink3)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -4376,7 +4372,7 @@ private struct InstallingRow: View {
             // Failure detail — only visible on .failed.
             if case .failed(let msg) = downloader.state {
                 Text(msg)
-                    .font(T.mono(10))
+                    .font(T.mono(13))
                     .foregroundColor(T.bad)
                     .lineLimit(3)
             }
@@ -4388,7 +4384,7 @@ private struct InstallingRow: View {
                 if case .failed = downloader.state {
                     Button(action: { downloader.start(); HapticManager.impact(.medium) }) {
                         Text(loc.t("Retry"))
-                            .font(T.mono(11, .semibold))
+                            .font(T.mono(13, .semibold))
                             .foregroundColor(T.bg)
                             .padding(.horizontal, 10).padding(.vertical, 6)
                             .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
@@ -4397,7 +4393,7 @@ private struct InstallingRow: View {
                 } else {
                     Button(action: { downloader.cancel(); HapticManager.impact(.light) }) {
                         Text(loc.t("Cancel"))
-                            .font(T.mono(11, .semibold))
+                            .font(T.mono(13, .semibold))
                             .foregroundColor(T.ink2)
                             .padding(.horizontal, 10).padding(.vertical, 6)
                             .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
@@ -4407,7 +4403,7 @@ private struct InstallingRow: View {
                 if let docURL = model.docURL, let url = URL(string: docURL) {
                     Button(action: { UIApplication.shared.open(url) }) {
                         Text(loc.t("Open on HuggingFace"))
-                            .font(T.mono(11, .semibold))
+                            .font(T.mono(13, .semibold))
                             .foregroundColor(T.ink2)
                             .padding(.horizontal, 10).padding(.vertical, 6)
                             .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
@@ -4584,5 +4580,176 @@ private struct SwipeToDeleteContainer<Content: View>: View {
             offset = 0
             isOpen = false
         }
+    }
+}
+
+/// Persistent actions remain available even when the inventory is empty or filtered.
+private struct ModelsLibraryToolbar: View {
+    let downloadCount: Int
+    let onImport: () -> Void
+    let onDownloads: () -> Void
+    let onStorage: () -> Void
+    @Environment(\.koduTheme) private var theme
+
+    var body: some View {
+        KScreenHeader(
+            title: LocalizationService.shared.t("Models"),
+            eyebrow: LocalizationService.shared.t("Your model library")
+        ) {
+            HStack(spacing: 4) {
+                Button(action: onImport) {
+                    Label(LocalizationService.shared.t("Import"), systemImage: "square.and.arrow.down")
+                        .font(.subheadline.weight(.medium))
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 44)
+                        .kClearGlass(in: Capsule(), interactive: true)
+                }
+                .accessibilityLabel(LocalizationService.shared.t("Import"))
+                .accessibilityIdentifier("modelsImportButton")
+                Menu {
+                    Button(action: onDownloads) {
+                        Label(LocalizationService.shared.t("Downloads") + (downloadCount > 0 ? " (\(downloadCount))" : ""), systemImage: "arrow.down.circle")
+                    }
+                    Button(action: onStorage) {
+                        Label(LocalizationService.shared.t("Storage"), systemImage: "internaldrive")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .frame(width: 44, height: 44)
+                        .kClearGlass(in: Circle(), interactive: true)
+                        .overlay(alignment: .topTrailing) {
+                            if downloadCount > 0 {
+                                Circle().fill(theme.accent).frame(width: 7, height: 7)
+                                    .padding(4)
+                            }
+                        }
+                }
+                .accessibilityLabel(LocalizationService.shared.t("Downloads and storage"))
+                .accessibilityValue(downloadCount > 0 ? "\(downloadCount) " + LocalizationService.shared.t("Downloads") : "")
+            }
+            .font(.body.weight(.medium))
+            .buttonStyle(.plain)
+            .foregroundStyle(theme.ink2)
+        }
+        .tint(theme.accent)
+        .padding(.horizontal, AppSpacing.large)
+        .padding(.top, AppSpacing.large)
+        .padding(.bottom, AppSpacing.medium)
+        .background(theme.bg)
+    }
+}
+
+private struct ModelsDestinationPicker: View {
+    @Binding var isLibrary: Bool
+    @Environment(\.dynamicTypeSize) private var textSize
+
+    var body: some View {
+        if textSize.isAccessibilitySize {
+            destinations.pickerStyle(.menu)
+        } else {
+            destinations.pickerStyle(.segmented)
+        }
+    }
+
+    private var destinations: some View {
+        Picker(LocalizationService.shared.t("Models"), selection: $isLibrary) {
+            Text(LocalizationService.shared.t("My Models")).tag(true)
+            Text(LocalizationService.shared.t("Discover")).tag(false)
+        }
+        .accessibilityIdentifier("modelsDestinationPicker")
+    }
+}
+
+private struct ModelsCategoryFilter: View {
+    @Binding var selection: String
+    private let categories = ["All", "Assistant", "Lens", "Voice", "Image"]
+    @Environment(\.dynamicTypeSize) private var textSize
+
+    var body: some View {
+        if textSize.isAccessibilitySize {
+            Picker(LocalizationService.shared.t("Model category"), selection: $selection) {
+                ForEach(categories, id: \.self) { value in
+                    Text(LocalizationService.shared.t(value)).tag(value)
+                }
+            }.pickerStyle(.menu)
+        } else {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(categories, id: \.self) { value in
+                        KFilterChip(title: LocalizationService.shared.t(value), isSelected: selection == value) {
+                            HapticManager.selection()
+                            selection = value
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct ModelsCompactRow: View {
+    let name: String
+    let subtitle: String
+    let status: String
+    var runtime: ModelRuntime? = nil
+    let actionTitle: String
+    let action: () -> Void
+    @Environment(\.koduTheme) private var theme
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(name).font(.body.weight(.semibold)).foregroundStyle(theme.ink)
+                    Text(subtitle).font(.subheadline).foregroundStyle(theme.ink2)
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
+                            if let runtime { ModelRuntimeBadge(runtime: runtime) }
+                            Text(status).font(.subheadline).foregroundStyle(theme.ink2)
+                        }
+                        VStack(alignment: .leading, spacing: 6) {
+                            if let runtime { ModelRuntimeBadge(runtime: runtime) }
+                            Text(status).font(.subheadline).foregroundStyle(theme.ink2)
+                        }
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").foregroundStyle(theme.ink2)
+            }
+            .padding(.vertical, 18)
+            .padding(.horizontal, 4)
+            .frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
+            .contentShape(Rectangle())
+            .overlay(alignment: .bottom) { Rectangle().fill(theme.rule).frame(height: 1) }
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(actionTitle)
+    }
+}
+
+
+/// One quiet, consistent label separates runtime identity from install/load status.
+struct ModelRuntimeBadge: View {
+    let runtime: ModelRuntime
+    @Environment(\.koduTheme) private var theme
+
+    private var title: String {
+        switch runtime {
+        case .mlx: return "MLX"
+        case .llamaCpp: return "GGUF"
+        case .coreAI: return "Core AI"
+        case .edge0MLX: return "Edge0"
+        }
+    }
+
+    var body: some View {
+        Text(title)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(theme.accent)
+            .fontDesign(.monospaced)
+            .padding(.vertical, 2)
+            .fixedSize()
+            .accessibilityLabel(LocalizationService.shared.t("Runtime") + ": " + title)
     }
 }

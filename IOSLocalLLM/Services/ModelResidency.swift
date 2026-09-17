@@ -117,10 +117,13 @@ final class ModelResidency: ObservableObject {
         )
         let repoID = LocalModelRegistry.persistedVisionRepoID(for: visionSelection)
         // Pick the right estimator based on which backend owns the
-        // VLM repo. GGUF VLMs (llama.cpp) and MLX VLMs have
-        // different on-disk layouts so the byte-counting logic
-        // differs slightly.
-        let vlmBytes: UInt64 = runtime == .llamaCpp
+        // VLM repo. Storage-backed runtimes (llama.cpp GGUF today) and
+        // MLX VLMs have different on-disk layouts so the byte-counting
+        // logic differs slightly.
+        let vlmIsStorageBacked = RuntimeEngineFactory
+            .capabilities(runtime: runtime, modelVision: true)
+            .storageBackedWeights
+        let vlmBytes: UInt64 = vlmIsStorageBacked
             ? LlamaCppVLMService.estimatedWeightBytes(repoID: repoID)
             : LensInferenceLoop.estimatedWeightBytes(repoID: repoID)
         // Compare raw weight sum to the budget — the budget table
@@ -238,8 +241,12 @@ final class ModelResidency: ObservableObject {
                 )
             }
             let repoID = LocalModelRegistry.persistedVisionRepoID(for: selectionID)
-            // Pick the right stagedDirectory based on backend.
-            dir = runtime == .llamaCpp
+            // Pick the right stagedDirectory based on the backend's storage
+            // model rather than the concrete runtime enum.
+            let isStorageBacked = RuntimeEngineFactory
+                .capabilities(runtime: runtime, modelVision: true)
+                .storageBackedWeights
+            dir = isStorageBacked
                 ? LlamaCppVLMService.stagedDirectory(for: repoID)
                 : LensInferenceLoop.stagedDirectory(for: repoID)
         }

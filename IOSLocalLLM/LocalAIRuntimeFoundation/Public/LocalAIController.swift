@@ -203,6 +203,10 @@ public final class LocalAIController {
                                         throw RuntimeError.unsupportedOperation(
                                             "Core AI vision packs are managed by the app's Core AI catalog and are not exposed through LocalAIController yet."
                                         )
+                                    case .edge0MLX:
+                                        throw RuntimeError.unsupportedOperation(
+                                            "Edge0 MLX vision is not implemented in this build."
+                                        )
                                     case .llamaCpp:
                                         if LlamaCppVLMService.shared.activeRepoID != target.repoID {
                                             throw RuntimeError.modelNotLoaded(target.repoID)
@@ -287,6 +291,11 @@ public final class LocalAIController {
             case .coreAI:
                 preheatStatus = .failed(
                     "Core AI vision preheating is managed by the Core AI runtime."
+                )
+                return
+            case .edge0MLX:
+                preheatStatus = .failed(
+                    "Edge0 MLX is not implemented in this build."
                 )
                 return
             case .llamaCpp:
@@ -374,28 +383,15 @@ public final class LocalAIController {
     }
 
     private func resolveAssistantModel(_ model: LocalModel) throws -> AssistantModel {
-        guard model.runtime == .mlx else {
+        // Edge0 text generation is owned by CodingAssistantService through the
+        // runtime-engine seam (load → loadSelectedEdge0, generate →
+        // generateWithEdge0); this facade only has to admit it through.
+        guard model.runtime == .mlx || model.runtime == .edge0MLX else {
             throw RuntimeError.unsupportedOperation(
                 "Text generation through \(model.runtime.label) is not wired behind LocalAIController yet."
             )
         }
-        if let preset = AssistantModelCatalog.presets.first(where: {
-            $0.id == model.id || $0.repoID == model.repoID
-        }) {
-            return preset
-        }
-        return AssistantModel(
-            id: model.id,
-            repoID: model.repoID,
-            displayName: model.displayName,
-            subtitle: "custom · MLX",
-            approxRAMBytes: model.approxRAMBytes,
-            tags: [],
-            contextWindowTokens: model.contextWindowTokens,
-            capabilities: model.capabilities,
-            supportsTools: model.capabilities.contains(.tools),
-            runtime: model.runtime
-        )
+        return RuntimeEngineFactory.resolvedAssistantModel(for: model)
     }
 
     private func localAssistantModel(id: String) -> LocalModel? {

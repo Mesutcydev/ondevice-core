@@ -18,8 +18,8 @@ Automated, repeatable checks currently include:
 | Repository hygiene | `./scripts/validate_open_source.sh` | Linux or macOS |
 | VoiceAgentOrb package | `swift test --package-path Packages/VoiceAgentOrb` | macOS CI |
 | XcodeGen consistency | `xcodegen generate` followed by a clean diff | macOS |
-| App workspace build | `xcodebuild build -workspace IOSLocalLLM.xcworkspace -scheme IOSLocalLLM -destination 'platform=iOS Simulator,name=iPhone 17'` | iPhone 17 simulator, iOS 27 |
-| App unit and UI tests | `xcodebuild test -workspace IOSLocalLLM.xcworkspace -scheme IOSLocalLLM -destination 'platform=iOS Simulator,name=iPhone 17'` | iPhone 17 simulator, iOS 27 |
+| App workspace build | `xcodebuild build -workspace OnDeviceCoreAIStudio.xcworkspace -scheme OnDeviceCoreAIStudio -destination 'platform=iOS Simulator,name=iPhone 17'` | iPhone 17 simulator, iOS 27 |
+| App unit and UI tests | `xcodebuild test -workspace OnDeviceCoreAIStudio.xcworkspace -scheme OnDeviceCoreAIStudio -destination 'platform=iOS Simulator,name=iPhone 17'` | iPhone 17 simulator, iOS 27 |
 
 On 29 July 2026, the open-source workspace built successfully and the
 first-launch legal flow, onboarding, Home, Assistant, and Models screens were
@@ -31,6 +31,32 @@ physical-device validation requirement.
 Do not pass `CODE_SIGNING_ALLOWED=NO` to the test command. Simulator tests are
 ad-hoc signed without a paid developer account, and the Keychain-backed
 pairing and credential-wipe tests require the resulting Keychain entitlement.
+
+On 17 September 2026 the focused Edge0 suites (expert read plans, loaders,
+layout, metal environment, resident plans) executed on the iPhone 17
+simulator through the isolated sim-compat project described below: all
+non-gated cases passed; cases gated on real checkpoints (`EDGE0_35B_MODEL`,
+`EDGE0_8B_MODEL`) or oracle fixtures (`EDGE0_35B_FIXTURES`) skip cleanly when
+those are absent.
+
+Edge0 unit suites execute on the simulator through an isolated sim-compat
+project, because the simulator SDK ships no `CoreAI.framework` and the app's
+`coreai-models` package is device-only. Recipe:
+`xcodegen generate --spec project-simcompat.yml` creates
+`OnDeviceSimCompat.xcodeproj`; build/test it through
+`OnDeviceSimCompat.xcworkspace` (which also references `Pods/Pods.xcodeproj`,
+so the CocoaPods targets build by implicit dependency), e.g.:
+
+    xcodebuild test -workspace OnDeviceSimCompat.xcworkspace \
+      -scheme OnDeviceCoreAIStudio \
+      -destination 'platform=iOS Simulator,id=<simulator-udid>' \
+      -derivedDataPath build/SimCompat-DD \
+      -only-testing:IOSLocalLLMTests/Edge0_35BExpertLoaderTests
+
+The production project is untouched by this path; regenerate it with the
+normal `xcodegen generate` + `pod install` flow (SETUP_INSTRUCTIONS.md).
+Note that `pod install` is required after every `xcodegen generate` — the
+CocoaPods script phases and library links are re-added by it.
 
 ## Required physical-device matrix
 

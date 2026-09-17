@@ -11,9 +11,26 @@ does not replace the licenses of the components below.
 | MLX Stable Diffusion implementation | `IOSLocalLLM/Vendor/StableDiffusion/` | [MIT](IOSLocalLLM/Vendor/StableDiffusion/LICENSE) |
 | CMU Pronouncing Dictionary | `IOSLocalLLM/Resources/Voice/cmudict.txt` | [CMUdict license](IOSLocalLLM/Resources/Voice/LICENSE) |
 | thinking-orbs adaptations | `Packages/VoiceAgentOrb/` | [MIT](ThirdParty/thinking-orbs/LICENSE) |
+| Edge0 native foundation | `IOSLocalLLM/Services/Runtime/Edge0/` | MIT (original Swift implementation) |
 
 The MIT license for iOS Local LLM applies only to the original changes and
 integration around these components.
+
+## Evaluated upstream reference (no source copied)
+
+The native Edge0 storage/MoE foundation under
+`IOSLocalLLM/Services/Runtime/Edge0/` was written as an original Swift
+implementation after studying the public Edge0 reference. No Python source
+was copied into this repository; the tensor names, quantization constants,
+and math order below are interface facts of the published checkpoint.
+
+| Component | Upstream | Commit | License |
+| --- | --- | --- | --- |
+| Edge0 reference runtime | <https://github.com/Edge0-AI/edge0> | `0700e6532f45e0d0d99e9c588d7d8cd240538ea0` | Apache-2.0 |
+| Edge0-8B checkpoint (metadata inspected only) | <https://huggingface.co/Edge0/Edge0-8B-A1B-preview> | model artifact | See model card |
+
+See [Docs/EDGE0_NATIVE_FOUNDATION.md](Docs/EDGE0_NATIVE_FOUNDATION.md) for the
+exact tensor naming, quantization layout, and the MLX primitive used.
 
 ## Git submodules
 

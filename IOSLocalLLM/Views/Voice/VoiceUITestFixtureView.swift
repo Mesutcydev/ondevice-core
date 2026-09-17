@@ -21,6 +21,14 @@ struct VoiceUITestFixtureView: View {
     }
 
     var body: some View {
+        if ProcessInfo.processInfo.arguments.contains("-orbShowcase") {
+            ApertureOrbShowcase()
+        } else {
+            fixtureContent
+        }
+    }
+
+    private var fixtureContent: some View {
         VStack(spacing: 12) {
             Text("Conversation model")
                 .font(.caption)
@@ -113,6 +121,49 @@ struct VoiceUITestFixtureView: View {
                 phase = .idle
                 level = 0
             }
+        }
+    }
+}
+
+/// A manual QA surface for every pose, quiet audio, and the two render budgets.
+/// Kept behind the existing DEBUG-only voice test launch gate.
+private struct ApertureOrbShowcase: View {
+    @State private var selection = 0
+    @State private var reduced = false
+    @State private var still = false
+    @State private var level = 0.5
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private let labels = ["Ready", "Listening", "Thinking", "Preparing", "Speaking", "Paused"]
+    private var phase: VoiceSessionPhase {
+        switch selection {
+        case 1: .listening
+        case 2: .thinking
+        case 3: .preparingSpeech
+        case 4: .speaking
+        case 5: .paused
+        default: .idle
+        }
+    }
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                Text("Aperture").font(.largeTitle.bold())
+                Text("Voice appearance preview").font(.subheadline).foregroundStyle(.secondary)
+                VoiceActivityOrb(phase: phase, micLevel: Float(level),
+                    reduceMotion: reduceMotion || still,
+                    renderingMode: reduced ? .reduced : .automatic, samplesLiveAudio: false)
+                    .frame(height: 300)
+                Text(labels[selection]).font(.headline)
+                Picker("Voice state", selection: $selection) {
+                    ForEach(labels.indices, id: \.self) { Text(labels[$0]).tag($0) }
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("orbShowcaseState")
+                Slider(value: $level, in: 0...1) { Text("Simulated audio") }
+                Toggle("Lighter rendering", isOn: $reduced)
+                Toggle("Reduce Motion", isOn: $still)
+            }
+            .padding(24)
         }
     }
 }

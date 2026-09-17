@@ -34,10 +34,15 @@ public struct VoiceOrbPaletteCache: Sendable {
 
     private struct ResolvedTheme: Sendable {
         var palettes: [VoiceOrbStateKind: ResolvedPalette]
+        var glassHighlight: Color
+        var contactShadow: Color
     }
 
     private var resolvedTheme: ResolvedTheme?
-    private var resolvedThemeID: Int?
+    /// The exact theme value the cache was resolved for. This used to be a hash
+    /// of six of the theme's colors, which silently served stale palettes for
+    /// any theme that differed in a field the hash did not combine.
+    private var resolvedThemeValue: VoiceAgentOrbTheme?
     private var resolvedScheme: ColorScheme?
 
     public init() {}
@@ -51,10 +56,10 @@ public struct VoiceOrbPaletteCache: Sendable {
         theme: VoiceAgentOrbTheme,
         colorScheme: ColorScheme
     ) -> VoiceOrbBlendedPalette {
-        if resolvedScheme != colorScheme || resolvedThemeID != theme.identity {
+        if resolvedScheme != colorScheme || resolvedThemeValue != theme {
             resolvedTheme = Self.resolve(theme: theme, colorScheme: colorScheme)
             resolvedScheme = colorScheme
-            resolvedThemeID = theme.identity
+            resolvedThemeValue = theme
         }
         guard let resolved = resolvedTheme,
               let fromPalette = resolved.palettes[from],
@@ -82,8 +87,8 @@ public struct VoiceOrbPaletteCache: Sendable {
             rim: mix(fromPalette.rim, toPalette.rim),
             glow: mix(fromPalette.glow, toPalette.glow),
             accent: mix(fromPalette.accent, toPalette.accent),
-            glassHighlight: theme.glassHighlight.resolve(in: colorScheme),
-            contactShadow: theme.contactShadow.resolve(in: colorScheme)
+            glassHighlight: resolved.glassHighlight,
+            contactShadow: resolved.contactShadow
         )
     }
 
@@ -104,7 +109,11 @@ public struct VoiceOrbPaletteCache: Sendable {
                 accent: palette.accent.resolve(in: colorScheme).resolve(in: environment)
             )
         }
-        return ResolvedTheme(palettes: palettes)
+        return ResolvedTheme(
+            palettes: palettes,
+            glassHighlight: theme.glassHighlight.resolve(in: colorScheme),
+            contactShadow: theme.contactShadow.resolve(in: colorScheme)
+        )
     }
 
     private static func fallback(theme: VoiceAgentOrbTheme, colorScheme: ColorScheme) -> VoiceOrbBlendedPalette {
@@ -120,27 +129,6 @@ public struct VoiceOrbPaletteCache: Sendable {
             glassHighlight: theme.glassHighlight.resolve(in: colorScheme),
             contactShadow: theme.contactShadow.resolve(in: colorScheme)
         )
-    }
-}
-
-private extension VoiceAgentOrbTheme {
-    /// Identity for cache invalidation. Themes are value types compared by
-    /// the view on change; a cheap identity avoids deep comparison per frame.
-    var identity: Int {
-        var hasher = Hasher()
-        hasher.combine(self)
-        return hasher.finalize()
-    }
-}
-
-extension VoiceAgentOrbTheme: Hashable {
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(idle.core.light)
-        hasher.combine(listening.energy.light)
-        hasher.combine(speaking.energy.light)
-        hasher.combine(thinking.energy.light)
-        hasher.combine(error.energy.light)
-        hasher.combine(disabled.energy.light)
     }
 }
 

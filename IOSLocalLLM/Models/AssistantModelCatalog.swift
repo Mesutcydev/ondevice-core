@@ -113,6 +113,49 @@ enum AssistantModelCatalog {
     /// (Qwen3, Qwen2.5, Llama 3.x) so a refresh can't silently 404 or
     /// hit an unsupported-arch load failure.
     static let presets: [AssistantModel] = [
+        // ── Edge0-8B A1B (native runtime) ─────────────────────────────────
+        // Hybrid MoE (18 KDA + 6 MLA layers, layer 0 dense MLP) executed by
+        // the app's own streaming runtime (RuntimeEngineFactory →
+        // ManagedRuntimeEngine → Edge0RuntimeBackend → Edge0Engine), not MLX.
+        // Downloads one 4-bit checkpoint; experts stream from disk under a
+        // bounded resident pool, so admission is checked at load time.
+        AssistantModel(
+            id: "edge0-8b-a1b-preview",
+            repoID: "Edge0/Edge0-8B-A1B-preview",
+            displayName: "Edge0-8B A1B",
+            subtitle: "4-bit · 4.2 GiB · native runtime",
+            // Storage-backed design: routed experts stream from disk through
+            // a bounded pool. Measured device footprint while loaded is
+            // ~1.59 GB, so a resident-model estimate here would wrongly hide
+            // it from the memory-fit filters. Download size is separate.
+            approxRAMBytes: 2_200_000_000,
+            tags: ["native", "moe", "thinking"],
+            contextWindowTokens: 131_072,
+            downloadSizeBytes: 4_520_000_000,
+            capabilities: [.thinking, .newRelease],
+            supportsTools: false,
+            runtime: .edge0MLX
+        ),
+        // ── Edge0-35B A3B Preview (native runtime, experimental) ──────────
+        // Qwen3.5-MoE (40 layers, 256 experts) executed by the native 35B
+        // engine: quantized base + 310 unmerged Recover-LoRA adapters +
+        // true-router K=4, bounded per-token expert loads. Not the default;
+        // brings up first device testing of the 35B family.
+        AssistantModel(
+            id: "edge0-35b-a3b-preview",
+            repoID: Edge0ModelFamily.qwen35MoERepoID,
+            displayName: "Edge0-35B A3B Preview",
+            subtitle: "4-bit · 19.6 GB · native runtime · experimental",
+            // Storage-backed experts stream from disk through a bounded
+            // pool; resident base + LoRA + pool is ~2.2 GB while loaded.
+            approxRAMBytes: 2_600_000_000,
+            tags: ["native", "moe", "thinking", "experimental"],
+            contextWindowTokens: 4096,
+            downloadSizeBytes: Edge0_35BModelArtifacts.downloadSizeBytes,
+            capabilities: [.thinking, .newRelease],
+            supportsTools: false,
+            runtime: .edge0MLX
+        ),
         // ── Qwen3 4B 2507 refresh ─────────────────────────────────────────
         // The "2507" Instruct/Thinking refresh is a large quality jump over
         // the original Qwen3-4B and is now published by mlx-community (the

@@ -77,6 +77,8 @@ sequenceDiagram
 | Concern | Primary implementation | Representative tests |
 | --- | --- | --- |
 | Device capability and admission | `DeviceTierAdvisor.swift`, `MemoryAdvisor.swift` | `DeviceTierAdvisorTests.swift` |
+| Runtime selection and capabilities | `RuntimeEngineFactory.swift`, `RuntimeCapabilities.swift`, `RuntimeEngine.swift` | `RuntimeEngineFactoryTests.swift`, `RuntimeEngineLifecycleTests.swift` |
+| Edge0 native foundation (storage/MoE primitives only) | `Services/Runtime/Edge0/` | `Edge0SafetensorsTests.swift`, `Edge0ExpertPoolTests.swift`, `Edge0GatheredQMMTests.swift` |
 | Thermal and runtime safety | `DeviceSafetyMonitor.swift`, `ModelResidency.swift`, `LifecycleController.swift` | safety and high-risk service tests |
 | Model search and download | `HFSearchService.swift`, `HFModelDownloadManager.swift`, `ModelDownloadCenter.swift` | `HighRiskServiceTests.swift` |
 | MLX inference | `CodingAssistantService.swift`, `MLXGenerationGate.swift` | local-runtime and model-category tests |

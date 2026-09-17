@@ -539,12 +539,8 @@ struct CameraRootView: View {
             }
             .padding(.horizontal, AppSpacing.medium)
             .frame(maxWidth: .infinity, minHeight: 44)
-            .glassSurface(.capsule, cornerRadius: 22)
+            .appPanel(cornerRadius: 22, cameraSafe: true)
             .environment(\.colorScheme, .dark)
-            .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(.white.opacity(0.18), lineWidth: AppStroke.hairline)
-            }
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
@@ -1399,8 +1395,8 @@ struct CameraRootView: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.white)
                 .frame(width: 44, height: 44)
-                .glassSurface(.toolbarButton, cornerRadius: 22)
-                .overlay(Circle().stroke(.white.opacity(0.16), lineWidth: 1))
+                .appPanel(cornerRadius: 22, cameraSafe: true)
+                .environment(\.colorScheme, .dark)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(icon == "xmark" ? "Close Lens" : "Lens control")
@@ -1461,8 +1457,8 @@ struct CameraRootView: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.white)
                 .frame(width: 44, height: 44)
-                .glassSurface(.toolbarButton, cornerRadius: 22)
-                .overlay(Circle().stroke(.white.opacity(0.16), lineWidth: 1))
+                .appPanel(cornerRadius: 22, cameraSafe: true)
+                .environment(\.colorScheme, .dark)
         }
         .menuStyle(.button)
         .buttonStyle(.plain)

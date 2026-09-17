@@ -1,224 +1,193 @@
 import SwiftUI
 
-// MARK: - OnboardingView
-// Studio-flavoured first-launch overview: editorial type, capability matrix,
-// ink-on-bg "Continue" button. Three pages reachable via the next button.
-
+/// A short product introduction followed by explicit, device-aware model setup.
+/// Only the visible step exists, so the voice preview cannot render offscreen.
 struct OnboardingView: View {
     @ObservedObject private var settings = AppSettings.shared
     @State private var page = 0
+    @State private var preview = 0
     @Environment(\.koduTheme) private var T
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    // Picker tab index is one past the informational pages. Both the
-    // bottom nav and the page-dots use this to switch behavior — the
-    // picker has its own bottom CTA bar so we hide the parent one on
-    // that page.
-    private var pickerIndex: Int { pages.count }
-    private var totalTabs: Int { pages.count + 1 }
-    private var onPickerPage: Bool { page == pickerIndex }
-    private var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
+    private var previewPhase: VoiceSessionPhase {
+        switch preview {
+        case 1: .thinking
+        case 2: .speaking
+        default: .listening
+        }
     }
-
-    private let pages: [OnboardingPage] = [
-        OnboardingPage(
-            caption: "local-first vision",
-            title: "Scan code\nfrom your\ncamera.",
-            body: "Point your camera at any terminal or editor. Apple Vision finds text regions in real-time and FastVLM extracts the code on-device.",
-            matrix: [
-                ("detection", "Apple Vision · system"),
-                ("vision",    "FastViT-HD encoder"),
-                ("decoder",   "Qwen2-0.5B · MLX"),
-                ("fallback",  "VNRecognizeTextRequest"),
-            ]
-        ),
-        OnboardingPage(
-            caption: "on-device assistant",
-            title: "Ask Qwen3\nanything\nabout code.",
-            body: "A 4-bit quantised Qwen3-4B model runs entirely on your device. Send captured code to the assistant for review, debugging, or refactoring.",
-            matrix: [
-                ("model",       "Qwen3-4B-Instruct · 4-bit"),
-                ("runtime",     "MLX 0.21 · Metal · ANE"),
-                ("streaming",   "token-by-token"),
-                ("storage",     "sandboxed · encrypted"),
-            ]
-        ),
-        OnboardingPage(
-            caption: "text-to-image · local",
-            title: "Generate\nimages\non-device.",
-            body: "Type a prompt and create images entirely on your phone. Stable Diffusion and SDXL-Turbo run through MLX — quantised on-device, no cloud, no API keys.",
-            matrix: [
-                ("models",   "SD 1.5 · 2.1 · SDXL-Turbo"),
-                ("fastest",  "SD-Turbo · 1 step"),
-                ("artistic", "DreamShaper 8"),
-                ("runtime",  "MLX · Metal · quantised"),
-            ]
-        ),
-        OnboardingPage(
-            caption: "no servers · no keys · no metrics",
-            title: "100%\nprivate.",
-            body: "All models run on-device. Your camera frames, captured code, and chat conversations never leave the phone.",
-            matrix: [
-                ("network",  "model download only"),
-                ("analytics","none"),
-                ("telemetry","none"),
-                ("source",   "huggingface.co"),
-            ],
-            isLast: false
-        ),
-        OnboardingPage(
-            caption: "learn & explore",
-            title: "Detailed\nUser Guide\nin Settings.",
-            body: "Need help? A comprehensive User Guide with instructions for every function, camera mode, voice dictation, and Mac Bridge is always available inside App Settings.",
-            matrix: [
-                ("location", "Settings ➔ User Guide"),
-                ("screenshots", "annotated visuals"),
-                ("contents",  "all menus & functions"),
-                ("updates",   "local-first documentation")
-            ],
-            isLast: true
-        ),
-    ]
 
     var body: some View {
         ZStack {
             LiquidPinkBackdrop()
-
             VStack(spacing: 0) {
-                // Wordmark header
-                HStack {
-                    KWordmark(name: "OnDevice Core", logoAsset: "app_logo_small")
-                    Spacer()
-                    KMono(text: "v\(appVersion)", size: 10, color: T.ink3)
-                    if page < pages.count - 1 {
-                        Button {
-                            settings.hasSeenOnboarding = true
-                        } label: {
-                            Text("skip")
-                                .font(T.mono(11))
-                                .foregroundColor(T.ink3)
+                header
+                if page == 2 {
+                    OnboardingModelPickerView { settings.hasSeenOnboarding = true }
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 20) {
+                            if page == 0 { welcome } else { privacy }
                         }
-                        .buttonStyle(.plain)
-                        .padding(.leading, 12)
+                        .padding(.horizontal, 22)
+                        .padding(.top, 22)
+                        .padding(.bottom, 24)
+                        .frame(maxWidth: 560)
+                        .frame(maxWidth: .infinity)
                     }
+                    .scrollIndicators(.hidden)
+                    .safeAreaInset(edge: .bottom, spacing: 0) { navigation }
                 }
-                .padding(.horizontal, 22)
-                .padding(.top, 18)
-
-                TabView(selection: $page) {
-                    ForEach(Array(pages.enumerated()), id: \.offset) { idx, p in
-                        pageView(p).tag(idx)
-                    }
-                    // Picker is the final page. Its own CTA bar lives
-                    // inside the view; the parent nav hides itself
-                    // when this page is active.
-                    OnboardingModelPickerView {
-                        settings.hasSeenOnboarding = true
-                    }
-                    .tag(pickerIndex)
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-            }
-
-            // Bottom: dots + continue (hidden on the picker page —
-            // it brings its own primary CTA).
-            if !onPickerPage {
-                VStack {
-                    Spacer()
-                    VStack(spacing: 14) {
-                        HStack(spacing: 6) {
-                            ForEach(0..<totalTabs, id: \.self) { i in
-                                Capsule()
-                                    .fill(i == page ? T.ink : T.ink4)
-                                    .frame(width: i == page ? 18 : 5, height: 5)
-                                    .animation(.spring(duration: 0.3), value: page)
-                            }
-                        }
-
-                        Button {
-                            withAnimation { page += 1 }
-                        } label: {
-                            HStack {
-                                Text("next")
-                                    .font(T.mono(14, .semibold))
-                                    .tracking(0.3)
-                                Spacer()
-                                Text("→")
-                                    .font(T.mono(11))
-                                    .foregroundColor(T.ink4)
-                            }
-                            .foregroundColor(T.bg)
-                            .padding(.horizontal, 16)
-                            .frame(height: 50)
-                            .background(RoundedRectangle(cornerRadius: 10).fill(T.ink))
-                        }
-                        .buttonStyle(.plain)
-
-                        Text("nothing leaves the device.")
-                            .font(T.mono(9))
-                            .tracking(0.4)
-                            .foregroundColor(T.ink3)
-                    }
-                    .padding(.horizontal, 22)
-                    .padding(.bottom, 40)
-                }
-                .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: onPickerPage)
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            if page > 0 {
+                Button { advance(to: page - 1) } label: {
+                    Image(systemName: "chevron.left")
+                        .font(T.sans(16, .semibold))
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("Previous step")
+            } else {
+                Image("app_logo_small")
+                    .resizable().scaledToFit().frame(width: 32, height: 32)
+                    .accessibilityHidden(true)
+            }
+            Text("OnDevice Core")
+                .font(T.sans(15, .semibold))
+            Spacer(minLength: 4)
+            Button("Explore first") { settings.hasSeenOnboarding = true }
+                .font(T.sans(13))
+                .foregroundStyle(T.ink2)
+                .frame(minHeight: 44)
+                .accessibilityHint("Skip setup. Choose models later in the Models tab.")
+        }
+        .foregroundStyle(T.ink)
+        .buttonStyle(KTactileButtonStyle())
+        .padding(.horizontal, 22)
+        .padding(.top, 8)
     }
 
     @ViewBuilder
-    private func pageView(_ p: OnboardingPage) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Spacer().frame(height: 12)
+    private var welcome: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            eyebrow("WELCOME TO YOUR STUDIO")
+            Text("Powerful AI.\nCloser to you.")
+                .font(T.display(36, .semibold)).tracking(-1)
+                .foregroundStyle(T.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            Text("Write, see, and speak with models running on your device.")
+                .font(T.sans(16)).foregroundStyle(T.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        VStack(spacing: 6) {
+            VoiceActivityOrb(phase: previewPhase, micLevel: preview == 2 ? 0.45 : 0.18,
+                             reduceMotion: reduceMotion, samplesLiveAudio: false)
+                .frame(height: dynamicTypeSize.isAccessibilitySize ? 130 : 160)
+                .accessibilityLabel("Voice appearance preview")
+            if dynamicTypeSize.isAccessibilitySize {
+                previewPicker.pickerStyle(.menu)
+            } else {
+                previewPicker.pickerStyle(.segmented)
+            }
+            Text("A preview of voice. Your microphone is off.")
+                .font(T.sans(12)).foregroundStyle(T.ink2)
+                .multilineTextAlignment(.center)
+                .padding(.top, 6)
+        }
+        VStack(spacing: 14) {
+            feature("text.bubble", title: "Assistant", detail: "Ask questions, shape ideas, and make writing your own.")
+            feature("viewfinder", title: "Lens", detail: "Bring text and images into the conversation.")
+            feature("waveform", title: "Voice", detail: "Talk naturally and choose the voice that suits you.")
+        }
+    }
 
-            // Hero
-            VStack(alignment: .leading, spacing: 8) {
-                KCaption(text: p.caption, color: T.ink2)
-                Text(p.title)
-                    .font(T.display(38, .semibold))
-                    .tracking(-1.4)
-                    .foregroundColor(T.ink)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(p.body)
-                    .font(T.sans(14))
-                    .foregroundColor(T.ink2)
-                    .padding(.top, 4)
-                    .lineSpacing(3)
+    private var previewPicker: some View {
+        Picker("Preview a voice state", selection: $preview) {
+            Text("Listen").tag(0)
+            Text("Think").tag(1)
+            Text("Speak").tag(2)
+        }
+        .accessibilityIdentifier("onboardingVoicePreview")
+    }
+
+    @ViewBuilder
+    private var privacy: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            eyebrow("YOU CHOOSE WHAT CONNECTS")
+            Text("Local by default.\nYours to control.")
+                .font(T.display(36, .semibold)).tracking(-1)
+                .foregroundStyle(T.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            Text("Start with models that fit your device. Add more when you need them.")
+                .font(T.sans(16)).foregroundStyle(T.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        VStack(alignment: .leading, spacing: 26) {
+            feature("arrow.down.circle", title: "Download once. Use offline.",
+                    detail: "Model downloads need internet and storage. Downloaded local models run on your device.")
+            feature("network", title: "Connections are your choice.",
+                    detail: "Cloud providers, web tools, and Mac connections are optional. Using them can send content off your device.")
+            feature("slider.horizontal.3", title: "Build your own collection.",
+                    detail: "Find chat, vision, voice, and image models in Models. You can change your choices later.")
+        }
+        .padding(20)
+        .kGlass(cornerRadius: 20, fallbackFill: T.surface)
+        Label("Need a hand? The User Guide is in Settings.", systemImage: "book.closed")
+            .font(T.sans(13)).foregroundStyle(T.ink2)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func eyebrow(_ text: String) -> some View {
+        Text(text).font(T.mono(10, .medium)).tracking(1.2).foregroundStyle(T.ink2)
+    }
+
+    private func feature(_ symbol: String, title: String, detail: String) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: symbol)
+                .font(T.sans(20)).foregroundStyle(T.ink)
+                .frame(width: 28, height: 28).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(T.sans(15, .semibold)).foregroundStyle(T.ink)
+                Text(detail).font(T.sans(14)).foregroundStyle(T.ink2)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
 
-            Spacer()
-
-            // Capability matrix
-            VStack(spacing: 0) {
-                ForEach(Array(p.matrix.enumerated()), id: \.offset) { i, row in
-                    if i > 0 { Rectangle().fill(T.rule).frame(height: 1) }
-                    HStack {
-                        KMono(text: row.0, size: 11, color: T.ink3)
-                            .frame(width: 100, alignment: .leading)
-                        KMono(text: row.1, size: 11, color: T.ink)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 9)
+    private var navigation: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 6) {
+                ForEach(0..<3) { index in
+                    Capsule().fill(index == page ? T.ink : T.rule)
+                        .frame(width: 24, height: 3)
                 }
+                Spacer()
+                Text("\(page + 1) of 3").font(T.mono(11)).foregroundStyle(T.ink2)
             }
-            .kGlass(cornerRadius: 8, fallbackFill: T.surface)
-
-            Spacer().frame(height: 130)   // room for bottom nav
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Step \(page + 1) of 3")
+            KPrimaryButton(label: page == 0 ? "Make it yours" : "Choose your models",
+                           systemImage: "arrow.right") {
+                advance(to: page + 1)
+            }
+            .accessibilityIdentifier("onboardingContinue")
         }
         .padding(.horizontal, 22)
+        .padding(.top, 16)
+        .padding(.bottom, 12)
+        .background(T.bg)
     }
-}
 
-private struct OnboardingPage {
-    let caption: String
-    let title: String
-    let body: String
-    let matrix: [(String, String)]
-    var isLast: Bool = false
+    private func advance(to step: Int) {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { page = step }
+    }
 }

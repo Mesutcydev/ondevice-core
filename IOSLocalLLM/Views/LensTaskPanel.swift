@@ -401,9 +401,14 @@ struct LensModeSelector: View {
     @Binding var selection: LensMode
     let onSelection: (LensMode) -> Void
     @Namespace private var selectionAnimation
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var textSize
 
     var body: some View {
-        HStack(spacing: 3) {
+        let layout = textSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: 3))
+            : AnyLayout(HStackLayout(spacing: 3))
+        layout {
             ForEach(LensMode.allCases) { mode in
                 Button {
                     selection = mode
@@ -412,7 +417,8 @@ struct LensModeSelector: View {
                     Text(mode.label)
                         .font(.subheadline.weight(selection == mode ? .semibold : .regular))
                         .foregroundStyle(selection == mode ? .primary : .secondary)
-                        .frame(maxWidth: .infinity, minHeight: 38)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, minHeight: 44)
                         .background {
                             if selection == mode {
                                 RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -433,7 +439,7 @@ struct LensModeSelector: View {
         }
         .padding(3)
         .background(.primary.opacity(0.065), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .animation(.spring(response: 0.34, dampingFraction: 0.88), value: selection)
+        .animation(reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.88), value: selection)
     }
 }
 

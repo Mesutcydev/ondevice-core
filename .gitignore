@@ -86,6 +86,11 @@ metadata/
 Docs/marketing/
 new-app-icon.png
 
+# Sim-compat test project (regenerate with
+# `xcodegen generate --spec project-simcompat.yml`; the spec and workspace
+# are committed, the generated project is not)
+OnDeviceSimCompat.xcodeproj/
+
 # Temporary files
 tmp/
 *.tmp

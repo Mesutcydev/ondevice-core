@@ -47,8 +47,8 @@ struct HomeView: View {
                 recentSection
                 privacyCard
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 8)
+            .padding(.horizontal, AppSpacing.large)
+            .padding(.top, AppSpacing.large)
             .padding(.bottom, 28)
         }
         .background(LiquidPinkBackdrop())
@@ -58,33 +58,17 @@ struct HomeView: View {
     // MARK: Header — greeting + avatar/settings
 
     private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(greeting.uppercased())
-                    .font(T.sans(13, .semibold))
-                    .tracking(0)
-                    .foregroundColor(T.ink3)
-                Text("OnDevice Core")
-                    .font(T.display(30, .semibold))
-                    .foregroundColor(T.ink)
-            }
-            Spacer()
+        KScreenHeader(title: "OnDevice Core", eyebrow: greeting) {
             Button(action: { HapticManager.impact(.light); onOpenSettings() }) {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(T.ink2)
-                    .frame(width: 40, height: 40)
-                    .kClearGlass(
-                        in: Circle(),
-                        interactive: true,
-                        fallbackFill: T.surface,
-                        fallbackStroke: T.rule
-                    )
+                Image(systemName: "gearshape")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(T.ink2)
+                    .frame(width: 44, height: 44)
+                    .kClearGlass(in: Circle(), interactive: true)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(KTactileButtonStyle())
             .accessibilityLabel(loc.t("settings"))
         }
-        .padding(.top, 6)
     }
 
     // MARK: Hero — assistant ready
@@ -114,7 +98,10 @@ struct HomeView: View {
         if case .loading(let m) = assistant.state, !m.isEmpty { return m }
         if case .failed(let e) = assistant.state, !e.isEmpty,
            !e.localizedCaseInsensitiveContains("cancel") { return e }
-        return "\(assistant.activeModel.displayName) — \(loc.t("replies stay on your iPhone"))"
+        if assistant.activeExecutionLocation == .applePrivateCloud {
+            return "\(assistant.activeDisplayName) · Apple Private Cloud"
+        }
+        return "\(assistant.activeDisplayName) · \(loc.t("On-device inference"))"
     }
 
     /// True while any model is actively downloading — so the hero reads
@@ -134,11 +121,11 @@ struct HomeView: View {
             HStack(spacing: 8) {
                 Circle().fill(state.dot)
                     .frame(width: 7, height: 7)
-                Text(loc.t("Running on-device").uppercased())
+                Text(loc.t("Your local AI studio"))
                     .font(T.sans(12, .bold)).tracking(0)
                     .foregroundColor(T.ink3)
                 Spacer()
-                Image(systemName: "lock.fill")
+                Image(systemName: assistant.activeExecutionLocation == .applePrivateCloud ? "cloud" : "lock.fill")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(T.ink3)
             }
@@ -153,26 +140,15 @@ struct HomeView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack(spacing: 10) {
-                Button(action: { HapticManager.impact(.medium); onNewChat() }) {
-                    Text(loc.t("New chat"))
-                        .font(T.sans(15, .semibold))
-                        .foregroundColor(T.accentStrong)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .kClearGlass(
-                            in: RoundedRectangle(cornerRadius: 12, style: .continuous),
-                            tint: T.accentStrong.opacity(0.26),
-                            interactive: true,
-                            fallbackFill: T.accentStrong,
-                            fallbackStroke: T.accent.opacity(0.35)
-                        )
+                KPrimaryButton(label: loc.t("New chat"), systemImage: "square.and.pencil") {
+                    HapticManager.impact(.medium)
+                    onNewChat()
                 }
-                .buttonStyle(.plain)
                 Button(action: { HapticManager.impact(.light); onOpenVoice() }) {
                     Image(systemName: "mic.fill")
                         .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(T.ink)
-                        .frame(width: 48, height: 46)
+                        .frame(width: 48, height: 48)
                         .kClearGlass(
                             in: RoundedRectangle(cornerRadius: 12, style: .continuous),
                             interactive: true,
@@ -233,11 +209,11 @@ struct HomeView: View {
                     .background(T.accentStrong, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Generate an Image")
-                        .font(.headline)
+                    Text(loc.t("Generate an image"))
+                        .font(T.sans(15, .semibold))
                         .foregroundStyle(T.ink)
                     Text("Create images privately with on-device models")
-                        .font(.subheadline)
+                        .font(T.sans(13))
                         .foregroundStyle(T.ink2)
                         .multilineTextAlignment(.leading)
                 }
@@ -273,8 +249,12 @@ struct HomeView: View {
             if recent.isEmpty {
                 HStack(spacing: 12) {
                     iconTile("message", tint: T.accent)
-                    Text(loc.t("No recent activity yet"))
-                        .font(T.sans(15)).foregroundColor(T.ink3)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(loc.t("No recent activity yet"))
+                            .font(T.sans(15, .medium)).foregroundColor(T.ink)
+                        Text(loc.t("Your conversations will appear here."))
+                            .font(T.sans(13)).foregroundColor(T.ink2)
+                    }
                     Spacer()
                 }
                 .padding(14)
@@ -332,7 +312,7 @@ struct HomeView: View {
             Button(action: { HapticManager.impact(.light); onOpenModels() }) {
                 Text(loc.t("Manage"))
                     .font(T.sans(13, .semibold)).foregroundColor(T.ink)
-                    .padding(.horizontal, 13).padding(.vertical, 7)
+                    .padding(.horizontal, 13).frame(minHeight: 44)
                     .kClearGlass(
                         in: Capsule(),
                         interactive: true,

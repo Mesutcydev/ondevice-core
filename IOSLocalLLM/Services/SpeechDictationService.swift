@@ -41,6 +41,63 @@ final class SpeechDictationService: ObservableObject {
 
     private let recognizer = SpeechDictationService.makeRecognizer()
 
+    // MARK: - Level metering
+
+    /// RMS of the first channel, computed on the audio thread: no locks, no
+    /// allocations beyond the (unrolled) accumulation.
+    nonisolated static func rms(of buffer: AVAudioPCMBuffer) -> Float {
+        guard let samples = buffer.floatChannelData?[0] else { return 0 }
+        let frameCount = Int(buffer.frameLength)
+        guard frameCount > 0 else { return 0 }
+        var sum: Float = 0
+        var i = 0
+        while i + 4 <= frameCount {
+            let a = samples[i], b = samples[i + 1], c = samples[i + 2], d = samples[i + 3]
+            sum += a * a + b * b + c * c + d * d
+            i += 4
+        }
+        while i < frameCount {
+            let s = samples[i]
+            sum += s * s
+            i += 1
+        }
+        let value = sqrt(sum / Float(frameCount))
+        return value.isFinite ? value : 0
+    }
+
+    /// RMS → display level, shared by every capture path so the orb and the
+    /// composer waveform behave identically across engines.
+    ///
+    /// Replaces `min(1, rms * 8)`, which pinned at 1.0 for ordinary speech and
+    /// handed the orb a flat-topped envelope that then fell off a cliff, and
+    /// which had no floor, so room noise kept ticking the orb. The knee is
+    /// continuous in value and slope; the exponential keeps headroom instead of
+    /// clamping while tracking the old gain closely above the floor.
+    nonisolated static func displayLevel(
+        rms: Float,
+        noiseFloor: Float = 0.012,
+        gain: Float = 12
+    ) -> Float {
+        guard rms.isFinite else { return 0 }
+        let clamped = min(max(rms, 0), 1)
+        let knee = max(noiseFloor, 0) * 2
+        let shaped = clamped <= knee
+            ? (clamped * clamped) / (2 * max(knee, 1e-6))
+            : clamped - knee / 2
+        let scaled = min(shaped / max(1 - knee / 2, 1e-4), 1)
+        return 1 - exp(-gain * scaled)
+    }
+
+    /// Single writer of `levelMeter` from the audio thread. Main-actor jobs run
+    /// FIFO, so samples stay in capture order, and the equality guard keeps a
+    /// steady level from re-publishing on every buffer.
+    nonisolated private func publishLevel(_ value: Float) {
+        Task { @MainActor [weak self] in
+            guard let self, self.levelMeter != value else { return }
+            self.levelMeter = value
+        }
+    }
+
     /// Picks the best available SFSpeechRecognizer using a locale chain:
     ///
     ///   0. user-pinned locale (`AppSettings.sttLocaleOverride`)
@@ -344,14 +401,7 @@ final class SpeechDictationService: ObservableObject {
             guard let self else { return }
             // Compute RMS even when paused — caller relies on the level
             // meter for VAD calibration and orb animation.
-            if let channelData = buffer.floatChannelData?[0] {
-                let frameCount = Int(buffer.frameLength)
-                var sum: Float = 0
-                for i in 0..<frameCount { sum += channelData[i] * channelData[i] }
-                let rms = sqrt(sum / Float(max(frameCount, 1)))
-                let normalised = min(1.0, max(0.0, rms * 8))
-                Task { @MainActor [weak self] in self?.levelMeter = normalised }
-            }
+            self.publishLevel(Self.displayLevel(rms: Self.rms(of: buffer)))
             // Feed the neural VAD regardless of pause state — barge-in has to
             // keep detecting the user's voice while the assistant is speaking.
             if self.captureVADFrames { self.captureFramesForVAD(buffer) }
@@ -539,14 +589,7 @@ final class SpeechDictationService: ObservableObject {
         inputNode.removeTap(onBus: 0)
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: nil) { [weak self] buffer, _ in
             guard let self else { return }
-            if let channelData = buffer.floatChannelData?[0] {
-                let frameCount = Int(buffer.frameLength)
-                var sum: Float = 0
-                for i in 0..<frameCount { sum += channelData[i] * channelData[i] }
-                let rms = sqrt(sum / Float(max(frameCount, 1)))
-                let normalised = min(1.0, max(0.0, rms * 8))
-                Task { @MainActor [weak self] in self?.levelMeter = normalised }
-            }
+            self.publishLevel(Self.displayLevel(rms: Self.rms(of: buffer)))
             if self.captureVADFrames { self.captureFramesForVAD(buffer) }
             guard !self.inputPaused else { return }
             self.appendToCurrentRequest(buffer)
@@ -649,14 +692,7 @@ final class SpeechDictationService: ObservableObject {
             // Same RMS → level meter math as the SFSpeech path so the
             // composer's waveform UI doesn't behave differently between
             // providers.
-            if let channelData = buffer.floatChannelData?[0] {
-                let frameCount = Int(buffer.frameLength)
-                var sum: Float = 0
-                for i in 0..<frameCount { sum += channelData[i] * channelData[i] }
-                let rms = sqrt(sum / Float(max(frameCount, 1)))
-                let normalised = min(1.0, max(0.0, rms * 8))
-                Task { @MainActor [weak self] in self?.levelMeter = normalised }
-            }
+            self.publishLevel(Self.displayLevel(rms: Self.rms(of: buffer)))
             // Append resampled samples to the running buffer. Resampling
             // per-buffer (vs. once at the end) keeps memory bounded and
             // makes a long dictation degrade linearly rather than spiking

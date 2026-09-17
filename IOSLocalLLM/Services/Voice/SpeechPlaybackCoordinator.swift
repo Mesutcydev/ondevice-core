@@ -26,7 +26,10 @@ final class SpeechPlaybackCoordinator: ObservableObject {
     @Published private(set) var alignmentDetail: String?
 
     private let playback = AudioPlaybackService.shared
-    private let smoother = VoiceLevelSmoother(attack: 0.42, release: 0.88, noiseFloor: 0.04)
+    // Attack/release are time constants in seconds; they match the effective
+    // constants of the old per-tick coefficients at 30 Hz, so the envelope
+    // feels the same but no longer depends on the tick rate we are handed.
+    private let smoother = VoiceLevelSmoother(attack: 0.06, release: 0.26, noiseFloor: 0.04)
     private let timingProvider = EstimatedSpeechTimingProvider.shared
     private let acousticAligner = AcousticSpeechAlignmentProvider.shared
     private var displayLink = VoiceDisplayLink()
@@ -94,7 +97,7 @@ final class SpeechPlaybackCoordinator: ObservableObject {
                         guard let self else { return }
                         for _ in 0..<8 {
                             if self.playback.isPlaying { return }
-                            let decayed = max(0, self.smoother.smooth(0) - 0.04)
+                            let decayed = self.smoother.smooth(0, dt: 0.03)
                             VoiceVisualLevelStore.shared.playbackLevel = decayed
                             self.publishOrbLevel(decayed, force: true)
                             try? await Task.sleep(nanoseconds: 30_000_000)
@@ -679,7 +682,10 @@ final class SpeechPlaybackCoordinator: ObservableObject {
             }
             return 0
         }()
-        let visual = max(0, smoother.smooth(raw) - 0.04)
+        // The noise floor is a soft knee inside the smoother now; a second
+        // hard `- 0.04` here made the level snap to zero every time a quiet
+        // tail crossed it.
+        let visual = smoother.smooth(raw, dt: Float(link.duration))
         VoiceVisualLevelStore.shared.playbackLevel = visual
         lastPublishedLevel = visual
 

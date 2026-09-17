@@ -5,6 +5,45 @@ and intends to use semantic version tags for source releases.
 
 ## [Unreleased]
 
+### Added
+
+- Edge0 expert loaders resolve per-layer tensor locations and row geometry
+  once at model load (upstream PR #7 pattern); per-expert loads are now pure
+  advise → pread → wrap with byte-identical ranges.
+- Edge0 diagnostics report NAX (Metal 4 tensor-core) eligibility, and
+  `scripts/patch-mlx-disable-nax.sh` toggles the MLX NAX gate for A/B runs.
+
+### Changed
+
+- Edge0 loaders validate checkpoints fail-fast at load time; a missing or
+  malformed expert tensor throws before the engine opens instead of on the
+  first expert fetch.
+- Corrected the iPhone 18,2 chip label from A18 Pro to A19 Pro across the
+  Edge0 documentation.
+
+### Fixed
+
+- Cleared the remaining Swift 6 readiness warnings in the Edge0 runtime and
+  its tests (Sendable conformances, NSLock use in async contexts, deprecated
+  `asData(noCopy:)` calls).
+
+### Notes
+
+- Phase 5M bounded expert readahead is implemented but off by default
+  pending the device A/B; the per-token router readback path is unchanged.
+- Focused Edge0 suites now execute on the simulator through an isolated
+  sim-compat project (`project-simcompat.yml` + `OnDeviceSimCompat.xcworkspace`);
+  see `Docs/VALIDATION.md`. Checkpoint- and fixture-gated cases skip cleanly.
+- Added `Docs/EDGE0_AUDIT_ROUND_2026-09-17.md` (fork audit) and
+  `Docs/EDGE0_UPSTREAM_DOCS_AUDIT_2026-09-17.md` (upstream docs/repo audit).
+
+## [1.0.0] - 2026-09-17
+
+### Changed
+
+- Refreshed the open-source release metadata (CITATION.cff, SBOM) to the 1.0.0
+  marketing version used by the sideload release track.
+
 ### Fixed
 
 - Sideload build 110 restores the OnDevice LLM display name and preserves the

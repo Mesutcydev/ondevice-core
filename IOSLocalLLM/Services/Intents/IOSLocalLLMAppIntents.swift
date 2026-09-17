@@ -20,7 +20,7 @@ import Foundation
 struct AskIOSLocalLLMIntent: AppIntent {
     static var title: LocalizedStringResource = "Ask OnDevice"
     static var description = IntentDescription(
-        "Ask the on-device assistant a question. Opens OnDevice and answers locally — nothing leaves your device."
+        "Open OnDevice Core to ask, write, or explore with your selected model. Network use depends on the model and tools you enable."
     )
     static var openAppWhenRun: Bool = true
 

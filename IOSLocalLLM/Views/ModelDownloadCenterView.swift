@@ -368,7 +368,7 @@ struct ModelDownloadCenterView: View {
     private var infoSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                KCaption(text: "guarantees")
+                KCaption(text: "your model library")
                 Rectangle().fill(T.rule).frame(height: 1)
             }
             .padding(.bottom, 8)
@@ -380,7 +380,7 @@ struct ModelDownloadCenterView: View {
                         .foregroundColor(T.good)
                     VStack(alignment: .leading, spacing: 2) {
                         KMono(text: "privacy", size: 11, weight: .semibold, color: T.ink)
-                        Text("All models run 100% on-device after download. No data is sent to any server.")
+                        Text("Downloaded local models run on your device. Optional cloud models, web tools, and connected features use the network when enabled.")
                             .font(T.sans(11))
                             .foregroundColor(T.ink2)
                             .fixedSize(horizontal: false, vertical: true)

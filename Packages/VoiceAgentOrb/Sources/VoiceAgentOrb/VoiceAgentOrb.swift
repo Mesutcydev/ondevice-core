@@ -17,9 +17,14 @@ import SwiftUI
 ///
 /// Rendering: two `Canvas` surfaces (interior + glass shell) driven by a
 /// single display-synchronised clock through ``VoiceOrbAnimationCoordinator``.
-/// An optional lightweight Metal refraction effect is applied to the
-/// interior only, on full quality, off simulator, and never with
-/// Reduce Motion. The animation clock pauses while the scene is inactive.
+/// The animation clock pauses while the scene is inactive.
+///
+/// The interior refraction shader in `Shaders/VoiceOrbShaders.metal` is *not*
+/// applied by this package: SwiftPM does not compile `[[stitchable]]` shaders
+/// into `ShaderLibrary.bundle` the way an Xcode app target does. Adopters that
+/// want the light-bend add the file to their own target and apply
+/// `ShaderLibrary.voiceOrbRefraction` to the orb; every visual layer has a
+/// non-Metal fallback, so the orb renders identically structured without it.
 public struct VoiceAgentOrb: View {
 
     public let state: VoiceOrbState
@@ -48,6 +53,7 @@ public struct VoiceAgentOrb: View {
     @State private var paletteCache = VoiceOrbPaletteCacheReference()
     @State private var haptics = VoiceOrbHaptics()
     @State private var lastHandledKind: VoiceOrbStateKind?
+    @State private var isVisible = false
 
     public init(
         state: VoiceOrbState,
@@ -104,7 +110,9 @@ public struct VoiceAgentOrb: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabelOverride ?? VoiceOrbAccessibility.label(for: state))
         .onAppear {
+            isVisible = true
             haptics.prepare()
+            performancePolicy.sceneIsActive = scenePhase == .active
             performancePolicy.reduceMotion = reduceMotion
             coordinator.setReducedMotion(reduceMotion, now: Self.clockNow())
             coordinator.setState(state, now: Self.clockNow())
@@ -117,15 +125,20 @@ public struct VoiceAgentOrb: View {
         .onChange(of: reduceMotion) { _, flag in
             performancePolicy.reduceMotion = flag
             coordinator.setReducedMotion(flag, now: Self.clockNow())
+            updateRenderClock()
         }
         .onChange(of: scenePhase) { _, phase in
-            performancePolicy.sceneIsActive = (phase == .active)
+            performancePolicy.sceneIsActive = isVisible && phase == .active
             updateRenderClock()
         }
         .onChange(of: effectiveQuality) { _, _ in
             updateRenderClock()
         }
-        .onDisappear { renderClock.stop() }
+        .onDisappear {
+            isVisible = false
+            performancePolicy.sceneIsActive = false
+            renderClock.stop()
+        }
     }
 
     private func sampledLevels() -> (microphone: CGFloat, output: CGFloat, speechActivity: CGFloat) {
@@ -148,6 +161,9 @@ public struct VoiceAgentOrb: View {
 
         ZStack {
             // Interior: volume, energy, core, particles, waves.
+            // Hosts that ship `Shaders/VoiceOrbShaders.metal` in their own
+            // target can apply `voiceOrbRefraction` to this surface only; the
+            // shell stays undistorted so the glass edge remains crisp.
             Canvas { context, canvasSize in
                 var ctx = context
                 VoiceOrbRenderer.drawInterior(
@@ -155,12 +171,6 @@ public struct VoiceAgentOrb: View {
                     snapshot: snapshot, colors: colors, quality: quality
                 )
             }
-            .modifier(VoiceOrbRefractionModifier(
-                time: now,
-                intensity: refractionIntensity(for: snapshot),
-                size: size,
-                enabled: quality.allowsDistortion && !snapshot.reducedMotion
-            ))
 
             // Shell: shadow, glow, glass, rim, fringe, progress ring.
             Canvas { context, canvasSize in
@@ -174,19 +184,13 @@ public struct VoiceAgentOrb: View {
         }
     }
 
-    private func refractionIntensity(for snapshot: VoiceOrbFrameSnapshot) -> Double {
-        let config = snapshot.config
-        return 0.35 * config.energy
-            + 0.40 * snapshot.micLevel
-            + 0.45 * snapshot.outputLevel
-    }
-
     // MARK: State changes
 
     private func handleStateChange(_ newState: VoiceOrbState) {
         let now = Self.clockNow()
         let signpost = VoiceOrbSignpost.begin("StateChangeToRender")
         coordinator.setState(newState, now: now)
+        if reduceMotion { renderClock.refreshStaticFrame() }
         VoiceOrbSignpost.end("StateChangeToRender", signpost)
 
         // Haptics and announcements fire once per *kind*, never per frame or
@@ -204,8 +208,9 @@ public struct VoiceAgentOrb: View {
     private func updateRenderClock() {
         renderClock.configure(
             interval: effectiveQuality.minimumFrameInterval ?? (1.0 / 30.0),
-            active: scenePhase == .active
+            active: isVisible && scenePhase == .active && !reduceMotion
         )
+        if reduceMotion { renderClock.refreshStaticFrame() }
     }
 }
 
@@ -247,6 +252,8 @@ private final class VoiceAgentOrbRenderClock: ObservableObject {
     #endif
     private var interval = 1.0 / 30.0
     private var isActive = false
+    private var pendingFrame: Task<Void, Never>?
+    private var latestFrameDate = Date()
     private var referenceTimeOffset = Date().timeIntervalSinceReferenceDate - CACurrentMediaTime()
 
     func configure(interval: Double, active: Bool) {
@@ -283,6 +290,8 @@ private final class VoiceAgentOrbRenderClock: ObservableObject {
         #endif
     }
 
+    func refreshStaticFrame() { date = Date() }
+
     func stop() {
         isActive = false
         stopLink()
@@ -300,6 +309,8 @@ private final class VoiceAgentOrbRenderClock: ObservableObject {
     }
 
     private func stopLink() {
+        pendingFrame?.cancel()
+        pendingFrame = nil
         #if os(macOS)
         timer?.invalidate()
         timer = nil
@@ -312,15 +323,19 @@ private final class VoiceAgentOrbRenderClock: ObservableObject {
     #if !os(macOS)
     @objc private func tick(_ link: CADisplayLink) {
         guard isActive else { return }
-        let frameDate = Date(
+        latestFrameDate = Date(
             timeIntervalSinceReferenceDate: link.targetTimestamp + referenceTimeOffset
         )
-        // Display-link callbacks can arrive inside SwiftUI's update pass.
-        // Yield once so publishing the next frame starts a fresh transaction.
-        Task { @MainActor [weak self] in
+        // Coalesce while SwiftUI is busy. At most one deferred publication
+        // exists, and it always uses the newest frame rather than replaying
+        // an accumulated queue of obsolete timestamps after a stall.
+        guard pendingFrame == nil else { return }
+        pendingFrame = Task { @MainActor [weak self] in
             await Task.yield()
-            guard let self, self.isActive else { return }
-            self.date = frameDate
+            guard !Task.isCancelled, let self else { return }
+            self.pendingFrame = nil
+            guard self.isActive else { return }
+            self.date = self.latestFrameDate
         }
     }
     #endif
@@ -331,30 +346,5 @@ private final class VoiceAgentOrbRenderClock: ObservableObject {
         #else
         displayLink?.invalidate()
         #endif
-    }
-}
-
-// MARK: - Metal refraction (optional)
-
-/// Applies the small `voiceOrbRefraction` distortion to the interior canvas
-/// only. Falls back to a no-op whenever the effect is disabled, on simulator
-/// builds, or where Metal stitching is unavailable — the orb renders
-/// identically structured either way, just without the light-bend.
-///
-/// SwiftPM does not compile `.metal` stitchables into `ShaderLibrary.bundle`
-/// the way an Xcode app target does. Keep Canvas as the production path here;
-/// host apps can re-enable Metal by dropping `VoiceOrbShaders.metal` into
-/// their target and wiring a custom modifier.
-private struct VoiceOrbRefractionModifier: ViewModifier {
-    let time: Double
-    let intensity: Double
-    let size: Double
-    let enabled: Bool
-
-    func body(content: Content) -> some View {
-        // Canvas fallback is intentional for package builds / simulator.
-        // The visual still has layered energy fields, glass shell, and glow.
-        _ = (time, intensity, size, enabled)
-        return content
     }
 }

@@ -28,13 +28,19 @@ enum ToolRunner {
     /// advertise tools for curated packs whose complete dialect is supported.
     /// MLX/GGUF keep the app's existing tolerant text protocol so adding Core
     /// AI cannot regress imported or previously working models.
+    ///
+    /// Resolution goes through `RuntimeEngineFactory.capabilities` so a model
+    /// runtime that cannot safely speak the tool protocol (Core AI, future
+    /// Edge0) requires explicit model support.
     static func toolsEnabled(
         settingEnabled: Bool,
         runtime: ModelRuntime,
         modelSupportsTools: Bool
     ) -> Bool {
         guard settingEnabled else { return false }
-        return runtime != .coreAI || modelSupportsTools
+        return RuntimeEngineFactory
+            .capabilities(runtime: runtime, modelTools: modelSupportsTools)
+            .supportsTools
     }
 
     /// Short guardrail for Core AI models whose native tool dialect is not

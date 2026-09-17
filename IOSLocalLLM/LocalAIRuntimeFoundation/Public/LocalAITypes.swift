@@ -112,6 +112,13 @@ public struct GenerationOptions: Codable, Hashable, Sendable {
     public var toolMode: ToolMode
     public var kvCacheBits: Int?
 
+    /// Extended sampling controls used by runtimes that sample locally and
+    /// are not covered by the OpenAI-style core set. nil disables the filter.
+    public var topK: Int?
+    public var minP: Double?
+    public var presencePenalty: Double?
+    public var frequencyPenalty: Double?
+
     public init(
         maxTokens: Int = 1_024,
         temperature: Double = 0.7,
@@ -121,7 +128,11 @@ public struct GenerationOptions: Codable, Hashable, Sendable {
         jsonMode: Bool = false,
         thinkingMode: ThinkingMode = .automatic,
         toolMode: ToolMode = .disabled,
-        kvCacheBits: Int? = 8
+        kvCacheBits: Int? = 8,
+        topK: Int? = nil,
+        minP: Double? = nil,
+        presencePenalty: Double? = nil,
+        frequencyPenalty: Double? = nil
     ) {
         self.maxTokens = maxTokens
         self.temperature = temperature
@@ -132,6 +143,10 @@ public struct GenerationOptions: Codable, Hashable, Sendable {
         self.thinkingMode = thinkingMode
         self.toolMode = toolMode
         self.kvCacheBits = kvCacheBits
+        self.topK = topK
+        self.minP = minP
+        self.presencePenalty = presencePenalty
+        self.frequencyPenalty = frequencyPenalty
     }
 
     public static let `default` = GenerationOptions()

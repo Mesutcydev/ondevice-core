@@ -30,6 +30,7 @@ struct OnboardingModelPickerView: View {
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var center   = ModelDownloadCenter.shared
     @Environment(\.koduTheme) private var T
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Called by the parent OnboardingView when the user finishes
     /// (either via "Download & Continue" or "Skip"). The parent
@@ -104,7 +105,7 @@ struct OnboardingModelPickerView: View {
         AssistantPick(
             id: "qwen2.5-coder-1.5b",
             displayName: "Qwen 2.5 Coder 1.5B",
-            summary: "Fast, code-tuned, runs on every device. The safe default.",
+            summary: "A compact starting point for writing and code. Check the device guidance below.",
             sizeLabel: "~900 MB",
             vendor: .qwen,
             capabilities: [.recommended]
@@ -170,11 +171,13 @@ struct OnboardingModelPickerView: View {
                 heroBlock
                 assistantSection
                 visualSection
-                Color.clear.frame(height: 100)   // breathing room under CTA bar
+
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
+            .padding(.bottom, 24)
         }
+        .scrollIndicators(.hidden)
         .background(LiquidPinkBackdrop())
         .overlay {
             // The gate is a blocking setup state, so it gets a full-screen
@@ -183,7 +186,7 @@ struct OnboardingModelPickerView: View {
             // copy (the top of a tall gate sits in the transparent zone).
             if phase == .downloading { gateOverlay }
         }
-        .overlay(alignment: .bottom) {
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             if phase == .picking { ctaBar }
         }
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
@@ -212,29 +215,13 @@ struct OnboardingModelPickerView: View {
 
     private var heroBlock: some View {
         VStack(spacing: 10) {
-            // Custom hero glyph — concentric rings with a pick mark.
-            // Differentiates from the reference's downward-arrow icon
-            // while landing in the same conceptual space.
-            ZStack {
-                Circle()
-                    .stroke(T.accent.opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
-                    .frame(width: 88, height: 88)
-                Circle()
-                    .fill(T.accentSoft)
-                    .frame(width: 60, height: 60)
-                Image(systemName: "checkmark")
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundColor(T.accent)
-            }
-            .padding(.top, 4)
-
             VStack(spacing: 6) {
-                KCaption(text: "STEP · MODEL PICK")
+                KCaption(text: "STEP 3 OF 3")
                 Text("Choose your models")
                     .font(T.display(26, .semibold))
                     .tracking(-0.5)
                     .foregroundColor(T.ink)
-                Text("Pick one assistant and one vision model. Both run entirely on your device — no servers, no API keys.")
+                Text("We selected a starting pair for your device. Review the download size, or explore first and choose later.")
                     .font(T.sans(13.5))
                     .foregroundColor(T.ink2)
                     .multilineTextAlignment(.center)
@@ -263,7 +250,7 @@ struct OnboardingModelPickerView: View {
         VStack(alignment: .leading, spacing: 10) {
             sectionHeader(eyebrow: "VISION",
                           title: "Multimodal",
-                          subtitle: "Camera capture, screen reading, image-to-text. Only multimodal models — text-only LLMs can't fill this slot.")
+                          subtitle: "Understand camera captures, screenshots, and images.")
             VStack(spacing: 10) {
                 ForEach(visualPicks) { pick in
                     visualCard(pick)
@@ -283,7 +270,7 @@ struct OnboardingModelPickerView: View {
                 .font(T.display(18, .semibold))
                 .foregroundColor(T.ink)
             Text(subtitle)
-                .font(T.sans(11.5))
+                .font(T.sans(13))
                 .foregroundColor(T.ink3)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -354,14 +341,14 @@ struct OnboardingModelPickerView: View {
                             .font(T.display(15, .semibold))
                             .tracking(-0.2)
                             .foregroundColor(T.ink)
-                            .lineLimit(1)
+                            .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 0)
                         Text(sizeLabel)
-                            .font(T.mono(9.5, .semibold))
+                            .font(T.mono(11, .semibold))
                             .foregroundColor(T.ink3)
                     }
                     Text(summary)
-                        .font(T.sans(11.5))
+                        .font(T.sans(13))
                         .foregroundColor(T.ink2)
                         .fixedSize(horizontal: false, vertical: true)
                     if !caps.isEmpty {
@@ -388,7 +375,8 @@ struct OnboardingModelPickerView: View {
                     radius: 10, y: 3)
         }
         .buttonStyle(.plain)
-        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: selected)
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: selected)
     }
 
     /// Small inline warning that surfaces marginal/wontFit verdicts on
@@ -453,10 +441,7 @@ struct OnboardingModelPickerView: View {
         }
         .padding(.top, 12)
         .padding(.bottom, 14)
-        .background(
-            LinearGradient(colors: [T.bg.opacity(0), T.bg, T.bg],
-                           startPoint: .top, endPoint: .bottom)
-        )
+        .background(T.bg)
     }
 
     // MARK: - Download gate
@@ -495,7 +480,7 @@ struct OnboardingModelPickerView: View {
         ZStack(alignment: .bottom) {
             T.bg.opacity(0.97)
                 .ignoresSafeArea()
-            gateBar
+            ScrollView { gateBar }
         }
         .transition(.opacity)
     }
@@ -506,8 +491,8 @@ struct OnboardingModelPickerView: View {
                 Text("Setting up your models")
                     .font(T.display(17, .semibold))
                     .foregroundColor(T.ink)
-                Text("Downloading your picks so everything runs on-device. One-time setup — it works offline afterwards. The camera already works from the built-in model; you can Skip and your picks keep downloading in the background (track them in the Models tab).")
-                    .font(T.sans(11.5))
+                Text("Your selected models are downloading. Keep this app open to finish, or continue and track progress in Models. Downloaded local models work offline.")
+                    .font(T.sans(13))
                     .foregroundColor(T.ink2)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
@@ -534,11 +519,10 @@ struct OnboardingModelPickerView: View {
             }
 
             Button { onComplete() } label: {
-                Text("Skip for now — finish in Models")
-                    .font(T.mono(10, .semibold))
-                    .tracking(0.5)
-                    .foregroundColor(T.ink3)
-                    .padding(.vertical, 6)
+                Text("Continue while downloading")
+                    .font(T.sans(14, .semibold))
+                    .foregroundColor(T.ink2)
+                    .frame(minHeight: 44)
             }
             .buttonStyle(.plain)
         }
@@ -692,7 +676,7 @@ struct OnboardingModelPickerView: View {
             onComplete()
         } else {
             HapticManager.impact(.medium)
-            withAnimation { phase = .downloading }
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { phase = .downloading }
         }
     }
 }

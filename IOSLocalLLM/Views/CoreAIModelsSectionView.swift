@@ -5,6 +5,7 @@ import SwiftUI
 /// ModelDownloadCenter: that service validates MLX/GGUF layouts and would
 /// misclassify Core AI's metadata/tokenizer/resource tree.
 struct CoreAIModelsSectionView: View {
+    let showsInstalled: Bool
     let showsCatalog: Bool
     let query: String
 
@@ -14,9 +15,12 @@ struct CoreAIModelsSectionView: View {
     @Environment(\.koduTheme) private var T
 
     @State private var expanded = false
+    @State private var detailInstallation: CoreAIInstalledModel?
+    @State private var detailPack: CoreAIZooModel?
     @State private var pendingRemovalID: String?
 
-    init(showsCatalog: Bool = true, query: String = "") {
+    init(showsCatalog: Bool = true, query: String = "", showsInstalled: Bool = true) {
+        self.showsInstalled = showsInstalled
         self.showsCatalog = showsCatalog
         self.query = query
     }
@@ -39,13 +43,14 @@ struct CoreAIModelsSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            if showsCatalog {
             HStack(spacing: 8) {
                 Image(systemName: "cpu")
                     .foregroundStyle(T.accent)
                 KCaption(text: "APPLE CORE AI · iOS 27")
                 Spacer()
                 Text("\(store.installations.count) installed")
-                    .font(T.mono(9, .semibold))
+                    .font(T.mono(13, .semibold))
                     .foregroundStyle(T.ink3)
             }
 
@@ -54,13 +59,21 @@ struct CoreAIModelsSectionView: View {
                 .foregroundStyle(T.ink2)
                 .fixedSize(horizontal: false, vertical: true)
 
-            installedCard
+            }
+            if showsInstalled { installedCard }
 
             if showsCatalog {
                 DisclosureGroup(isExpanded: $expanded) {
                     LazyVStack(spacing: 10) {
                         ForEach(chatPacks) { model in
-                            packCard(model)
+                            ModelsCompactRow(
+                                name: model.displayName,
+                                subtitle: "Assistant · " + model.approxDownloadBytes.formattedBytes,
+                                status: store.installedModel(id: model.id) != nil ? "Installed" : "Available to download",
+                                runtime: .coreAI,
+                                actionTitle: "Review compatibility and download options",
+                                action: { detailPack = model }
+                            )
                         }
                     }
                     .padding(.top, 10)
@@ -76,20 +89,44 @@ struct CoreAIModelsSectionView: View {
         }
         .padding(16)
         .kGlass(cornerRadius: 22, fallbackFill: T.surface)
-        .confirmationDialog(
-            "Remove this Core AI pack?",
-            isPresented: Binding(
-                get: { pendingRemovalID != nil },
-                set: { if !$0 { pendingRemovalID = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button("Remove pack", role: .destructive) {
-                if let id = pendingRemovalID { removeInstalledPack(id: id) }
-                pendingRemovalID = nil
+        .sheet(item: $detailInstallation) { installed in
+            NavigationStack {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        ModelRuntimeBadge(runtime: .coreAI)
+                        Text(installed.manifest.id).font(.subheadline.monospaced()).textSelection(.enabled)
+                        Text(installed.manifest.modelFamily).font(.subheadline)
+                        installedDetail(installed)
+                    }.padding()
+                }
+                .navigationTitle("Model details")
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") { detailInstallation = nil }
+                    }
+                }
+                .confirmationDialog("Remove this Core AI pack?", isPresented: Binding(
+                    get: { pendingRemovalID != nil },
+                    set: { if !$0 { pendingRemovalID = nil } }
+                ), titleVisibility: .visible) {
+                    Button("Remove pack", role: .destructive) {
+                        if let id = pendingRemovalID { removeInstalledPack(id: id) }
+                        pendingRemovalID = nil
+                        detailInstallation = nil
+                    }
+                }
             }
-        } message: {
-            Text("MLX and GGUF downloads are not affected.")
+        }
+        .sheet(item: $detailPack) { model in
+            NavigationStack {
+                ScrollView { packCard(model).padding() }
+                    .navigationTitle(model.displayName)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Done") { detailPack = nil }
+                        }
+                    }
+            }
         }
         .onAppear {
             store.refresh()
@@ -122,7 +159,7 @@ struct CoreAIModelsSectionView: View {
                     Label("Core AI pack error", systemImage: "exclamationmark.triangle")
                         .foregroundStyle(T.bad)
                     Text(message)
-                        .font(T.sans(11))
+                        .font(T.sans(13))
                         .foregroundStyle(T.ink2)
                 }
             case .unavailable(let message):
@@ -139,6 +176,19 @@ struct CoreAIModelsSectionView: View {
     }
 
     private func installedRow(_ installed: CoreAIInstalledModel) -> some View {
+        let selected = installed.assistantModel.map { AppSettings.shared.assistantModelID == $0.id } ?? false
+        let loaded = installed.assistantModel.map { assistant.activeModel.id == $0.id && assistant.state == .ready } ?? false
+        return ModelsCompactRow(
+            name: installed.manifest.displayName,
+            subtitle: "Assistant · " + installed.manifest.totalDownloadBytes.formattedBytes,
+            status: loaded ? "Loaded" : selected ? "Selected" : "Installed",
+            runtime: .coreAI,
+            actionTitle: "Model details",
+            action: { detailInstallation = installed }
+        )
+    }
+
+    private func installedDetail(_ installed: CoreAIInstalledModel) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "checkmark.seal.fill")
@@ -148,7 +198,7 @@ struct CoreAIModelsSectionView: View {
                         .font(T.sans(14, .semibold))
                         .foregroundStyle(T.ink)
                     Text("Installed · \(installed.manifest.totalDownloadBytes.formattedBytes) · Core AI")
-                        .font(T.mono(9.5))
+                        .font(T.mono(13))
                         .foregroundStyle(T.ink3)
                 }
                 Spacer()
@@ -184,7 +234,7 @@ struct CoreAIModelsSectionView: View {
 
     private func statusRow(_ text: String, symbol: String) -> some View {
         Label(text, systemImage: symbol)
-            .font(T.sans(11))
+            .font(T.sans(13))
             .foregroundStyle(T.ink2)
             .fixedSize(horizontal: false, vertical: true)
             .padding(12)
@@ -202,7 +252,7 @@ struct CoreAIModelsSectionView: View {
                         .font(T.sans(13, .semibold))
                         .foregroundStyle(T.ink)
                     Text(model.subtitle)
-                        .font(T.sans(10.5))
+                        .font(T.sans(13))
                         .foregroundStyle(T.ink2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -221,13 +271,13 @@ struct CoreAIModelsSectionView: View {
             }
 
             Text(model.licenseNotice)
-                .font(T.sans(9.5))
+                .font(T.sans(13))
                 .foregroundStyle(T.ink3)
                 .fixedSize(horizontal: false, vertical: true)
 
             if isInstalled {
                 Label("Installed", systemImage: "checkmark.circle.fill")
-                    .font(T.sans(11, .semibold))
+                    .font(T.sans(13, .semibold))
                     .foregroundStyle(T.good)
             } else if let manager {
                 CoreAIDownloadControlsView(manager: manager)
@@ -252,7 +302,7 @@ struct CoreAIModelsSectionView: View {
 
     private func badge(_ text: String) -> some View {
         Text(text)
-            .font(T.mono(8.5, .semibold))
+            .font(T.mono(13, .semibold))
             .foregroundStyle(T.ink2)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
@@ -282,6 +332,19 @@ struct CoreAIModelsSectionView: View {
             } catch {
                 ToastCenter.shared.error("Couldn’t remove Core AI pack", detail: error.localizedDescription)
             }
+        }
+    }
+}
+
+/// Uses the existing pack controls so transfers remain reachable outside Discover.
+struct CoreAITransfersSection: View {
+    @ObservedObject private var center = CoreAIDownloadCenter.shared
+    var body: some View {
+        ForEach(center.downloads) { manager in
+            VStack(alignment: .leading, spacing: 12) {
+                Text(manager.displayName).font(.headline)
+                CoreAIDownloadControlsView(manager: manager)
+            }.padding()
         }
     }
 }

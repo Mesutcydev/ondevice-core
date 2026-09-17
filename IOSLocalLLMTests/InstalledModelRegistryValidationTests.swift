@@ -99,4 +99,120 @@ final class InstalledModelRegistryValidationTests: XCTestCase {
 
         XCTAssertNil(InstalledModelRegistry.validateDirectory(modelDir, repoID: "empty"))
     }
+
+    // MARK: - Stale container re-anchoring
+
+    func testPersistedRecordOutsideCurrentSandboxIsReanchoredOrDropped() throws {
+        // Create a real valid model folder in the CURRENT container.
+        let name = "Edge0-8B-A1B-preview-reanchor-\(UUID().uuidString.prefix(8))"
+        let realDir = ModelStoragePaths.llmModelDirectory(named: name)
+        try FileManager.default.createDirectory(at: realDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: realDir) }
+        try writeEdge0Config(in: realDir)
+        try write("tokenizer.json", contents: Data("{}".utf8), in: realDir)
+        try write("model.safetensors", contents: Data(repeating: 0, count: 16), in: realDir)
+
+        let valid = try XCTUnwrap(InstalledModelRegistry.validateDirectory(
+            realDir, repoID: "Edge0/Edge0-8B-A1B-preview"
+        ))
+        XCTAssertEqual(valid.validationState, .valid)
+
+        // Stale copy: same folder name, previous container UUID.
+        let stale = InstalledModelRecord(
+            id: UUID(),
+            repoID: valid.repoID,
+            displayName: valid.displayName,
+            localURL: URL(fileURLWithPath:
+                "/var/mobile/Containers/Data/Application/OLD-UUID/Documents/LLMModels/\(name)"),
+            engine: .edge0MLX,
+            capabilities: valid.capabilities,
+            architecture: valid.architecture,
+            quantization: valid.quantization,
+            parameterCount: valid.parameterCount,
+            installedAt: valid.installedAt,
+            validationState: .valid,
+            downloadBytes: valid.downloadBytes
+        )
+        let reanchored = try XCTUnwrap(InstalledModelRegistry.reanchoredRecord(stale))
+        XCTAssertEqual(reanchored.localURL.standardizedFileURL, realDir.standardizedFileURL)
+        XCTAssertEqual(reanchored.validationState, .valid)
+
+        // No folder with that name in the current container -> dropped.
+        let orphan = InstalledModelRecord(
+            id: UUID(),
+            repoID: "Edge0/Edge0-8B-A1B-preview",
+            displayName: "orphan",
+            localURL: URL(fileURLWithPath:
+                "/var/mobile/Containers/Data/Application/OLD-UUID/Documents/LLMModels/missing-\(UUID().uuidString)"),
+            engine: .edge0MLX,
+            capabilities: [],
+            architecture: nil,
+            quantization: nil,
+            parameterCount: nil,
+            installedAt: Date(),
+            validationState: .valid,
+            downloadBytes: 0
+        )
+        XCTAssertNil(InstalledModelRegistry.reanchoredRecord(orphan))
+    }
+
+    // MARK: - Edge0 (native runtime)
+
+    private func writeEdge0Config(in dir: URL) throws {
+        let config = #"{"architectures":["BailingMoeV3ForCausalLM"]}"#
+        try write("config.json", contents: Data(config.utf8), in: dir)
+    }
+
+    func test_edge0CheckpointRegistersAsEdge0ByArchitecture() throws {
+        let modelDir = tempDir.appendingPathComponent("Edge0-8B-A1B-preview", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: modelDir, withIntermediateDirectories: true)
+        try writeEdge0Config(in: modelDir)
+        try write("tokenizer.json", contents: Data("{}".utf8), in: modelDir)
+        try write("model.safetensors", contents: Data(repeating: 0, count: 32), in: modelDir)
+
+        let record = InstalledModelRegistry.validateDirectory(
+            modelDir, repoID: "Edge0/Edge0-8B-A1B-preview")
+
+        XCTAssertNotNil(record)
+        XCTAssertEqual(record?.engine, .edge0MLX,
+                       "Declared BailingMoeV3ForCausalLM architecture must classify as Edge0, not MLX.")
+        XCTAssertEqual(record?.validationState, .valid)
+        // The architecture string is also surfaced for the picker.
+        XCTAssertEqual(record?.architecture, "BailingMoeV3ForCausalLM")
+    }
+
+    func test_edge0NameWithoutArchitectureStaysMlx() throws {
+        let modelDir = tempDir.appendingPathComponent("edge0-not-really", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: modelDir, withIntermediateDirectories: true)
+        // Qwen architecture — the folder NAME mentions edge0 but the declared
+        // architecture is what decides the engine. No filename heuristics.
+        try write("config.json",
+                  contents: Data(#"{"architectures":["Qwen2ForCausalLM"]}"#.utf8),
+                  in: modelDir)
+        try write("tokenizer.json", contents: Data("{}".utf8), in: modelDir)
+        try write("model.safetensors", contents: Data(repeating: 0, count: 32), in: modelDir)
+
+        let record = InstalledModelRegistry.validateDirectory(modelDir, repoID: "edge0-not-really")
+
+        XCTAssertNotNil(record)
+        XCTAssertEqual(record?.engine, .mlx)
+        XCTAssertEqual(record?.validationState, .valid)
+    }
+
+    func test_edge0ArchitectureWithoutCheckpointIsMissingWeights() throws {
+        let modelDir = tempDir.appendingPathComponent("edge0-partial", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: modelDir, withIntermediateDirectories: true)
+        try writeEdge0Config(in: modelDir)
+        try write("tokenizer.json", contents: Data("{}".utf8), in: modelDir)
+
+        let record = InstalledModelRegistry.validateDirectory(modelDir, repoID: "edge0-partial")
+
+        XCTAssertNotNil(record)
+        XCTAssertEqual(record?.engine, .edge0MLX)
+        XCTAssertEqual(record?.validationState, .missingWeights)
+        XCTAssertFalse(record?.validationState.isActivatable ?? true)
+    }
 }

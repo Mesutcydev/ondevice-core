@@ -8,7 +8,12 @@ protocol VoiceAudioMetering: Sendable {
     var levelStream: AsyncStream<Float> { get }
 }
 
-/// Attack/release smoother with noise floor and peak clamp.
+/// Attack/release smoother with a soft-knee noise floor.
+///
+/// The time constants are in **seconds**, so the envelope no longer depends on
+/// the tick rate the caller happens to get — the meter link is a display link
+/// the system may thin under load, and per-tick coefficients made the orb's
+/// response speed up and slow down with it.
 /// Not Sendable in practice for mutation — call only from one actor.
 final class VoiceLevelSmoother: @unchecked Sendable {
     private var previous: Float = 0
@@ -17,9 +22,13 @@ final class VoiceLevelSmoother: @unchecked Sendable {
     private let noiseFloor: Float
     private let peakClamp: Float
 
+    /// - Parameters:
+    ///   - attack: rise time constant, seconds.
+    ///   - release: fall time constant, seconds.
+    ///   - noiseFloor: level below which input is attenuated to silence.
     init(
-        attack: Float = 0.42,
-        release: Float = 0.88,
+        attack: Float = 0.06,
+        release: Float = 0.26,
         noiseFloor: Float = 0.04,
         peakClamp: Float = 1.0
     ) {
@@ -30,14 +39,29 @@ final class VoiceLevelSmoother: @unchecked Sendable {
     }
 
     /// `newLevel` should already be roughly 0…1 (peak or RMS normalized).
-    /// Attack/release: `current += (input - current) * coeff`.
-    func smooth(_ newLevel: Float) -> Float {
-        let clamped = min(peakClamp, max(0, newLevel))
-        let gated = clamped < noiseFloor ? 0 : clamped
-        let coeff: Float = gated > previous ? attack : (1 - release)
-        previous += (gated - previous) * coeff
-        if previous < 0.004 { previous = 0 }
+    /// `dt` is the wall time since the previous call, in seconds.
+    func smooth(_ newLevel: Float, dt: Float = 1.0 / 30.0) -> Float {
+        let gated = Self.gate(min(peakClamp, max(0, newLevel)), noiseFloor: noiseFloor)
+        let tau = gated > previous ? attack : release
+        let elapsed = max(dt.isFinite ? dt : 0, 0)
+        previous += (gated - previous) * (1 - exp(-elapsed / max(tau, 1e-4)))
         return previous
+    }
+
+    /// Soft knee around the noise floor: continuous in both value and slope, so
+    /// a quiet tail settling through the floor fades out instead of ticking to
+    /// zero. The hard `x < floor ? 0 : x` gate this replaces was one of three
+    /// stacked thresholds that made the orb flutter near silence.
+    static func gate(_ value: Float, noiseFloor: Float) -> Float {
+        guard value.isFinite else { return 0 }
+        let clamped = max(value, 0)
+        let floor = max(noiseFloor, 0)
+        guard floor > 0 else { return min(clamped, 1) }
+        let knee = floor * 2
+        let shaped = clamped <= knee
+            ? (clamped * clamped) / (2 * knee)
+            : clamped - knee / 2
+        return min(shaped / max(1 - knee / 2, 1e-4), 1)
     }
 
     func reset() {

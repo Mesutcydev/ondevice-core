@@ -191,6 +191,19 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     private static let tr: [String: String] = Dictionary(trEntries, uniquingKeysWith: { first, _ in first })
 
     private static let trEntries: [(String, String)] = [
+        // — Local AI studio identity and conversation starters
+        ("What would you like to explore?", "Neyi keşfetmek istersiniz?"),
+        ("Learn something", "Yeni bir şey öğren"),
+        ("Write something", "Bir şeyler yaz"),
+        ("Explore an idea", "Bir fikri keşfet"),
+        ("Explain this topic in simple terms: ", "Bu konuyu basitçe açıkla: "),
+        ("Help me write a first draft of: ", "Şunun ilk taslağını yazmama yardım et: "),
+        ("Help me explore ideas for: ", "Şu konuda fikirler geliştirmeme yardım et: "),
+        ("Your local AI studio", "Cihazınızdaki AI stüdyosu"),
+        ("Website", "Web sitesi"),
+        ("Source code & contributions", "Kaynak kodu ve katkılar"),
+        ("Open-source app · MIT License", "Açık kaynaklı uygulama · MIT Lisansı"),
+
         // — Tab bar / navigation
         ("assistant", "asistan"),
         ("lens", "lens"),
@@ -562,6 +575,19 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     private static let de: [String: String] = Dictionary(deEntries, uniquingKeysWith: { first, _ in first })
 
     private static let deEntries: [(String, String)] = [
+        // — Local AI studio identity and conversation starters
+        ("What would you like to explore?", "Was möchtest du erkunden?"),
+        ("Learn something", "Etwas lernen"),
+        ("Write something", "Etwas schreiben"),
+        ("Explore an idea", "Eine Idee erkunden"),
+        ("Explain this topic in simple terms: ", "Erkläre dieses Thema einfach: "),
+        ("Help me write a first draft of: ", "Hilf mir mit einem ersten Entwurf für: "),
+        ("Help me explore ideas for: ", "Hilf mir, Ideen zu sammeln für: "),
+        ("Your local AI studio", "Dein lokales KI-Studio"),
+        ("Website", "Website"),
+        ("Source code & contributions", "Quellcode & Beiträge"),
+        ("Open-source app · MIT License", "Open-Source-App · MIT-Lizenz"),
+
         ("assistant", "Assistent"),
         ("lens", "Linse"),
         ("voice", "Sprache"),
@@ -859,6 +885,19 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     private static let fr: [String: String] = Dictionary(frEntries, uniquingKeysWith: { first, _ in first })
 
     private static let frEntries: [(String, String)] = [
+        // — Local AI studio identity and conversation starters
+        ("What would you like to explore?", "Que souhaitez-vous explorer ?"),
+        ("Learn something", "Apprendre"),
+        ("Write something", "Écrire"),
+        ("Explore an idea", "Explorer une idée"),
+        ("Explain this topic in simple terms: ", "Explique ce sujet simplement : "),
+        ("Help me write a first draft of: ", "Aide-moi à rédiger un premier jet de : "),
+        ("Help me explore ideas for: ", "Aide-moi à trouver des idées pour : "),
+        ("Your local AI studio", "Votre studio IA local"),
+        ("Website", "Site web"),
+        ("Source code & contributions", "Code source et contributions"),
+        ("Open-source app · MIT License", "Application open source · Licence MIT"),
+
         ("assistant", "assistant"),
         ("lens", "lentille"),
         ("voice", "voix"),
@@ -1156,6 +1195,19 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     private static let es: [String: String] = Dictionary(esEntries, uniquingKeysWith: { first, _ in first })
 
     private static let esEntries: [(String, String)] = [
+        // — Local AI studio identity and conversation starters
+        ("What would you like to explore?", "¿Qué te gustaría explorar?"),
+        ("Learn something", "Aprender algo"),
+        ("Write something", "Escribir algo"),
+        ("Explore an idea", "Explorar una idea"),
+        ("Explain this topic in simple terms: ", "Explica este tema de forma sencilla: "),
+        ("Help me write a first draft of: ", "Ayúdame a escribir un primer borrador de: "),
+        ("Help me explore ideas for: ", "Ayúdame a explorar ideas para: "),
+        ("Your local AI studio", "Tu estudio de IA local"),
+        ("Website", "Sitio web"),
+        ("Source code & contributions", "Código fuente y contribuciones"),
+        ("Open-source app · MIT License", "App de código abierto · Licencia MIT"),
+
         ("assistant", "asistente"),
         ("lens", "lente"),
         ("voice", "voz"),
@@ -1453,6 +1505,19 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     private static let it: [String: String] = Dictionary(itEntries, uniquingKeysWith: { first, _ in first })
 
     private static let itEntries: [(String, String)] = [
+        // — Local AI studio identity and conversation starters
+        ("What would you like to explore?", "Cosa vorresti esplorare?"),
+        ("Learn something", "Impara qualcosa"),
+        ("Write something", "Scrivi qualcosa"),
+        ("Explore an idea", "Esplora un’idea"),
+        ("Explain this topic in simple terms: ", "Spiega questo argomento in modo semplice: "),
+        ("Help me write a first draft of: ", "Aiutami a scrivere una prima bozza di: "),
+        ("Help me explore ideas for: ", "Aiutami a trovare idee per: "),
+        ("Your local AI studio", "Il tuo studio IA locale"),
+        ("Website", "Sito web"),
+        ("Source code & contributions", "Codice sorgente e contributi"),
+        ("Open-source app · MIT License", "App open source · Licenza MIT"),
+
         ("assistant", "assistente"),
         ("lens", "lente"),
         ("voice", "voce"),
@@ -1750,6 +1815,19 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     private static let pt: [String: String] = Dictionary(ptEntries, uniquingKeysWith: { first, _ in first })
 
     private static let ptEntries: [(String, String)] = [
+        // — Local AI studio identity and conversation starters
+        ("What would you like to explore?", "O que você gostaria de explorar?"),
+        ("Learn something", "Aprender algo"),
+        ("Write something", "Escrever algo"),
+        ("Explore an idea", "Explorar uma ideia"),
+        ("Explain this topic in simple terms: ", "Explique este assunto de forma simples: "),
+        ("Help me write a first draft of: ", "Ajude-me a escrever um primeiro rascunho de: "),
+        ("Help me explore ideas for: ", "Ajude-me a explorar ideias para: "),
+        ("Your local AI studio", "Seu estúdio de IA local"),
+        ("Website", "Site"),
+        ("Source code & contributions", "Código-fonte e contribuições"),
+        ("Open-source app · MIT License", "App de código aberto · Licença MIT"),
+
         ("assistant", "assistente"),
         ("lens", "lente"),
         ("voice", "voz"),
@@ -2047,6 +2125,19 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     private static let ru: [String: String] = Dictionary(ruEntries, uniquingKeysWith: { first, _ in first })
 
     private static let ruEntries: [(String, String)] = [
+        // — Local AI studio identity and conversation starters
+        ("What would you like to explore?", "Что вы хотите изучить?"),
+        ("Learn something", "Узнать новое"),
+        ("Write something", "Написать текст"),
+        ("Explore an idea", "Развить идею"),
+        ("Explain this topic in simple terms: ", "Объясни эту тему простыми словами: "),
+        ("Help me write a first draft of: ", "Помоги мне написать первый черновик: "),
+        ("Help me explore ideas for: ", "Помоги мне найти идеи для: "),
+        ("Your local AI studio", "Ваша локальная ИИ-студия"),
+        ("Website", "Сайт"),
+        ("Source code & contributions", "Исходный код и вклад в проект"),
+        ("Open-source app · MIT License", "Приложение с открытым кодом · Лицензия MIT"),
+
         ("assistant", "ассистент"),
         ("lens", "линза"),
         ("voice", "голос"),
@@ -2344,6 +2435,19 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     private static let hi: [String: String] = Dictionary(hiEntries, uniquingKeysWith: { first, _ in first })
 
     private static let hiEntries: [(String, String)] = [
+        // — Local AI studio identity and conversation starters
+        ("What would you like to explore?", "आप क्या जानना चाहेंगे?"),
+        ("Learn something", "कुछ सीखें"),
+        ("Write something", "कुछ लिखें"),
+        ("Explore an idea", "कोई विचार खोजें"),
+        ("Explain this topic in simple terms: ", "इस विषय को सरल शब्दों में समझाओ: "),
+        ("Help me write a first draft of: ", "इसका पहला मसौदा लिखने में मेरी मदद करो: "),
+        ("Help me explore ideas for: ", "इसके लिए विचार खोजने में मेरी मदद करो: "),
+        ("Your local AI studio", "आपका स्थानीय AI स्टूडियो"),
+        ("Website", "वेबसाइट"),
+        ("Source code & contributions", "सोर्स कोड और योगदान"),
+        ("Open-source app · MIT License", "ओपन-सोर्स ऐप · MIT लाइसेंस"),
+
         ("assistant", "सहायक"),
         ("lens", "लेंस"),
         ("voice", "आवाज़"),
@@ -2641,6 +2745,19 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     private static let ja: [String: String] = Dictionary(jaEntries, uniquingKeysWith: { first, _ in first })
 
     private static let jaEntries: [(String, String)] = [
+        // — Local AI studio identity and conversation starters
+        ("What would you like to explore?", "何を探究しますか？"),
+        ("Learn something", "新しいことを学ぶ"),
+        ("Write something", "文章を書く"),
+        ("Explore an idea", "アイデアを広げる"),
+        ("Explain this topic in simple terms: ", "この話題をわかりやすく説明して："),
+        ("Help me write a first draft of: ", "次の内容の下書きを手伝って："),
+        ("Help me explore ideas for: ", "次のテーマのアイデアを一緒に考えて："),
+        ("Your local AI studio", "あなたのローカルAIスタジオ"),
+        ("Website", "ウェブサイト"),
+        ("Source code & contributions", "ソースコードと開発への参加"),
+        ("Open-source app · MIT License", "オープンソースアプリ · MITライセンス"),
+
         ("assistant", "アシスタント"),
         ("lens", "レンズ"),
         ("voice", "音声"),
@@ -2938,6 +3055,19 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     private static let el: [String: String] = Dictionary(elEntries, uniquingKeysWith: { first, _ in first })
 
     private static let elEntries: [(String, String)] = [
+        // — Local AI studio identity and conversation starters
+        ("What would you like to explore?", "Τι θα θέλατε να εξερευνήσετε;"),
+        ("Learn something", "Μάθετε κάτι"),
+        ("Write something", "Γράψτε κάτι"),
+        ("Explore an idea", "Εξερευνήστε μια ιδέα"),
+        ("Explain this topic in simple terms: ", "Εξήγησε αυτό το θέμα με απλά λόγια: "),
+        ("Help me write a first draft of: ", "Βοήθησέ με να γράψω ένα πρώτο προσχέδιο για: "),
+        ("Help me explore ideas for: ", "Βοήθησέ με να βρω ιδέες για: "),
+        ("Your local AI studio", "Το τοπικό σας στούντιο AI"),
+        ("Website", "Ιστότοπος"),
+        ("Source code & contributions", "Πηγαίος κώδικας και συνεισφορές"),
+        ("Open-source app · MIT License", "Εφαρμογή ανοιχτού κώδικα · Άδεια MIT"),
+
         ("assistant", "βοηθός"),
         ("lens", "φακός"),
         ("voice", "φωνή"),
@@ -3235,6 +3365,19 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     private static let ro: [String: String] = Dictionary(roEntries, uniquingKeysWith: { first, _ in first })
 
     private static let roEntries: [(String, String)] = [
+        // — Local AI studio identity and conversation starters
+        ("What would you like to explore?", "Ce ai vrea să explorezi?"),
+        ("Learn something", "Învață ceva"),
+        ("Write something", "Scrie ceva"),
+        ("Explore an idea", "Explorează o idee"),
+        ("Explain this topic in simple terms: ", "Explică acest subiect în termeni simpli: "),
+        ("Help me write a first draft of: ", "Ajută-mă să scriu o primă variantă pentru: "),
+        ("Help me explore ideas for: ", "Ajută-mă să găsesc idei pentru: "),
+        ("Your local AI studio", "Studioul tău AI local"),
+        ("Website", "Site web"),
+        ("Source code & contributions", "Cod sursă și contribuții"),
+        ("Open-source app · MIT License", "Aplicație open-source · Licență MIT"),
+
         ("assistant", "asistent"),
         ("lens", "obiectiv"),
         ("voice", "voce"),
@@ -3532,6 +3675,19 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     private static let ar: [String: String] = Dictionary(arEntries, uniquingKeysWith: { first, _ in first })
 
     private static let arEntries: [(String, String)] = [
+        // — Local AI studio identity and conversation starters
+        ("What would you like to explore?", "ما الذي تود استكشافه؟"),
+        ("Learn something", "تعلّم شيئًا"),
+        ("Write something", "اكتب شيئًا"),
+        ("Explore an idea", "استكشف فكرة"),
+        ("Explain this topic in simple terms: ", "اشرح هذا الموضوع بكلمات بسيطة: "),
+        ("Help me write a first draft of: ", "ساعدني في كتابة مسودة أولى لـ: "),
+        ("Help me explore ideas for: ", "ساعدني في استكشاف أفكار لـ: "),
+        ("Your local AI studio", "استوديو الذكاء الاصطناعي المحلي الخاص بك"),
+        ("Website", "الموقع الإلكتروني"),
+        ("Source code & contributions", "الكود المصدري والمساهمات"),
+        ("Open-source app · MIT License", "تطبيق مفتوح المصدر · ترخيص MIT"),
+
         ("assistant", "مساعد"),
         ("lens", "عدسة"),
         ("voice", "صوت"),
@@ -3829,6 +3985,19 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     private static let ko: [String: String] = Dictionary(koEntries, uniquingKeysWith: { first, _ in first })
 
     private static let koEntries: [(String, String)] = [
+        // — Local AI studio identity and conversation starters
+        ("What would you like to explore?", "무엇을 탐구하고 싶으세요?"),
+        ("Learn something", "새로운 지식 배우기"),
+        ("Write something", "글쓰기"),
+        ("Explore an idea", "아이디어 탐구"),
+        ("Explain this topic in simple terms: ", "이 주제를 쉽게 설명해 줘: "),
+        ("Help me write a first draft of: ", "다음 내용의 초안 작성을 도와줘: "),
+        ("Help me explore ideas for: ", "다음 주제에 대한 아이디어를 함께 생각해 줘: "),
+        ("Your local AI studio", "나만의 로컬 AI 스튜디오"),
+        ("Website", "웹사이트"),
+        ("Source code & contributions", "소스 코드 및 기여"),
+        ("Open-source app · MIT License", "오픈 소스 앱 · MIT 라이선스"),
+
         ("assistant", "어시스턴트"),
         ("lens", "렌즈"),
         ("voice", "음성"),
@@ -4131,6 +4300,19 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     private static let zh: [String: String] = Dictionary(zhEntries, uniquingKeysWith: { first, _ in first })
 
     private static let zhEntries: [(String, String)] = [
+        // — Local AI studio identity and conversation starters
+        ("What would you like to explore?", "你想探索什么？"),
+        ("Learn something", "学习新知识"),
+        ("Write something", "写点什么"),
+        ("Explore an idea", "探索一个想法"),
+        ("Explain this topic in simple terms: ", "请用简单的语言解释这个主题："),
+        ("Help me write a first draft of: ", "请帮我起草以下内容："),
+        ("Help me explore ideas for: ", "请帮我构思以下主题："),
+        ("Your local AI studio", "你的本地 AI 工作室"),
+        ("Website", "网站"),
+        ("Source code & contributions", "源代码与贡献"),
+        ("Open-source app · MIT License", "开源应用 · MIT 许可证"),
+
         // — Tab bar / navigation
         ("assistant", "助手"),
         ("lens", "镜头"),

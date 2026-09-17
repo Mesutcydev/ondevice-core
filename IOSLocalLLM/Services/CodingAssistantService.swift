@@ -421,6 +421,22 @@ final class CodingAssistantService: ObservableObject {
         )
     }
 
+    /// Functional capabilities of the active runtime + model pairing. Policy
+    /// that asks "can this runtime do X?" reads this instead of matching on
+    /// `ModelRuntime`; the mapping lives in `RuntimeEngineFactory`.
+    private var runtimeCapabilities: RuntimeCapabilities {
+        RuntimeEngineFactory.capabilities(for: activeModel)
+    }
+
+    /// Execution-identity checks, centralized. These select *which executor's
+    /// code path runs* (MLX package loader vs the llama.cpp bridge) rather
+    /// than inferring functionality, so they stay identity-based. Adding a
+    /// runtime starts at `RuntimeEngineFactory.unsupportedReason(for:)`.
+    private var isLlamaCppExecution: Bool { activeModel.runtime == .llamaCpp }
+    private var isMLXExecution: Bool { activeModel.runtime == .mlx }
+    private var isEdge0Execution: Bool { activeModel.runtime == .edge0MLX }
+
+
     @Published private(set) var state: ServiceState = .unloaded
     @Published private(set) var tokenRate: Double = 0
     /// Estimated token count of the trimmed input sent on the last generate().
@@ -441,6 +457,12 @@ final class CodingAssistantService: ObservableObject {
     /// Output budget the chrome should advertise: user setting, thermal
     /// advisor, and (for imported GGUF) the compact-profile 128-token cap.
     var effectiveOutputTokenCap: Int {
+        if isEdge0Execution {
+            return min(
+                max(1, effectiveGenerationSettings.maxTokens),
+                max(1, DeviceSafetyMonitor.shared.recommendedMaxTokens)
+            )
+        }
         if activeExecutionLocation == .localCoreAI {
             return AssistantGenerationBudget.coreAIOutputTokens(
                 requested: effectiveGenerationSettings.maxTokens,
@@ -449,7 +471,7 @@ final class CodingAssistantService: ObservableObject {
             )
         }
         return GGUFGenerationProfile.outputTokenCap(
-            isGGUF: activeModel.runtime == .llamaCpp,
+            isGGUF: isLlamaCppExecution,
             profile: ggufProfile,
             requested: effectiveGenerationSettings.maxTokens,
             thermalCap: DeviceSafetyMonitor.shared.recommendedMaxTokens
@@ -494,7 +516,24 @@ final class CodingAssistantService: ObservableObject {
                 outputTokens: effectiveOutputTokenCap
             )
         }
-        if activeModel.runtime == .llamaCpp {
+        if isEdge0Execution {
+            if Edge0ModelFamily.resolve(repoID: activeModel.repoID) == .qwen35MoE {
+                // 35B: dynamic admission from the real state architecture,
+                // additionally clamped by the documented bring-up limit.
+                let safe = Edge0_35BContextBudget.currentLimit(
+                    outputTokens: effectiveOutputTokenCap
+                )
+                return min(safe, activeModel.contextWindowTokens)
+            }
+            // Dynamic admission from the real MLA/KDA state architecture:
+            // grows with device headroom and shrinks with the requested
+            // output reservation, clamped to the 131072 architectural limit.
+            let safe = Edge0ContextBudget.currentLimit(
+                outputTokens: effectiveOutputTokenCap
+            )
+            return min(safe, activeModel.contextWindowTokens)
+        }
+        if isLlamaCppExecution {
             return ggufProfile.inputBudget(
                 requestedOutputTokens: effectiveGenerationSettings.maxTokens
             )
@@ -532,6 +571,7 @@ final class CodingAssistantService: ObservableObject {
         if activeExecutionLocation == .localCoreAI {
             return CoreAIInferenceService.shared.isLoaded(as: activeModel.id)
         }
+        if isEdge0Execution { return edge0Engine != nil }
         if resolvedMLXContainer != nil { return true }
         switch state {
         case .ready, .generating: return true
@@ -540,6 +580,11 @@ final class CodingAssistantService: ObservableObject {
     }
 
     private var container: ModelContainer?
+
+    /// Native Edge0 engine for the active model (runtime-engine seam). Owns
+    /// resident weights, the bounded expert pool, tokenizer, and
+    /// generation-scoped KDA/MLA state.
+    private var edge0Engine: (any RuntimeEngine)?
 
     /// True when the resident MLX runtime is the **dual-role shared vision
     /// container** — the only Assistant path that can route image inputs
@@ -564,8 +609,9 @@ final class CodingAssistantService: ObservableObject {
     /// nominally a VLM.
     @MainActor
     private func refreshVisionChatCapability() {
+        let capabilities = runtimeCapabilities
         isVisionChatCapable =
-            activeModel.supportsVision && activeModel.runtime == .mlx
+            capabilities.supportsVision && capabilities.supportsSharedVisionRuntime
             && container == nil
             && LensInferenceLoop.shared.sharedContainer(for: activeModel.repoID) != nil
     }
@@ -742,7 +788,7 @@ final class CodingAssistantService: ObservableObject {
     /// trick MLX into trying to load incomplete state.
     static nonisolated func preStagedDirectory(for model: AssistantModel) -> URL? {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let dirName = model.repoID.split(separator: "/").last.map(String.init) ?? model.repoID
+        let dirName = ModelStoragePaths.directoryName(forRepoID: model.repoID)
         // HF Search downloads land at `HFModels/<author>_<name>/` (slash
         // flattened to underscore) — see ModelsManagerView.registerAndDownload
         // and HFSearchRow.init. LocalModelImport drops to `HFModels/<tail>/`
@@ -764,7 +810,7 @@ final class CodingAssistantService: ObservableObject {
             docs.appendingPathComponent("huggingface")
                 .appendingPathComponent("models")
                 .appendingPathComponent(model.repoID),
-            docs.appendingPathComponent("LLMModels").appendingPathComponent(dirName),
+            ModelStoragePaths.llmModelDirectory(named: dirName),
             docs.appendingPathComponent("HFModels").appendingPathComponent(model.repoID),
             docs.appendingPathComponent("HFModels").appendingPathComponent(flattened),
             docs.appendingPathComponent("HFModels").appendingPathComponent(dirName),
@@ -1006,6 +1052,259 @@ final class CodingAssistantService: ObservableObject {
         }
     }
 
+    /// Privacy-safe Edge0 runtime counters (pool cache/IO + engine timings)
+    /// for the developer validation runner. nil when Edge0 is not active.
+    func edge0RuntimeMetrics() async -> [String: String]? {
+        guard isEdge0Execution else { return nil }
+        return await edge0Engine?.runtimeMetrics()
+    }
+
+    /// Developer parity probe through the loaded production engine (raw token
+    /// ids, greedy). nil when the active family has no frozen probe.
+    func runEdge0ParityProbe() async throws -> RuntimeParityProbe? {
+        guard isEdge0Execution else { return nil }
+        return try await edge0Engine?.runParityProbe()
+    }
+
+    /// Typed run-boundary resource snapshot from the loaded engine.
+    func edge0ResourceSnapshot() async -> RuntimeResourceSnapshot? {
+        guard isEdge0Execution else { return nil }
+        return await edge0Engine?.resourceSnapshot()
+    }
+
+    /// Loads the selected Edge0-8B checkpoint through the runtime-engine
+    /// seam. Admission, draining other runtimes, and the service state
+    /// machine stay identical to the MLX/GGUF path.
+    private func loadSelectedEdge0() async {
+        switch state {
+        case .loading, .generating: return
+        default: break
+        }
+
+        if let reason = DeviceSafetyMonitor.shared.stopReason {
+            state = .failed(reason.detail)
+            ToastCenter.shared.error(
+                "Can't load selected Edge0 model",
+                detail: reason.detail
+            )
+            return
+        }
+        let is35B = Edge0ModelFamily.resolve(repoID: activeModel.repoID) == .qwen35MoE
+        let poolSlots: Int
+        let poolBytes: UInt64
+        if is35B {
+            let budget = Edge0_35BMemoryBudget.current()
+            guard budget.isPoolEnabled else {
+                let detail = "Not enough memory headroom for the Edge0-35B runtime right now. Close other apps and retry."
+                state = .failed(detail)
+                ToastCenter.shared.error(
+                    "Can't load \(activeModel.displayName)",
+                    detail: detail
+                )
+                return
+            }
+            poolSlots = budget.expertPoolSlots
+            poolBytes = budget.expertPoolBytes
+        } else {
+            let budget = Edge0MemoryBudget.current()
+            guard budget.isPoolEnabled else {
+                let detail = "Not enough memory headroom for the Edge0 runtime right now. Close other apps and retry."
+                state = .failed(detail)
+                ToastCenter.shared.error(
+                    "Can't load \(activeModel.displayName)",
+                    detail: detail
+                )
+                return
+            }
+            poolSlots = budget.expertPoolSlots
+            poolBytes = budget.expertPoolBytes
+        }
+
+        // One heavy runtime at a time, matching the MLX/GGUF path.
+        MLXVisionService.shared.unload()
+        FastVLMService.shared.unload()
+        await LlamaCppVLMService.shared.unloadAndWaitForCleanup()
+        await MLXGenerationGate.shared.clearCacheWhenIdle()
+
+        state = .loading("Preparing \(activeModel.displayName)…")
+        tokenRate = 0
+        estimatedInputTokens = 0
+        let loadModel = activeModel
+        do {
+            let localModel = LocalModel(assistantModel: loadModel)
+            let engine = try RuntimeEngineFactory.makeEngine(for: localModel)
+            try await engine.load(model: localModel)
+            guard activeModel.id == loadModel.id, activeModel.runtime == .edge0MLX else {
+                await engine.unload()
+                return
+            }
+            edge0Engine = engine
+            isVisionChatCapable = false
+            state = .ready
+            Diagnostics.shared.breadcrumb(
+                "Edge0 assistant ready · \(loadModel.repoID) · family=\(is35B ? "Edge0-35B" : "Edge0-8B") · poolSlots=\(poolSlots) · poolBytes=\(poolBytes)",
+                category: "assistant"
+            )
+        } catch {
+            edge0Engine = nil
+            state = .failed(error.localizedDescription)
+            ToastCenter.shared.error(
+                "Couldn't load \(loadModel.displayName)",
+                detail: error.localizedDescription
+            )
+        }
+    }
+
+    /// Bridges the Edge0 engine's TokenEvent stream onto the Assistant's
+    /// callback streaming contract, sharing the existing state machine,
+    /// stop button, and error presentation.
+    private func generateWithEdge0(
+        messages: [ChatMessage],
+        maxTokensOverride: Int?,
+        temperatureOverride: Double?,
+        topPOverride: Double?,
+        jsonMode: Bool,
+        forceNoThinking: Bool,
+        onToken: @escaping @Sendable (String) -> Void,
+        onComplete: @escaping @Sendable (Double) -> Void,
+        onError: (@Sendable (String) -> Void)?
+    ) {
+        guard let engine = edge0Engine, case .ready = state else {
+            onError?("The Edge0 model is not loaded")
+            onComplete(0)
+            return
+        }
+        let safety = DeviceSafetyMonitor.shared
+        if let reason = safety.stopReason {
+            ToastCenter.shared.error(reason.title, detail: reason.detail)
+            onError?("\(reason.title). \(reason.detail)")
+            onComplete(0)
+            return
+        }
+
+        let settings = effectiveGenerationSettings
+        let app = AppSettings.shared
+        let requestedMaxTokens = min(
+            maxTokensOverride ?? settings.maxTokens,
+            safety.recommendedMaxTokens
+        )
+        // Full sampler parity with the MLX path: the Edge0 sampler mirrors
+        // mlx-swift-lm (penalties -> top-p -> min-p -> top-k -> temperature),
+        // so no knob is silently ignored.
+        // Effective thinking: the user's per-model/app preference (direct
+        // answer is the default) minus an explicit per-request no-think.
+        let wantsThinking = settings.thinkingEnabled && !forceNoThinking
+        let enableThinking = activeModel.supportsThinking && wantsThinking
+        let options = GenerationOptions(
+            maxTokens: max(1, requestedMaxTokens),
+            temperature: min(2, max(0, temperatureOverride ?? settings.temperature)),
+            topP: min(1, max(0, topPOverride ?? settings.topP)),
+            repetitionPenalty: settings.repetitionPenalty,
+            seed: app.assistantSeed != 0 ? app.assistantSeed : nil,
+            jsonMode: jsonMode || app.jsonModeEnabled,
+            thinkingMode: enableThinking ? .enabled : .disabled,
+            toolMode: .disabled,
+            kvCacheBits: nil,
+            topK: settings.topK > 0 ? settings.topK : nil,
+            minP: settings.minP > 0 ? settings.minP : nil,
+            presencePenalty: app.assistantPresencePenalty != 0
+                ? app.assistantPresencePenalty : nil,
+            frequencyPenalty: app.assistantFrequencyPenalty != 0
+                ? app.assistantFrequencyPenalty : nil
+        )
+
+        state = .generating
+        lastGenerationHitTokenLimit = false
+        canResumeFromCache = false
+        lastPromptTokens = 0
+        lastOutputTokens = 0
+        ModelResidency.shared.cancelPrefetch()
+
+        // Verified identity comes from the active model, refreshed each turn.
+        let identifiedMessages = AssistantRuntimeIdentity.injecting(
+            into: messages,
+            model: activeModel,
+            loadedEdge0Family: Edge0ModelFamily.resolve(repoID: activeModel.repoID)
+        )
+
+        generateTask = Task { [weak self] in
+            do {
+                let stream = await engine.generate(
+                    messages: identifiedMessages,
+                    options: options
+                )
+                for try await event in stream {
+                    switch event {
+                    case .started:
+                        break
+                    case .token(let text):
+                        onToken(text)
+                    case .partialText:
+                        break
+                    case .usage(let rate, _, let outputTokens):
+                        await MainActor.run {
+                            self?.tokenRate = rate
+                            if let outputTokens { self?.lastOutputTokens = outputTokens }
+                        }
+                    case .warning(let text):
+                        Diagnostics.shared.notice(
+                            "Edge0 runtime: \(text)",
+                            category: "assistant"
+                        )
+                    case .completed:
+                        await MainActor.run {
+                            if case .generating? = self?.state { self?.state = .ready }
+                            // Honest completion rate: the engine's final
+                            // measurement arrives via the preceding .usage
+                            // event, which has already set `tokenRate`.
+                            let rate = self?.tokenRate ?? 0
+                            self?.generateTask = nil
+                            onComplete(rate)
+                            // Incomplete thinking is reported honestly, not
+                            // as a successful empty answer.
+                            if let engine = self?.edge0Engine {
+                                Task { @MainActor in
+                                    guard let metrics = await engine.runtimeMetrics(),
+                                          metrics["generation.endedWhileThinking"] == "true",
+                                          metrics["generation.stopReason"] == "max_tokens"
+                                    else { return }
+                                    self?.lastGenerationHitTokenLimit = true
+                                    Diagnostics.shared.notice(
+                                        "Edge0 runtime ended while thinking; no final answer was produced.",
+                                        category: "assistant"
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                await MainActor.run {
+                    // Cancellation path: no `.completed` arrived.
+                    if self?.generateTask != nil {
+                        if case .generating? = self?.state { self?.state = .ready }
+                        self?.generateTask = nil
+                        onComplete(0)
+                    }
+                }
+            } catch is CancellationError {
+                await MainActor.run {
+                    if case .generating? = self?.state { self?.state = .ready }
+                    self?.generateTask = nil
+                    onComplete(0)
+                }
+            } catch {
+                await MainActor.run {
+                    if case .generating? = self?.state {
+                        self?.state = .failed(error.localizedDescription)
+                    }
+                    self?.generateTask = nil
+                    onError?(error.localizedDescription)
+                    onComplete(0)
+                }
+            }
+        }
+    }
+
     func load(
         allowStorageFallback: Bool = true,
         reselectFromSettings: Bool = true,
@@ -1023,6 +1322,20 @@ final class CodingAssistantService: ObservableObject {
                 reselectFromSettings: reselectFromSettings
             )
             await loadSelectedCoreAI()
+            return
+        }
+
+        // Edge0-8B executes through RuntimeEngineFactory ->
+        // ManagedRuntimeEngine -> Edge0RuntimeBackend -> Edge0Engine. It must
+        // never fall through to the MLX package loader below.
+        if activeModel.runtime == .edge0MLX {
+            activeModel = Self.loadTarget(
+                activeModel: activeModel,
+                savedDefault: AssistantModelCatalog.currentSelection(),
+                reselectFromSettings: reselectFromSettings
+            )
+            if case .ready = state, edge0Engine != nil { return }
+            await loadSelectedEdge0()
             return
         }
 
@@ -1048,7 +1361,7 @@ final class CodingAssistantService: ObservableObject {
             reselectFromSettings: reselectFromSettings
         )
 
-        let runtimeIsResident = activeModel.runtime == .llamaCpp
+        let runtimeIsResident = isLlamaCppExecution
             ? ggufModel != nil
             : resolvedMLXContainer != nil
         if case .ready = state, runtimeIsResident { return }
@@ -1116,14 +1429,14 @@ final class CodingAssistantService: ObservableObject {
             return
         }
         if let remaining = MemoryAdvisor.pressureCooldownRemaining,
-           activeModel.runtime == .llamaCpp {
+           runtimeCapabilities.storageBackedWeights {
             let secs = max(1, Int(remaining.rounded(.up)))
             let block = "iOS just reported a memory-pressure spike. Wait ~\(secs)s for it to recover memory, then retry."
             state = .failed(block)
             ToastCenter.shared.error("Can't load selected model", detail: block)
             return
         }
-        if activeModel.runtime != .llamaCpp,
+        if !runtimeCapabilities.storageBackedWeights,
            let block = MemoryAdvisor.safetyBlocker(
                 for: activeModel.id,
                 allowTightFit: AppSettings.shared.largeModelLowMemoryEnabled,
@@ -1191,14 +1504,14 @@ final class CodingAssistantService: ObservableObject {
         // so a post-load breadcrumb is never reached in exactly the failure
         // mode we most need to diagnose (for example an unsupported weight
         // quantization kernel).
-        if activeModel.runtime == .mlx {
+        if isMLXExecution {
             Diagnostics.shared.breadcrumb(
                 "MLX assistant load · \(activeModel.id) · repo=\(activeModel.repoID) · cached=\(probedWarm)",
                 category: "assistant"
             )
         }
 
-        if activeModel.runtime == .llamaCpp {
+        if isLlamaCppExecution {
             guard let directory = Self.preStagedDirectory(for: activeModel),
                   let modelURL = LocalModelFileValidator.ggufLLM(in: directory) else {
                 state = .failed("The imported GGUF file could not be found on disk.")
@@ -1699,6 +2012,21 @@ final class CodingAssistantService: ObservableObject {
             return
         }
 
+        if isEdge0Execution {
+            generateWithEdge0(
+                messages: messages,
+                maxTokensOverride: maxTokensOverride,
+                temperatureOverride: temperatureOverride,
+                topPOverride: topPOverride,
+                jsonMode: jsonMode,
+                forceNoThinking: forceNoThinking,
+                onToken: onToken,
+                onComplete: onComplete,
+                onError: onError
+            )
+            return
+        }
+
         // A native GGUF decode is not re-entrant. Voice Mode turn 2 used to
         // land here while turn 1 was still draining and silently no-op —
         // the mic looked live but the model never answered again. Defer
@@ -1746,7 +2074,7 @@ final class CodingAssistantService: ObservableObject {
         // trigger now: we kick off the load, then re-enter generate once
         // the container is ready. onComplete still fires on failure so
         // the UI placeholder unfreezes either way.
-        let hasRuntimeModel = activeModel.runtime == .llamaCpp
+        let hasRuntimeModel = isLlamaCppExecution
             ? ggufModel != nil
             : resolvedMLXContainer != nil
         if state != .ready || !hasRuntimeModel {
@@ -1772,7 +2100,7 @@ final class CodingAssistantService: ObservableObject {
                 } else if state != .ready {
                     await self.load()
                 }
-                let isLoaded = self.activeModel.runtime == .llamaCpp
+                let isLoaded = self.isLlamaCppExecution
                     ? self.ggufModel != nil
                     : self.resolvedMLXContainer != nil
                 if case .ready = self.state, isLoaded {
@@ -1957,7 +2285,7 @@ final class CodingAssistantService: ObservableObject {
         // (~140 KB/token fp16 on a 4B model) adds multiple GB that the load
         // gate never accounted for. 8-bit KV quantization (above) halves the
         // per-token cost; this cap bounds the count.
-        let isImportedGGUF = activeModel.runtime == .llamaCpp
+        let isImportedGGUF = isLlamaCppExecution
         let messagesForRuntime = isImportedGGUF
             ? ggufProfile.messagesForRuntime(effectiveMessages)
             : effectiveMessages
@@ -2025,7 +2353,7 @@ final class CodingAssistantService: ObservableObject {
         let useVisionChat = isVisionChatCapable
             && trimmedMessages.contains { $0.role == .user && !$0.imageThumbnails.isEmpty }
 
-        if let ggufModel, activeModel.runtime == .llamaCpp {
+        if let ggufModel, isLlamaCppExecution {
             let service = self
             let generationID = UUID()
             activeGGUFGenerationID = generationID
@@ -3024,6 +3352,9 @@ final class CodingAssistantService: ObservableObject {
         pccGenerateTask?.cancel()
         coreAIGenerateTask?.cancel()
         CoreAIInferenceService.shared.cancel()
+        if let engine = edge0Engine {
+            Task { await engine.cancel() }
+        }
         ggufModel?.cancelCurrent()
         ggufModel?.invalidateTokenCache()
         canResumeFromCache = false
@@ -3124,6 +3455,10 @@ final class CodingAssistantService: ObservableObject {
         pccGenerateTask = nil
         coreAIGenerateTask = nil
         await CoreAIInferenceService.shared.unload()
+        if let engine = edge0Engine {
+            await engine.unload()
+        }
+        edge0Engine = nil
         // Release runtime ownership only after the cancelled generation has
         // completely unwound. This ordering is required for both MLX Metal
         // command buffers and llama.cpp's native decode context.
@@ -3199,6 +3534,7 @@ final class CodingAssistantService: ObservableObject {
             case .llamaCpp: return ggufModel != nil
             case .mlx:      return resolvedMLXContainer != nil
             case .coreAI:   return CoreAIInferenceService.shared.isLoaded(as: model.id)
+            case .edge0MLX: return edge0Engine != nil
             }
         }()
         if model.id == activeModel.id, hasLoadedModel {
@@ -3225,6 +3561,7 @@ final class CodingAssistantService: ObservableObject {
             case .llamaCpp: return ggufModel != nil
             case .mlx:      return resolvedMLXContainer != nil
             case .coreAI:   return CoreAIInferenceService.shared.isReady
+            case .edge0MLX: return edge0Engine != nil
             }
         }()
 

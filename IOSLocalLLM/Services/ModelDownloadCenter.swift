@@ -397,6 +397,18 @@ final class ModelDownloadCenter: ObservableObject {
         model.checkIfReady()
     }
 
+    /// Destination used when reconciling a registry record: the record's own
+    /// path only when it is inside the current sandbox, otherwise the
+    /// canonical `Documents/LLMModels/<dir>` location.
+    nonisolated static func reconciledDestination(for record: InstalledModelRecord) -> URL {
+        if ModelStoragePaths.isInsideSandbox(record.localURL) {
+            return record.localURL
+        }
+        return ModelStoragePaths.llmModelDirectory(
+            named: ModelStoragePaths.directoryName(forRepoID: record.repoID)
+        )
+    }
+
     /// Drops a custom model from the catalog (called after delete).
     func unregisterCustom(repoID: String) {
         models.removeAll { $0.id == repoID && !$0.isRequired && $0.id.contains("/") }
@@ -437,10 +449,20 @@ final class ModelDownloadCenter: ObservableObject {
             }
 
             let existing = existingIndex.map { updated[$0] }
+
+            // A stale record (from a previous data container) must never be
+            // used as a download destination. Fall back to the canonical
+            // sandbox location for the repo.
+            let destination = Self.reconciledDestination(for: record)
             let downloader = HFModelDownloadManager(
                 repoID: record.repoID,
-                destination: record.localURL
+                destination: destination
             )
+            // Registry-backed entries would otherwise lose the curated
+            // allowlist (and start fetching every repo artifact).
+            if let curatedAllowlist = existing?.downloader?.fileAllowlist {
+                downloader.fileAllowlist = curatedAllowlist
+            }
             downloader.checkIfReady()
 
             let category = LocalModelRegistry.category(in: record.localURL)
@@ -605,8 +627,7 @@ final class ModelDownloadCenter: ObservableObject {
         for preset in AssistantModelCatalog.presets {
             let dirName = preset.repoID.split(separator: "/").last.map(String.init)
                 ?? preset.repoID
-            let dest = docs.appendingPathComponent("LLMModels")
-                .appendingPathComponent(dirName)
+            let dest = ModelStoragePaths.llmModelDirectory(named: dirName)
             // Prefer a preset's published package size. Conventional 4-bit
             // models can still use the historical RAM × 0.6 estimate, but
             // Bonsai's 1/2-bit packages are far smaller and need an explicit
@@ -627,10 +648,41 @@ final class ModelDownloadCenter: ObservableObject {
                 category: .assistant,
                 isRequired: false,
                 docURL: "https://huggingface.co/\(preset.repoID)",
-                downloader: HFModelDownloadManager(
-                    repoID: preset.repoID,
-                    destination: dest
-                ),
+                downloader: {
+                    let downloader = HFModelDownloadManager(
+                        repoID: preset.repoID,
+                        destination: dest
+                    )
+                    // One packed checkpoint + tokenizer/config. The repo may
+                    // carry extra artifacts; a complete runnable model is
+                    // exactly this set, verified by Edge0ModelArtifacts.
+                    if preset.runtime == .edge0MLX {
+                        switch Edge0ModelFamily.resolve(repoID: preset.repoID) {
+                        case .qwen35MoE:
+                            // Exact base + Recover-LoRA inventory. The
+                            // prerouter artifact is optional and unused in
+                            // this release, so it is not downloaded.
+                            downloader.fileAllowlist =
+                                Edge0_35BModelArtifacts.downloadAllowlist
+                        default:
+                            downloader.fileAllowlist = [
+                                "config.json",
+                                "generation_config.json",
+                                "chat_template.jinja",
+                                "model.safetensors",
+                                // Advisory prerouter head (Phase 4B-3).
+                                // Optional optimization artifact: the base
+                                // model stays valid without it; staged
+                                // remains the fallback.
+                                "prerouter_edge0_8b.safetensors",
+                                "special_tokens_map.json",
+                                "tokenizer.json",
+                                "tokenizer_config.json",
+                            ]
+                        }
+                    }
+                    return downloader
+                }(),
                 repoID: preset.repoID,
                 capabilities: preset.capabilities,
                 runtime: preset.runtime,
@@ -1075,6 +1127,26 @@ final class ModelDownloadCenter: ObservableObject {
     // lets the user reclaim the space with one tap.
 
     /// Roots that hold one-repo-per-subdirectory model downloads. Voice models
+    /// Incremental, single-file download of the OPTIONAL advisory prerouter
+    /// into the already-installed 35B directory. Never touches the base
+    /// checkpoint or LoRA, and never runs during generation.
+    func make35BPrerouterDownloader() -> HFModelDownloadManager? {
+        guard let preset = AssistantModelCatalog.presets.first(where: {
+            $0.runtime == .edge0MLX
+                && Edge0ModelFamily.resolve(repoID: $0.repoID) == .qwen35MoE
+        }) else {
+            return nil
+        }
+        let dirName = preset.repoID.split(separator: "/").last
+            .map(String.init) ?? preset.repoID
+        let destination = ModelStoragePaths.llmModelDirectory(named: dirName)
+        let downloader = HFModelDownloadManager(
+            repoID: preset.repoID, destination: destination
+        )
+        downloader.fileAllowlist = Edge0_35BModelArtifacts.optionalPrerouterAllowlist
+        return downloader
+    }
+
     /// live under shared, allowlisted folders (KittenTTS/Kokoro variants share
     /// a directory) so they're deliberately excluded — partial cleanup there
     /// would risk deleting a sibling variant's files.
