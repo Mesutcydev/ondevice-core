@@ -1,5 +1,44 @@
 # OnDevice Core AI Studio — Release Audit 1.0.0
 
+## Build 52 — 2026-09-17 (session-state reuse / prompt cache)
+
+The chat-latency fix: every turn previously re-prefilled the entire
+conversation (~60 ms/token), so a long chat's end-to-end rate collapsed to
+~0.6 tok/s. Now:
+
+- **Prompt cache**: the prompt-boundary generation state (MLA KV + linear
+  state, functionally updated so snapshots stay valid) is kept between
+  turns; a turn whose prompt is an exact token-level extension of the
+  previous prompt prefills only the new suffix. Any mismatch (edited
+  history, settings change, scheduling-key change, truncation) falls back
+  to a fresh full prefill; a partial rewind of the recurrent state is never
+  attempted. Identical prompts decode from the boundary logits with zero
+  prefill.
+- **Exactness-inert by construction** — same tokens at the same positions.
+- **New validation stage "Session reuse parity"**: drives the real
+  generate path and requires turn-2 answers to be byte-identical between a
+  reused state and a fresh full prefill, with reuse provably applied.
+- Diagnostics runners disable reuse (every measured trial pays its own
+  prefill); new metrics `session.reuseApplied/reusedTokens/prefillTokens`.
+
+| Check | Result |
+| --- | --- |
+| Version metadata | Consistent: 1.0.0 (**52**) in `project.yml` (app + extension) |
+| Focused Edge0 tests (simulator) | **Executed**: 16 passed / 0 failures (11 decision + 5 session-reuse), exit 0 (`build/simcompat-reuse.log`) |
+| IPA packaging | **Packaged** — 55 independent artifact checks passed (incl. `session_reuse_metric_packaged`); ZIP member paths identical to build 51 |
+
+Artifact: `build/releases/OnDeviceCoreAIStudio-sideload-entitled-1.0.0-52.ipa`
+(`...-latest.ipa` identical)
+
+- Version **1.0.0 (52)**; the share extension also uses build **52**.
+- Size: **53,229,528 bytes**.
+- SHA-256: `ffa2b0f609ec4bde3dee7e14d031fc11d18f150eb1a27d0080953f6c1cef6c03`.
+- **55 independent artifact checks passed** (`verification-1.0.0-52/`). ZIP
+  member paths exactly match build 51; entitlements match builds 43–51
+  exactly (PCC, increased memory, extended virtual addressing,
+  CloudKit/iCloud, shared App Group). Bundle IDs and minimum iOS 27.0
+  unchanged.
+
 ## Build 51 — 2026-09-17 (sustained-thermal diagnostic + repo identity)
 
 - **`35B Sustained Run (thermal)`** kind: six back-to-back staged trials
