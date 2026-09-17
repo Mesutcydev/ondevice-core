@@ -14,7 +14,6 @@
 		04B878523E8E1B42942AF4D3 /* IOSLocalLLMApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504E7FEBCDF0A3A67E02A980 /* IOSLocalLLMApp.swift */; };
 		04FCC6376F4C227E47DAE286 /* CoreAIHFDownloadManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B95C74616D09E6C23FEF39 /* CoreAIHFDownloadManager.swift */; };
 		0555A04DBE50C9E61F1BD7B9 /* llama.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 806A74981FF9A99E58FDA40E /* llama.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		062495678D8D9DBF72AB4576 /* libPods-IOSLocalLLMTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = ED0FCC0CDBDA718FEB7C8031 /* libPods-IOSLocalLLMTests.a */; };
 		07308FDCEEE8926BB6925223 /* TextChunker.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACAAC66CF5AA1E24C9F67866 /* TextChunker.swift */; };
 		084E280A71607F45313CB45B /* TurnEndpointer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2C0E136E32D65839A57CC3A /* TurnEndpointer.swift */; };
 		087365EDFB5F5891CD11EBA0 /* WebSearchServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 249B305703F989E5813C1E7D /* WebSearchServiceTests.swift */; };
@@ -48,7 +47,6 @@
 		1BF96733CFBB074365F3CCAE /* VoiceProfileRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B3625E99A47BA2A7F6C02B8 /* VoiceProfileRegistry.swift */; };
 		1C57875F9EA47208BA89684E /* CoreAIConversationPlannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BC0AFEF640383B79C68638A /* CoreAIConversationPlannerTests.swift */; };
 		1C9C9F36659F031F14A4EEA1 /* PhonemizerEN.swift in Sources */ = {isa = PBXBuildFile; fileRef = 804108572CA3E3AF27CA6B29 /* PhonemizerEN.swift */; };
-		1D8380F412E676813BCF96E2 /* libPods-IOSLocalLLM.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B46043C8AFCC0FD08D01F42D /* libPods-IOSLocalLLM.a */; };
 		1DC861CE119A7A62E1FA161F /* VoiceStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3C398FB3B22F5BDF8092970 /* VoiceStatusView.swift */; };
 		1DE256EDEA749CF491B413C8 /* LocalAPIServerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9BE95E2964654B2B67310E5 /* LocalAPIServerTests.swift */; };
 		1E43AC3BFECABF491FA3CA98 /* LocalModelFileValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DC30302065734EDE36A2267 /* LocalModelFileValidator.swift */; };
@@ -66,7 +64,6 @@
 		25EA03BF693720DBAAE009E9 /* FastVLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE2EA21F44FD73BEBBD015B6 /* FastVLMService.swift */; };
 		2721507DB81DDF002E9EF099 /* CodeModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 172214970559C7B2F4F617D5 /* CodeModeController.swift */; };
 		27C7161968B65561AB4C128C /* QualityEvalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D510EEAB01E2BE2F8C311AC7 /* QualityEvalView.swift */; };
-		2881B652F3A10DF900BF9830 /* StudioPageBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39794483C699B36486220F77 /* StudioPageBackground.swift */; };
 		28EADCD3D384E905441DB59B /* Image.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3519660E957232A943A0F564 /* Image.swift */; };
 		2952716DAF4CFAD5D412FF3F /* VoiceActivityOrb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A4F744E539C547458CD2120 /* VoiceActivityOrb.swift */; };
 		29C8E2AD897A489B8E825906 /* MLXNN in Frameworks */ = {isa = PBXBuildFile; productRef = 96756C77179E79F106262280 /* MLXNN */; };
@@ -105,6 +102,7 @@
 		3E662591CFF0E1B35302904A /* ConversationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73B2D1F3ADEBD5C11D02B15E /* ConversationStore.swift */; };
 		3EA0D6F75766A7D0FFFF071E /* LensVoiceNarratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD692F3E5558A55083A42CF7 /* LensVoiceNarratorTests.swift */; };
 		3EE3DF572DED4B3C90C88C90 /* ThinkingOrbShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 2D64EBB6C0DAA33680118BC3 /* ThinkingOrbShaders.metal */; };
+		3F79DECF1B942A5B28063CBC /* libPods-IOSLocalLLM.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D0EF9BC0FED21B3879E54EDA /* libPods-IOSLocalLLM.a */; };
 		40C468D2B11A5DDF53CE9189 /* SnippetPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F34E52726315BCC2A6CC94BF /* SnippetPickerView.swift */; };
 		40FB43850CBB04379B746420 /* LiveOCROverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A606C3645BB8E445508E3F4F /* LiveOCROverlayView.swift */; };
 		41E58AC7E3F990F37808D313 /* WebToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13389E55143AD980649BFDE0 /* WebToolModels.swift */; };
@@ -166,6 +164,7 @@
 		62780EE5E9E720637CEFA76F /* CodeModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A103E629A62C6541784B281 /* CodeModeView.swift */; };
 		62A9FB92BACC43179C7DE5FF /* ModelCatalogTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = D07BC4A42F5BF64A6DDB4FB8 /* ModelCatalogTypes.swift */; };
 		62BB5DBEFF76DAD930C00C22 /* WipeAllDataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A083D179C3D69B6D2B813ECB /* WipeAllDataService.swift */; };
+		62CC2083658213E1F2E83A11 /* libPods-IOSLocalLLMTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0F1D94E4FCF5DE5351728400 /* libPods-IOSLocalLLMTests.a */; };
 		62F8083803D849AF2BE39AA5 /* CoreAIInferenceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80465EB7D950F2FD03177560 /* CoreAIInferenceService.swift */; };
 		6300968983F9260F0AF91827 /* ModelsManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38B2E2C0CAF148071C9C65E3 /* ModelsManagerView.swift */; };
 		633AE0777636B63C37AECC3C /* VoiceSessionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0EBC2EA76A7CECFFF84D104 /* VoiceSessionState.swift */; };
@@ -207,6 +206,7 @@
 		7E13D003DEAE5E705511A0C4 /* ToastCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6FA10278371285408C876F6 /* ToastCenter.swift */; };
 		7E6FF315FB12088935952037 /* RemoteInferenceGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11D14F0C31CEEBFF4BBAFB49 /* RemoteInferenceGate.swift */; };
 		7F1E9757716F8F4E414C86C7 /* HFHubMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = 066C754AA56E3AD9592CD59D /* HFHubMetadata.swift */; };
+		7F1E9EB08BEA92417AB7873A /* StudioPageBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF50AFAE0C0A71E1AA2B4BCC /* StudioPageBackground.swift */; };
 		80CF7BF74040CF0885592BEE /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54BE6DEEB2F3D43E7BE95C85 /* KeychainStore.swift */; };
 		81CAB70F63AF99642530A63A /* AnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFF1790ACDC14192D2E687ED /* AnalysisService.swift */; };
 		82088BEA3C52CD35410D2505 /* MLXVLM in Frameworks */ = {isa = PBXBuildFile; productRef = 056CC948FC01F842AE3BBBF0 /* MLXVLM */; };
@@ -430,6 +430,7 @@
 		0350C9DF76C9767488DC5373 /* Persona.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persona.swift; sourceTree = "<group>"; };
 		037DFDDC6E3AA7E1BA869F82 /* DiagnosticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsTests.swift; sourceTree = "<group>"; };
 		03E1249D098E011E7A02CF8B /* BridgeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeManager.swift; sourceTree = "<group>"; };
+		04D9022B5CA58888A76EF255 /* Pods-IOSLocalLLM.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLM.debug.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLM/Pods-IOSLocalLLM.debug.xcconfig"; sourceTree = "<group>"; };
 		050DD8CF804C93FC42C288E1 /* VoiceConversationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceConversationView.swift; sourceTree = "<group>"; };
 		053CF14BB305D45F8985890C /* KaraokeTranscriptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KaraokeTranscriptView.swift; sourceTree = "<group>"; };
 		056FD03E7A6448DCF47C654D /* ImageGenerationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGenerationView.swift; sourceTree = "<group>"; };
@@ -445,9 +446,9 @@
 		0ACFA819F8A84B4176056A24 /* AudioRoutePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRoutePicker.swift; sourceTree = "<group>"; };
 		0B1D92C507A30921C52B7ABC /* VoiceLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceLibraryView.swift; sourceTree = "<group>"; };
 		0B755EC28765304378E68C6C /* ArgentRemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArgentRemoteView.swift; sourceTree = "<group>"; };
-		0BDE457C493BB8A0801D77CA /* Pods-IOSLocalLLMTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLMTests.debug.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLMTests/Pods-IOSLocalLLMTests.debug.xcconfig"; sourceTree = "<group>"; };
 		0D31664EFECBBD90F6BFDFF9 /* FastVLMPromptBuilderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastVLMPromptBuilderTests.swift; sourceTree = "<group>"; };
 		0D6E82EDB84621AA119DD7CB /* FastVLMModelBundleValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastVLMModelBundleValidator.swift; sourceTree = "<group>"; };
+		0F1D94E4FCF5DE5351728400 /* libPods-IOSLocalLLMTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-IOSLocalLLMTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		0F35CCA1318E28C503130643 /* CodeExtractionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeExtractionService.swift; sourceTree = "<group>"; };
 		0F413D228EECA19827743604 /* LanguageDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageDetectorTests.swift; sourceTree = "<group>"; };
 		0FB9FF475A88FEC6F843E27D /* FastVLMConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastVLMConfig.swift; sourceTree = "<group>"; };
@@ -470,7 +471,6 @@
 		19166EA865AC2C5819A0321A /* VoicePerformanceSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePerformanceSnapshot.swift; sourceTree = "<group>"; };
 		19551AA24F3F0F5A470DAC43 /* cmudict.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = cmudict.txt; sourceTree = "<group>"; };
 		1A250F525172D19B0B897042 /* RuntimeEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeEngine.swift; sourceTree = "<group>"; };
-		1AA860BDCD1BD2E04906D902 /* Pods-IOSLocalLLM.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLM.release.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLM/Pods-IOSLocalLLM.release.xcconfig"; sourceTree = "<group>"; };
 		1DA074E3B7284ADF61E05D9A /* KaraokeCueTrack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KaraokeCueTrack.swift; sourceTree = "<group>"; };
 		1DBB7C3022F7E6FFB684CB3B /* FileAttachmentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileAttachmentPicker.swift; sourceTree = "<group>"; };
 		1F1284E1F2DD3CA7E5A4379C /* IOSLocalLLMAppIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSLocalLLMAppIntents.swift; sourceTree = "<group>"; };
@@ -502,6 +502,7 @@
 		3136D5CE6C3E6FFF3161B494 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		31CFC2E40F7DE431A1C96445 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		32006B005903E8CDF298B417 /* FixRepoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixRepoSheet.swift; sourceTree = "<group>"; };
+		32ADAE444550F64AAB62DB97 /* Pods-IOSLocalLLMTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLMTests.debug.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLMTests/Pods-IOSLocalLLMTests.debug.xcconfig"; sourceTree = "<group>"; };
 		32B9E49E232F156448DA4542 /* StudioAddSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioAddSheet.swift; sourceTree = "<group>"; };
 		32F9DDC82FABE7BA17B69873 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		33800FF440F4AD9C32A6766A /* CodeTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeTask.swift; sourceTree = "<group>"; };
@@ -515,7 +516,6 @@
 		36CC0A723399FD2D5E4F5414 /* VoiceStatusPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceStatusPill.swift; sourceTree = "<group>"; };
 		38B2E2C0CAF148071C9C65E3 /* ModelsManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsManagerView.swift; sourceTree = "<group>"; };
 		390B1DB3694D8CB494F673FB /* AudioVisualClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioVisualClock.swift; sourceTree = "<group>"; };
-		39794483C699B36486220F77 /* StudioPageBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioPageBackground.swift; sourceTree = "<group>"; };
 		3AE7694135A81CE70B8382CA /* AudioPlaybackSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlaybackSnapshot.swift; sourceTree = "<group>"; };
 		3D95E9C39B3FE57749ED341C /* AssistantActivityCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantActivityCards.swift; sourceTree = "<group>"; };
 		3F07BD4C7B1CE2AA58EEFBA8 /* TipsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipsManager.swift; sourceTree = "<group>"; };
@@ -523,8 +523,8 @@
 		3F440C3C3D004233EECF9FA4 /* FunctioningLogicFixTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FunctioningLogicFixTests.swift; sourceTree = "<group>"; };
 		401CAFA60C0239623C43BA97 /* WebSourcesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSourcesView.swift; sourceTree = "<group>"; };
 		40688736272072750095AE0C /* GlassEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassEffects.swift; sourceTree = "<group>"; };
+		42A34BFDA338A779B9DF6FF5 /* Pods-IOSLocalLLM.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLM.release.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLM/Pods-IOSLocalLLM.release.xcconfig"; sourceTree = "<group>"; };
 		44B50CB8C21853DAC097FEB2 /* WebPermissionSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebPermissionSheet.swift; sourceTree = "<group>"; };
-		44B55FD4A643390C60E0021B /* Pods-IOSLocalLLMTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLMTests.release.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLMTests/Pods-IOSLocalLLMTests.release.xcconfig"; sourceTree = "<group>"; };
 		4527F7DB5AE2EF9871E6EF97 /* FastVLMGenerationSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastVLMGenerationSettings.swift; sourceTree = "<group>"; };
 		4603C94E56C7A38549B1D6DF /* SemanticChunkerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticChunkerTests.swift; sourceTree = "<group>"; };
 		47472D013D3038B343E95014 /* ApplePrivateCloudTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePrivateCloudTypes.swift; sourceTree = "<group>"; };
@@ -658,19 +658,18 @@
 		A5BB2408E814EA4E18C3C5DB /* CoreAIConversationPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAIConversationPlanner.swift; sourceTree = "<group>"; };
 		A606C3645BB8E445508E3F4F /* LiveOCROverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveOCROverlayView.swift; sourceTree = "<group>"; };
 		A7429610E62CE067A9B2DD08 /* LocalAPIServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalAPIServer.swift; sourceTree = "<group>"; };
-		A7483E7DBFA20815DF9826B3 /* Pods-IOSLocalLLM.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLM.debug.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLM/Pods-IOSLocalLLM.debug.xcconfig"; sourceTree = "<group>"; };
 		A8B6302F59DC2D28375B8AD3 /* EndOfTurnEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EndOfTurnEstimator.swift; sourceTree = "<group>"; };
 		AA9FAAB69F89D53165601B59 /* AudioPlaybackService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlaybackService.swift; sourceTree = "<group>"; };
 		AB9E3012BF523992E419C0DE /* CoreAIZooCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAIZooCatalog.swift; sourceTree = "<group>"; };
 		AC427DE60BC9C836403598A3 /* LensFramePreparer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensFramePreparer.swift; sourceTree = "<group>"; };
 		ACAAC66CF5AA1E24C9F67866 /* TextChunker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextChunker.swift; sourceTree = "<group>"; };
 		AD481F0683BCCAD03CF255BC /* SystemStatusService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemStatusService.swift; sourceTree = "<group>"; };
+		AD63C98C391E290FECB512F1 /* Pods-IOSLocalLLMTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLMTests.release.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLMTests/Pods-IOSLocalLLMTests.release.xcconfig"; sourceTree = "<group>"; };
 		ADFD783AA869DE68E57078A8 /* Sampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sampler.swift; sourceTree = "<group>"; };
 		AE5BA3893361E5F91D44FA5B /* VoiceConversationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceConversationService.swift; sourceTree = "<group>"; };
 		AFF1790ACDC14192D2E687ED /* AnalysisService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisService.swift; sourceTree = "<group>"; };
 		B15622AB09F3F42B627F8F28 /* SpotlightIndexer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotlightIndexer.swift; sourceTree = "<group>"; };
 		B2544C57A460F4103E972A50 /* ModelDownloadCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadCenter.swift; sourceTree = "<group>"; };
-		B46043C8AFCC0FD08D01F42D /* libPods-IOSLocalLLM.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-IOSLocalLLM.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B4AB37D546F063C61149CE28 /* DownloadLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadLiveActivity.swift; sourceTree = "<group>"; };
 		B5374067DCE69F9F3038CE34 /* VoiceProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceProfile.swift; sourceTree = "<group>"; };
 		B5A98AA9CC71351FDA586F9A /* IOSLocalLLM.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = IOSLocalLLM.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -721,6 +720,7 @@
 		CFF7AB80CCD5025506C9B503 /* BackgroundDownloadCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundDownloadCoordinator.swift; sourceTree = "<group>"; };
 		CFFDE1742223085BDD2857F3 /* WebPassageReranker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebPassageReranker.swift; sourceTree = "<group>"; };
 		D07BC4A42F5BF64A6DDB4FB8 /* ModelCatalogTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCatalogTypes.swift; sourceTree = "<group>"; };
+		D0EF9BC0FED21B3879E54EDA /* libPods-IOSLocalLLM.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-IOSLocalLLM.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D1116F23C38F551E8AF40717 /* SearchQueryBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchQueryBuilder.swift; sourceTree = "<group>"; };
 		D1592DC8581E6E6BA682C331 /* CodingAssistantService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodingAssistantService.swift; sourceTree = "<group>"; };
 		D1BABA3AA755B6A38AACDE51 /* SpeechPlaybackCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechPlaybackCoordinator.swift; sourceTree = "<group>"; };
@@ -760,7 +760,6 @@
 		EBDA30C09B5E3D079B768D66 /* ChatMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMessage.swift; sourceTree = "<group>"; };
 		EC5FB627983B5AC5D91C56FD /* DeviceTierAdvisor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceTierAdvisor.swift; sourceTree = "<group>"; };
 		EC9C31C0861E323CA3771C4F /* ModelResidency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelResidency.swift; sourceTree = "<group>"; };
-		ED0FCC0CDBDA718FEB7C8031 /* libPods-IOSLocalLLMTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-IOSLocalLLMTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED7F722F63E43B22161F8697 /* EmbeddingPassageScorer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmbeddingPassageScorer.swift; sourceTree = "<group>"; };
 		ED874E876BE0715AC0B76C54 /* VoiceVisualLevelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceVisualLevelStore.swift; sourceTree = "<group>"; };
 		ED8A5B7757383022445EF948 /* CoreAIModelsSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAIModelsSectionView.swift; sourceTree = "<group>"; };
@@ -785,15 +784,16 @@
 		FBE21E3D88F27C67CF5C035D /* BenchmarkService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenchmarkService.swift; sourceTree = "<group>"; };
 		FCF1E61B3FA34547D4E293FF /* VoiceModelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceModelState.swift; sourceTree = "<group>"; };
 		FE2EA21F44FD73BEBBD015B6 /* FastVLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastVLMService.swift; sourceTree = "<group>"; };
+		FF50AFAE0C0A71E1AA2B4BCC /* StudioPageBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudioPageBackground.swift; sourceTree = "<group>"; };
 		FF909A5ABB1E80E68C7DA667 /* DiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		BBE11003DAB2E83594AFD1D4 /* Frameworks */ = {
+		00F2585E45C9DE363824BDCC /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				062495678D8D9DBF72AB4576 /* libPods-IOSLocalLLMTests.a in Frameworks */,
+				62CC2083658213E1F2E83A11 /* libPods-IOSLocalLLMTests.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -813,7 +813,7 @@
 				18C3CCD4404D7FB7C508DF54 /* CoreAILM in Frameworks */,
 				477AC8C00E7CF4777AB8AD57 /* llama.xcframework in Frameworks */,
 				BCD553D106E7BAEA5014D251 /* whisper.xcframework in Frameworks */,
-				1D8380F412E676813BCF96E2 /* libPods-IOSLocalLLM.a in Frameworks */,
+				3F79DECF1B942A5B28063CBC /* libPods-IOSLocalLLM.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -845,18 +845,6 @@
 				62196EADC8659300F2CA5FE4 /* WebTriggerKeywords.json */,
 			);
 			path = Localization;
-			sourceTree = "<group>";
-		};
-		1EF9F7C1738AF94635BC2127 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				A7483E7DBFA20815DF9826B3 /* Pods-IOSLocalLLM.debug.xcconfig */,
-				1AA860BDCD1BD2E04906D902 /* Pods-IOSLocalLLM.release.xcconfig */,
-				0BDE457C493BB8A0801D77CA /* Pods-IOSLocalLLMTests.debug.xcconfig */,
-				44B55FD4A643390C60E0021B /* Pods-IOSLocalLLMTests.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
 			sourceTree = "<group>";
 		};
 		2600C4C04ECF0440F95AAA9C /* Services */ = {
@@ -1027,7 +1015,7 @@
 				951C0F345EDF8010E67C1B2A /* Packages */,
 				FACB8F84EAEC3D716323BDA9 /* Frameworks */,
 				4B8805D88F224C52CF6B0F4F /* Products */,
-				1EF9F7C1738AF94635BC2127 /* Pods */,
+				64A8FEAF606A3940686E819A /* Pods */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1103,6 +1091,18 @@
 				BFE2F5D39782FC5336086DBA /* BridgeQRScannerView.swift */,
 			);
 			path = Bridge;
+			sourceTree = "<group>";
+		};
+		64A8FEAF606A3940686E819A /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				04D9022B5CA58888A76EF255 /* Pods-IOSLocalLLM.debug.xcconfig */,
+				42A34BFDA338A779B9DF6FF5 /* Pods-IOSLocalLLM.release.xcconfig */,
+				32ADAE444550F64AAB62DB97 /* Pods-IOSLocalLLMTests.debug.xcconfig */,
+				AD63C98C391E290FECB512F1 /* Pods-IOSLocalLLMTests.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 		67467D826D7C46E18A6C4F57 /* Listening */ = {
@@ -1401,7 +1401,6 @@
 				119A1821F995B0F5B54D0D25 /* KoduComponents.swift */,
 				26E0F0BF3DD9D015BC049E46 /* LensDebugOverlay.swift */,
 				5813E0BF3400C9F63756BA3C /* LensPromptPresetSheet.swift */,
-				39794483C699B36486220F77 /* StudioPageBackground.swift */,
 				A606C3645BB8E445508E3F4F /* LiveOCROverlayView.swift */,
 				E86FA30E7CEAD913FE6F0A27 /* MacroChainView.swift */,
 				08DE684AFA039799DC4D86F7 /* MarkupCanvasView.swift */,
@@ -1419,6 +1418,7 @@
 				31CFC2E40F7DE431A1C96445 /* SettingsView.swift */,
 				9E082A1F7F90CF8E78C57B04 /* SetupBannerView.swift */,
 				F34E52726315BCC2A6CC94BF /* SnippetPickerView.swift */,
+				FF50AFAE0C0A71E1AA2B4BCC /* StudioPageBackground.swift */,
 				5ADFF2FCA1E8416F0F08972A /* SystemStatusView.swift */,
 				FA26B2D5BF33E969D2B03BA5 /* UnsupportedDeviceView.swift */,
 				8E6A1C9133B904AE79A48BD1 /* UserGuideView.swift */,
@@ -1546,8 +1546,8 @@
 			children = (
 				806A74981FF9A99E58FDA40E /* llama.xcframework */,
 				34D40D26FEAC0B1B11076082 /* whisper.xcframework */,
-				B46043C8AFCC0FD08D01F42D /* libPods-IOSLocalLLM.a */,
-				ED0FCC0CDBDA718FEB7C8031 /* libPods-IOSLocalLLMTests.a */,
+				D0EF9BC0FED21B3879E54EDA /* libPods-IOSLocalLLM.a */,
+				0F1D94E4FCF5DE5351728400 /* libPods-IOSLocalLLMTests.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -1559,9 +1559,9 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 5878ED4397747E31739CC5FF /* Build configuration list for PBXNativeTarget "IOSLocalLLMTests" */;
 			buildPhases = (
-				BBAB7EB9CECF32D95DEAA1A7 /* [CP] Check Pods Manifest.lock */,
+				344A85A84C30EAC603520EE6 /* [CP] Check Pods Manifest.lock */,
 				FC2C611C629D1D65A527883B /* Sources */,
-				BBE11003DAB2E83594AFD1D4 /* Frameworks */,
+				00F2585E45C9DE363824BDCC /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -1608,7 +1608,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = F69658B3AFC6781D94EE8C22 /* Build configuration list for PBXNativeTarget "IOSLocalLLM" */;
 			buildPhases = (
-				36646B9E76EAFA681460FC63 /* [CP] Check Pods Manifest.lock */,
+				E18C214B97EFD66A5A2760F9 /* [CP] Check Pods Manifest.lock */,
 				2DF5869AA97254F8295E03C6 /* Sources */,
 				505ED347AD4BA0691487F9E6 /* Copy bundled VLM (SmolVLM2 GGUF) */,
 				20FC572F648584D961CDEC8C /* Copy bundled voice models (Silero VAD) */,
@@ -1728,7 +1728,7 @@
 			shellPath = /bin/sh;
 			shellScript = "set -e\nSRC=\"${SRCROOT}/IOSLocalLLM/Resources/BundledVoiceModels\"\nDEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/BundledVoiceModels\"\nif [ ! -d \"$SRC\" ]; then\n  echo \"warning: BundledVoiceModels source not found at $SRC — Voice mode will require a runtime download from Models → Catalog.\"\n  exit 0\nfi\nmkdir -p \"$DEST\"\n# Only Silero (the ~0.9 MB listening VAD) ships in the app now.\n# KittenTTS (~62 MB) and Kokoro (~312 MB) were UNBUNDLED to shrink\n# the IPA — they download on demand via ModelDownloadCenter when the\n# user picks a neural voice. Apple System Voice remains the\n# zero-download default, so voice works out of the box without them.\n# Remove any stale copies a previous (fully-bundled) build left in\n# DEST so incremental archives don't keep shipping them.\nrm -rf \"$DEST/KittenTTS\" \"$DEST/Kokoro\"\nrsync -a --delete \"$SRC/Silero/\" \"$DEST/Silero/\"\necho \"Copied bundled Silero VAD to $DEST/Silero\"\n";
 		};
-		36646B9E76EAFA681460FC63 /* [CP] Check Pods Manifest.lock */ = {
+		344A85A84C30EAC603520EE6 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -1743,7 +1743,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-IOSLocalLLM-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-IOSLocalLLMTests-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1788,7 +1788,7 @@
 			shellPath = /bin/sh;
 			shellScript = "set -e\nSRC=\"${SRCROOT}/IOSLocalLLM/Models/FastVLM-0.5B-fp16/fastvithd.mlpackage\"\nDEST_DIR=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\nDEST_PACKAGE=\"${DEST_DIR}/fastvithd.mlpackage\"\nDEST_COMPILED=\"${DEST_DIR}/fastvithd.mlmodelc\"\nif [ ! -d \"$SRC\" ]; then\n  echo \"warning: fastvithd.mlpackage not found at $SRC — FastVLM lens path will be unavailable on this build.\"\n  exit 0\nfi\n# Prefer shipping the pre-compiled .mlmodelc so the first\n# camera tap doesn't pay the ~2-3 s on-device compile cost.\n# coremlcompiler is the Xcode-bundled tool that runs the\n# same compile step Xcode's build system uses for sources.\nCOREMLC=\"$(xcrun --find coremlcompiler 2>/dev/null || true)\"\nif [ -n \"$COREMLC\" ] && [ -x \"$COREMLC\" ]; then\n  rm -rf \"$DEST_COMPILED\"\n  \"$COREMLC\" compile \"$SRC\" \"$DEST_DIR\" >/dev/null\n  # coremlcompiler writes <name>.mlmodelc into the dest dir,\n  # so DEST_COMPILED is now populated. Drop the raw\n  # mlpackage so we don't ship both.\n  rm -rf \"$DEST_PACKAGE\"\n  echo \"Compiled FastVLM encoder to $DEST_COMPILED\"\nelse\n  # Fallback: ship the raw mlpackage. FastVLMCoreMLStub\n  # handles runtime compilation via MLModel.compileModel,\n  # which costs a few seconds on first launch but is\n  # functionally equivalent.\n  rsync -a --delete \"$SRC/\" \"$DEST_PACKAGE/\"\n  echo \"Copied raw FastVLM encoder mlpackage to $DEST_PACKAGE (no coremlcompiler available — will compile at runtime)\"\nfi\n";
 		};
-		BBAB7EB9CECF32D95DEAA1A7 /* [CP] Check Pods Manifest.lock */ = {
+		E18C214B97EFD66A5A2760F9 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -1803,7 +1803,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-IOSLocalLLMTests-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-IOSLocalLLM-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1964,7 +1964,6 @@
 				668825798CB965E44B24F984 /* LensPromptPresetSheet.swift in Sources */,
 				E8EC230FF16F336B0D84CCFB /* LensVoiceNarrator.swift in Sources */,
 				DB3D5F132C2349C96688FE48 /* LifecycleController.swift in Sources */,
-				2881B652F3A10DF900BF9830 /* StudioPageBackground.swift in Sources */,
 				40FB43850CBB04379B746420 /* LiveOCROverlayView.swift in Sources */,
 				5AA5924B7691F34E099733A0 /* LiveOCRService.swift in Sources */,
 				9AB9D910B62B6FBFEE218F4C /* LlamaCppBridge.swift in Sources */,
@@ -2042,6 +2041,7 @@
 				C19FE4CFF657CB56663DD626 /* StudioChatPieces.swift in Sources */,
 				4F14FFA958B094B2EB252DF4 /* StudioComposer.swift in Sources */,
 				208AAEA324440B805D538A2B /* StudioLensPanel.swift in Sources */,
+				7F1E9EB08BEA92417AB7873A /* StudioPageBackground.swift in Sources */,
 				432E0AC3314EF25D8C3CC5B7 /* StudioTextBlocks.swift in Sources */,
 				4D2F0DF46C7B40BD5F3A6D64 /* StudioTokens.swift in Sources */,
 				EAF40E6DB7A7EC222444AB1F /* SystemSnapshot.swift in Sources */,
@@ -2317,7 +2317,7 @@
 		};
 		6F93D6FA17DD8C1CDE3983BE /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 1AA860BDCD1BD2E04906D902 /* Pods-IOSLocalLLM.release.xcconfig */;
+			baseConfigurationReference = 42A34BFDA338A779B9DF6FF5 /* Pods-IOSLocalLLM.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
@@ -2386,7 +2386,7 @@
 		};
 		8AD6A6AFAA92401697BD408D /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = A7483E7DBFA20815DF9826B3 /* Pods-IOSLocalLLM.debug.xcconfig */;
+			baseConfigurationReference = 04D9022B5CA58888A76EF255 /* Pods-IOSLocalLLM.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
@@ -2458,7 +2458,7 @@
 		};
 		CFC9103E125E3FC221B8A3F5 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 0BDE457C493BB8A0801D77CA /* Pods-IOSLocalLLMTests.debug.xcconfig */;
+			baseConfigurationReference = 32ADAE444550F64AAB62DB97 /* Pods-IOSLocalLLMTests.debug.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -2566,7 +2566,7 @@
 		};
 		DEDE71A6AB50FB5B58B15EA7 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 44B55FD4A643390C60E0021B /* Pods-IOSLocalLLMTests.release.xcconfig */;
+			baseConfigurationReference = AD63C98C391E290FECB512F1 /* Pods-IOSLocalLLMTests.release.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
