@@ -245,6 +245,9 @@ final class Edge0SpeedABRunner: ObservableObject {
     private static let poolOverrideBytes: UInt64 = 512 * 1_048_576
     private static let expectedSlots = 303
     nonisolated private static let maximumOutputTokens = 64
+    /// Per-trial output for the sustained-thermal run: long enough that the
+    /// device holds a continuous load window (6 × 256 ≈ 1.5k tokens).
+    nonisolated private static let sustainedTokens = 256
     private static let minimumSustainedTokens = 32
     private static let runTimeoutSeconds: Double = 420
     private static let driftThreshold = 0.20
@@ -503,6 +506,8 @@ final class Edge0SpeedABRunner: ObservableObject {
                 planLabel = "Staged readahead-\((readaheadOverride ?? false) ? "on" : "off")"
             } else if kind == .readsAB {
                 planLabel = "Staged reads-\(readsOverride ?? 4)"
+            } else if kind == .sustained35B {
+                planLabel = "Staged sustained"
             } else {
                 planLabel = Self.label(for: mode)
             }
@@ -511,6 +516,8 @@ final class Edge0SpeedABRunner: ObservableObject {
             var run = await measuredRun(
                 service: service, mode: mode,
                 label: "\(planLabel) #\(index + 1)", scored: true,
+                maximumTokens: kind == .sustained35B
+                    ? Self.sustainedTokens : Self.maximumOutputTokens,
                 evalWindow: windowOverride,
                 microbatch: microbatchOverride,
                 advisory: advisoryOverride,
@@ -585,9 +592,13 @@ final class Edge0SpeedABRunner: ObservableObject {
         planned: Int
     ) async -> RecoveryOutcome {
         let started = ContinuousClock.now
-        let minimum = Double(max(0, recoverySeconds))
+        // Sustained-thermal runs chain trials back-to-back: the idle
+        // minimum is zero (the Serious/Critical safety wait still applies).
+        let minimum = kind == .sustained35B ? 0 : Double(max(0, recoverySeconds))
         var timeout = false
-        var reason = "minimum idle \(Int(minimum))s"
+        var reason = kind == .sustained35B
+            ? "sustained chain (no idle)"
+            : "minimum idle \(Int(minimum))s"
         while true {
             let elapsed = started.duration(to: .now).seconds
             let thermal = ProcessInfo.processInfo.thermalState
@@ -1442,6 +1453,64 @@ final class Edge0SpeedABRunner: ObservableObject {
             return
         }
 
+        if kind == .sustained35B {
+            guard scored.count >= 2 else {
+                decision = "Insufficient sustained trials for a verdict."
+                return
+            }
+            let rates = scored.map(\.decodeTokensPerSecond)
+            let first = rates.first ?? 0
+            let last = rates.last ?? 0
+            let drift = first > 0 ? (last - first) / first * 100 : 0
+            let medianRate = Edge0BenchmarkStatistics.median(rates) ?? 0
+            let ranks = scored.map {
+                Edge0DiagnosticPlan.thermalRank($0.thermalEnd)
+            }
+            let maxRank = ranks.max() ?? 0
+            let peakFootprint = scored.map(\.peakFootprint).max() ?? 0
+            let stable = Edge0DiagnosticPlan.sustainedStable(
+                decodeDriftPercent: drift, maxThermalRank: maxRank
+            )
+            let thermalSummary: String
+            if let index = ranks.firstIndex(where: { $0 >= 2 }) {
+                thermalSummary = "transition observed — trial \(index + 1) ended "
+                    + "\(scored[index].thermalEnd)"
+            } else if maxRank == 1 {
+                thermalSummary = "reached fair (no serious transition)"
+            } else {
+                thermalSummary = "nominal throughout (no transition)"
+            }
+            var lines = [
+                "35B Sustained Run (thermal) — \(scored.count) back-to-back "
+                    + "trials, no idle recovery, \(Self.sustainedTokens) tokens each",
+                "decode tok/s: " + Self.list(rates),
+                String(
+                    format: "drift: first %.2f → last %.2f (%+.1f%%) · median %.2f",
+                    first, last, drift, medianRate
+                ),
+                "thermal: " + thermalSummary,
+                "peak footprint: \(Self.bytes(peakFootprint))",
+            ]
+            if stable {
+                lines.append(
+                    "verdict: sustained-stable — no serious thermal transition, "
+                        + "decode drift within −5%"
+                )
+            } else if maxRank >= 2 {
+                lines.append(
+                    "verdict: throttling evidence — record the thermal "
+                        + "transition and per-trial rates in the device matrix"
+                )
+            } else {
+                lines.append(
+                    "verdict: decode drift beyond −5% without a thermal "
+                        + "transition — investigate before any throughput claim"
+                )
+            }
+            decision = lines.joined(separator: "\n")
+            return
+        }
+
         if kind == .prefillAB {
             let boundedPrefill = bounded.map(\.prefillSeconds)
             let stagedPrefill = scored
@@ -1632,8 +1701,10 @@ final class Edge0SpeedABRunner: ObservableObject {
                 + (terminalReason.isEmpty ? "" : " — \(terminalReason)"),
             "scored trials: \(completedTrials)/\(plannedTrials)"
                 + " · last completed: \(lastCompletedStep)",
-            "profile: 512 MiB pool (expected \(Self.expectedSlots) slots) · reads \(kind == .readsAB ? "4/6 arms" : "4") · thinking off · greedy · max \(Self.maximumOutputTokens) tokens",
-            "recovery: minimum \(recoverySeconds)s idle before every scored trial (bounded, cancellable)",
+            "profile: 512 MiB pool (expected \(Self.expectedSlots) slots) · reads \(kind == .readsAB ? "4/6 arms" : "4") · thinking off · greedy · max \(kind == .sustained35B ? Self.sustainedTokens : Self.maximumOutputTokens) tokens",
+            kind == .sustained35B
+                ? "recovery: none — back-to-back sustained trials (thermal-safety wait only)"
+                : "recovery: minimum \(recoverySeconds)s idle before every scored trial (bounded, cancellable)",
             "prompt: \(Self.benchmarkPrompt)",
             String(format: "load: %.2fs", loadedSeconds),
             sessionLabel,

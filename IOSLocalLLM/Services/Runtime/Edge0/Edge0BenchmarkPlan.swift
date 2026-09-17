@@ -17,6 +17,7 @@ enum Edge0DiagnosticKind: String, CaseIterable, Identifiable, Sendable {
     case computeAB = "35B Compute A/B (production vs candidate)"
     case readaheadAB = "35B Readahead A/B (off vs hints)"
     case readsAB = "35B Expert reads A/B (4 vs 6)"
+    case sustained35B = "35B Sustained Run (thermal)"
     case exactDrift = "Exact drift (early vs late)"
 
     var id: String { rawValue }
@@ -43,6 +44,10 @@ enum Edge0DiagnosticKind: String, CaseIterable, Identifiable, Sendable {
             return [.staged, .staged, .staged, .staged]
         case .readsAB:
             return [.staged, .staged, .staged, .staged]
+        case .sustained35B:
+            // Back-to-back identical trials (no idle recovery): the point is
+            // a continuous sustained-load window, not an A/B comparison.
+            return Array(repeating: .staged, count: 6)
         case .exactDrift:
             return [.exact, .exact, .exact]
         }
@@ -227,6 +232,27 @@ struct Edge0DiagnosticPlan: Sendable {
         decodeDeltaPercent: Double
     ) -> Bool {
         prefillDeltaPercent <= -3 && decodeDeltaPercent >= -3
+    }
+
+    /// Frozen stability rule for the sustained-thermal run (no A/B arms).
+    /// "Sustained-stable" means the device held its decode rate within 5%
+    /// from the first to the last back-to-back trial and never entered a
+    /// Serious/Critical thermal state. Fair is tolerated (it is a normal
+    /// sustained-load plateau, not throttling evidence); Serious/Critical is
+    /// the transition the device matrix asks us to record.
+    static func sustainedStable(
+        decodeDriftPercent: Double,
+        maxThermalRank: Int
+    ) -> Bool {
+        decodeDriftPercent >= -5 && maxThermalRank <= 1
+    }
+
+    /// Ranks a thermal label from the runner's `label` extension.
+    static func thermalRank(_ label: String) -> Int {
+        if label.contains("critical") { return 3 }
+        if label.contains("serious") { return 2 }
+        if label.contains("fair") { return 1 }
+        return 0
     }
 
     /// Recovery status text with remaining time and the next trial.

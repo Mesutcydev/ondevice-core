@@ -14,6 +14,12 @@ and intends to use semantic version tags for source releases.
   requested/effective reads pair; a requested-6 trial whose store says
   otherwise is labeled SETUP-BLOCKED instead of silently comparing
   off-vs-off. Acceptance rule (frozen): prefill ≥ +3% with decode ≥ −3%.
+- 35B sustained-thermal diagnostic: a "35B Sustained Run (thermal)" kind —
+  six back-to-back staged trials (256 tokens each, no idle recovery) with
+  per-trial decode rates, first→last drift, thermal trajectory, and peak
+  footprint, plus a frozen stability rule (decode drift ≥ −5% and no
+  Serious/Critical thermal state). Fills the sustained/thermal row of the
+  device evidence matrix.
 - 35B readahead A/B runner (Phase 5M promotion path): a counterbalanced
   "35B Readahead A/B (off vs hints)" diagnostic kind with the correct
   lifecycle for a load-time knob — the engine is unloaded and reloaded on

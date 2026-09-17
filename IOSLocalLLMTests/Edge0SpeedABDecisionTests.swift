@@ -16,7 +16,8 @@ import XCTest
 //   3. the frozen readahead acceptance rule;
 //   4. the readahead requested/effective metric pair plumbing;
 //   5. engine-side load-capture of the readahead flag;
-//   6. the expert-reads A/B kind and its frozen acceptance rule.
+//   6. the expert-reads A/B kind and its frozen acceptance rule;
+//   7. the sustained-thermal kind, its stability rule, and thermal ranks.
 
 @MainActor
 final class Edge0SpeedABDecisionTests: XCTestCase {
@@ -183,5 +184,40 @@ final class Edge0SpeedABDecisionTests: XCTestCase {
         XCTAssertFalse(Edge0DiagnosticPlan.readsAcceptance(
             prefillDeltaPercent: -1.5, decodeDeltaPercent: -3.5
         ))
+    }
+
+    // MARK: 7. Sustained (thermal) kind
+
+    func testSustainedPlanIsBackToBackStaged() {
+        XCTAssertEqual(
+            Edge0DiagnosticKind.sustained35B.scoredPlan,
+            Array(repeating: .staged, count: 6)
+        )
+        XCTAssertTrue(Edge0DiagnosticPlan.populationGate(
+            kind: .sustained35B, exactCount: 0, boundedCount: 0, stagedCount: 6
+        ))
+    }
+
+    func testSustainedStableRule() {
+        // Stable: no serious transition, drift within -5%.
+        XCTAssertTrue(Edge0DiagnosticPlan.sustainedStable(
+            decodeDriftPercent: 0, maxThermalRank: 0
+        ))
+        XCTAssertTrue(Edge0DiagnosticPlan.sustainedStable(
+            decodeDriftPercent: -5, maxThermalRank: 1
+        ))
+        XCTAssertFalse(Edge0DiagnosticPlan.sustainedStable(
+            decodeDriftPercent: -5.1, maxThermalRank: 0
+        ))
+        XCTAssertFalse(Edge0DiagnosticPlan.sustainedStable(
+            decodeDriftPercent: 0, maxThermalRank: 2
+        ))
+    }
+
+    func testThermalRankMapping() {
+        XCTAssertEqual(Edge0DiagnosticPlan.thermalRank("thermal nominal"), 0)
+        XCTAssertEqual(Edge0DiagnosticPlan.thermalRank("thermal fair"), 1)
+        XCTAssertEqual(Edge0DiagnosticPlan.thermalRank("thermal serious"), 2)
+        XCTAssertEqual(Edge0DiagnosticPlan.thermalRank("thermal critical"), 3)
     }
 }
