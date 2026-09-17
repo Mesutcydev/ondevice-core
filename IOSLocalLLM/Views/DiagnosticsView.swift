@@ -139,7 +139,7 @@ struct DiagnosticsView: View {
                 }
             }
             if edge0Validation.family == .qwen35MoE {
-                Text("35B supports exact true-router and bounded prefetch (concurrent per-token expert loads). Staged/prerouter are not implemented for this family.")
+                Text("35B supports exact true-router, bounded prefetch, and staged prefill (staged·microbatch4 + bounded decode — the production default). Readahead hints and the advisory prerouter are device-A/B candidates.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
