@@ -81,6 +81,10 @@ and intends to use semantic version tags for source releases.
   reads 6 (prefill 1.5% faster, below the 3% bar; decode −3.5%, beyond the
   −3% floor). Both acceptance comparators were fixed to time-delta form
   (`<= 5` / `<= -3`) after the verdict exposed inverted sign conventions.
+- In-app device validation (build 49) passes all 15 stages on the iPhone 17
+  Pro Max, including the frozen nine-ID exact-reference oracle on device
+  (9/9 ids) through the production staged path — the first real-hardware
+  oracle pass for the 35B.
 - Focused Edge0 suites now execute on the simulator through an isolated
   sim-compat project (`project-simcompat.yml` + `OnDeviceSimCompat.xcworkspace`);
   see `Docs/VALIDATION.md`. Checkpoint- and fixture-gated cases skip cleanly,

@@ -39,6 +39,18 @@ non-gated cases passed; cases gated on real checkpoints (`EDGE0_35B_MODEL`,
 `EDGE0_8B_MODEL`) or oracle fixtures (`EDGE0_35B_FIXTURES`) skip cleanly when
 those are absent.
 
+On 17 September 2026 the **in-app device validation runner** completed all
+15 stages on the sideloaded build 49 (iPhone 17 Pro Max, iOS 27.2) through
+the production Assistant path: artifacts validated, admission accepted
+(auto pool → 1213 slots/2 GiB), load 1.94 s, prefill 7.58 s, TTFT 7.65 s,
+decode 8.33 tok/s, **exact reference parity PASS — 9/9 ids, first differing
+index none**, cancellation (stop→end 0.02 s), generation after cancel,
+unload, MLX switch, and switch back. This is the first real-hardware run of
+the frozen nine-ID oracle through the production staged configuration
+(`mode.effective = staged`, `prefill staged·microbatch4`, `decode
+boundedPrefetch`, `reads 4`); peak footprint 4.42 GB, thermal nominal
+throughout.
+
 Edge0 unit suites execute on the simulator through an isolated sim-compat
 project, because the simulator SDK ships no `CoreAI.framework` and the app's
 `coreai-models` package is device-only. Recipe:

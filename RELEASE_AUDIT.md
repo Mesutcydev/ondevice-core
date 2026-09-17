@@ -48,6 +48,16 @@ verdict (decode −22.1%) is unchanged under the fixed rule. The knob space for 
 device-measured lever has a verdict; the only remaining upside is the
 upstream MLX 0.32/NAX path (watched by a daily cron job).
 
+**Device validation (build 49, in-app runner):** all 15 stages PASS on the
+iPhone 17 Pro Max through the production Assistant path — including the
+**frozen nine-ID exact-reference oracle (9/9 ids, first differing index
+none)** in the production staged configuration (reads 4, staged·microbatch4,
+bounded decode). Load 1.94 s · prefill 7.58 s · TTFT 7.65 s · decode
+8.33 tok/s · cancellation stop→end 0.02 s · unload 0.18 s · MLX switch
+2.71 s · switch back 2.14 s. Peak footprint 4.42 GB, thermal nominal. This
+is the first real-hardware oracle pass for the 35B — the exactness contract
+now has device evidence, not just simulator and upstream-parity evidence.
+
 ## Build 48 — 2026-09-17 (readahead fix + A/B diagnostic)
 
 Follow-up to build 47 after the first device A/B session surfaced the 5M

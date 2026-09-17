@@ -146,6 +146,31 @@ device item. The hoist itself is
 invisible in these numbers, as expected: >50% of prefill MoE time is
 expert-load acquire wait (I/O), not metadata resolution.
 
+### Build-49 in-app device validation (Edge0-35B · 2026-09-17)
+
+The in-app device validation runner (`Edge0DeviceValidationRunner` — the
+production Assistant path, never a test-only model instance) completed all
+15 stages on the sideloaded build 49 (iPhone18,2 · iOS 27.2 · `applegpu_g18p`,
+NAX-eligible; production configuration: staged prefill, bounded decode,
+reads 4):
+
+| Stage | Result |
+| --- | --- |
+| Artifacts / admission | resident 1397 tensors/1.39 GB · experts 360/18.12 GB · 310 LoRA modules; pool auto → 1213 slots/2 GiB · safe input 4096 tok (experimental cap) |
+| Load | 1.94 s · footprint 103.3 MB → 1.89 GB |
+| Prefill / first token | 7.58 s · TTFT 7.65 s · hit 78% · aggregate expert wait 46.4 s |
+| Decode | 45 tok · 8.33 tok/s · hit 78% · stop eos |
+| **Exact reference parity (9 IDs)** | **PASS · 9/9 exact ids · first differing index none** · position 13 |
+| Cancellation / after-cancel | stop→end 0.02 s · generation resumes without restart |
+| Unload / MLX switch / switch back | 0.18 s · Bonsai 27B 2.71 s · Edge0-35B 2.14 s |
+
+The frozen nine-ID oracle passing **on device through the production
+staged path** (`mode.effective = staged`, `prefill staged·microbatch4`,
+`decode boundedPrefetch`, `reads.configured 4`) is the real-hardware
+correctness evidence for the exactness contract; peak footprint 4.42 GB,
+thermal nominal throughout, NAX eligibility confirmed device-side
+(engagement still pending a Metal trace).
+
 ## 6. Verdict
 
 The pass is **source-complete, compile-clean, and test-executed on the

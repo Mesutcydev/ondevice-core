@@ -180,11 +180,10 @@ final class Edge0DeviceValidationRunner: ObservableObject {
         Edge0EnginePreferences.edge0_35BAdvisoryPrerouter = advisoryPrerouter
         var initial = Baseline()
         initial.family = family.rawValue
-        initial.mode = family == .qwen35MoE
-            ? (executionMode == .boundedPrefetch
-                ? Edge0ExecutionMode.boundedPrefetch.rawValue
-                : Edge0ExecutionMode.exact.rawValue)
-            : executionMode.rawValue
+        // Report the actual 35B selection (exact / boundedPrefetch / staged;
+        // stagedPrerouter is 8B-only and reset by the picker) so the export
+        // cannot read "requested exact" while the engine ran staged.
+        initial.mode = executionMode.rawValue
         initial.effectiveMode = initial.mode
         baseline = initial
         deviceSummary = "\(describeDevice()) · family \(family.displayName)"
