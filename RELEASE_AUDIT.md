@@ -1,5 +1,35 @@
 # OnDevice Core AI Studio — Release Audit 1.0.0
 
+## Build 51 — 2026-09-17 (sustained-thermal diagnostic + repo identity)
+
+- **`35B Sustained Run (thermal)`** kind: six back-to-back staged trials
+  (256 tokens each, no idle recovery; the Serious/Critical safety wait
+  still applies), reporting per-trial decode rates, first→last drift,
+  thermal trajectory, and peak footprint, with a frozen stability rule
+  (drift ≥ −5%, no Serious/Critical state). Fills the sustained/thermal
+  row of the device evidence matrix.
+- **Repository identity**: in-app source/support links and HTTP
+  User-Agent strings now reference `Mesutcydev/ondevice-core`; the old
+  `ios-local-llm` URL is absent from the binary (verified).
+
+| Check | Result |
+| --- | --- |
+| Version metadata | Consistent: 1.0.0 (**51**) in `project.yml` (app + extension) |
+| Focused Edge0 tests (simulator) | **Executed**: 11 passed / 0 failures (decision suite incl. 3 new sustained tests), exit 0 (`build/simcompat-sustained.log`) |
+| IPA packaging | **Packaged** — 54 independent artifact checks passed (incl. `legacy_repo_url_absent`); ZIP member paths identical to build 50 |
+
+Artifact: `build/releases/OnDeviceCoreAIStudio-sideload-entitled-1.0.0-51.ipa`
+(`...-latest.ipa` identical)
+
+- Version **1.0.0 (51)**; the share extension also uses build **51**.
+- Size: **53,213,803 bytes**.
+- SHA-256: `aeac1f53dd19e932a2538e5f26498d04b3149f20799923931ba92bd258297754`.
+- **54 independent artifact checks passed** (`verification-1.0.0-51/`). ZIP
+  member paths exactly match build 50; entitlements match builds 43–50
+  exactly (PCC, increased memory, extended virtual addressing,
+  CloudKit/iCloud, shared App Group). Bundle IDs and minimum iOS 27.0
+  unchanged.
+
 ## Build 50 — 2026-09-17 (acceptance-rule + label fixes)
 
 Post-49 source fixes, shipped:
