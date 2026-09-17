@@ -1,5 +1,38 @@
 # OnDevice Core AI Studio — Release Audit 1.0.0
 
+## Build 50 — 2026-09-17 (acceptance-rule + label fixes)
+
+Post-49 source fixes, shipped:
+
+- **A/B acceptance comparators fixed to time-delta conventions** —
+  `readaheadAcceptance` (prefill/TTFT at most 5% slower) and
+  `readsAcceptance` (prefill at least 3% faster). The original comparators
+  compared time-delta metrics as if positive meant faster; the device
+  verdicts (both rejected) are unchanged under the corrected rules.
+- **Device-validation requested-mode label** now reports the actual 35B
+  selection instead of printing "requested exact" for a staged run (the
+  engine counters were always correct).
+
+| Check | Result |
+| --- | --- |
+| Version metadata | Consistent: 1.0.0 (**50**) in `project.yml` (app + extension) |
+| Focused Edge0 tests (simulator) | **Executed**: 11 passed / 0 failures (8 decision + 3 advise), exit 0 (`build/simcompat-devval.log`) |
+| IPA packaging | **Packaged** — 52 independent artifact checks passed; ZIP member paths identical to build 49 |
+
+Artifact: `build/releases/OnDeviceCoreAIStudio-sideload-entitled-1.0.0-50.ipa`
+(`...-latest.ipa` identical)
+
+- Version **1.0.0 (50)**; the share extension also uses build **50**.
+- Size: **53,209,937 bytes**.
+- SHA-256: `02aca6a36121c43cae732b2b39fe98e65f5b6244c9bcecda0736b2d47daf231d`.
+- **52 independent artifact checks passed** (`verification-1.0.0-50/`). ZIP
+  member paths exactly match build 49; entitlements match builds 43–49
+  exactly (PCC, increased memory, extended virtual addressing,
+  CloudKit/iCloud, shared App Group). Bundle IDs and minimum iOS 27.0
+  unchanged. This build carries the on-device-verified configuration
+  (build 49's 15/15 validation, oracle 9/9) with the corrected comparators
+  and label.
+
 ## Build 49 — 2026-09-17 (expert-reads A/B runner)
 
 Follow-up to build 48, adding the last untested device lever as a first-class
