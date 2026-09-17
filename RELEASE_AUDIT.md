@@ -40,7 +40,10 @@ Artifact: `build/releases/OnDeviceCoreAIStudio-sideload-entitled-1.0.0-48.ipa`
   shared App Group). Bundle IDs and minimum iOS 27.0 unchanged.
 - Unlocks the device follow-up: the readahead A/B runs safely now — the
   fix makes the hints-ON arm viable, and the new kind prints a DECISION
-  section.
+  section. (Outcome, same day: the A/B ran on device and **rejected**
+  readahead — decode 7.29 → 5.69 tok/s median (−22.1%), prefill/TTFT
+  within noise; hints stay OFF. The performance campaign is closed with
+  every candidate device-measured.)
 
 ## Build 47 — 2026-09-17
 

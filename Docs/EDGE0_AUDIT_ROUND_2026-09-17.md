@@ -135,13 +135,14 @@ every trial):
 | Staged microbatch g1 vs g4 | prefill 8.24 s → 6.95 s (−16%) | g4 promotion reconfirmed |
 | Staged eval window w1 vs w4 | 6.91/7.07 s vs 6.91/7.70 s | No win — w1 stays |
 | Advisory prerouter off vs on | decode 6.85–7.27 vs 6.51–6.65 tok/s; expert loads 9.6k → 12.3k (+28%, ~4.8 GB wasted reads per run) | **Rejected** — stays OFF |
+| Advisory readahead (5M) off vs hints | decode 7.29 → 5.69 tok/s median (−22.1%); prefill/TTFT −0.7% (noise) | **Rejected** — stays OFF |
 
 Sequence parity held in every trial (`sequence match: identical`), so no
-candidate ever touched routing or outputs. Still open on device: the 5M
-readahead A/B (the remaining acquire-wait lever) and the NAX engagement
-trace. The hoist itself is invisible in these numbers, as expected: >50%
-of prefill MoE time is expert-load acquire wait (I/O), not metadata
-resolution.
+candidate ever touched routing or outputs. The 5M readahead A/B is now
+closed (rejected with evidence, build 48's reload-per-arm runner); the
+NAX engagement trace remains the one open device item. The hoist itself is
+invisible in these numbers, as expected: >50% of prefill MoE time is
+expert-load acquire wait (I/O), not metadata resolution.
 
 ## 6. Verdict
 

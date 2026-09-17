@@ -67,8 +67,9 @@ and intends to use semantic version tags for source releases.
 
 ### Notes
 
-- Phase 5M bounded expert readahead is implemented but off by default
-  pending the device A/B; the per-token router readback path is unchanged.
+- Phase 5M bounded expert readahead is implemented but off by default — the
+  build-48 device A/B rejected it (decode 7.29 → 5.69 tok/s median, −22.1%;
+  prefill/TTFT within noise); the per-token router readback path is unchanged.
 - Focused Edge0 suites now execute on the simulator through an isolated
   sim-compat project (`project-simcompat.yml` + `OnDeviceSimCompat.xcworkspace`);
   see `Docs/VALIDATION.md`. Checkpoint- and fixture-gated cases skip cleanly,

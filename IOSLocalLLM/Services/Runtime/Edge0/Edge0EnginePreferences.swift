@@ -146,6 +146,11 @@ enum Edge0EnginePreferences {
     /// asks the kernel to start async reads earlier — and it captures the
     /// flag once per engine load, so toggling mid-flight does not change an
     /// in-progress generation. Default OFF until the device A/B accepts it.
+    ///
+    /// Device A/B verdict (iPhone18,2 · build 48 · 2026-09-17, counterbalanced
+    /// reload-per-arm, 118-token prompt): **rejected** — decode 7.29 → 5.69
+    /// tok/s median (−22.1%; the hints contend with the demand preads and
+    /// arrive too late to help), prefill −0.7% (noise). Stays OFF.
     private static var _edge0_35BReadaheadHints = false
 
     static var edge0_35BReadaheadHints: Bool {
