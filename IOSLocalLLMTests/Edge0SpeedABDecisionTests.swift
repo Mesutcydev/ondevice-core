@@ -15,7 +15,8 @@ import XCTest
 //   2. the readahead A/B kind exists with a counterbalanced plan;
 //   3. the frozen readahead acceptance rule;
 //   4. the readahead requested/effective metric pair plumbing;
-//   5. engine-side load-capture of the readahead flag.
+//   5. engine-side load-capture of the readahead flag;
+//   6. the expert-reads A/B kind and its frozen acceptance rule.
 
 @MainActor
 final class Edge0SpeedABDecisionTests: XCTestCase {
@@ -140,5 +141,34 @@ final class Edge0SpeedABDecisionTests: XCTestCase {
         Edge0EnginePreferences.edge0_35BReadaheadHints = false
         _ = Edge0_35BEngine()
         XCTAssertFalse(engine.readaheadHintsEnabled)
+    }
+
+    // MARK: 6. Expert-reads A/B kind
+
+    func testReadsABHasCounterbalancedStagedPlan() {
+        XCTAssertEqual(
+            Edge0DiagnosticKind.readsAB.scoredPlan,
+            [.staged, .staged, .staged, .staged]
+        )
+        XCTAssertTrue(Edge0DiagnosticPlan.populationGate(
+            kind: .readsAB, exactCount: 0, boundedCount: 0, stagedCount: 4
+        ))
+    }
+
+    func testReadsAcceptanceRule() {
+        // Prefill is the primary metric: +3% required.
+        XCTAssertTrue(Edge0DiagnosticPlan.readsAcceptance(
+            prefillDeltaPercent: 3, decodeDeltaPercent: 0
+        ))
+        XCTAssertTrue(Edge0DiagnosticPlan.readsAcceptance(
+            prefillDeltaPercent: 10, decodeDeltaPercent: -3
+        ))
+        XCTAssertFalse(Edge0DiagnosticPlan.readsAcceptance(
+            prefillDeltaPercent: 2.9, decodeDeltaPercent: 10
+        ))
+        // Decode must not degrade beyond -3%.
+        XCTAssertFalse(Edge0DiagnosticPlan.readsAcceptance(
+            prefillDeltaPercent: 10, decodeDeltaPercent: -3.1
+        ))
     }
 }

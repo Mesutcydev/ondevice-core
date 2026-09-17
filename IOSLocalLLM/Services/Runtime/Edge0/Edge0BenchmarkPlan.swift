@@ -16,6 +16,7 @@ enum Edge0DiagnosticKind: String, CaseIterable, Identifiable, Sendable {
     case prerouterAB = "35B Prerouter A/B (off vs advisory)"
     case computeAB = "35B Compute A/B (production vs candidate)"
     case readaheadAB = "35B Readahead A/B (off vs hints)"
+    case readsAB = "35B Expert reads A/B (4 vs 6)"
     case exactDrift = "Exact drift (early vs late)"
 
     var id: String { rawValue }
@@ -39,6 +40,8 @@ enum Edge0DiagnosticKind: String, CaseIterable, Identifiable, Sendable {
         case .computeAB:
             return [.staged, .staged, .staged, .staged]
         case .readaheadAB:
+            return [.staged, .staged, .staged, .staged]
+        case .readsAB:
             return [.staged, .staged, .staged, .staged]
         case .exactDrift:
             return [.exact, .exact, .exact]
@@ -204,6 +207,18 @@ struct Edge0DiagnosticPlan: Sendable {
         decodeDeltaPercent >= 5
             && prefillDeltaPercent >= -5
             && ttftDeltaPercent >= -5
+    }
+
+    /// Frozen acceptance rule for the expert-read concurrency A/B (4 vs 6).
+    /// Read concurrency widens the pread fan-out on the I/O-bound expert
+    /// path, so the primary metric is prefill: at least +3%, with decode
+    /// not degrading by more than 3%. Sequence parity and arm effectiveness
+    /// are separate gates in the runner.
+    static func readsAcceptance(
+        prefillDeltaPercent: Double,
+        decodeDeltaPercent: Double
+    ) -> Bool {
+        prefillDeltaPercent >= 3 && decodeDeltaPercent >= -3
     }
 
     /// Recovery status text with remaining time and the next trial.

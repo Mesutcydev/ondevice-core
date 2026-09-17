@@ -342,6 +342,9 @@ struct DiagnosticsView: View {
                                 + (edge0SpeedAB.kind == .readaheadAB
                                     ? " · readahead \(run.readaheadEffective ? "on" : "off")"
                                     : "")
+                                + (edge0SpeedAB.kind == .readsAB
+                                    ? " · reads \(run.readsEffective)"
+                                    : "")
                                 + (run.sustainedEvidence ? "" : " · sustained evidence insufficient")
                                 + (run.sequenceMatch == false ? " · OUTPUT DIFFERS" : "")
                             )
