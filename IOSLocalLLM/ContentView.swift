@@ -9,6 +9,7 @@ struct ContentView: View {
     @StateObject private var bridge = AppBridge.shared
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var legal = LegalAcceptanceManager.shared
+    @Environment(\.splashFinished) private var splashFinished
     @ObservedObject private var loc = LocalizationService.shared
 
     @StateObject private var camera: CameraService
@@ -247,14 +248,14 @@ struct ContentView: View {
         // Gate on ANY outstanding acceptance (EULA version, AI disclaimer, or
         // device-safety notice), not just the version, so each can re-prompt.
         .fullScreenCover(isPresented: Binding(
-            get: { legal.needsAnyAcceptance },
+            get: { legal.needsAnyAcceptance && splashFinished },
             set: { _ in }
         )) {
             LegalAcceptanceView { /* dismiss when accepted */ }
         }
         // Onboarding full-screen cover on first launch (after legal accepted)
         .fullScreenCover(isPresented: Binding(
-            get: { !legal.needsAnyAcceptance && !settings.hasSeenOnboarding },
+            get: { splashFinished && !legal.needsAnyAcceptance && !settings.hasSeenOnboarding },
             set: { if !$0 { settings.hasSeenOnboarding = true } }
         )) {
             OnboardingView()

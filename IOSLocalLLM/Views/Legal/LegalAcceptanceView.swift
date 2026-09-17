@@ -4,6 +4,11 @@ import SwiftUI
 // Full-screen gate shown on first launch and whenever the legal version is
 // bumped. The user must accept Privacy + EULA + AI Disclaimer before the
 // main app UI is reachable.
+//
+// Design: a guided review flow. Each document is a tactile glass card that
+// flips from a chevron to a checked state once read; a progress strip in the
+// pinned action bar counts the reviews; the primary action stays disabled
+// (and explains itself) until all four documents are done.
 
 struct LegalAcceptanceView: View {
 
@@ -18,82 +23,75 @@ struct LegalAcceptanceView: View {
     @State private var showDisclaimer = false
     @State private var showDeviceSafety = false
     @Environment(\.koduTheme) private var T
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var entered = false
 
     let onAccepted: () -> Void
 
-    private var canContinue: Bool {
-        didReadPrivacy && didReadEULA && didReadDisclaimer && didReadDeviceSafety
+    private var readCount: Int {
+        [didReadPrivacy, didReadEULA, didReadDisclaimer, didReadDeviceSafety]
+            .filter { $0 }.count
     }
+
+    private var canContinue: Bool { readCount == 4 }
 
     var body: some View {
         ZStack {
             LiquidPinkBackdrop()
 
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(alignment: .leading, spacing: 14) {
                     headerView
-                    Spacer().frame(height: 4)
-                    rowFor(title: "privacy policy",
-                           subtitle: "how your data is (not) handled",
-                           icon: "lock.shield",
-                           tint: T.good,
-                           accepted: $didReadPrivacy,
-                           openAction: { showPrivacy = true })
-                    rowFor(title: "open-source license & safety",
-                           subtitle: "MIT license and important notices",
-                           icon: "doc.text",
-                           tint: T.accent,
-                           accepted: $didReadEULA,
-                           openAction: { showEULA = true })
-                    rowFor(title: "ai output disclaimer",
-                           subtitle: "ai can be wrong — always verify",
-                           icon: "exclamationmark.triangle",
-                           tint: T.warn,
-                           accepted: $didReadDisclaimer,
-                           openAction: { showDisclaimer = true })
-                    rowFor(title: "device safety notice",
-                           subtitle: "on-device ai heats the device — what to know",
-                           icon: "thermometer.medium",
-                           tint: T.bad,
-                           accepted: $didReadDeviceSafety,
-                           openAction: { showDeviceSafety = true })
-
-                    Spacer().frame(height: 16)
-
-                    Button {
-                        legal.acceptLegal()
-                        legal.acceptDisclaimer()
-                        legal.acceptDeviceSafety()
-                        HapticManager.impact(.medium)
-                        onAccepted()
-                    } label: {
-                        HStack {
-                            Text("agree and continue")
-                                .font(T.mono(14, .semibold))
-                                .tracking(0.3)
-                            Spacer()
-                            Text("↵")
-                                .font(T.mono(11))
-                                .foregroundColor(T.ink4)
-                        }
-                        .foregroundColor(canContinue ? T.bg : T.ink3)
-                        .padding(.horizontal, 16)
-                        .frame(height: 50)
-                        .background(RoundedRectangle(cornerRadius: 10)
-                            .fill(canContinue ? T.ink : T.surface2))
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!canContinue)
+                    reviewCard(index: 0,
+                               title: "privacy policy",
+                               subtitle: "how your data is (not) handled",
+                               icon: "lock.shield",
+                               tint: T.good,
+                               accepted: $didReadPrivacy,
+                               openAction: { showPrivacy = true })
+                    reviewCard(index: 1,
+                               title: "open-source license & safety",
+                               subtitle: "MIT license and important notices",
+                               icon: "doc.text",
+                               tint: T.accent,
+                               accepted: $didReadEULA,
+                               openAction: { showEULA = true })
+                    reviewCard(index: 2,
+                               title: "ai output disclaimer",
+                               subtitle: "ai can be wrong — always verify",
+                               icon: "exclamationmark.triangle",
+                               tint: T.warn,
+                               accepted: $didReadDisclaimer,
+                               openAction: { showDisclaimer = true })
+                    reviewCard(index: 3,
+                               title: "device safety notice",
+                               subtitle: "on-device ai heats the device",
+                               icon: "thermometer.medium",
+                               tint: T.bad,
+                               accepted: $didReadDeviceSafety,
+                               openAction: { showDeviceSafety = true })
 
                     Text("By tapping Agree, you confirm that you have read and accepted all four documents above. You can review them any time in Settings → Legal.")
-                        .font(T.sans(11))
-                        .foregroundColor(T.ink3)
+                        .font(T.sans(11.5))
+                        .foregroundColor(T.ink2)
+                        .lineSpacing(2)
                         .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
                         .padding(.horizontal, 6)
+                        .padding(.top, 8)
                 }
                 .padding(.horizontal, 22)
-                .padding(.vertical, 30)
+                .padding(.top, 18)
+                .padding(.bottom, 16)
+                .frame(maxWidth: 560)
+                .frame(maxWidth: .infinity)
             }
+            .scrollIndicators(.hidden)
+            .safeAreaInset(edge: .bottom, spacing: 0) { actionBar }
+        }
+        .onAppear { entered = true }
+        .onChange(of: canContinue) { _, done in
+            if done { HapticManager.impact(.soft) }
         }
         // Each doc counts as "read" ONLY after the user scrolls to the end and
         // taps "I have read this" (onReadConfirmed) — not merely on dismiss.
@@ -144,16 +142,20 @@ struct LegalAcceptanceView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.top, 8)
-            Text("Review the four documents below. Tap each to read.")
+            Text("Review the four documents below. Tap each to read — the button unlocks when all four are done.")
                 .font(T.sans(13))
                 .foregroundColor(T.ink2)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .opacity(entered ? 1 : 0)
+        .offset(y: entered ? 0 : 8)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.4), value: entered)
     }
 
     @ViewBuilder
-    private func rowFor(
+    private func reviewCard(
+        index: Int,
         title: String,
         subtitle: String,
         icon: String,
@@ -161,37 +163,85 @@ struct LegalAcceptanceView: View {
         accepted: Binding<Bool>,
         openAction: @escaping () -> Void
     ) -> some View {
+        let isRead = accepted.wrappedValue
         Button(action: openAction) {
             HStack(spacing: 12) {
                 Image(systemName: icon)
-                    .font(.system(size: 14))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(tint)
-                    .frame(width: 32, height: 32)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(tint.opacity(0.12)))
+                    .frame(width: 34, height: 34)
+                    .background(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(tint.opacity(0.12))
+                    )
 
                 VStack(alignment: .leading, spacing: 2) {
                     KMono(text: title, size: 13, weight: .semibold, color: T.ink)
-                    KMono(text: subtitle, size: 10, color: T.ink3)
+                    KMono(text: subtitle, size: 10, color: T.ink2)
                 }
 
-                Spacer()
+                Spacer(minLength: 8)
 
-                if accepted.wrappedValue {
-                    Text("●")
-                        .font(T.mono(13))
-                        .foregroundColor(T.good)
-                } else {
-                    Image(systemName: "chevron.right")
-                        .foregroundColor(T.ink3)
-                        .font(.system(size: 12, weight: .medium))
-                }
+                Image(systemName: isRead ? "checkmark.circle.fill" : "chevron.right")
+                    .font(.system(size: isRead ? 17 : 12, weight: .medium))
+                    .foregroundColor(isRead ? T.good : T.ink3)
+                    .animation(reduceMotion ? nil
+                        : .spring(response: 0.32, dampingFraction: 0.62), value: isRead)
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .kGlass(cornerRadius: 8, fallbackFill: T.surface)
-            .overlay(RoundedRectangle(cornerRadius: 8)
-                .stroke(accepted.wrappedValue ? T.good.opacity(0.5) : Color.clear, lineWidth: 1))
+            .kGlass(cornerRadius: 12, fallbackFill: T.surface, fallbackStroke: T.rule)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(isRead ? T.good.opacity(0.45) : Color.clear, lineWidth: 1)
+            )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(KTactileButtonStyle())
+        .accessibilityHint(isRead ? "Reviewed" : "Opens the document")
+        .opacity(entered ? 1 : 0)
+        .offset(y: entered ? 0 : 10)
+        .animation(reduceMotion ? nil
+            : .easeOut(duration: 0.42).delay(0.05 + 0.045 * Double(index)),
+            value: entered)
+    }
+
+    private var actionBar: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 6) {
+                ForEach(0..<4) { index in
+                    Capsule()
+                        .fill(index < readCount ? T.good : T.rule)
+                        .frame(height: 3)
+                        .frame(maxWidth: .infinity)
+                }
+                Text("\(readCount) of 4")
+                    .font(T.mono(11))
+                    .foregroundStyle(readCount == 4 ? T.good : T.ink2)
+                    .padding(.leading, 6)
+            }
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.3), value: readCount)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(readCount) of 4 documents reviewed")
+
+            KPrimaryButton(
+                label: canContinue ? "Agree and continue" : "Review all four to continue",
+                systemImage: canContinue ? "checkmark" : nil,
+                trailing: canContinue ? "↵" : nil,
+                action: accept,
+                disabled: !canContinue
+            )
+        }
+        .padding(.horizontal, 22)
+        .padding(.top, 14)
+        .padding(.bottom, 12)
+        .background(T.bg)
+    }
+
+    private func accept() {
+        legal.acceptLegal()
+        legal.acceptDisclaimer()
+        legal.acceptDeviceSafety()
+        HapticManager.impact(.medium)
+        onAccepted()
     }
 }

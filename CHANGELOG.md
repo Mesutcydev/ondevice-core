@@ -20,6 +20,15 @@ and intends to use semantic version tags for source releases.
   first expert fetch.
 - Corrected the iPhone 18,2 chip label from A18 Pro to A19 Pro across the
   Edge0 documentation.
+- Redesigned the cold-start splash: one restrained sequence (mark settle,
+  a single aperture ring sweep, wordmark rise) replacing the previous
+  multi-layer animation. First-launch gates (legal, onboarding) now wait for
+  the splash, so it is no longer covered on first run.
+- Onboarding is now two steps (welcome → model setup); the middle
+  "local by default" step was removed.
+- Redesigned the first-launch agreement screen: review cards with
+  per-document state, a live review-progress strip, and a self-explaining
+  disabled primary action.
 
 ### Fixed
 

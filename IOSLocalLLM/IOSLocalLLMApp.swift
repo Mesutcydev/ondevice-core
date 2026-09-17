@@ -56,6 +56,9 @@ struct IOSLocalLLMApp: App {
                 .zIndex(100)
             }
         }
+        // First-launch gates (legal, onboarding) wait for the cold-start
+        // splash so its sequence is never covered by a presentation.
+        .environment(\.splashFinished, !isShowingSplash)
         .onOpenURL { url in
             AppBridge.shared.handleIncomingURL(url)
         }
@@ -163,5 +166,22 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
             // never moved into place after relaunch.
             BackgroundDownloadCoordinator.shared.reattach()
         }
+    }
+}
+
+// MARK: - Splash gating
+
+/// True once the cold-start splash has finished. First-launch gates (the
+/// legal acceptance cover and the onboarding cover) bind on it so they
+/// present after the splash instead of covering it. The default is `true`
+/// so previews and non-app contexts present immediately.
+private struct SplashFinishedKey: EnvironmentKey {
+    static let defaultValue = true
+}
+
+extension EnvironmentValues {
+    var splashFinished: Bool {
+        get { self[SplashFinishedKey.self] }
+        set { self[SplashFinishedKey.self] = newValue }
     }
 }

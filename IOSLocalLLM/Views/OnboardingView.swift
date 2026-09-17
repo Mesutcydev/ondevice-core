@@ -23,12 +23,12 @@ struct OnboardingView: View {
             LiquidPinkBackdrop()
             VStack(spacing: 0) {
                 header
-                if page == 2 {
+                if page == 1 {
                     OnboardingModelPickerView { settings.hasSeenOnboarding = true }
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 20) {
-                            if page == 0 { welcome } else { privacy }
+                            welcome
                         }
                         .padding(.horizontal, 22)
                         .padding(.top, 22)
@@ -116,34 +116,6 @@ struct OnboardingView: View {
         .accessibilityIdentifier("onboardingVoicePreview")
     }
 
-    @ViewBuilder
-    private var privacy: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            eyebrow("YOU CHOOSE WHAT CONNECTS")
-            Text("Local by default.\nYours to control.")
-                .font(T.display(36, .semibold)).tracking(-1)
-                .foregroundStyle(T.ink)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader)
-            Text("Start with models that fit your device. Add more when you need them.")
-                .font(T.sans(16)).foregroundStyle(T.ink2)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        VStack(alignment: .leading, spacing: 26) {
-            feature("arrow.down.circle", title: "Download once. Use offline.",
-                    detail: "Model downloads need internet and storage. Downloaded local models run on your device.")
-            feature("network", title: "Connections are your choice.",
-                    detail: "Cloud providers, web tools, and Mac connections are optional. Using them can send content off your device.")
-            feature("slider.horizontal.3", title: "Build your own collection.",
-                    detail: "Find chat, vision, voice, and image models in Models. You can change your choices later.")
-        }
-        .padding(20)
-        .kGlass(cornerRadius: 20, fallbackFill: T.surface)
-        Label("Need a hand? The User Guide is in Settings.", systemImage: "book.closed")
-            .font(T.sans(13)).foregroundStyle(T.ink2)
-            .fixedSize(horizontal: false, vertical: true)
-    }
-
     private func eyebrow(_ text: String) -> some View {
         Text(text).font(T.mono(10, .medium)).tracking(1.2).foregroundStyle(T.ink2)
     }
@@ -166,16 +138,16 @@ struct OnboardingView: View {
     private var navigation: some View {
         VStack(spacing: 12) {
             HStack(spacing: 6) {
-                ForEach(0..<3) { index in
+                ForEach(0..<2) { index in
                     Capsule().fill(index == page ? T.ink : T.rule)
                         .frame(width: 24, height: 3)
                 }
                 Spacer()
-                Text("\(page + 1) of 3").font(T.mono(11)).foregroundStyle(T.ink2)
+                Text("\(page + 1) of 2").font(T.mono(11)).foregroundStyle(T.ink2)
             }
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Step \(page + 1) of 3")
-            KPrimaryButton(label: page == 0 ? "Make it yours" : "Choose your models",
+            .accessibilityLabel("Step \(page + 1) of 2")
+            KPrimaryButton(label: "Choose your models",
                            systemImage: "arrow.right") {
                 advance(to: page + 1)
             }

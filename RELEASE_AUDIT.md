@@ -15,6 +15,7 @@ Diagnostics, NAX-off A/B script, A18→A19 documentation errata). Full detail:
 | Open-source validator | **Passed** — "Repository hygiene checks passed" (the previously recorded CITATION.cff version failure is resolved) |
 | Device compile gate (build-for-testing, full test target) | **Passed** — 0 errors, 0 Edge0 warnings; re-verified after `pod install` re-integration |
 | Focused Edge0 unit tests | **Executed on the iPhone 17 simulator** via the sim-compat project: **21 passed / 22 skipped / 7 MLX-eval aborts** (simulated Metal cannot back MLX evaluation; those cases + real-checkpoint suites run in the device session) |
+| UI polish (splash, onboarding, agreement) | **Verified on the iPhone 17 simulator** — frames captured and inspected: splash sequence renders (tile → aperture ring → wordmark), onboarding shows "1 of 2" with the "Choose your models" CTA, agreement screen cards aligned with readable contrast |
 | Real-checkpoint 35B regressions | **Not run** (no checkpoint staged on this machine) |
 | IPA packaging | **Not performed in this pass** |
 

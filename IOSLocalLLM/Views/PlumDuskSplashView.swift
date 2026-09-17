@@ -1,41 +1,37 @@
 import SwiftUI
 import UIKit
 
-/// Cold-start splash.
+/// Cold-start splash — "first light".
 ///
-/// The first frame is exactly `LaunchBackground` — the same color as the
-/// static launch screen — so the hand-off from UIKit is seamless. Everything
-/// after that is one choreographed entrance: ambient light blooms behind the
-/// glass mark, the mark resolves out of a blur and catches a single specular
-/// sweep, a soft ring carries outward from the iris, and the wordmark is
-/// revealed behind a translating mask.
+/// The first frame is exactly `LaunchBackground` (the static launch screen
+/// color), so the hand-off from UIKit is seamless. The sequence is one
+/// restrained beat built around the mark: the tile settles out of a blur
+/// while a soft halo wakes behind it, a single hairline of light sweeps the
+/// aperture once, and the wordmark rises into place. Total run ≈ 1.9 s.
 ///
-/// Each element owns its curve and delay, so the beats overlap instead of
-/// stepping. The sequence runs ~2.2 s, then the splash dissolves its own
-/// layers before calling `onFinished`. Reduce Motion collapses everything to
-/// a short cross-fade.
+/// Reduce Motion collapses the sequence to a quiet fade.
 struct PlumDuskSplashView: View {
     let onFinished: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    // Phase flags — flipped once from `runEntrance`; every element reads the
-    // flag it needs and animates itself.
-    @State private var appeared = false
-    @State private var pulse = false
-    @State private var sheen = false
-    @State private var breathing = false
-    @State private var drifting = false
-    @State private var dismissing = false
+    // Entrance flags — each element reads the flag it needs and animates
+    // itself, so the beats overlap instead of stepping.
+    @State private var appeared = false   // tile + halo + backdrop glow
+    @State private var sweepIn = false    // aperture ring: fade in + rotate
+    @State private var sweepOut = false   // aperture ring: fade out
+    @State private var typed = false      // wordmark
+    @State private var dismissing = false // outro
 
-    /// Task-driven beats, in seconds from first layout. The per-element
-    /// delays live on the elements themselves; these two only need the
-    /// timeline. Kept together so the choreography can be retimed in one
-    /// place.
+    /// Task-driven beats, seconds from first layout. Per-element delays live
+    /// on the elements; these keep the timeline in one place.
     private enum Beat {
-        static let haptic = 0.52        // the tile has just settled
-        static let outro = 1.78
-        static let outroDuration = 0.45
+        static let sweep = 0.42         // ring starts drawing
+        static let haptic = 0.55        // the tile has just settled
+        static let type = 0.78          // wordmark rises
+        static let sweepFade = 1.16     // ring hands off
+        static let outro = 1.55
+        static let outroDuration = 0.40
     }
 
     var body: some View {
@@ -44,23 +40,19 @@ struct PlumDuskSplashView: View {
 
             ZStack {
                 SplashBackdrop(appeared: appeared,
-                               drifting: drifting,
+                               dismissing: dismissing,
                                reduceMotion: reduceMotion)
-                    .opacity(dismissing ? 0 : 1)
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.4),
-                               value: dismissing)
 
                 VStack(spacing: 30) {
                     SplashMark(size: markSize,
                                appeared: appeared,
-                               pulse: pulse,
-                               sheen: sheen,
-                               breathing: breathing,
+                               sweepIn: sweepIn,
+                               sweepOut: sweepOut,
                                dismissing: dismissing,
                                reduceMotion: reduceMotion)
                         .accessibilityHidden(true)
 
-                    SplashWordmark(appeared: appeared,
+                    SplashWordmark(typed: typed,
                                    dismissing: dismissing,
                                    reduceMotion: reduceMotion)
                 }
@@ -78,34 +70,38 @@ struct PlumDuskSplashView: View {
     @MainActor
     private func runEntrance() async {
         appeared = true
-        pulse = true
-        sheen = true
 
         guard !reduceMotion else {
-            breathing = true
-            drifting = true
-            try? await Task.sleep(for: .seconds(0.9))
+            try? await Task.sleep(for: .seconds(0.35))
+            guard !Task.isCancelled else { return }
+            typed = true
+            try? await Task.sleep(for: .seconds(0.85))
             guard !Task.isCancelled else { return }
             withAnimation(.easeInOut(duration: 0.3)) { dismissing = true }
-            try? await Task.sleep(for: .seconds(0.35))
+            try? await Task.sleep(for: .seconds(0.32))
             guard !Task.isCancelled else { return }
             onFinished()
             return
         }
 
+        try? await Task.sleep(for: .seconds(Beat.sweep))
+        guard !Task.isCancelled else { return }
+        sweepIn = true
+
         // Soft landing tick as the tile reaches its resting size.
-        try? await Task.sleep(for: .seconds(Beat.haptic))
+        try? await Task.sleep(for: .seconds(Beat.haptic - Beat.sweep))
         guard !Task.isCancelled else { return }
         UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.6)
 
-        // Let the entrance resolve before the ambient layers start moving so
-        // the two never fight over the same transform.
-        try? await Task.sleep(for: .seconds(0.45))
+        try? await Task.sleep(for: .seconds(Beat.type - Beat.haptic))
         guard !Task.isCancelled else { return }
-        breathing = true
-        drifting = true
+        typed = true
 
-        try? await Task.sleep(for: .seconds(Beat.outro - Beat.haptic - 0.45))
+        try? await Task.sleep(for: .seconds(Beat.sweepFade - Beat.type))
+        guard !Task.isCancelled else { return }
+        sweepOut = true
+
+        try? await Task.sleep(for: .seconds(Beat.outro - Beat.sweepFade))
         guard !Task.isCancelled else { return }
         withAnimation(.easeInOut(duration: Beat.outroDuration)) { dismissing = true }
 
@@ -117,12 +113,11 @@ struct PlumDuskSplashView: View {
 
 // MARK: - Backdrop
 
-/// Static base color + light that wakes up behind the mark. The base stays
-/// put for the whole sequence so the very first frame matches the native
-/// launch screen.
+/// Static base color plus one quiet glow. The base stays put for the whole
+/// sequence so the very first frame matches the native launch screen.
 private struct SplashBackdrop: View {
     let appeared: Bool
-    let drifting: Bool
+    let dismissing: Bool
     let reduceMotion: Bool
 
     var body: some View {
@@ -134,53 +129,26 @@ private struct SplashBackdrop: View {
                 Color("LaunchBackground")
 
                 RadialGradient(
-                    colors: [Color.white.opacity(0.85), Color.white.opacity(0)],
-                    center: UnitPoint(x: 0.5, y: 0.34),
-                    startRadius: 10,
-                    endRadius: max(w, h) * 0.62
+                    colors: [Color.white.opacity(0.80), Color.white.opacity(0)],
+                    center: UnitPoint(x: 0.5, y: 0.36),
+                    startRadius: 12,
+                    endRadius: max(w, h) * 0.60
+                )
+                .opacity(appeared ? 1 : 0)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.9), value: appeared)
+
+                // Barely-there vignette keeps the weight on the mark.
+                RadialGradient(
+                    colors: [.clear, Color.black.opacity(0.06)],
+                    center: .center,
+                    startRadius: min(w, h) * 0.44,
+                    endRadius: max(w, h) * 0.80
                 )
                 .opacity(appeared ? 1 : 0)
                 .animation(reduceMotion ? nil : .easeInOut(duration: 1.0), value: appeared)
-
-                Circle()
-                    .fill(Color(red: 0.50, green: 0.68, blue: 1.00).opacity(0.16))
-                    .frame(width: w * 0.95)
-                    .blur(radius: 42)
-                    .offset(x: -w * 0.38, y: -h * 0.24 + (drifting ? 14 : -14))
-                    .opacity(appeared ? 1 : 0)
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 1.1), value: appeared)
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 6.5)
-                        .repeatForever(autoreverses: true), value: drifting)
-
-                Circle()
-                    .fill(Color(red: 0.56, green: 0.83, blue: 0.74).opacity(0.14))
-                    .frame(width: w * 0.85)
-                    .blur(radius: 48)
-                    .offset(x: w * 0.42, y: h * 0.08 + (drifting ? -16 : 16))
-                    .opacity(appeared ? 1 : 0)
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 1.2), value: appeared)
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 7.5)
-                        .repeatForever(autoreverses: true), value: drifting)
-
-                RoundedRectangle(cornerRadius: 64, style: .continuous)
-                    .fill(Color(red: 0.72, green: 0.62, blue: 0.96).opacity(0.07))
-                    .frame(width: w * 1.15, height: h * 0.34)
-                    .rotationEffect(.degrees(-18))
-                    .blur(radius: 54)
-                    .offset(x: w * 0.18, y: h * 0.40)
-                    .opacity(appeared ? 1 : 0)
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 1.3), value: appeared)
-
-                // Gentle vignette keeps the weight on the mark.
-                RadialGradient(
-                    colors: [.clear, Color.black.opacity(0.07)],
-                    center: .center,
-                    startRadius: min(w, h) * 0.42,
-                    endRadius: max(w, h) * 0.78
-                )
-                .opacity(appeared ? 1 : 0)
-                .animation(reduceMotion ? nil : .easeInOut(duration: 1.2), value: appeared)
             }
+            .opacity(dismissing ? 0 : 1)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.36), value: dismissing)
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
@@ -189,14 +157,13 @@ private struct SplashBackdrop: View {
 
 // MARK: - Mark
 
-/// The app icon as a free-standing glass tile: focus-pull entrance, one
-/// specular pass, iris rings, then a slow breath while the wordmark arrives.
+/// The app icon as a free-standing glass tile: a focus-pull settle, one soft
+/// halo, and a single hairline of light drawing around the aperture.
 private struct SplashMark: View {
     let size: CGFloat
     let appeared: Bool
-    let pulse: Bool
-    let sheen: Bool
-    let breathing: Bool
+    let sweepIn: Bool
+    let sweepOut: Bool
     let dismissing: Bool
     let reduceMotion: Bool
 
@@ -206,32 +173,62 @@ private struct SplashMark: View {
 
     var body: some View {
         ZStack {
-            // Bloom: swells in ahead of the tile, then settles into a halo.
-            Circle()
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            Color.white.opacity(0.95),
-                            Color(red: 0.62, green: 0.76, blue: 1.00).opacity(0.35),
-                            Color.clear,
-                        ],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: size * 0.72
-                    )
-                )
-                .frame(width: size * 1.8, height: size * 1.8)
-                .blur(radius: 30)
-                .scaleEffect(appeared ? (breathing ? 1.03 : 1.0) : 0.58)
-                .opacity(appeared ? (dismissing ? 0 : 1) : 0)
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.85), value: appeared)
-                .animation(reduceMotion ? nil : .easeInOut(duration: 2.8)
-                    .repeatForever(autoreverses: true), value: breathing)
-                .animation(.easeInOut(duration: 0.4), value: dismissing)
-
+            halo
+            apertureSweep
             tile
         }
         .frame(width: size, height: size)
+    }
+
+    /// Wide, soft light that wakes behind the tile and swells at the outro.
+    private var halo: some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    colors: [
+                        Color.white.opacity(0.92),
+                        Color(red: 0.64, green: 0.77, blue: 1.00).opacity(0.28),
+                        Color.clear,
+                    ],
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: size * 0.80
+                )
+            )
+            .frame(width: size * 2.0, height: size * 2.0)
+            .blur(radius: 34)
+            .scaleEffect(appeared ? (dismissing ? 1.06 : 1.0) : 0.72)
+            .opacity(appeared ? (dismissing ? 0 : 1) : 0)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.9), value: appeared)
+            .animation(.easeInOut(duration: 0.38), value: dismissing)
+    }
+
+    /// One hairline of light drawing around the aperture — in, around, gone.
+    private var apertureSweep: some View {
+        Circle()
+            .trim(from: 0.00, to: 0.72)
+            .stroke(
+                AngularGradient(
+                    gradient: Gradient(stops: [
+                        .init(color: .clear, location: 0.00),
+                        .init(color: Color.white.opacity(0.10), location: 0.30),
+                        .init(color: Color.white.opacity(0.85), location: 0.86),
+                        .init(color: Color.white.opacity(0.95), location: 1.00),
+                    ]),
+                    center: .center,
+                    startAngle: .degrees(0),
+                    endAngle: .degrees(259)
+                ),
+                style: StrokeStyle(lineWidth: 1.2, lineCap: .round)
+            )
+            .frame(width: size * 1.46, height: size * 1.46)
+            .rotationEffect(.degrees(sweepIn ? 208 : -52))
+            .opacity(sweepOut ? 0 : (sweepIn ? 0.9 : 0))
+            .animation(reduceMotion ? nil
+                : .timingCurve(0.32, 0.72, 0.24, 1.0, duration: 0.95), value: sweepIn)
+            .animation(.easeIn(duration: 0.28), value: sweepOut)
+            .blur(radius: 0.3)
+            .allowsHitTesting(false)
     }
 
     private var tile: some View {
@@ -245,19 +242,12 @@ private struct SplashMark: View {
             .frame(width: size, height: size)
             .clipShape(shape)
             .overlay {
-                ZStack {
-                    sheenLayer
-                    irisRings
-                }
-                .clipShape(shape)
-            }
-            .overlay {
                 shape.strokeBorder(
                     LinearGradient(
                         colors: [
                             Color.white.opacity(0.95),
-                            Color.white.opacity(0.20),
-                            Color.white.opacity(0.75),
+                            Color.white.opacity(0.18),
+                            Color.white.opacity(0.70),
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
@@ -268,79 +258,27 @@ private struct SplashMark: View {
             .compositingGroup()
             .shadow(color: .black.opacity(0.18), radius: 26, y: 16)
             .shadow(color: .black.opacity(0.08), radius: 5, y: 2)
-            .scaleEffect(appeared ? (breathing ? 1.012 : 1.0) : 0.88)
+            .scaleEffect(appeared ? 1.0 : 0.93)
             .opacity(appeared ? (dismissing ? 0 : 1) : 0)
-            .blur(radius: appeared ? (dismissing ? 7 : 0) : 22)
-            .offset(y: appeared ? 0 : 12)
-            .rotation3DEffect(.degrees(appeared ? 0 : 7),
-                              axis: (x: 1, y: 0, z: 0),
-                              perspective: 0.55)
+            .blur(radius: appeared ? (dismissing ? 6 : 0) : 14)
+            .offset(y: appeared ? 0 : 10)
             .animation(reduceMotion ? nil
-                : .spring(response: 0.9, dampingFraction: 0.78).delay(0.06),
+                : .spring(response: 0.62, dampingFraction: 0.86).delay(0.04),
                 value: appeared)
-            .animation(reduceMotion ? nil : .easeInOut(duration: 2.8)
-                .repeatForever(autoreverses: true), value: breathing)
-            .animation(.easeInOut(duration: 0.45), value: dismissing)
-    }
-
-    /// A single diagonal band of light crossing the glass.
-    private var sheenLayer: some View {
-        GeometryReader { geo in
-            let w = geo.size.width
-            LinearGradient(
-                stops: [
-                    .init(color: .clear, location: 0.00),
-                    .init(color: .white.opacity(0.0), location: 0.18),
-                    .init(color: .white.opacity(0.55), location: 0.50),
-                    .init(color: .white.opacity(0.0), location: 0.82),
-                    .init(color: .clear, location: 1.00),
-                ],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-            .frame(width: w * 0.45, height: geo.size.height * 1.8)
-            .rotationEffect(.degrees(24))
-            .blur(radius: 2)
-            .offset(x: sheen ? w * 1.6 : -w * 1.6)
-            .animation(reduceMotion ? nil : .easeInOut(duration: 1.15).delay(0.50),
-                       value: sheen)
-            .blendMode(.screen)
-            .frame(width: w, height: geo.size.height)
-        }
-        .allowsHitTesting(false)
-    }
-
-    /// Two soft rings carried outward from the iris.
-    private var irisRings: some View {
-        ZStack {
-            irisRing(delay: 0)
-            irisRing(delay: 0.14)
-        }
-    }
-
-    private func irisRing(delay: Double) -> some View {
-        Circle()
-            .strokeBorder(Color.white.opacity(0.7), lineWidth: 1.1)
-            .frame(width: size * 0.46, height: size * 0.46)
-            .scaleEffect(pulse ? 2.2 : 0.5)
-            .opacity(pulse ? 0 : 1)
-            .blur(radius: 0.4)
-            .animation(reduceMotion ? nil : .easeOut(duration: 1.35).delay(0.45 + delay),
-                       value: pulse)
+            .animation(.easeInOut(duration: 0.38), value: dismissing)
     }
 }
 
 // MARK: - Wordmark
 
-/// Title and tagline revealed behind a feathered mask that opens from the
-/// center — an "unrolling" reveal rather than a plain fade.
-///
-/// Type is pinned to the system faces instead of the theme helpers: those
-/// probe for an optional custom family and fall back to `Font.custom` with a
-/// generated system name, a path whose result varies by build. The explicit
-/// faces keep the splash deterministic and match the app's rendered chrome.
+/// Title and tagline rising into place — a blur-out and settle rather than a
+/// masked reveal. Type is pinned to the system faces instead of the theme
+/// helpers: those probe for an optional custom family and fall back to
+/// `Font.custom` with a generated system name, a path whose result varies by
+/// build. The explicit faces keep the splash deterministic and match the
+/// app's rendered chrome.
 private struct SplashWordmark: View {
-    let appeared: Bool
+    let typed: Bool
     let dismissing: Bool
     let reduceMotion: Bool
 
@@ -356,52 +294,32 @@ private struct SplashWordmark: View {
                         endPoint: .bottom
                     )
                 )
-                .mask { CenterReveal(progress: appeared ? 1 : 0) }
-                .opacity(appeared ? 1 : 0)
-                .offset(y: appeared ? 0 : 10)
+                .opacity(typed ? 1 : 0)
+                .blur(radius: typed ? 0 : 5)
+                .offset(y: typed ? 0 : 7)
                 .animation(reduceMotion ? nil
-                    : .easeOut(duration: 0.6).delay(0.78),
-                    value: appeared)
+                    : .easeOut(duration: 0.5).delay(0.02),
+                    value: typed)
 
             Text("LOCAL AI STUDIO")
                 .font(.system(size: 11.5, weight: .medium, design: .monospaced))
-                // Letters condense into place as the line reveals.
-                .tracking(appeared ? 4.0 : 9.0)
+                // Letters condense into place as the line arrives.
+                .tracking(typed ? 3.0 : 5.4)
                 // Balance the tracking that trails the last glyph so the line
                 // stays optically centered.
-                .padding(.leading, appeared ? 4.0 : 9.0)
+                .padding(.leading, typed ? 3.0 : 5.4)
                 .foregroundStyle(Color(white: 0.42))
-                .mask { CenterReveal(progress: appeared ? 1 : 0) }
-                .opacity(appeared ? 1 : 0)
-                .offset(y: appeared ? 0 : 7)
+                .opacity(typed ? 1 : 0)
+                .blur(radius: typed ? 0 : 4)
+                .offset(y: typed ? 0 : 5)
                 .animation(reduceMotion ? nil
-                    : .easeOut(duration: 0.6).delay(0.95),
-                    value: appeared)
+                    : .easeOut(duration: 0.55).delay(0.12),
+                    value: typed)
         }
         .multilineTextAlignment(.center)
         .opacity(dismissing ? 0 : 1)
-        .offset(y: dismissing ? -6 : 0)
-        .animation(.easeInOut(duration: 0.28), value: dismissing)
+        .offset(y: dismissing ? -5 : 0)
+        .animation(.easeInOut(duration: 0.26), value: dismissing)
         .accessibilityElement(children: .combine)
-    }
-}
-
-/// Opens from the center outward behind a soft vertical edge. The revealed
-/// band is deliberately wider than the content at rest so the feathered edge
-/// always clears the first and last glyph.
-private struct CenterReveal: View {
-    var progress: CGFloat
-
-    var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                Rectangle()
-                    .frame(width: max(geo.size.width * 1.6 * progress, 0.01),
-                           height: geo.size.height + 28)
-                    .blur(radius: 7)
-            }
-            .frame(width: geo.size.width, height: geo.size.height)
-        }
-        .allowsHitTesting(false)
     }
 }
