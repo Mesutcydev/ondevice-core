@@ -147,6 +147,7 @@ struct Edge0SessionReuseProbeResult: Sendable {
     var reusedTokens = 0
     var prefilledTokens = 0
     var emittedTokens = 0
+    var turn1PromptTokens = 0
     var turn2PromptTokens = 0
 }
 
@@ -264,6 +265,9 @@ final class Edge0_35BEngine: @unchecked Sendable {
     private var exactMode = true
     private var thinkOpenTokenID: Int?
     private var thinkCloseTokenID: Int?
+    /// `<|im_start|>` id: locates the start of the generation-prompt tail,
+    /// the stable boundary the session-reuse snapshot is taken at.
+    private var imStartTokenID: Int?
 
     var isLoaded: Bool { model != nil }
 
@@ -375,8 +379,9 @@ final class Edge0_35BEngine: @unchecked Sendable {
             self.pool = pool
             self.generationID = nil
             self.lastGenerationMetrics = nil
-            self.thinkOpenTokenID = tokenizer.convertTokenToId("<think>")
+            self.thinkOpenTokenID = tokenizer.convertTokenToId(" thinking")
             self.thinkCloseTokenID = tokenizer.convertTokenToId("</think>")
+            self.imStartTokenID = tokenizer.convertTokenToId("<|im_start|>")
         } catch {
             await stores.closeAll()
             throw error
@@ -413,6 +418,23 @@ final class Edge0_35BEngine: @unchecked Sendable {
     }
 
     // MARK: Generate
+
+    /// Start of the generation-prompt tail: the LAST `<|im_start|>` token in
+    /// the prompt. The prompt's very end is NOT reusable — the template's
+    /// generation tail (assistant header + thinking cue) is replaced by the
+    /// answer on the next turn, so the end of the prompt never prefix-matches
+    /// again — but everything up to this boundary re-renders identically
+    /// every turn, so the reusable snapshot is taken there.
+    nonisolated static func stableSnapshotBoundary(
+        promptTokens: [Int],
+        imStartTokenID: Int?
+    ) -> Int? {
+        guard let imStartTokenID,
+              let last = promptTokens.lastIndex(of: imStartTokenID),
+              last > 0,
+              last < promptTokens.count else { return nil }
+        return last
+    }
 
     /// Pure prefix-reuse decision (unit-tested on the simulator). Reuse
     /// requires the feature to be enabled, a scheduling-key match, and the
@@ -555,26 +577,49 @@ final class Edge0_35BEngine: @unchecked Sendable {
         var logits: MLXArray
         if let reusedLogits {
             logits = reusedLogits
+        } else if reuseEnabled,
+                  let boundary = Self.stableSnapshotBoundary(
+                      promptTokens: tokenIDs, imStartTokenID: imStartTokenID
+                  ),
+                  boundary > reusedTokenCount {
+            // Split the prefill at the stable boundary: everything up to it
+            // re-renders identically on the next turn, so the reusable
+            // snapshot is taken there; the generation tail (assistant header
+            // + thinking cue) is prefilled separately and is exactly what
+            // the next turn replaces with the answer. Two prefill calls over
+            // one state are numerically identical to one call — same tokens,
+            // same positions.
+            let headLogits = try await model.prefill(
+                tokenIDs: Array(tokenIDs[reusedTokenCount..<boundary]),
+                state: &state, mode: effectiveMode,
+                profile: profile, onSelectedExperts: identityHook
+            ).asType(.float32)
+            // Prompt-cache: the boundary state. State updates are functional
+            // (arrays are replaced, never mutated in place), so this
+            // snapshot stays valid while decode proceeds.
+            sessionSnapshot = Edge0SessionSnapshot(
+                state: state,
+                logits: headLogits,
+                tokens: Array(tokenIDs[0..<boundary]),
+                mode: effectiveMode.rawValue,
+                microbatch: microbatchEffective,
+                evalWindow: windowEffective
+            )
+            logits = try await model.prefill(
+                tokenIDs: Array(tokenIDs[boundary...]),
+                state: &state, mode: effectiveMode,
+                profile: profile, onSelectedExperts: identityHook
+            ).asType(.float32)
         } else {
             logits = try await model.prefill(
                 tokenIDs: prefillTokens, state: &state, mode: effectiveMode,
                 profile: profile, onSelectedExperts: identityHook
             ).asType(.float32)
+            if !reuseEnabled {
+                sessionSnapshot = nil
+            }
         }
         let prefillSeconds = prefillStarted.duration(to: .now).timeInterval
-        // Prompt-cache: keep the prompt-boundary state for the next turn.
-        // State updates are functional (arrays are replaced, never mutated
-        // in place), so this snapshot stays valid while decode proceeds.
-        sessionSnapshot = reuseEnabled
-            ? Edge0SessionSnapshot(
-                state: state,
-                logits: logits,
-                tokens: tokenIDs,
-                mode: effectiveMode.rawValue,
-                microbatch: microbatchEffective,
-                evalWindow: windowEffective
-            )
-            : nil
         var poolAfterPrefill = await pool.statistics()
         // Prefill→decode handoff: staged prefill leaves advisory loads in
         // flight; cancel queued ones so decode acquisitions cannot queue
@@ -1042,6 +1087,7 @@ final class Edge0_35BEngine: @unchecked Sendable {
         result.reusedTokens = reused.metrics?.sessionReusedTokens ?? 0
         result.prefilledTokens = reused.metrics?.sessionPrefillTokens ?? 0
         result.emittedTokens = reused.metrics?.generatedTokens ?? 0
+        result.turn1PromptTokens = first.metrics?.promptTokens ?? 0
         result.turn2PromptTokens = reused.metrics?.promptTokens ?? 0
         if reused.text == fresh.text {
             result.passed = result.reuseAppliedOnTurn2

@@ -442,6 +442,7 @@ final class Edge0DeviceValidationRunner: ObservableObject {
             let detail = "reuse \(probe.reuseAppliedOnTurn2 ? "applied" : "NOT APPLIED")"
                 + " · reused \(probe.reusedTokens) tok · prefilled \(probe.prefilledTokens) tok"
                 + " · emitted \(probe.emittedTokens)"
+                + " · prompts \(probe.turn1PromptTokens)→\(probe.turn2PromptTokens) tok"
             guard probe.passed else {
                 throw ValidationError(
                     detail + " · answers differ at "

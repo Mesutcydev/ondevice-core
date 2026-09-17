@@ -18,7 +18,8 @@ import XCTest
 //   5. engine-side load-capture of the readahead flag;
 //   6. the expert-reads A/B kind and its frozen acceptance rule;
 //   7. the sustained-thermal kind, its stability rule, and thermal ranks;
-//   8. the session-reuse prefix decision (prompt cache).
+//   8. the session-reuse prefix decision (prompt cache);
+//   9. the stable snapshot boundary (prompt cache).
 
 @MainActor
 final class Edge0SpeedABDecisionTests: XCTestCase {
@@ -308,5 +309,35 @@ final class Edge0SessionReuseTests: XCTestCase {
         } catch {
             // Expected: loadedFamily is nil before any load.
         }
+    }
+
+    // MARK: Stable snapshot boundary
+
+    func testStableSnapshotBoundaryFindsTheLastGenerationHeader() {
+        XCTAssertEqual(
+            Edge0_35BEngine.stableSnapshotBoundary(
+                promptTokens: [1, 2, 5, 3, 4, 5, 6, 7], imStartTokenID: 5
+            ),
+            5
+        )
+    }
+
+    func testStableSnapshotBoundaryNilCases() {
+        XCTAssertNil(Edge0_35BEngine.stableSnapshotBoundary(
+            promptTokens: [1, 2, 3], imStartTokenID: 5
+        ))
+        XCTAssertNil(Edge0_35BEngine.stableSnapshotBoundary(
+            promptTokens: [5, 1, 2], imStartTokenID: 5
+        ))
+        XCTAssertNil(Edge0_35BEngine.stableSnapshotBoundary(
+            promptTokens: [1, 2, 3], imStartTokenID: nil
+        ))
+        // The header as the final token still leaves a one-token tail.
+        XCTAssertEqual(
+            Edge0_35BEngine.stableSnapshotBoundary(
+                promptTokens: [1, 2, 5], imStartTokenID: 5
+            ),
+            2
+        )
     }
 }

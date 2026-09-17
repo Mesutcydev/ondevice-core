@@ -100,6 +100,15 @@ and intends to use semantic version tags for source releases.
 
 ### Fixed
 
+- Prompt-cache snapshot boundary: the snapshot was taken at the very end
+  of the prompt, but the template's generation tail (assistant header +
+  thinking cue) is replaced by the answer on the next turn, so the end
+  never prefix-matched again — the build-53 device validation showed
+  "reuse NOT APPLIED · reused 0 tok · prefilled 52" (answers identical).
+  The snapshot is now taken at the LAST `<|im_start|>` — the boundary that
+  re-renders identically every turn — by splitting the prefill there (two
+  prefill calls over one state are numerically identical to one call).
+  New boundary tests.
 - Session-reuse probe dispatch: the 35B engine's probe method returned a
   non-optional result while the `RuntimeParityProbing` requirement is
   optional, so existential calls could resolve to the protocol-extension
