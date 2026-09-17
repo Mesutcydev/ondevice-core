@@ -131,7 +131,7 @@ struct KPrimaryButton: View {
                 if let trailing {
                     Text(trailing)
                         .font(T.mono(10))
-                        .foregroundColor(T.ink4)
+                        .foregroundColor(T.ink3)
                 }
             }
             .foregroundColor(T.bg)
@@ -165,7 +165,7 @@ struct KSecondaryButton: View {
                         .foregroundColor(destructive ? T.bad : T.ink)
                 }
                 Text(label)
-                    .font(T.sans(13.5))
+                    .font(T.sans(13))
                     .foregroundColor(destructive ? T.bad : T.ink)
                 Spacer(minLength: 0)
                 if let trailing {
@@ -259,7 +259,7 @@ struct KCollapsibleSection<Content: View>: View {
             .padding(.bottom, 8)
 
             Button {
-                withAnimation(.easeInOut(duration: 0.28)) {
+                withAnimation(.easeInOut(duration: 0.3)) {
                     localExpanded.toggle()
                 }
                 HapticManager.impact(.light)
@@ -613,7 +613,7 @@ struct KDisclosureRows<Content: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             Button {
-                withAnimation(.easeInOut(duration: 0.25)) { open.toggle() }
+                withAnimation(.easeInOut(duration: 0.3)) { open.toggle() }
                 HapticManager.impact(.light)
             } label: {
                 HStack(spacing: 8) {
@@ -918,7 +918,7 @@ struct MarqueeText: View {
             .onTapGesture {
                 paused.toggle()
                 if paused {
-                    withAnimation(.easeOut(duration: 0.2)) { offset = 0 }
+                    withAnimation(.easeOut(duration: 0.18)) { offset = 0 }
                 } else {
                     restart()
                 }

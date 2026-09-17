@@ -118,7 +118,7 @@ struct VoiceSettingsView: View {
                         .font(T.sans(14, .semibold))
                         .foregroundColor(T.ink)
                     Text("Its voices haven't been downloaded yet. Pick a different engine above, or install this one from Models.")
-                        .font(T.sans(12.5))
+                        .font(T.sans(12))
                         .foregroundColor(T.ink3)
                         .fixedSize(horizontal: false, vertical: true)
                 }

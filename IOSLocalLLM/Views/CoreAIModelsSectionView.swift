@@ -148,7 +148,7 @@ struct CoreAIModelsSectionView: View {
                         .font(T.sans(14, .semibold))
                         .foregroundStyle(T.ink)
                     Text("Installed · \(installed.manifest.totalDownloadBytes.formattedBytes) · Core AI")
-                        .font(T.mono(9.5))
+                        .font(T.mono(9))
                         .foregroundStyle(T.ink3)
                 }
                 Spacer()
@@ -202,7 +202,7 @@ struct CoreAIModelsSectionView: View {
                         .font(T.sans(13, .semibold))
                         .foregroundStyle(T.ink)
                     Text(model.subtitle)
-                        .font(T.sans(10.5))
+                        .font(T.sans(10))
                         .foregroundStyle(T.ink2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -221,7 +221,7 @@ struct CoreAIModelsSectionView: View {
             }
 
             Text(model.licenseNotice)
-                .font(T.sans(9.5))
+                .font(T.sans(9))
                 .foregroundStyle(T.ink3)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -252,7 +252,7 @@ struct CoreAIModelsSectionView: View {
 
     private func badge(_ text: String) -> some View {
         Text(text)
-            .font(T.mono(8.5, .semibold))
+            .font(T.mono(8, .semibold))
             .foregroundStyle(T.ink2)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)

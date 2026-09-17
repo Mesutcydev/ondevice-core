@@ -108,7 +108,7 @@ struct VoicePlaybackSnapshot: Equatable, Sendable {
     static let idle = VoicePlaybackSnapshot(
         phase: .idle,
         currentTime: 0,
-        duration: 0,
+        duration: 0.12,
         normalizedLevel: 0,
         activeWordIndex: nil,
         activeSegmentIndex: nil,

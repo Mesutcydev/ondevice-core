@@ -23,7 +23,7 @@ enum AppSpacing {
 }
 
 enum AppAnimation {
-    static let quick = Animation.easeOut(duration: 0.16)
+    static let quick = Animation.easeOut(duration: 0.18)
     static let state = Animation.spring(response: 0.36, dampingFraction: 0.86)
 }
 

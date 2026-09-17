@@ -32,7 +32,7 @@ struct VoiceRouteControl: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(T.ink2)
             Text(sessionManager.route.displayName)
-                .font(T.mono(10.5, .semibold))
+                .font(T.mono(10, .semibold))
                 .foregroundStyle(T.ink2)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)

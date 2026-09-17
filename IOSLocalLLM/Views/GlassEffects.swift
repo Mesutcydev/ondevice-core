@@ -251,7 +251,7 @@ private struct ShimmerModifier: ViewModifier {
                         .linear(duration: duration).repeatForever(autoreverses: false)
                     ) { phase = 1.0 }
                 } else {
-                    withAnimation(.easeOut(duration: 0.2)) { phase = -1.0 }
+                    withAnimation(.easeOut(duration: 0.18)) { phase = -1.0 }
                 }
             }
     }

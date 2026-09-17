@@ -98,8 +98,8 @@ struct KeyboardToolbar: View {
                     Rectangle().fill(T.rule).frame(height: 1)
                 }
         )
-        .animation(.easeInOut(duration: 0.16), value: inputFocused)
-        .animation(.easeInOut(duration: 0.16), value: recentPrompts.count)
+        .animation(.easeInOut(duration: 0.18), value: inputFocused)
+        .animation(.easeInOut(duration: 0.18), value: recentPrompts.count)
     }
 
     // MARK: - Recents strip

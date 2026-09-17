@@ -147,7 +147,7 @@ struct AttributionCard: View {
             KMono(text: "by \(item.author)", size: 10, color: T.ink3)
 
             Text(item.note)
-                .font(T.sans(11.5))
+                .font(T.sans(11))
                 .foregroundColor(T.ink2)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 2)

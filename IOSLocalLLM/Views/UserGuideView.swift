@@ -29,7 +29,7 @@ struct UserGuideView: View {
                             .font(T.sans(14, .semibold))
                             .foregroundColor(T.ink)
                         Text("All models run locally. No data leaves this device.")
-                            .font(T.sans(11.5))
+                            .font(T.sans(11))
                             .foregroundColor(T.ink3)
                     }
                     Spacer()
@@ -46,7 +46,7 @@ struct UserGuideView: View {
                             .foregroundColor(T.ink)
                         
                         Text("Engage in direct chats with your chosen reasoning model (e.g. Qwen, Llama). Code blocks are automatically formatted with syntax highlighting.")
-                            .font(T.sans(12.5))
+                            .font(T.sans(12))
                             .foregroundColor(T.ink2)
                             .lineSpacing(3)
                         
@@ -67,7 +67,7 @@ struct UserGuideView: View {
                             .foregroundColor(T.ink)
                         
                         Text("Create artwork locally using Stable Diffusion or SDXL-Turbo, designed to operate safely within iOS RAM limits.")
-                            .font(T.sans(12.5))
+                            .font(T.sans(12))
                             .foregroundColor(T.ink2)
                             .lineSpacing(3)
 
@@ -90,7 +90,7 @@ struct UserGuideView: View {
                             .foregroundColor(T.ink)
                         
                         Text("Use the viewfinder to scan source code from screens or whiteboards, or stream continuous descriptive VLM captions.")
-                            .font(T.sans(12.5))
+                            .font(T.sans(12))
                             .foregroundColor(T.ink2)
                             .lineSpacing(3)
 
@@ -111,7 +111,7 @@ struct UserGuideView: View {
                             .foregroundColor(T.ink)
                         
                         Text("Talk directly with models using robust voice activity detection (VAD) that filters out ambient background noise.")
-                            .font(T.sans(12.5))
+                            .font(T.sans(12))
                             .foregroundColor(T.ink2)
                             .lineSpacing(3)
 
@@ -131,7 +131,7 @@ struct UserGuideView: View {
                             .foregroundColor(T.ink)
                         
                         Text("The central hub for downloading models, searching HuggingFace, and tracking local disk space usage.")
-                            .font(T.sans(12.5))
+                            .font(T.sans(12))
                             .foregroundColor(T.ink2)
                             .lineSpacing(3)
 
@@ -150,7 +150,7 @@ struct UserGuideView: View {
                             .foregroundColor(T.ink)
                         
                         Text("Pair with LocalCoderBridge on your Mac. Scan the desktop QR code to establish secure local connection links.")
-                            .font(T.sans(12.5))
+                            .font(T.sans(12))
                             .foregroundColor(T.ink2)
                             .lineSpacing(3)
 

@@ -410,7 +410,7 @@ struct ModelsManagerView: View {
                     .symbolEffect(.variableColor.iterative.dimInactiveLayers,
                                   options: .repeating, isActive: true)
                 Text("\(activeDownloadCount) " + loc.t("downloading"))
-                    .font(S.mono(10.5))
+                    .font(S.mono(10))
                     .tracking(0.2)
             }
             .foregroundColor(S.ink2)
@@ -518,7 +518,7 @@ struct ModelsManagerView: View {
                     HapticManager.impact(.light)
                 } label: {
                     Text(loc.t("Clean up"))
-                        .font(S.sans(12.5, .medium))
+                        .font(S.sans(12, .medium))
                         .foregroundColor(S.ink)
                         .padding(.horizontal, 12)
                         .frame(minHeight: 28)
@@ -565,11 +565,11 @@ struct ModelsManagerView: View {
                 .fill(live ? S.accent : S.ink4)
                 .frame(width: 5, height: 5)
                 .contentTransition(.opacity)
-                .animation(.easeInOut(duration: 0.22), value: live)
+                .animation(.easeInOut(duration: 0.18), value: live)
             Text(live
                  ? "\(activeLoadedCount) " + loc.t(activeLoadedCount == 1 ? "model live" : "models live")
                  : loc.t("nothing loaded"))
-                .font(S.mono(10.5))
+                .font(S.mono(10))
                 .tracking(0.2)
                 .foregroundColor(S.ink3)
                 .contentTransition(.opacity)
@@ -617,7 +617,7 @@ struct ModelsManagerView: View {
         }
 
         return Text(parts.joined(separator: "  ·  "))
-            .font(S.mono(10.5))
+            .font(S.mono(10))
             .tracking(0.2)
             .foregroundColor(S.ink3)
             .accessibilityElement(children: .ignore)
@@ -642,7 +642,7 @@ struct ModelsManagerView: View {
                     : loc.t("Search HuggingFace…"),
                 text: $searchText
             )
-                .font(S.sans(14.5))
+                .font(S.sans(14))
                 .foregroundColor(S.ink)
                 .tint(S.accent)
                 .autocorrectionDisabled()
@@ -714,7 +714,7 @@ struct ModelsManagerView: View {
         return HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 1) {
                 Text(loc.t("Downloaded only"))
-                    .font(S.sans(14.5, .medium))
+                    .font(S.sans(14, .medium))
                     .foregroundColor(S.ink)
                 Text(
                     showDownloadedOnly
@@ -728,7 +728,7 @@ struct ModelsManagerView: View {
             StudioSquareToggle(isOn: Binding(
                 get: { showDownloadedOnly },
                 set: { enabled in
-                    withAnimation(.snappy(duration: 0.22)) {
+                    withAnimation(.snappy(duration: 0.18)) {
                         showDownloadedOnly = enabled
                     }
                     searchTask?.cancel()
@@ -783,7 +783,7 @@ struct ModelsManagerView: View {
                     Image(systemName: section.glyph)
                         .font(.system(size: 10, weight: .semibold))
                     Text(loc.t(section.rawValue))
-                        .font(T.mono(10.5, active ? .semibold : .medium))
+                        .font(T.mono(10, active ? .semibold : .medium))
                         .tracking(0.2)
                         .lineLimit(1)
                         .minimumScaleFactor(0.75)
@@ -1171,7 +1171,7 @@ struct ModelsManagerView: View {
                         VStack(alignment: .leading, spacing: 5) {
                             KCaption(text: entry.task == .textToSpeech ? "TEXT TO SPEECH" : "SPEECH RECOGNITION", color: T.ink3)
                             Text(entry.name).font(T.display(18, .semibold)).foregroundColor(T.ink)
-                            Text(entry.summary).font(T.mono(9.5)).foregroundColor(T.ink3)
+                            Text(entry.summary).font(T.mono(9)).foregroundColor(T.ink3)
                                 .fixedSize(horizontal: false, vertical: true)
                             statusPill(text: entry.statusLabel, color: entry.isDownloadEnabled ? T.good : T.warn)
                         }
@@ -1261,7 +1261,7 @@ struct ModelsManagerView: View {
         let S = T.studio
         let on = settings.showEdgeModels
         return Button {
-            withAnimation(.snappy(duration: 0.2)) { settings.showEdgeModels.toggle() }
+            withAnimation(.snappy(duration: 0.18)) { settings.showEdgeModels.toggle() }
             HapticManager.impact(.light)
         } label: {
             HStack(spacing: 8) {
@@ -1270,7 +1270,7 @@ struct ModelsManagerView: View {
                     .foregroundColor(on ? T.warn : S.ink3)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(loc.t(on ? "Edge / developer mode — ON" : "Edge / developer mode"))
-                        .font(S.sans(12.5, .medium))
+                        .font(S.sans(12, .medium))
                         .foregroundColor(S.ink)
                     Text(on
                          ? loc.t("Tight models shown — experimental, may be unstable")
@@ -1341,7 +1341,7 @@ struct ModelsManagerView: View {
         let S = T.studio
         return VStack(spacing: 10) {
             Button {
-                withAnimation(.snappy(duration: 0.22)) { showRecommendedSetups.toggle() }
+                withAnimation(.snappy(duration: 0.18)) { showRecommendedSetups.toggle() }
                 HapticManager.impact(.light)
             } label: {
                 HStack(spacing: 6) {
@@ -1373,7 +1373,7 @@ struct ModelsManagerView: View {
         modelCardShell(accent: T.accent, prominence: expanded ? 0.14 : 0.09, padding: 14) {
             VStack(alignment: .leading, spacing: expanded ? 12 : 0) {
                 Button {
-                    withAnimation(.snappy(duration: 0.22)) {
+                    withAnimation(.snappy(duration: 0.18)) {
                         expandedComboID = expanded ? nil : combo.id
                     }
                     HapticManager.impact(.light)
@@ -1388,7 +1388,7 @@ struct ModelsManagerView: View {
                         VStack(alignment: .leading, spacing: 3) {
                             HStack(spacing: 6) {
                                 Text(loc.t(combo.tier))
-                                    .font(S.sans(16.5, .semibold))
+                                    .font(S.sans(16, .semibold))
                                     .foregroundColor(S.ink)
                                 fitBadge(forFootprint: maxRAM)
                             }
@@ -1463,7 +1463,7 @@ struct ModelsManagerView: View {
                             .lineLimit(1)
                             .truncationMode(.middle)
                         Text(loc.t(pick.detail))
-                            .font(T.mono(8.5))
+                            .font(T.mono(8))
                             .foregroundColor(T.ink3)
                     }
                     Spacer(minLength: 0)
@@ -1633,7 +1633,7 @@ struct ModelsManagerView: View {
                             .fill(S.fillActive))
                     VStack(alignment: .leading, spacing: 3) {
                         Text(loc.t("Generate images on-device"))
-                            .font(S.sans(16.5, .semibold))
+                            .font(S.sans(16, .semibold))
                             .foregroundColor(S.ink)
                         Text(loc.t("SD / SDXL diffusion via MLX. FLUX is too large for iOS memory."))
                             .font(S.sans(12))
@@ -1692,7 +1692,7 @@ struct ModelsManagerView: View {
         let S = T.studio
         VStack(spacing: 12) {
             Button {
-                withAnimation(.snappy(duration: 0.22)) { showUtilities.toggle() }
+                withAnimation(.snappy(duration: 0.18)) { showUtilities.toggle() }
                 HapticManager.impact(.light)
             } label: {
                 HStack(spacing: 6) {
@@ -1739,7 +1739,7 @@ struct ModelsManagerView: View {
                         .fill(S.fillActive))
                 VStack(alignment: .leading, spacing: 1) {
                     Text(loc.t("Storage cleanup"))
-                        .font(S.sans(14.5, .medium))
+                        .font(S.sans(14, .medium))
                         .foregroundColor(S.ink)
                     Text(loc.t("Choose what to keep, remove the rest"))
                         .font(S.sans(12))
@@ -1848,7 +1848,7 @@ struct ModelsManagerView: View {
                             .font(T.sans(14, .semibold))
                             .foregroundColor(T.ink)
                         Text(loc.t("Refuse models too large for this device instead of crashing"))
-                            .font(T.mono(9.5))
+                            .font(T.mono(9))
                             .foregroundColor(T.ink3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -1863,7 +1863,7 @@ struct ModelsManagerView: View {
                             .font(T.sans(14, .semibold))
                             .foregroundColor(T.ink)
                         Text(loc.t("Experimental · MLX still loads all weights; GGUF can page weights from storage"))
-                            .font(T.mono(9.5))
+                            .font(T.mono(9))
                             .foregroundColor(T.ink3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -1880,7 +1880,7 @@ struct ModelsManagerView: View {
                         Text(settings.modelLoadTimeoutSeconds == 0
                              ? loc.t("Off — a stuck load won't auto-cancel")
                              : "\(settings.modelLoadTimeoutSeconds / 60) min before a stuck load auto-cancels")
-                            .font(T.mono(9.5))
+                            .font(T.mono(9))
                             .foregroundColor(T.ink3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -2267,7 +2267,7 @@ struct ModelsManagerView: View {
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
                         Text(modelRepoID)
-                            .font(T.mono(9.5))
+                            .font(T.mono(9))
                             .foregroundColor(T.ink3.opacity(0.82))
                             .lineLimit(1)
                             .truncationMode(.middle)
@@ -2544,7 +2544,7 @@ struct ModelsManagerView: View {
                             .fill(S.fillActive))
                     VStack(alignment: .leading, spacing: 1) {
                         Text(loc.t("Clean up partial downloads"))
-                            .font(S.sans(14.5, .medium))
+                            .font(S.sans(14, .medium))
                             .foregroundColor(S.ink)
                         Text("\(orphanBytes.formattedBytes) " + loc.t("from cancelled or failed downloads"))
                             .font(S.sans(12))
@@ -2553,7 +2553,7 @@ struct ModelsManagerView: View {
                     }
                     Spacer(minLength: 6)
                     Text(orphanBytes.formattedBytes)
-                        .font(S.mono(10.5))
+                        .font(S.mono(10))
                         .foregroundColor(T.warn)
                 }
                 .padding(.vertical, 10)
@@ -2582,7 +2582,7 @@ struct ModelsManagerView: View {
                         .fill(S.fillActive))
                 VStack(alignment: .leading, spacing: 1) {
                     Text(loc.t("Import a model from Files"))
-                        .font(S.sans(14.5, .medium))
+                        .font(S.sans(14, .medium))
                         .foregroundColor(S.ink)
                     Text(loc.t("MLX folder with config.json and weights"))
                         .font(S.sans(12))
@@ -2651,13 +2651,13 @@ struct ModelsManagerView: View {
                             }
                         }
                         Text(model.subtitle)
-                            .font(T.mono(9.5))
+                            .font(T.mono(9))
                             .foregroundColor(T.ink3.opacity(0.8))
                             .lineLimit(1)
                             .truncationMode(.middle)
                         if let description = model.longDescription {
                             Text(description)
-                                .font(T.mono(9.5))
+                                .font(T.mono(9))
                                 .foregroundColor(T.ink3)
                                 .lineLimit(2)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -2696,7 +2696,7 @@ struct ModelsManagerView: View {
                             // Whisper & co. are speech-to-text (dictation / voice
                             // conversation), not a TTS voice — "ready", not a warning.
                             Text(loc.t("Speech-to-text · ready"))
-                                .font(T.mono(9.5, .semibold))
+                                .font(T.mono(9, .semibold))
                                 .foregroundColor(T.good)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 7)
@@ -2704,7 +2704,7 @@ struct ModelsManagerView: View {
                                 .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.good.opacity(0.30), lineWidth: 0.5))
                         } else {
                             Text(loc.t("No in-app voice engine for this repo yet"))
-                                .font(T.mono(9.5, .semibold))
+                                .font(T.mono(9, .semibold))
                                 .foregroundColor(T.warn)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 7)
@@ -2886,7 +2886,7 @@ struct ModelsManagerView: View {
                             .font(T.display(18, .semibold))
                             .foregroundColor(T.ink)
                         Text("SD / SDXL diffusion via MLX. FLUX is too large for iOS memory.")
-                            .font(T.mono(9.5))
+                            .font(T.mono(9))
                             .foregroundColor(T.ink3)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
@@ -2942,7 +2942,7 @@ struct ModelsManagerView: View {
                         }
                     }
                     Text(m.subtitle)
-                        .font(T.mono(9.5))
+                        .font(T.mono(9))
                         .foregroundColor(T.ink3.opacity(0.85))
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -3131,7 +3131,7 @@ struct ModelsManagerView: View {
                     }
                     if let description = group.description {
                         Text(description)
-                            .font(T.mono(9.5))
+                            .font(T.mono(9))
                             .foregroundColor(T.ink3)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
@@ -3201,13 +3201,13 @@ struct ModelsManagerView: View {
                         }
                     }
                     Text(model.subtitle)
-                        .font(T.mono(9.5))
+                        .font(T.mono(9))
                         .foregroundColor(T.ink3.opacity(0.82))
                         .lineLimit(1)
                         .truncationMode(.middle)
                     if let description = model.longDescription {
                         Text(description)
-                            .font(T.mono(9.5))
+                            .font(T.mono(9))
                             .foregroundColor(T.ink3)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
@@ -3275,7 +3275,7 @@ struct ModelsManagerView: View {
                         }
                     } else if model.category == .voice && supportedVoiceEngine(for: model) == nil {
                         Text("Stored only - runtime not implemented")
-                            .font(T.mono(9.5, .semibold))
+                            .font(T.mono(9, .semibold))
                             .foregroundColor(T.warn)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 7)
@@ -3619,7 +3619,7 @@ struct ModelsManagerView: View {
         // Studio: machine facts are mono ink on the paper — no chip fill,
         // no border. The hairline cards around them already group them.
         Text(text)
-            .font(T.mono(10.5))
+            .font(T.mono(10))
             .foregroundColor(T.studio.ink3)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -3649,7 +3649,7 @@ struct ModelsManagerView: View {
             Image(systemName: glyph)
                 .font(.system(size: 8, weight: .semibold))
             Text(loc.t(fit.label).lowercased())
-                .font(T.mono(9.5))
+                .font(T.mono(9))
                 .tracking(0.2)
         }
         .foregroundColor(color)
@@ -3690,7 +3690,7 @@ struct ModelsManagerView: View {
                 .fixedSize(horizontal: false, vertical: true)
             if let org {
                 Text(org)
-                    .font(T.mono(8.5))
+                    .font(T.mono(8))
                     .foregroundColor(T.ink3.opacity(0.75))
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -3859,7 +3859,7 @@ struct ModelsManagerView: View {
                 .font(S.sans(15, .medium))
                 .foregroundColor(S.ink2)
             Text(subtitle)
-                .font(S.sans(12.5))
+                .font(S.sans(12))
                 .foregroundColor(S.ink3)
                 .multilineTextAlignment(.center)
         }
@@ -4034,7 +4034,7 @@ private struct CompletedDownloadRow: View {
                     .fill(S.fillActive))
             VStack(alignment: .leading, spacing: 1) {
                 Text(model.displayName)
-                    .font(S.sans(14.5, .medium))
+                    .font(S.sans(14, .medium))
                     .foregroundColor(S.ink)
                     .lineLimit(1)
                 Text(loc.t("Ready to use") + " · \(model.sizeLabel)")
@@ -4043,7 +4043,7 @@ private struct CompletedDownloadRow: View {
             }
             Spacer()
             Text("100%")
-                .font(S.mono(10.5))
+                .font(S.mono(10))
                 .foregroundColor(T.good)
         }
         .padding(14)
@@ -4136,7 +4136,7 @@ private struct InstallingRow: View {
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(model.subtitle)
-                    .font(T.mono(9.5))
+                    .font(T.mono(9))
                     .foregroundColor(T.studio.ink3)
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -4152,7 +4152,7 @@ private struct InstallingRow: View {
                     .font(T.mono(11, .semibold))
                     .foregroundColor(T.studio.ink2)
                     .contentTransition(.numericText())
-                    .animation(.easeOut(duration: 0.15), value: downloader.progress)
+                    .animation(.easeOut(duration: 0.18), value: downloader.progress)
             }
         }
     }
@@ -4185,14 +4185,14 @@ private struct InstallingRow: View {
                         .font(T.mono(10))
                         .foregroundColor(T.ink2)
                         .contentTransition(.numericText())
-                        .animation(.easeInOut(duration: 0.2), value: downloader.downloadedBytes)
+                        .animation(.easeInOut(duration: 0.18), value: downloader.downloadedBytes)
                     Spacer(minLength: 0)
                     if downloader.filesTotal > 0 {
                         Text("\(downloader.filesDone)/\(downloader.filesTotal) files")
                             .font(T.mono(10))
                             .foregroundColor(T.ink3)
                             .contentTransition(.numericText())
-                            .animation(.easeInOut(duration: 0.2), value: downloader.filesDone)
+                            .animation(.easeInOut(duration: 0.18), value: downloader.filesDone)
                     }
                 }
             } else {

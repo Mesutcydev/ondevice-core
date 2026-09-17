@@ -100,7 +100,7 @@ struct KnowledgeBaseView: View {
                     Text("Use in answers")
                         .font(T.sans(15, .semibold)).foregroundColor(T.ink)
                     Text("The assistant grounds replies in your files and cites them — fully offline.")
-                        .font(T.mono(9.5)).foregroundColor(T.ink3)
+                        .font(T.mono(9)).foregroundColor(T.ink3)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -164,7 +164,7 @@ struct KnowledgeBaseView: View {
                 HStack {
                     Text("DOCUMENTS").font(T.mono(10, .semibold)).foregroundColor(T.ink3).tracking(0.6)
                     Spacer()
-                    Text("\(kb.totalChunks) chunks").font(T.mono(9.5)).foregroundColor(T.ink3)
+                    Text("\(kb.totalChunks) chunks").font(T.mono(9)).foregroundColor(T.ink3)
                 }
                 ForEach(kb.documents) { doc in documentRow(doc) }
             }
@@ -181,7 +181,7 @@ struct KnowledgeBaseView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(doc.name).font(T.sans(14, .semibold)).foregroundColor(T.ink).lineLimit(1)
                 Text("\(doc.chunkCount) chunks · \(Int64(doc.byteCount).formattedBytes)")
-                    .font(T.mono(9.5)).foregroundColor(T.ink3)
+                    .font(T.mono(9)).foregroundColor(T.ink3)
             }
             Spacer(minLength: 0)
             Button {

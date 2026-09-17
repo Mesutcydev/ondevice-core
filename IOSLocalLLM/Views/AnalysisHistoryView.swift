@@ -211,7 +211,7 @@ private struct HeroCardButton<Content: View>: View {
                             .stroke(T.accent, lineWidth: 2)
                             .scaleEffect(pulse ? 1.06 : 0.98)
                             .opacity(pulse ? 0 : 0.85)
-                            .animation(.easeOut(duration: 0.35), value: pulse)
+                            .animation(.easeOut(duration: 0.3), value: pulse)
                             .allowsHitTesting(false)
                     }
                 }

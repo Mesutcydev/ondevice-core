@@ -115,7 +115,7 @@ struct HomeView: View {
                 .padding(.top, 12)
 
             Text(heroSubtitle)
-                .font(S.sans(14.5))
+                .font(S.sans(14))
                 .lineSpacing(5)
                 .foregroundStyle(S.ink2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -213,7 +213,7 @@ struct HomeView: View {
         return VStack(alignment: .leading, spacing: 3) {
             StudioMonoLabel(text: label, size: 9, tracking: 1.0)
             Text(value)
-                .font(S.mono(13.5, .medium))
+                .font(S.mono(13, .medium))
                 .foregroundStyle(S.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
@@ -280,7 +280,7 @@ struct HomeView: View {
                 glyphTile("bubble.left.and.text.bubble.right")
                 VStack(alignment: .leading, spacing: 3) {
                     Text(convo.title.isEmpty ? loc.t("Untitled chat") : convo.title)
-                        .font(S.sans(15.5, .medium))
+                        .font(S.sans(15, .medium))
                         .foregroundStyle(S.ink)
                         .lineLimit(1)
                     if let preview = convoPreview(convo) {
@@ -374,10 +374,10 @@ struct HomeView: View {
                 glyphTile("lock.fill")
                 VStack(alignment: .leading, spacing: 2) {
                     Text(loc.t("Private by design"))
-                        .font(S.sans(15.5, .medium))
+                        .font(S.sans(15, .medium))
                         .foregroundStyle(S.ink)
                     Text("\(readyModelCount) \(loc.t("models")) · \(center.totalStorageUsed.formattedBytes) \(loc.t("on this iPhone"))")
-                        .font(S.sans(12.5))
+                        .font(S.sans(12))
                         .foregroundStyle(S.ink3)
                 }
                 Spacer(minLength: 6)
@@ -386,7 +386,7 @@ struct HomeView: View {
                     onOpenModels()
                 } label: {
                     Text(loc.t("Manage"))
-                        .font(S.sans(13.5, .medium))
+                        .font(S.sans(13, .medium))
                         .foregroundStyle(S.ink)
                         .padding(.horizontal, 13)
                         .frame(minHeight: 34)
@@ -448,7 +448,7 @@ struct HomeView: View {
                     glyphTile(symbol)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(title)
-                            .font(S.sans(15.5, .medium))
+                            .font(S.sans(15, .medium))
                             .foregroundStyle(S.ink)
                         Text(subtitle)
                             .font(S.sans(13))

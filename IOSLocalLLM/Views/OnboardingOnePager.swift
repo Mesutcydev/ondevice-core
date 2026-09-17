@@ -115,7 +115,7 @@ private struct CapabilityTable: View {
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 14) {
                     Text(row.0)
-                        .font(T.mono(11.5, .semibold))
+                        .font(T.mono(11, .semibold))
                         .tracking(0.2)
                         .foregroundStyle(S.ink)
                         .frame(width: 108, alignment: .leading)

@@ -215,7 +215,7 @@ struct StudioComposer: View {
             VStack(alignment: .leading, spacing: 1) {
                 StudioMonoLabel(text: "thinks", size: 9, tracking: 1.0)
                 Text(thinkingEnabled ? "First" : "Off")
-                    .font(S.sans(13.5, .medium))
+                    .font(S.sans(13, .medium))
                     .foregroundStyle(thinkingEnabled ? S.accent : S.ink3)
                     .overlay(alignment: .bottom) {
                         if thinkingEnabled {
@@ -304,7 +304,7 @@ struct StudioComposer: View {
                 dictation.stop()
                 HapticManager.impact(.light)
             }
-            .font(S.sans(13.5, .medium))
+            .font(S.sans(13, .medium))
             .foregroundStyle(S.ink3)
             .buttonStyle(.plain)
         }
@@ -315,13 +315,13 @@ struct StudioComposer: View {
         let S = T.studio
         return HStack(spacing: StudioSpacing.m) {
             Text("No model loaded yet — pick one to start asking.")
-                .font(S.sans(14.5))
+                .font(S.sans(14))
                 .foregroundStyle(S.ink2)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: StudioSpacing.s)
             Button(action: onChooseModel) {
                 Text("Choose")
-                    .font(S.sans(13.5, .medium))
+                    .font(S.sans(13, .medium))
                     .foregroundStyle(S.paper)
                     .padding(.horizontal, 13)
                     .frame(minHeight: 34)
@@ -358,7 +358,7 @@ struct StudioComposer: View {
             } label: {
                 HStack(spacing: 7) {
                     Image(systemName: "stop.fill").font(.system(size: 9))
-                    Text("Stop").font(S.sans(13.5, .medium))
+                    Text("Stop").font(S.sans(13, .medium))
                 }
                 .foregroundStyle(S.ink)
                 .padding(.horizontal, 12)
@@ -492,7 +492,7 @@ struct StudioFileTile: View {
                 .foregroundStyle(S.ink3)
             VStack(alignment: .leading, spacing: 1) {
                 Text(attachment.displayName)
-                    .font(S.sans(12.5, .medium))
+                    .font(S.sans(12, .medium))
                     .foregroundStyle(S.ink)
                     .lineLimit(1)
                 StudioMonoLabel(text: Int64(attachment.byteSize).formattedBytes,

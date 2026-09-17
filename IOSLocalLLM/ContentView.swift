@@ -788,7 +788,7 @@ struct CameraRootView: View {
                     FocusReticle()
                         .position(x: p.x * geo.size.width, y: p.y * geo.size.height)
                         .transition(.opacity)
-                        .animation(.easeOut(duration: 0.2), value: camera.focusIndicator)
+                        .animation(.easeOut(duration: 0.18), value: camera.focusIndicator)
                 }
             }
             .ignoresSafeArea()
@@ -837,7 +837,7 @@ struct CameraRootView: View {
                     .padding(.horizontal, 16)
                 Spacer()
             }
-            .animation(.easeOut(duration: 0.25), value: analysis.fastVLMLoaded)
+            .animation(.easeOut(duration: 0.3), value: analysis.fastVLMLoaded)
 
             // Code Mode framing guide — a centred capture rectangle with a
             // "tap to capture" hint, replacing the old detection-count chip.
@@ -1517,7 +1517,7 @@ struct CameraRootView: View {
                 }
             }
             .allowsHitTesting(false)
-            .animation(.easeInOut(duration: 0.2), value: analysis.isAnalyzing)
+            .animation(.easeInOut(duration: 0.18), value: analysis.isAnalyzing)
     }
 
     // MARK: Mode switcher
@@ -1612,7 +1612,7 @@ struct CameraRootView: View {
                 }
             } else if !capped.isEmpty {
                 Text(capped)
-                    .font(T.sans(14.5)).foregroundColor(cardInk2).lineSpacing(2)
+                    .font(T.sans(14)).foregroundColor(cardInk2).lineSpacing(2)
                     .lineLimit(6).truncationMode(.tail)
                     .fixedSize(horizontal: false, vertical: true)
                     .modifier(StreamSafeTextSelection(streaming: streaming))
@@ -1885,7 +1885,7 @@ private struct LensPromptComposer: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(.white.opacity(isFocused ? 0.34 : 0.16), lineWidth: 1)
         }
-        .animation(.easeOut(duration: 0.16), value: isFocused)
+        .animation(.easeOut(duration: 0.18), value: isFocused)
     }
 }
 
@@ -2034,7 +2034,7 @@ private struct StreamingGradientEdge: View {
                 .strokeBorder(Color.black, lineWidth: 1)
         )
         .opacity(active ? 1 : 0)
-        .animation(.easeInOut(duration: 0.25), value: active)
+        .animation(.easeInOut(duration: 0.3), value: active)
         .onAppear { startIfNeeded() }
         .onChange(of: active) { _, _ in startIfNeeded() }
         .allowsHitTesting(false)
@@ -2125,7 +2125,7 @@ struct FocusReticle: View {
                     opacity = 1.0
                 }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
-                    withAnimation(.easeIn(duration: 0.25)) {
+                    withAnimation(.easeIn(duration: 0.3)) {
                         opacity = 0.0
                     }
                 }

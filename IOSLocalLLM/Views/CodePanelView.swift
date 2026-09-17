@@ -23,7 +23,7 @@ struct CodePanelView: View {
                 Button {
                     UIPasteboard.general.string = code
                     HapticManager.impact(.light)
-                    withAnimation(.spring(duration: 0.2)) { copyFeedback = true }
+                    withAnimation(.spring(duration: 0.18)) { copyFeedback = true }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                         withAnimation { copyFeedback = false }
                     }

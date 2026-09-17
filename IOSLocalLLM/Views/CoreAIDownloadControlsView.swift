@@ -31,7 +31,7 @@ struct CoreAIDownloadControlsView: View {
                            ? String(format: " · %.1f MB/s", manager.speedMBps)
                            : "")
                     )
-                    .font(T.mono(8.5))
+                    .font(T.mono(8))
                     .foregroundStyle(T.ink3)
                 }
                 HStack {
@@ -59,7 +59,7 @@ struct CoreAIDownloadControlsView: View {
         case .failed(let message):
             VStack(alignment: .leading, spacing: 6) {
                 Text(message)
-                    .font(T.sans(10.5))
+                    .font(T.sans(10))
                     .foregroundStyle(T.bad)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack {

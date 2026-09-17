@@ -148,7 +148,7 @@ struct CodeModeView: View {
                 }
                 Text("\(controller.lineCount) ln")
                     .font(T.mono(11))
-                    .foregroundStyle(T.ink4)
+                    .foregroundStyle(T.ink3)
                 Spacer()
                 Button {
                     UIPasteboard.general.string = controller.extractedCode

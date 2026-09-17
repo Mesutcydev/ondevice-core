@@ -54,7 +54,7 @@ struct BridgeAgentCard: View {
         HStack(spacing: 8) {
             Text("AGENT (PREVIEW)")
                 .font(T.mono(11, .semibold))
-                .foregroundColor(T.ink4)
+                .foregroundColor(T.ink3)
             Spacer()
             if case .running(let label) = state {
                 HStack(spacing: 6) {
@@ -181,7 +181,7 @@ struct BridgeAgentCard: View {
             Text(label.uppercased())
                 .font(T.mono(9, .semibold))
                 .tracking(0.5)
-                .foregroundColor(T.ink4)
+                .foregroundColor(T.ink3)
                 .frame(width: 70, alignment: .leading)
             Text(value)
                 .font(T.mono(11, .regular))

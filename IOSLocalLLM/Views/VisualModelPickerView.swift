@@ -269,7 +269,7 @@ struct VisualModelPickerView: View {
             Image(systemName: "bolt.fill")
                 .font(.system(size: 8, weight: .bold))
             Text(label)
-                .font(T.mono(8.5, .semibold))
+                .font(T.mono(8, .semibold))
                 .tracking(0.4)
         }
         .foregroundColor(T.accent)
@@ -286,7 +286,7 @@ struct VisualModelPickerView: View {
     @ViewBuilder
     private func formatPill(text: String) -> some View {
         Text(text.uppercased())
-            .font(T.mono(8.5, .semibold))
+            .font(T.mono(8, .semibold))
             .tracking(0.6)
             .foregroundColor(T.ink2)
             .padding(.horizontal, 6)
@@ -314,7 +314,7 @@ struct VisualModelPickerView: View {
         HStack(spacing: 4) {
             Circle().fill(color).frame(width: 6, height: 6)
             Text(bytes.formattedBytes)
-                .font(T.mono(8.5, .semibold))
+                .font(T.mono(8, .semibold))
                 .tracking(0.4)
                 .foregroundColor(T.ink2)
         }

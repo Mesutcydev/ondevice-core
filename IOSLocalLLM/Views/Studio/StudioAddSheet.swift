@@ -88,7 +88,7 @@ struct StudioAddSheet: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Answer length & wording")
-                                    .font(S.sans(16.5))
+                                    .font(S.sans(16))
                                     .foregroundStyle(S.ink)
                                 Text(StudioAnswerStyle.summary)
                                     .font(S.sans(13))
@@ -124,7 +124,7 @@ struct StudioAddSheet: View {
                 .foregroundStyle(S.ink)
             Spacer()
             Button("Close") { dismiss() }
-                .font(S.sans(14.5, .medium))
+                .font(S.sans(14, .medium))
                 .foregroundStyle(S.ink3)
                 .buttonStyle(.plain)
         }
@@ -150,7 +150,7 @@ struct StudioAddSheet: View {
                                 in: RoundedRectangle(cornerRadius: StudioRadius.glyph,
                                                      style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(S.sans(16.5)).foregroundStyle(S.ink)
+                    Text(title).font(S.sans(16)).foregroundStyle(S.ink)
                     Text(subtitle).font(S.sans(13)).foregroundStyle(S.ink3)
                 }
                 Spacer()
@@ -173,7 +173,7 @@ struct StudioAddSheet: View {
         let S = T.studio
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(S.sans(16.5)).foregroundStyle(S.ink)
+                Text(title).font(S.sans(16)).foregroundStyle(S.ink)
                 Text(subtitle).font(S.sans(13)).foregroundStyle(S.ink3)
             }
             Spacer()
@@ -298,7 +298,7 @@ struct StudioAnswerStyleView: View {
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(S.sans(16.5)).foregroundStyle(S.ink)
+                    Text(title).font(S.sans(16)).foregroundStyle(S.ink)
                     Text(subtitle).font(S.sans(13)).foregroundStyle(S.ink3)
                 }
                 Spacer()
@@ -323,10 +323,10 @@ struct StudioAnswerStyleView: View {
         let S = T.studio
         return VStack(alignment: .leading, spacing: 0) {
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) { advancedExpanded.toggle() }
+                withAnimation(.easeInOut(duration: 0.18)) { advancedExpanded.toggle() }
             } label: {
                 HStack {
-                    Text("Advanced").font(S.sans(16.5)).foregroundStyle(S.ink)
+                    Text("Advanced").font(S.sans(16)).foregroundStyle(S.ink)
                     Spacer()
                     Image(systemName: advancedExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 13))
@@ -364,7 +364,7 @@ struct StudioAnswerStyleView: View {
                         temperature = nil; topP = nil; topK = nil; repetitionPenalty = nil
                         HapticManager.selection()
                     }
-                    .font(S.sans(14.5, .medium))
+                    .font(S.sans(14, .medium))
                     .foregroundStyle(S.danger)
                     .buttonStyle(.plain)
                 }
@@ -389,7 +389,7 @@ struct StudioAnswerStyleView: View {
     private func labelRow(_ title: String, value: String) -> some View {
         let S = T.studio
         return HStack {
-            Text(title).font(S.sans(14.5)).foregroundStyle(S.ink)
+            Text(title).font(S.sans(14)).foregroundStyle(S.ink)
             Spacer()
             StudioMonoLabel(text: value, size: 11, tracking: 0.4)
         }

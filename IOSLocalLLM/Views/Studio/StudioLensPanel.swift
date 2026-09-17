@@ -98,7 +98,7 @@ struct StudioLensPanel: View {
         .background(S.paper)
         .clipShape(.rect(topLeadingRadius: StudioRadius.sheet,
                          topTrailingRadius: StudioRadius.sheet))
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: state)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: state)
         .accessibilityElement(children: .contain)
     }
 
@@ -112,7 +112,7 @@ struct StudioLensPanel: View {
                 .tracking(-0.3)
                 .foregroundStyle(S.ink)
             Text("The frame is read here and thrown away. Nothing is uploaded.")
-                .font(S.sans(14.5))
+                .font(S.sans(14))
                 .lineSpacing(14.5 * 0.45)
                 .foregroundStyle(S.ink2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -188,7 +188,7 @@ struct StudioLensPanel: View {
             Spacer(minLength: 0)
 
             Button("Cancel", action: onCancel)
-                .font(S.sans(13.5, .medium))
+                .font(S.sans(13, .medium))
                 .foregroundStyle(S.ink3)
                 .buttonStyle(.plain)
                 .frame(minWidth: 44, minHeight: 44)
@@ -247,7 +247,7 @@ struct StudioLensPanel: View {
                 StudioMonoLabel(text: "couldn't read that", size: 11, tracking: 0.9)
             }
             Text(errorText ?? "The selected model could not analyze this frame.")
-                .font(S.sans(15.5))
+                .font(S.sans(15))
                 .lineSpacing(15.5 * 0.45)
                 .foregroundStyle(S.ink2)
                 .fixedSize(horizontal: false, vertical: true)

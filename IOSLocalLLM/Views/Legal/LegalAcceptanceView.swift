@@ -153,7 +153,7 @@ struct LegalAcceptanceView: View {
                 .foregroundStyle(S.ink)
 
             Text("Four short documents: privacy, licensing, AI accuracy, and device safety. Read each one below — the agreement unlocks once all four are checked.")
-                .font(S.sans(15.5))
+                .font(S.sans(15))
                 .lineSpacing(15.5 * 0.5)
                 .foregroundStyle(S.ink2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -185,7 +185,7 @@ struct LegalAcceptanceView: View {
                                                      style: .continuous))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(S.sans(16.5)).foregroundStyle(S.ink)
+                    Text(title).font(S.sans(16)).foregroundStyle(S.ink)
                     Text(subtitle).font(S.sans(13)).foregroundStyle(S.ink3)
                 }
 

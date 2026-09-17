@@ -644,7 +644,7 @@ struct ArgentRemoteView: View {
                         if !lastJSON.isEmpty {
                             ScrollView(.horizontal) {
                                 Text(lastJSON)
-                                    .font(T.mono(10.5))
+                                    .font(T.mono(10))
                                     .foregroundColor(T.ink2)
                                     .textSelection(.enabled)
                             }

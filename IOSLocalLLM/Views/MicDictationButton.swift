@@ -51,7 +51,7 @@ struct MicDictationButton: View {
                     .fill(T.bad)
                     .frame(width: 8, height: 8)
                     .scaleEffect(1 + CGFloat(dictation.levelMeter) * 0.6)
-                    .animation(.easeOut(duration: 0.15), value: dictation.levelMeter)
+                    .animation(.easeOut(duration: 0.18), value: dictation.levelMeter)
                 if !compact {
                     Text("listening")
                         .font(T.mono(11, .semibold))

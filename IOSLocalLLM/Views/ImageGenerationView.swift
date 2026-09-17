@@ -100,7 +100,7 @@ struct ImageGenerationView: View {
                         }
                     }
                     Text(m.subtitle)
-                        .font(T.mono(9.5))
+                        .font(T.mono(9))
                         .foregroundColor(T.ink3)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
@@ -250,7 +250,7 @@ struct ImageGenerationView: View {
                 }
                 Slider(value: $steps, in: 0...50, step: 1).tint(T.accent)
                 Text("More steps = more detail but slower. Turbo models need only 1–4.")
-                    .font(T.mono(8.5)).foregroundColor(T.ink3)
+                    .font(T.mono(8)).foregroundColor(T.ink3)
             }
         }
         .padding(14)

@@ -229,7 +229,7 @@ struct SettingsView: View {
                 Text(cat.title.capitalized)
                     .font(T.sans(16, .semibold)).foregroundColor(T.ink)
                 Text(cat.subtitle)
-                    .font(T.sans(12.5)).foregroundColor(T.ink3).lineLimit(1)
+                    .font(T.sans(12)).foregroundColor(T.ink3).lineLimit(1)
             }
             Spacer(minLength: 8)
             Image(systemName: "chevron.right")
@@ -762,7 +762,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         KMono(text: "Use token for downloads", size: 11.5, color: T.ink, mono: false)
                         Text("Sends your token with HF requests. Turn off temporarily to debug 401s without removing the token.")
-                            .font(T.sans(10.5))
+                            .font(T.sans(10))
                             .foregroundColor(T.ink3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -1522,7 +1522,7 @@ struct SettingsView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.82)
                         Text("Create private AI images on-device, even when you're offline.")
-                            .font(T.sans(12.5))
+                            .font(T.sans(12))
                             .foregroundColor(T.ink2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -1546,7 +1546,7 @@ struct SettingsView: View {
 
                 HStack(spacing: 8) {
                     Text("See the preview and follow launch updates.")
-                        .font(T.sans(11.5))
+                        .font(T.sans(11))
                         .foregroundColor(T.ink3)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)

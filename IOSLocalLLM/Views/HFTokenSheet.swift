@@ -102,7 +102,7 @@ struct HFTokenSheet: View {
                         .font(.system(size: 11))
                         .foregroundColor(T.good)
                     Text("Token saved · \(masked)")
-                        .font(T.mono(10.5, .semibold))
+                        .font(T.mono(10, .semibold))
                         .foregroundColor(T.good)
                 }
                 .padding(.top, 6)
@@ -251,7 +251,7 @@ struct HFTokenSheet: View {
                     .foregroundColor(tint)
             }
             Text(detail)
-                .font(T.sans(11.5))
+                .font(T.sans(11))
                 .foregroundColor(T.ink2)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -269,11 +269,11 @@ struct HFTokenSheet: View {
         VStack(alignment: .leading, spacing: 6) {
             KCaption(text: "WHY DO I NEED THIS?")
             Text("Hugging Face requires a token for repositories where the publisher gates access — typically because the model has a license that requires you to accept terms. Examples: official google/gemma-* mirrors, meta-llama/* models, mistralai/Ministral-*.")
-                .font(T.sans(11.5))
+                .font(T.sans(11))
                 .foregroundColor(T.ink2)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Most OnDevice defaults (mlx-community/*, ggml-org/*) are open and don't need a token. Set one only if you want to download from gated repos.")
-                .font(T.sans(11.5))
+                .font(T.sans(11))
                 .foregroundColor(T.ink3)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 2)

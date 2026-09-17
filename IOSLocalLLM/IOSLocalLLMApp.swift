@@ -49,7 +49,7 @@ struct IOSLocalLLMApp: App {
             ConfettiOverlayView()
             if isShowingSplash {
                 PlumDuskSplashView {
-                    withAnimation(.easeOut(duration: 0.28)) {
+                    withAnimation(.easeOut(duration: 0.3)) {
                         isShowingSplash = false
                     }
                 }

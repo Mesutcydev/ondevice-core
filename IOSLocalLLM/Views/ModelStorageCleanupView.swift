@@ -285,7 +285,7 @@ private struct ModelStorageCleanupRow: View {
                         }
                     }
                     Text(item.detail)
-                        .font(T.mono(9.5))
+                        .font(T.mono(9))
                         .foregroundColor(T.ink3)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -341,7 +341,7 @@ private struct ModelPartialDownloadCleanupRow: View {
                         .font(T.sans(14, .semibold))
                         .foregroundColor(T.ink)
                     Text("Cancelled files and resumable transfer cache · \(bytes.formattedBytes)")
-                        .font(T.mono(9.5))
+                        .font(T.mono(9))
                         .foregroundColor(T.ink3)
                         .fixedSize(horizontal: false, vertical: true)
                 }

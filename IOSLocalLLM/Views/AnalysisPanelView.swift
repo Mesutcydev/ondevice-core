@@ -328,7 +328,7 @@ struct AnalysisPanelView: View {
                 )
                 .onChange(of: result.questionAnswers.last?.answer) { _, _ in
                     if let last = result.questionAnswers.last {
-                        withAnimation(.easeOut(duration: 0.15)) {
+                        withAnimation(.easeOut(duration: 0.18)) {
                             proxy.scrollTo(last.id, anchor: .bottom)
                         }
                     }
@@ -419,7 +419,7 @@ struct AnalysisPanelView: View {
                 )
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .animation(.easeOut(duration: 0.15), value: questionFocused)
+                .animation(.easeOut(duration: 0.18), value: questionFocused)
 
                 // Studio-themed toolbar above the keyboard (only while focused)
                 if questionFocused {

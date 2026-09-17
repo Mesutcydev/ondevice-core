@@ -73,7 +73,7 @@ struct AssistantLiveStatusRow: View {
                     .font(.system(size: 10, weight: .semibold))
             }
             Text(title)
-                .font(T.sans(11.5, .medium))
+                .font(T.sans(11, .medium))
             Spacer(minLength: 0)
         }
         .foregroundStyle(T.ink3)

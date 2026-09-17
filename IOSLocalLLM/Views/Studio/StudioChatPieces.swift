@@ -79,14 +79,14 @@ struct StudioWebPermissionCard: View {
             }
 
             Text("I can't answer this without looking it up.")
-                .font(S.sans(17.5, .semibold))
+                .font(S.sans(17, .semibold))
                 .lineSpacing(17.5 * 0.35)
                 .foregroundStyle(S.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 9)
 
             Text("Only the words “\(query)” would leave your phone. The chat itself stays here.")
-                .font(S.sans(14.5))
+                .font(S.sans(14))
                 .lineSpacing(14.5 * 0.5)
                 .foregroundStyle(S.ink2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -114,7 +114,7 @@ struct StudioWebPermissionCard: View {
                     onDeny()
                 } label: {
                     Text("Never mind")
-                        .font(S.sans(14.5, .medium))
+                        .font(S.sans(14, .medium))
                         .foregroundStyle(S.ink3)
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .contentShape(Rectangle())

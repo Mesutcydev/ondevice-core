@@ -413,7 +413,7 @@ struct CodingAssistantView: View {
                         if focused, !messages.isEmpty {
                             isNearConversationBottom = true
                             followsConversation = true
-                            withAnimation(.easeOut(duration: 0.2)) {
+                            withAnimation(.easeOut(duration: 0.18)) {
                                 proxy.scrollTo(conversationBottomAnchorID, anchor: .bottom)
                             }
                         }
@@ -1305,14 +1305,14 @@ struct CodingAssistantView: View {
                             .minimumScaleFactor(0.85)
                         HStack(spacing: 6) {
                             Text(descriptor.title)
-                                .font(T.mono(9.5, .semibold))
+                                .font(T.mono(9, .semibold))
                                 .tracking(0)
                                 .foregroundColor(descriptor.color)
                                 .lineLimit(1)
                                 .fixedSize(horizontal: true, vertical: false)
                             if let badge = descriptor.badge {
                                 Text(badge)
-                                    .font(T.mono(8.5, .semibold))
+                                    .font(T.mono(8, .semibold))
                                     .foregroundColor(descriptor.color)
                                     .lineLimit(1)
                                     .fixedSize(horizontal: true, vertical: false)
@@ -1604,7 +1604,7 @@ struct CodingAssistantView: View {
                 if let title = currentConversationTitle {
                     VStack(spacing: 1) {
                         Text(title)
-                            .font(S.sans(14.5, .semibold))
+                            .font(S.sans(14, .semibold))
                             .foregroundStyle(S.ink)
                             .lineLimit(1)
                             .truncationMode(.tail)
@@ -1682,7 +1682,7 @@ struct CodingAssistantView: View {
             HStack(spacing: 5) {
                 bridgePillIcon
                 Text(bridgePillLabel)
-                    .font(T.mono(9.5, .semibold))
+                    .font(T.mono(9, .semibold))
                     .foregroundColor(bridgePillColor)
                     .lineLimit(1)
             }
@@ -2179,7 +2179,7 @@ struct CodingAssistantView: View {
         }
         .buttonStyle(.plain)
         .disabled(!canSend)
-        .animation(.easeInOut(duration: 0.15), value: canSend)
+        .animation(.easeInOut(duration: 0.18), value: canSend)
     }
 
     // MARK: - Web Tool send path
@@ -3844,7 +3844,7 @@ private struct ChatThreadEmptyState: View {
                 .accessibilityAddTraits(.isHeader)
 
             Text(subtitle)
-                .font(S.sans(15.5))
+                .font(S.sans(15))
                 .lineSpacing(5)
                 .foregroundStyle(S.ink2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -3926,7 +3926,7 @@ private struct ChatThreadEmptyState: View {
                         onTryAnyway()
                     } label: {
                         Text("Try anyway")
-                            .font(S.sans(14.5, .medium))
+                            .font(S.sans(14, .medium))
                             .foregroundStyle(S.danger)
                             .frame(maxWidth: .infinity, minHeight: 44)
                             .contentShape(Rectangle())
@@ -4473,7 +4473,7 @@ struct MessageBubble: View, Equatable {
             Image(systemName: icon)
                 .font(.system(size: 9, weight: .semibold))
             Text(text)
-                .font(T.sans(10.5, .medium))
+                .font(T.sans(10, .medium))
         }
         .foregroundStyle(T.ink3)
         .fixedSize(horizontal: true, vertical: false)
@@ -4582,7 +4582,7 @@ private struct AssistantToolResultCard: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(T.ink3)
                         .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                        .animation(reduceMotion ? nil : .snappy(duration: 0.2), value: isExpanded)
+                        .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: isExpanded)
                 }
                 .contentShape(Rectangle())
             }
@@ -5036,7 +5036,7 @@ struct ThinkingBlock: View {
             // Header row
             Button {
                 guard !isOpen else { return }
-                withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
+                withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
             } label: {
                 // Reasoning summary is a flat rule, not a card: mono uppercase
                 // label, flexible hairline, show/hide affordance at the end.

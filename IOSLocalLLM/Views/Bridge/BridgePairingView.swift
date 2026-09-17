@@ -152,7 +152,7 @@ struct BridgePairingView: View {
                             )
                     }
                     Text("Review the public pairing protocol, security boundaries, and client implementation notes.")
-                        .font(T.mono(10.5))
+                        .font(T.mono(10))
                         .foregroundColor(T.ink3)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
@@ -196,7 +196,7 @@ struct BridgePairingView: View {
                         .font(T.mono(13, .semibold))
                         .foregroundColor(T.ink)
                     Text("One-tap simulator control — screenshot, tap, swipe, launch app, …")
-                        .font(T.mono(10.5))
+                        .font(T.mono(10))
                         .foregroundColor(T.ink3)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
@@ -445,7 +445,7 @@ struct BridgePairingView: View {
             HStack {
                 Text("PAIRED MACS")
                     .font(T.mono(11, .semibold))
-                    .foregroundColor(T.ink4)
+                    .foregroundColor(T.ink3)
                 Spacer()
                 if !manager.pairedClients.isEmpty {
                     Button("Forget All") { manager.forgetAllClients() }

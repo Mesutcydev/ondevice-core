@@ -154,7 +154,7 @@ struct VoiceLibraryView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(loc.t("NOW USING"))
-                        .font(T.sans(11.5, .bold)).tracking(0.6).foregroundColor(T.accentStrong)
+                        .font(T.sans(11, .bold)).tracking(0.6).foregroundColor(T.accentStrong)
                     Text(v.name).font(T.display(20, .bold)).foregroundColor(T.ink).lineLimit(1)
                     Text(voiceSubtitle(v)).font(T.sans(13)).foregroundColor(T.ink2).lineLimit(1)
                 }
@@ -228,7 +228,7 @@ struct VoiceLibraryView: View {
                     Text(loc.t("Voice engine").uppercased())
                         .font(T.sans(11, .bold)).tracking(0.4).foregroundColor(T.ink3)
                     Text(voice.currentEngineKind.displayName)
-                        .font(T.sans(15.5, .semibold)).foregroundColor(T.ink)
+                        .font(T.sans(15, .semibold)).foregroundColor(T.ink)
                 }
                 Spacer(minLength: 6)
                 Image(systemName: "chevron.right")
@@ -255,7 +255,7 @@ struct VoiceLibraryView: View {
                         let on = filter == f
                         Button(action: { HapticManager.impact(.light); filter = f }) {
                             Text(loc.t(f.label))
-                                .font(T.sans(13.5, on ? .semibold : .medium))
+                                .font(T.sans(13, on ? .semibold : .medium))
                                 .foregroundColor(on ? .white : T.ink2)
                                 .padding(.horizontal, 15).padding(.vertical, 7)
                                 .kClearGlass(
@@ -328,8 +328,8 @@ struct VoiceLibraryView: View {
             HStack(spacing: 12) {
                 voiceThumbnail(v, isCurrent: isCurrent)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(v.name).font(T.sans(15.5, .semibold)).foregroundColor(T.ink).lineLimit(1)
-                    Text(voiceSubtitle(v)).font(T.sans(12.5)).foregroundColor(T.ink3).lineLimit(1)
+                    Text(v.name).font(T.sans(15, .semibold)).foregroundColor(T.ink).lineLimit(1)
+                    Text(voiceSubtitle(v)).font(T.sans(12)).foregroundColor(T.ink3).lineLimit(1)
                 }
                 Spacer(minLength: 6)
                 ZStack {
@@ -362,9 +362,9 @@ struct VoiceLibraryView: View {
                 .frame(width: 38, height: 38)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(loc.t("Clone your voice"))
-                        .font(T.sans(15.5, .semibold)).foregroundColor(T.accent)
+                        .font(T.sans(15, .semibold)).foregroundColor(T.accent)
                     Text(loc.t("Record 30s · trained on-device"))
-                        .font(T.sans(12.5)).foregroundColor(T.ink3)
+                        .font(T.sans(12)).foregroundColor(T.ink3)
                 }
                 Spacer(minLength: 6)
                 Text(loc.t("Coming soon"))
@@ -422,7 +422,7 @@ struct VoiceLibraryView: View {
                 .font(T.mono(14, .semibold))
                 .foregroundColor(isCurrent ? T.bg : T.studio.ink)
             Text(regionCode(v.locale))
-                .font(T.mono(7.5, .medium))
+                .font(T.mono(7, .medium))
                 .tracking(0.4)
                 .foregroundColor(isCurrent ? T.bg.opacity(0.75) : T.ink3)
         }

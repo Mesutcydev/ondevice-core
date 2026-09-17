@@ -69,7 +69,7 @@ struct DetectionBoxView: View {
                     .font(T.mono(10))
                     .foregroundColor(T.ink3)
                     .contentTransition(.numericText())
-                    .animation(.easeInOut(duration: 0.15), value: detection.confidence)
+                    .animation(.easeInOut(duration: 0.18), value: detection.confidence)
             }
             .padding(.horizontal, 5)
             .padding(.vertical, 2)
@@ -84,13 +84,13 @@ struct DetectionBoxView: View {
         }
         .position(x: rect.midX, y: rect.midY)
         .onTapGesture {
-            withAnimation(.easeIn(duration: 0.1)) { isPressed = true }
+            withAnimation(.easeIn(duration: 0.12)) { isPressed = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                withAnimation(.easeOut(duration: 0.1)) { isPressed = false }
+                withAnimation(.easeOut(duration: 0.12)) { isPressed = false }
                 onTap(detection)
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: detection.confidence)
+        .animation(.easeInOut(duration: 0.18), value: detection.confidence)
     }
 }
 

@@ -619,7 +619,7 @@ struct ModelDownloadCard: View {
                 if downloaderObs.bytesPerSec > 1024 {
                     KMono(text: rateAndETA, size: 10, color: T.ink2)
                         .contentTransition(.numericText())
-                        .animation(.easeInOut(duration: 0.25), value: downloaderObs.bytesPerSec)
+                        .animation(.easeInOut(duration: 0.3), value: downloaderObs.bytesPerSec)
                 }
             }
         }

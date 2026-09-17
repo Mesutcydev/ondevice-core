@@ -220,7 +220,7 @@ struct StudioPrimaryButton: View {
         let S = T.studio
         Button(action: action) {
             Text(title)
-                .font(S.sans(15.5, .medium))
+                .font(S.sans(15, .medium))
                 .foregroundStyle(S.paper)
                 .frame(maxWidth: .infinity, minHeight: height)
                 .background(S.ink, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
@@ -241,7 +241,7 @@ struct StudioOutlineButton: View {
         let S = T.studio
         Button(action: action) {
             Text(title)
-                .font(S.sans(14.5, .medium))
+                .font(S.sans(14, .medium))
                 .foregroundStyle(S.ink)
                 .frame(maxWidth: .infinity, minHeight: height)
                 .overlay(
@@ -262,7 +262,7 @@ struct StudioSquareToggle: View {
     var body: some View {
         let S = T.studio
         Button {
-            withAnimation(.easeOut(duration: 0.16)) { isOn.toggle() }
+            withAnimation(.easeOut(duration: 0.18)) { isOn.toggle() }
             HapticManager.impact(.light)
         } label: {
             RoundedRectangle(cornerRadius: StudioRadius.tile, style: .continuous)

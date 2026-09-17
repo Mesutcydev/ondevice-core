@@ -110,7 +110,7 @@ struct LegalDocumentView: View {
                     dismiss()
                 } label: {
                     Text(scrolledToEnd ? "I have read this" : "Scroll to the end to continue")
-                        .font(T.sans(15.5, .medium))
+                        .font(T.sans(15, .medium))
                         .foregroundColor(scrolledToEnd ? T.bg : T.ink3)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -125,7 +125,7 @@ struct LegalDocumentView: View {
                     secondary.run()
                 } label: {
                     Text(secondary.label)
-                        .font(T.sans(15.5, .medium))
+                        .font(T.sans(15, .medium))
                         .foregroundColor(T.bad)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
@@ -139,7 +139,7 @@ struct LegalDocumentView: View {
                     primary.run()
                 } label: {
                     Text(primary.label)
-                        .font(T.sans(15.5, .medium))
+                        .font(T.sans(15, .medium))
                         .foregroundColor(T.bg)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)

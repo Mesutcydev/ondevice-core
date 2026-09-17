@@ -235,7 +235,7 @@ struct OnboardingModelPickerView: View {
                     .tracking(-0.5)
                     .foregroundColor(T.ink)
                 Text("Pick one assistant and one vision model. Both run entirely on your device — no servers, no API keys.")
-                    .font(T.sans(13.5))
+                    .font(T.sans(13))
                     .foregroundColor(T.ink2)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
@@ -283,7 +283,7 @@ struct OnboardingModelPickerView: View {
                 .font(T.display(18, .semibold))
                 .foregroundColor(T.ink)
             Text(subtitle)
-                .font(T.sans(11.5))
+                .font(T.sans(11))
                 .foregroundColor(T.ink3)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -357,11 +357,11 @@ struct OnboardingModelPickerView: View {
                             .lineLimit(1)
                         Spacer(minLength: 0)
                         Text(sizeLabel)
-                            .font(T.mono(9.5, .semibold))
+                            .font(T.mono(9, .semibold))
                             .foregroundColor(T.ink3)
                     }
                     Text(summary)
-                        .font(T.sans(11.5))
+                        .font(T.sans(11))
                         .foregroundColor(T.ink2)
                         .fixedSize(horizontal: false, vertical: true)
                     if !caps.isEmpty {
@@ -404,7 +404,7 @@ struct OnboardingModelPickerView: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 8.5, weight: .bold))
                 Text(warning)
-                    .font(T.mono(9.5))
+                    .font(T.mono(9))
                     .fixedSize(horizontal: false, vertical: true)
                     .lineLimit(2)
             }
@@ -415,7 +415,7 @@ struct OnboardingModelPickerView: View {
                 Image(systemName: "xmark.octagon.fill")
                     .font(.system(size: 8.5, weight: .bold))
                 Text(warning)
-                    .font(T.mono(9.5))
+                    .font(T.mono(9))
                     .fixedSize(horizontal: false, vertical: true)
                     .lineLimit(2)
             }
@@ -507,7 +507,7 @@ struct OnboardingModelPickerView: View {
                     .font(T.display(17, .semibold))
                     .foregroundColor(T.ink)
                 Text("Downloading your picks so everything runs on-device. One-time setup — it works offline afterwards. The camera already works from the built-in model; you can Skip and your picks keep downloading in the background (track them in the Models tab).")
-                    .font(T.sans(11.5))
+                    .font(T.sans(11))
                     .foregroundColor(T.ink2)
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)

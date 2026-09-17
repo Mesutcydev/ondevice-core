@@ -206,7 +206,7 @@ struct VoiceConversationView: View {
                     .font(T.mono(10))
                     .foregroundColor(T.ink3.opacity(0.5))
                 Text(assistant.activeModel.displayName)
-                    .font(T.mono(11.5, .semibold))
+                    .font(T.mono(11, .semibold))
                     .foregroundColor(T.ink)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -235,7 +235,7 @@ struct VoiceConversationView: View {
                     .font(T.mono(9, .semibold))
                     .foregroundStyle(T.ink3)
                 Text(assistant.activeModel.displayName)
-                    .font(T.mono(10.5, .semibold))
+                    .font(T.mono(10, .semibold))
                     .foregroundStyle(T.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -246,7 +246,7 @@ struct VoiceConversationView: View {
                     .font(T.mono(9, .semibold))
                     .foregroundStyle(T.ink3)
                 Text(activeVoiceLabel)
-                    .font(T.mono(10.5, .semibold))
+                    .font(T.mono(10, .semibold))
                     .foregroundStyle(T.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -387,8 +387,8 @@ struct VoiceConversationView: View {
                 }
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: voice.isPlaying)
-        .animation(.easeInOut(duration: 0.2), value: routeManager.route.uid)
+        .animation(.easeInOut(duration: 0.18), value: voice.isPlaying)
+        .animation(.easeInOut(duration: 0.18), value: routeManager.route.uid)
     }
 
     #if DEBUG
@@ -464,7 +464,7 @@ struct VoiceConversationView: View {
             Image(systemName: engineSymbol)
                 .font(.system(size: 9, weight: .semibold))
             Text(engineLabel)
-                .font(T.mono(9.5, .semibold))
+                .font(T.mono(9, .semibold))
         }
         .foregroundColor(T.ink3)
         .padding(.horizontal, 7).padding(.vertical, 3)
@@ -505,7 +505,7 @@ struct VoiceConversationView: View {
                         .font(.system(size: 10, weight: .semibold))
                 }
                 Text(loc.t("test audio"))
-                    .font(T.mono(9.5, .semibold))
+                    .font(T.mono(9, .semibold))
             }
             .foregroundColor(T.accent)
             .padding(.horizontal, 8).padding(.vertical, 4)
@@ -728,7 +728,7 @@ struct VoiceConversationView: View {
                         .stroke(T.rule.opacity(0.6), lineWidth: 0.5)
                 )
         )
-        .animation(reduceMotion ? .easeOut(duration: 0.15) : .spring(duration: 0.25, bounce: 0), value: conv.phase)
+        .animation(reduceMotion ? .easeOut(duration: 0.18) : .spring(duration: 0.3, bounce: 0), value: conv.phase)
     }
 
     private func dockButton(

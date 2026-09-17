@@ -569,7 +569,7 @@ struct AssistantModelPickerView: View {
                                 .foregroundColor(T.ink2)
                                 .fixedSize(horizontal: false, vertical: true)
                             Text(model.repoID)
-                                .font(T.mono(9.5))
+                                .font(T.mono(9))
                                 .foregroundColor(T.ink3)
                                 .lineLimit(1)
                                 .truncationMode(.middle)
@@ -654,7 +654,7 @@ struct AssistantModelPickerView: View {
     @ViewBuilder
     private func assistantFormatPill(text: String) -> some View {
         Text(text.uppercased())
-            .font(T.mono(8.5, .semibold))
+            .font(T.mono(8, .semibold))
             .tracking(0.6)
             .foregroundColor(T.ink2)
             .padding(.horizontal, 6)
@@ -676,7 +676,7 @@ struct AssistantModelPickerView: View {
         HStack(spacing: 4) {
             Circle().fill(color).frame(width: 6, height: 6)
             Text(bytes.formattedBytes)
-                .font(T.mono(8.5, .semibold))
+                .font(T.mono(8, .semibold))
                 .tracking(0.4)
                 .foregroundColor(T.ink2)
         }
@@ -694,7 +694,7 @@ struct AssistantModelPickerView: View {
             Image(systemName: "bolt.fill")
                 .font(.system(size: 8, weight: .bold))
             Text(label)
-                .font(T.mono(8.5, .semibold))
+                .font(T.mono(8, .semibold))
                 .tracking(0.4)
         }
         .foregroundColor(T.accent)
@@ -711,7 +711,7 @@ struct AssistantModelPickerView: View {
             Image(systemName: compatibility.symbol)
                 .font(.system(size: 8, weight: .semibold))
             Text(compatibility.label)
-                .font(T.mono(8.5, .semibold))
+                .font(T.mono(8, .semibold))
                 .tracking(0.2)
         }
         .foregroundColor(T.ink2)
