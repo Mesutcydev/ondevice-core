@@ -215,6 +215,21 @@ final class Edge0RuntimeBackend: RuntimeEngineBackend, RuntimeParityProbing {
         }
     }
 
+    /// Developer session-reuse parity probe (35B prompt cache). nil for
+    /// families without session-state reuse.
+    func runSessionReuseProbe() async throws -> Edge0SessionReuseProbeResult? {
+        guard let family = loadedFamily else {
+            throw RuntimeError.noActiveModel
+        }
+        switch family {
+        case .qwen35MoE:
+            guard let engine35B else { throw RuntimeError.noActiveModel }
+            return try await engine35B.runSessionReuseProbe()
+        case .bailing8B:
+            return nil
+        }
+    }
+
     /// Family-aware diagnostic counters. Counters only — never prompt or
     /// generated text.
     func runtimeMetrics() async -> [String: String]? {
@@ -440,6 +455,10 @@ final class Edge0RuntimeBackend: RuntimeEngineBackend, RuntimeParityProbing {
             if !generation.modeFallback.isEmpty {
                 metrics["mode.fallback"] = generation.modeFallback
             }
+            metrics["session.reuseApplied"] =
+                generation.sessionReuseApplied ? "true" : "false"
+            metrics["session.reusedTokens"] = "\(generation.sessionReusedTokens)"
+            metrics["session.prefillTokens"] = "\(generation.sessionPrefillTokens)"
         } else {
             metrics["mode.requested"] = Edge0EnginePreferences.edge0_35BExecutionMode.rawValue
             metrics["mode.effective"] = Edge0ExecutionMode.exact.rawValue

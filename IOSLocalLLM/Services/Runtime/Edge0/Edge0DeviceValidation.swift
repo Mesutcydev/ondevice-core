@@ -36,6 +36,7 @@ final class Edge0DeviceValidationRunner: ObservableObject {
         case firstTokenEmitted
         case tokensGenerated
         case exactReferenceParity
+        case sessionReuseParity
         case cancellationWorked
         case generationAfterCancellation
         case unloadCompleted
@@ -56,6 +57,7 @@ final class Edge0DeviceValidationRunner: ObservableObject {
             case .firstTokenEmitted: return "First token emitted"
             case .tokensGenerated: return "N tokens generated"
             case .exactReferenceParity: return "Exact reference parity (9 IDs)"
+            case .sessionReuseParity: return "Session reuse parity (turn 2 vs fresh)"
             case .cancellationWorked: return "Cancellation works"
             case .generationAfterCancellation: return "Generation after cancel"
             case .unloadCompleted: return "Unload completes"
@@ -178,6 +180,10 @@ final class Edge0DeviceValidationRunner: ObservableObject {
         // runtime per generation, so both must be in place here.
         Edge0EnginePreferences.edge0_35BReadaheadHints = readaheadHints
         Edge0EnginePreferences.edge0_35BAdvisoryPrerouter = advisoryPrerouter
+        // Measurement semantics: every validation stage must pay its own
+        // prefill. The prompt cache is a chat-path optimization; the
+        // session-reuse parity stage re-enables it internally.
+        Edge0EnginePreferences.edge0_35BSessionReuse = false
         var initial = Baseline()
         initial.family = family.rawValue
         // Report the actual 35B selection (exact / boundedPrefetch / staged;
@@ -424,6 +430,25 @@ final class Edge0DeviceValidationRunner: ObservableObject {
             }
             return "9/9 exact ids · position \(probe.finalPosition)"
                 + " · \(probe.stopReason) · eos \(probe.eosHit)"
+        }
+
+        await stage(.sessionReuseParity) {
+            guard self.family == .qwen35MoE else {
+                throw ValidationSkip("35B-only session-reuse probe.")
+            }
+            guard let probe = try await service.runEdge0SessionReuseProbe() else {
+                throw ValidationError("Session-reuse probe unavailable.")
+            }
+            let detail = "reuse \(probe.reuseAppliedOnTurn2 ? "applied" : "NOT APPLIED")"
+                + " · reused \(probe.reusedTokens) tok · prefilled \(probe.prefilledTokens) tok"
+                + " · emitted \(probe.emittedTokens)"
+            guard probe.passed else {
+                throw ValidationError(
+                    detail + " · answers differ at "
+                        + (probe.firstDifferingIndex.map(String.init) ?? "n/a")
+                )
+            }
+            return detail + " · answers byte-identical"
         }
 
         await stage(.cancellationWorked) {
@@ -735,6 +760,8 @@ final class Edge0DeviceValidationRunner: ObservableObject {
     }
 
     private func finish() {
+        // Restore the chat-path prompt cache (disabled for measurement).
+        Edge0EnginePreferences.edge0_35BSessionReuse = true
         for stage in Stage.allCases where results[stage]?.status == .pending {
             results[stage] = StageResult(status: .skipped("Not reached."), duration: 0)
         }

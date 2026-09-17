@@ -17,7 +17,8 @@ import XCTest
 //   4. the readahead requested/effective metric pair plumbing;
 //   5. engine-side load-capture of the readahead flag;
 //   6. the expert-reads A/B kind and its frozen acceptance rule;
-//   7. the sustained-thermal kind, its stability rule, and thermal ranks.
+//   7. the sustained-thermal kind, its stability rule, and thermal ranks;
+//   8. the session-reuse prefix decision (prompt cache).
 
 @MainActor
 final class Edge0SpeedABDecisionTests: XCTestCase {
@@ -219,5 +220,60 @@ final class Edge0SpeedABDecisionTests: XCTestCase {
         XCTAssertEqual(Edge0DiagnosticPlan.thermalRank("thermal fair"), 1)
         XCTAssertEqual(Edge0DiagnosticPlan.thermalRank("thermal serious"), 2)
         XCTAssertEqual(Edge0DiagnosticPlan.thermalRank("thermal critical"), 3)
+    }
+}
+
+// MARK: - Session-reuse prefix decision (prompt cache)
+
+/// Pure prefix-reuse decision for the 35B prompt cache (no MLX needed).
+@MainActor
+final class Edge0SessionReuseTests: XCTestCase {
+    func testExactExtensionReusesTheWholeSnapshot() {
+        XCTAssertEqual(
+            Edge0_35BEngine.sessionReuseCount(
+                enabled: true, snapshotTokens: [1, 2, 3],
+                keyMatches: true, promptTokens: [1, 2, 3, 4, 5]
+            ),
+            3
+        )
+    }
+
+    func testIdenticalPromptIsARegenerationReuse() {
+        XCTAssertEqual(
+            Edge0_35BEngine.sessionReuseCount(
+                enabled: true, snapshotTokens: [1, 2, 3],
+                keyMatches: true, promptTokens: [1, 2, 3]
+            ),
+            3
+        )
+    }
+
+    func testDivergenceFallsBackToFreshPrefill() {
+        XCTAssertNil(Edge0_35BEngine.sessionReuseCount(
+            enabled: true, snapshotTokens: [1, 2, 3],
+            keyMatches: true, promptTokens: [1, 2, 9, 4]
+        ))
+    }
+
+    func testTruncatedPromptFallsBackToFreshPrefill() {
+        XCTAssertNil(Edge0_35BEngine.sessionReuseCount(
+            enabled: true, snapshotTokens: [1, 2, 3],
+            keyMatches: true, promptTokens: [1, 2]
+        ))
+    }
+
+    func testKeyMismatchDisabledAndMissingSnapshotFallBack() {
+        XCTAssertNil(Edge0_35BEngine.sessionReuseCount(
+            enabled: true, snapshotTokens: [1, 2, 3],
+            keyMatches: false, promptTokens: [1, 2, 3, 4]
+        ))
+        XCTAssertNil(Edge0_35BEngine.sessionReuseCount(
+            enabled: false, snapshotTokens: [1, 2, 3],
+            keyMatches: true, promptTokens: [1, 2, 3, 4]
+        ))
+        XCTAssertNil(Edge0_35BEngine.sessionReuseCount(
+            enabled: true, snapshotTokens: nil,
+            keyMatches: true, promptTokens: [1, 2, 3, 4]
+        ))
     }
 }

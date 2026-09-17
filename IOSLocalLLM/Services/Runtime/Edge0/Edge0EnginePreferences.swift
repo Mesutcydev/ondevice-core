@@ -180,4 +180,26 @@ enum Edge0EnginePreferences {
             _expertLoadConcurrency = min(6, max(1, newValue))
         }
     }
+
+    /// Session-state reuse (prompt cache) for the 35B chat path: the
+    /// prompt-boundary generation state (MLA KV + linear state) is kept
+    /// between turns, and the next turn prefills only the new token suffix
+    /// when its prompt is an exact token-level extension of the previous
+    /// prompt (or identical). Purely a compute optimization — the same
+    /// tokens at the same positions — so numerics are unchanged by
+    /// construction: the frozen nine-ID oracle and the in-app session-reuse
+    /// parity probe must both keep passing. Default ON; the diagnostics
+    /// runners turn it off so every trial pays its own prefill.
+    private static var _edge0_35BSessionReuse = true
+
+    static var edge0_35BSessionReuse: Bool {
+        get {
+            lock.lock(); defer { lock.unlock() }
+            return _edge0_35BSessionReuse
+        }
+        set {
+            lock.lock(); defer { lock.unlock() }
+            _edge0_35BSessionReuse = newValue
+        }
+    }
 }

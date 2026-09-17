@@ -332,6 +332,9 @@ final class Edge0SpeedABRunner: ObservableObject {
         Edge0EnginePreferences.edge0_35BExecutionMode = .exact
         // Profiling is diagnostic-only; scored A/B trials run unprofiled.
         Edge0EnginePreferences.componentProfilingEnabled = kind == .exactDrift
+        // Measurement semantics: every trial must pay its own prefill. The
+        // prompt cache is a chat-path optimization, never a benchmark knob.
+        Edge0EnginePreferences.edge0_35BSessionReuse = false
         // Phase 5M: readahead is frozen at engine load, so the readahead A/B
         // starts from the OFF arm (counterbalanced plan: off→on→on→off) and
         // reloads the engine on every arm CHANGE. All other kinds leave the
@@ -565,6 +568,8 @@ final class Edge0SpeedABRunner: ObservableObject {
         reason: String
     ) {
         phase = .finished
+        // Restore the chat-path prompt cache (disabled for measurement).
+        Edge0EnginePreferences.edge0_35BSessionReuse = true
         self.terminal = terminal
         terminalReason = reason
         computeDecision()

@@ -20,6 +20,16 @@ and intends to use semantic version tags for source releases.
   footprint, plus a frozen stability rule (decode drift ≥ −5% and no
   Serious/Critical thermal state). Fills the sustained/thermal row of the
   device evidence matrix.
+- Session-state reuse (prompt cache) for the 35B chat path: the
+  prompt-boundary generation state (MLA KV + linear state) is kept between
+  turns, and a turn whose prompt is an exact token-level extension of the
+  previous prompt prefills only the new suffix — the dominant latency cost
+  in a long chat, where the whole conversation was re-prefilled on every
+  turn. Numerics are unchanged by construction; a new in-app validation
+  stage ("Session reuse parity") proves that a turn-2 answer from a reused
+  state is byte-identical to the same turn from a fresh full prefill. The
+  diagnostics runners disable reuse so every measured trial pays its own
+  prefill.
 - 35B readahead A/B runner (Phase 5M promotion path): a counterbalanced
   "35B Readahead A/B (off vs hints)" diagnostic kind with the correct
   lifecycle for a load-time knob — the engine is unloaded and reloaded on

@@ -28,6 +28,9 @@ protocol RuntimeEngine: Sendable {
     /// Developer parity probe (raw token ids, greedy). nil when the runtime
     /// has no frozen reference contract. Never used by user chat.
     func runParityProbe() async throws -> RuntimeParityProbe?
+    /// Developer session-state-reuse parity probe (35B prompt cache).
+    /// nil when the runtime has no such probe. Never used by user chat.
+    func runSessionReuseProbe() async throws -> Edge0SessionReuseProbeResult?
     /// Typed run-boundary resource snapshot (diagnostics only). Declared on
     /// the protocol so calls through `any RuntimeEngine` dispatch to the
     /// concrete engine instead of the nil extension default.
@@ -37,6 +40,7 @@ protocol RuntimeEngine: Sendable {
 extension RuntimeEngine {
     func runtimeMetrics() async -> [String: String]? { nil }
     func runParityProbe() async throws -> RuntimeParityProbe? { nil }
+    func runSessionReuseProbe() async throws -> Edge0SessionReuseProbeResult? { nil }
 }
 
 // MARK: - RuntimeParityProbe
@@ -60,6 +64,12 @@ struct RuntimeParityProbe: Sendable, Equatable {
 /// `ManagedRuntimeEngine` forwards to it when present.
 protocol RuntimeParityProbing: Sendable {
     func runParityProbe() async throws -> RuntimeParityProbe
+    /// Optional session-state-reuse parity probe (35B prompt cache).
+    func runSessionReuseProbe() async throws -> Edge0SessionReuseProbeResult?
+}
+
+extension RuntimeParityProbing {
+    func runSessionReuseProbe() async throws -> Edge0SessionReuseProbeResult? { nil }
 }
 
 // MARK: - RuntimeResourceSnapshot
@@ -294,6 +304,13 @@ actor ManagedRuntimeEngine: RuntimeEngine {
             return nil
         }
         return try await probing.runParityProbe()
+    }
+
+    func runSessionReuseProbe() async throws -> Edge0SessionReuseProbeResult? {
+        guard let probing = backend as? any RuntimeParityProbing else {
+            return nil
+        }
+        return try await probing.runSessionReuseProbe()
     }
 
     func resourceSnapshot() async -> RuntimeResourceSnapshot? {

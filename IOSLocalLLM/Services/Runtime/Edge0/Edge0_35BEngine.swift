@@ -106,6 +106,12 @@ struct Edge0_35BGenerationMetrics: Sendable, Equatable {
     /// requested alone is not evidence the loaders issue hints.
     var readaheadRequested = false
     var readaheadEffective = false
+    /// Session-state reuse (prompt cache): whether the turn restored the
+    /// previous prompt-boundary snapshot, how many tokens it reused, and how
+    /// many tokens it actually prefilled.
+    var sessionReuseApplied = false
+    var sessionReusedTokens = 0
+    var sessionPrefillTokens = 0
 
     var prefillBytesPerPromptToken: UInt64 {
         prefillPool.bytesPerToken(promptTokens)
@@ -113,6 +119,35 @@ struct Edge0_35BGenerationMetrics: Sendable, Equatable {
     var decodeBytesPerGeneratedToken: UInt64 {
         decodePool.bytesPerToken(generatedTokens)
     }
+}
+
+// MARK: - Edge0SessionSnapshot
+//
+// Prompt-boundary snapshot for session-state reuse (prompt cache). The
+// generation state and its arrays are updated functionally (new arrays per
+// step, never in-place mutation), so a snapshot taken at the prompt boundary
+// stays valid while decode proceeds.
+
+struct Edge0SessionSnapshot: @unchecked Sendable {
+    var state: Edge0_35BModelState
+    var logits: MLXArray
+    /// Exact prompt tokens this snapshot was taken at.
+    var tokens: [Int]
+    /// Scheduling key: reuse requires identical effective knobs.
+    var mode: String
+    var microbatch: Int
+    var evalWindow: Int
+}
+
+/// Result of the in-app session-reuse parity probe.
+struct Edge0SessionReuseProbeResult: Sendable {
+    var passed = false
+    var firstDifferingIndex: Int?
+    var reuseAppliedOnTurn2 = false
+    var reusedTokens = 0
+    var prefilledTokens = 0
+    var emittedTokens = 0
+    var turn2PromptTokens = 0
 }
 
 // MARK: - Edge0_35BEngine
@@ -168,6 +203,8 @@ final class Edge0_35BEngine: @unchecked Sendable {
     /// Optional advisory predictor + its off-critical-path runtime. Loaded
     /// lazily, never required; nil disables advisory behavior entirely.
     private var cachedAdvisoryPrerouter: Edge0_35BPrerouter?
+    /// Prompt-cache snapshot (see `Edge0EnginePreferences.edge0_35BSessionReuse`).
+    private var sessionSnapshot: Edge0SessionSnapshot?
     private var activeAdvisoryRuntime:
         Edge0PrerouterRuntime<Edge0_35BExpertWeights>?
     /// Test injection point (deterministic or failing predictor).
@@ -352,6 +389,7 @@ final class Edge0_35BEngine: @unchecked Sendable {
         await activeAdvisoryRuntime?.waitForQuiescence()
         activeAdvisoryRuntime = nil
         cachedAdvisoryPrerouter = nil
+        sessionSnapshot = nil
         if let pool {
             await pool.cancelAdvisoryLoads()
             await pool.close()
@@ -375,6 +413,26 @@ final class Edge0_35BEngine: @unchecked Sendable {
     }
 
     // MARK: Generate
+
+    /// Pure prefix-reuse decision (unit-tested on the simulator). Reuse
+    /// requires the feature to be enabled, a scheduling-key match, and the
+    /// new prompt to be an exact token-level extension of (or equal to) the
+    /// snapshot's prompt. Returns the number of tokens reused, or nil for a
+    /// fresh full prefill. Anything else — divergence, truncation, a key
+    /// change — falls back; a partial rewind of the recurrent state is never
+    /// attempted.
+    nonisolated static func sessionReuseCount(
+        enabled: Bool,
+        snapshotTokens: [Int]?,
+        keyMatches: Bool,
+        promptTokens: [Int]
+    ) -> Int? {
+        guard enabled, keyMatches, let snapshotTokens else { return nil }
+        guard promptTokens.count >= snapshotTokens.count else { return nil }
+        guard Array(promptTokens.prefix(snapshotTokens.count)) == snapshotTokens
+        else { return nil }
+        return snapshotTokens.count
+    }
 
     /// Exact-mode generation: real chat template, fresh generation state,
     /// full prefill, cached single-token decode. Sampler knobs never change
@@ -444,7 +502,41 @@ final class Edge0_35BEngine: @unchecked Sendable {
             ? max(1, min(microbatchRequested, capacityWindow)) : 1
         let profile = Edge0EnginePreferences.componentProfilingEnabled
             ? Edge0ComponentProfile() : nil
-        var state = model.makeState()
+        // Session-state reuse (prompt cache): restore the previous
+        // prompt-boundary snapshot when the new prompt is an exact token
+        // extension with identical scheduling knobs; otherwise start fresh.
+        // A reused turn prefills only the new suffix — the same tokens at
+        // the same positions — so numerics are unchanged by construction.
+        let reuseEnabled = Edge0EnginePreferences.edge0_35BSessionReuse
+        let snapshotKeyMatches = sessionSnapshot.map {
+            $0.mode == effectiveMode.rawValue
+                && $0.microbatch == microbatchEffective
+                && $0.evalWindow == windowEffective
+        } ?? false
+        let reusedCount = Self.sessionReuseCount(
+            enabled: reuseEnabled,
+            snapshotTokens: sessionSnapshot?.tokens,
+            keyMatches: snapshotKeyMatches,
+            promptTokens: tokenIDs
+        )
+        var state: Edge0_35BModelState
+        var prefillTokens = tokenIDs
+        var reusedLogits: MLXArray?
+        if let reusedCount, let snapshot = sessionSnapshot {
+            state = snapshot.state
+            if reusedCount == tokenIDs.count {
+                // Identical prompt (regeneration): decode straight from the
+                // snapshot's prompt-boundary logits — zero prefill.
+                prefillTokens = []
+                reusedLogits = snapshot.logits
+            } else {
+                prefillTokens = Array(tokenIDs.dropFirst(reusedCount))
+            }
+        } else {
+            state = model.makeState()
+        }
+        let reusedTokenCount = reusedCount ?? 0
+        let prefillTokenCount = prefillTokens.count
         // Workload identity (diagnostic only): hash the actual router
         // selections so an early and a late run can be compared.
         var routerHash: UInt64 = 0xcbf2_9ce4_8422_2325
@@ -460,11 +552,29 @@ final class Edge0_35BEngine: @unchecked Sendable {
                         &* 0x0000_0100_0000_01b3
                 }
             }
-        var logits = try await model.prefill(
-            tokenIDs: tokenIDs, state: &state, mode: effectiveMode,
-            profile: profile, onSelectedExperts: identityHook
-        ).asType(.float32)
+        var logits: MLXArray
+        if let reusedLogits {
+            logits = reusedLogits
+        } else {
+            logits = try await model.prefill(
+                tokenIDs: prefillTokens, state: &state, mode: effectiveMode,
+                profile: profile, onSelectedExperts: identityHook
+            ).asType(.float32)
+        }
         let prefillSeconds = prefillStarted.duration(to: .now).timeInterval
+        // Prompt-cache: keep the prompt-boundary state for the next turn.
+        // State updates are functional (arrays are replaced, never mutated
+        // in place), so this snapshot stays valid while decode proceeds.
+        sessionSnapshot = reuseEnabled
+            ? Edge0SessionSnapshot(
+                state: state,
+                logits: logits,
+                tokens: tokenIDs,
+                mode: effectiveMode.rawValue,
+                microbatch: microbatchEffective,
+                evalWindow: windowEffective
+            )
+            : nil
         var poolAfterPrefill = await pool.statistics()
         // Prefill→decode handoff: staged prefill leaves advisory loads in
         // flight; cancel queued ones so decode acquisitions cannot queue
@@ -716,7 +826,7 @@ final class Edge0_35BEngine: @unchecked Sendable {
             kvTokensFinal: finalState.kvTokens,
             linearStateBytes: finalState.linearStateBytes,
             layerInvocations: 40 * (
-                tokenIDs.count + decodeCalls
+                prefillTokenCount + decodeCalls
             ),
             expertLoads: max(0, poolAfterDecode.loads - poolBefore.loads),
             activeOutputConsumers: 0,
@@ -760,7 +870,10 @@ final class Edge0_35BEngine: @unchecked Sendable {
                     ? Edge0EnginePreferences.edge0_35BRouterReadbackMode : 0,
             readaheadRequested:
                 Edge0EnginePreferences.edge0_35BReadaheadHints,
-            readaheadEffective: readaheadHintsEnabled
+            readaheadEffective: readaheadHintsEnabled,
+            sessionReuseApplied: reusedTokenCount > 0,
+            sessionReusedTokens: reusedTokenCount,
+            sessionPrefillTokens: prefillTokenCount
         )
         // Atomic compare-and-clear: a cancel() that already handed ownership
         // to a newer generation must not have it stolen by this completion.
@@ -878,6 +991,91 @@ final class Edge0_35BEngine: @unchecked Sendable {
     }
 
     // MARK: Helpers
+
+    // MARK: Session-reuse parity probe
+
+    /// Session-reuse exactness probe. Drives the REAL `generate` path:
+    /// turn 1 establishes the prompt-boundary snapshot, turn 2 extends the
+    /// same conversation (reuse must apply), then the identical turn-2
+    /// conversation is regenerated from a cleared snapshot (full prefill).
+    /// The two answers must be byte-identical, and reuse must have applied
+    /// on turn 2 — a probe that silently fell back would prove nothing.
+    func runSessionReuseProbe() async throws -> Edge0SessionReuseProbeResult {
+        let previousReuse = Edge0EnginePreferences.edge0_35BSessionReuse
+        Edge0EnginePreferences.edge0_35BSessionReuse = true
+        defer {
+            Edge0EnginePreferences.edge0_35BSessionReuse = previousReuse
+            sessionSnapshot = nil
+        }
+        let turnOne: [[String: String]] = [
+            ["role": "system", "content": "You are a concise assistant."],
+            ["role": "user", "content": "Name the three primary colors."],
+        ]
+        let turnTwoUser = "Now name three secondary colors."
+        var options = Edge0EngineOptions()
+        options.maxTokens = 24
+        if let first = eosTokenIDs.first { options.eosTokenID = first }
+        options.additionalEOSTokenIDs = Array(eosTokenIDs.dropFirst())
+
+        // Turn 1: fresh state; establishes the snapshot.
+        sessionSnapshot = nil
+        let first = try await probeText(messages: turnOne, options: options)
+
+        // Turn 2: the same conversation extended — reuse must apply.
+        var turnTwo = turnOne
+        turnTwo.append(["role": "assistant", "content": first.text])
+        turnTwo.append(["role": "user", "content": turnTwoUser])
+        let reused = try await probeText(messages: turnTwo, options: options)
+
+        // Turn 2 again, from a cleared snapshot (full prefill).
+        sessionSnapshot = nil
+        let fresh = try await probeText(messages: turnTwo, options: options)
+
+        var result = Edge0SessionReuseProbeResult()
+        result.reuseAppliedOnTurn2 =
+            reused.metrics?.sessionReuseApplied ?? false
+        result.reusedTokens = reused.metrics?.sessionReusedTokens ?? 0
+        result.prefilledTokens = reused.metrics?.sessionPrefillTokens ?? 0
+        result.emittedTokens = reused.metrics?.generatedTokens ?? 0
+        result.turn2PromptTokens = reused.metrics?.promptTokens ?? 0
+        if reused.text == fresh.text {
+            result.passed = result.reuseAppliedOnTurn2
+        } else {
+            let a = Array(reused.text)
+            let b = Array(fresh.text)
+            result.firstDifferingIndex = (0..<max(a.count, b.count)).first {
+                $0 >= a.count || $0 >= b.count || a[$0] != b[$0]
+            }
+        }
+        return result
+    }
+
+    private final class ProbeTextCollector: @unchecked Sendable {
+        private let lock = NSLock()
+        private var text = ""
+        func append(_ chunk: String) {
+            lock.lock(); defer { lock.unlock() }
+            text += chunk
+        }
+        var value: String {
+            lock.lock(); defer { lock.unlock() }
+            return text
+        }
+    }
+
+    private func probeText(
+        messages: [[String: String]],
+        options: Edge0EngineOptions
+    ) async throws -> (text: String, metrics: Edge0_35BGenerationMetrics?) {
+        let collector = ProbeTextCollector()
+        try await generate(messages: messages, options: options) { event in
+            if case .token(let chunk) = event {
+                collector.append(chunk)
+            }
+        }
+        return (collector.value, generationMetrics())
+    }
+
 
     /// Family stop metadata comes from the checkpoint's generation config,
     /// never from the 8B EOS ids.

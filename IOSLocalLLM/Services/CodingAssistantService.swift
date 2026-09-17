@@ -1066,6 +1066,14 @@ final class CodingAssistantService: ObservableObject {
         return try await edge0Engine?.runParityProbe()
     }
 
+    /// Developer session-reuse parity probe through the loaded production
+    /// engine. nil when Edge0 is not active or the family has no session
+    /// state to reuse.
+    func runEdge0SessionReuseProbe() async throws -> Edge0SessionReuseProbeResult? {
+        guard isEdge0Execution else { return nil }
+        return try await edge0Engine?.runSessionReuseProbe()
+    }
+
     /// Typed run-boundary resource snapshot from the loaded engine.
     func edge0ResourceSnapshot() async -> RuntimeResourceSnapshot? {
         guard isEdge0Execution else { return nil }
