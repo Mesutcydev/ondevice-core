@@ -32,6 +32,13 @@ and intends to use semantic version tags for source releases.
 
 ### Fixed
 
+- Fixed an out-of-bounds stack write in the 5M readahead path: the
+  `F_RDADVISE` `radvisory` struct fill wrote 4 bytes past the 16-byte
+  struct (it treated `ra_count` as an `off_t` and filled a nonexistent
+  third field), crashing on the first expert hint whenever readahead was
+  enabled. The fields are name-accessible in Swift and are now set
+  directly; new `Edge0TensorStoreAdviseTests` cover the path (runs on the
+  simulator — no MLX involved).
 - Cleared the remaining Swift 6 readiness warnings in the Edge0 runtime and
   its tests (Sendable conformances, NSLock use in async contexts, deprecated
   `asData(noCopy:)` calls).

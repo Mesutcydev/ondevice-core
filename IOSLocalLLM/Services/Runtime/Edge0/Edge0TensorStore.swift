@@ -193,25 +193,15 @@ final class Edge0PreadFile: @unchecked Sendable {
         guard let descriptor = try? openDescriptor() else {
             return false
         }
-        // The imported `radvisory` fields are not name-accessible in Swift,
-        // so the struct is filled through its C-managed layout:
-        // off_t radv_offset, off_t radv_count, int radv_flags.
+        // Darwin `radvisory` is { off_t ra_offset; int ra_count; } — a
+        // 16-byte struct (bytes 12–15 are padding) whose fields ARE
+        // name-accessible in Swift. Fill them directly: the previous
+        // raw-byte fill treated `ra_count` as an off_t and wrote a third
+        // field 4 bytes past the struct (out-of-bounds stack write on every
+        // hint — this path only executes with readahead enabled).
         var advisory = radvisory()
-        withUnsafeMutableBytes(of: &advisory) { raw in
-            guard let base = raw.baseAddress else { return }
-            let wordBytes = MemoryLayout<off_t>.size
-            base.storeBytes(of: off_t(bitPattern: range.offset), as: off_t.self)
-            base.storeBytes(
-                of: off_t(bitPattern: range.count),
-                toByteOffset: wordBytes,
-                as: off_t.self
-            )
-            base.storeBytes(
-                of: Int32(0),
-                toByteOffset: 2 * wordBytes,
-                as: Int32.self
-            )
-        }
+        advisory.ra_offset = off_t(bitPattern: range.offset)
+        advisory.ra_count = Int32(clamping: range.count)
         let result = withUnsafeMutablePointer(to: &advisory) { pointer in
             fcntl(descriptor, F_RDADVISE, pointer)
         }
