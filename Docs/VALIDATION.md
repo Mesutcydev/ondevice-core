@@ -58,6 +58,14 @@ normal `xcodegen generate` + `pod install` flow (SETUP_INSTRUCTIONS.md).
 Note that `pod install` is required after every `xcodegen generate` — the
 CocoaPods script phases and library links are re-added by it.
 
+Tests that allocate MLX arrays skip on the simulator: the simulated Metal
+device reports no architecture name and rejects the private-mode heaps mlx's
+allocator requires, and mlx's scheduler initializes the GPU stream
+unconditionally, so MLX cannot run on the simulator at all. Those cases guard
+themselves with `Edge0TestDevice.requireSimulatorMLXSupport()` and belong in a
+signed device session. With that gate the focused Edge0 suites run clean on
+the simulator: **21 passed, 29 skipped, 0 failures, 0 aborts**.
+
 ## Required physical-device matrix
 
 Before making a quantified reliability or performance claim, record:

@@ -1,4 +1,5 @@
 import Foundation
+import MLX
 import XCTest
 @testable import IOSLocalLLM
 
@@ -7,6 +8,26 @@ import XCTest
 // Shared deterministic fixtures for the Edge0 foundation tests. No model
 // weights are committed anywhere; every fixture is generated in a temporary
 // directory and removed by the test.
+
+// MARK: - Simulator MLX support
+
+/// Simulator-only gate for the tests that allocate MLX arrays.
+///
+/// The simulated Metal device cannot back MLX: it reports no architecture
+/// name (mlx aborts in `metal::Device::Device()`, `device.cpp:326-328`) and
+/// rejects the private-mode heaps its allocator requires (`MTLSimDevice`
+/// assertion `MTLStorageModePrivate is required for heaps`). mlx's C++
+/// scheduler initializes the GPU stream unconditionally, so even CPU-only
+/// use cannot avoid it. These tests skip on the simulator and run on device.
+enum Edge0TestDevice {
+    static func requireSimulatorMLXSupport() throws {
+        #if targetEnvironment(simulator)
+        throw XCTSkip(
+            "MLX cannot run on the iOS simulator: the simulated Metal device has no architecture name and rejects the private-mode heaps mlx's allocator requires. Run this suite on a device."
+        )
+        #endif
+    }
+}
 
 enum Edge0TestFixtures {
     /// Tiny spec with Edge0-8B's quantization (4-bit affine, group 64) and

@@ -116,6 +116,7 @@ final class Edge0_35BExpertLoaderTests: XCTestCase {
     // MARK: - Expert loads
 
     func testLoaderReadsExactPerExpertSlices() async throws {
+        try Edge0TestDevice.requireSimulatorMLXSupport()
         let index = try writeFixture(layer: 0)
         let stores = try Edge0TensorStoreSet(
             directory: directory, shardNames: ["model.safetensors"]
@@ -133,6 +134,7 @@ final class Edge0_35BExpertLoaderTests: XCTestCase {
     }
 
     func testPlanReuseIsDeterministicAndExpertAddressed() async throws {
+        try Edge0TestDevice.requireSimulatorMLXSupport()
         let index = try writeFixture(layer: 0)
         let stores = try Edge0TensorStoreSet(
             directory: directory, shardNames: ["model.safetensors"]
@@ -163,6 +165,7 @@ final class Edge0_35BExpertLoaderTests: XCTestCase {
     }
 
     func testReadaheadHintsDoNotChangeBytes() async throws {
+        try Edge0TestDevice.requireSimulatorMLXSupport()
         let index = try writeFixture(layer: 0)
         let stores = try Edge0TensorStoreSet(
             directory: directory, shardNames: ["model.safetensors"]

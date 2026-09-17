@@ -106,6 +106,7 @@ final class Edge0ResidentTensorPlanTests: XCTestCase {
     }
 
     func testResidentLoaderReadsExactBytes() async throws {
+        try Edge0TestDevice.requireSimulatorMLXSupport()
         let url = directory.appendingPathComponent("model.safetensors")
         let bf16Shape = [2, 3]
         let u32Shape = [4]

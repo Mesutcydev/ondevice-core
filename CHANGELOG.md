@@ -42,7 +42,13 @@ and intends to use semantic version tags for source releases.
   pending the device A/B; the per-token router readback path is unchanged.
 - Focused Edge0 suites now execute on the simulator through an isolated
   sim-compat project (`project-simcompat.yml` + `OnDeviceSimCompat.xcworkspace`);
-  see `Docs/VALIDATION.md`. Checkpoint- and fixture-gated cases skip cleanly.
+  see `Docs/VALIDATION.md`. Checkpoint- and fixture-gated cases skip cleanly,
+  and MLX-allocating cases skip on the simulator itself
+  (`Edge0TestDevice.requireSimulatorMLXSupport()`): the simulated Metal device
+  has no architecture name and rejects the private-mode heaps mlx's allocator
+  requires, and mlx's scheduler initializes the GPU stream unconditionally, so
+  MLX cannot run on the simulator at all — those cases belong in a signed
+  device session.
 - Added `Docs/EDGE0_AUDIT_ROUND_2026-09-17.md` (fork audit) and
   `Docs/EDGE0_UPSTREAM_DOCS_AUDIT_2026-09-17.md` (upstream docs/repo audit).
 

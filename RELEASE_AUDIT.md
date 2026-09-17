@@ -1,11 +1,12 @@
 # OnDevice Core AI Studio — Release Audit 1.0.0
 
-## Build 47 readiness audit — 2026-09-17 (no IPA packaged in this pass)
+## Build 47 — 2026-09-17
 
-Readiness audit for the next sideload build covering the uncommitted work
-since build 46: the Phase 5M readahead candidate and the 2026-09-17 pass
-(per-layer expert read plans in both Edge0 loaders, NAX gate mirror in
-Diagnostics, NAX-off A/B script, A18→A19 documentation errata). Full detail:
+Sideload build covering the uncommitted work since build 46: the Phase 5M
+readahead candidate and the 2026-09-17 pass (per-layer expert read plans in
+both Edge0 loaders, NAX gate mirror in Diagnostics, NAX-off A/B script,
+A18→A19 documentation errata), the Swift 6 warning cleanup, and the UI
+redesign (splash, two-step onboarding, agreement screen). Full detail:
 `Docs/EDGE0_AUDIT_ROUND_2026-09-17.md` and
 `Docs/EDGE0_PERF_UPDATE_SCAN_2026-09-17.md`.
 
@@ -14,19 +15,39 @@ Diagnostics, NAX-off A/B script, A18→A19 documentation errata). Full detail:
 | Version metadata | Consistent: 1.0.0 (**47**) in `project.yml` (app + extension) and the regenerated project; `Info.plist`, `CITATION.cff`, and `CHANGELOG.md` (`[1.0.0] - 2026-09-17` + populated `[Unreleased]`) |
 | Open-source validator | **Passed** — "Repository hygiene checks passed" (the previously recorded CITATION.cff version failure is resolved) |
 | Device compile gate (build-for-testing, full test target) | **Passed** — 0 errors, 0 Edge0 warnings; re-verified after `pod install` re-integration |
-| Focused Edge0 unit tests | **Executed on the iPhone 17 simulator** via the sim-compat project: **21 passed / 22 skipped / 7 MLX-eval aborts** (simulated Metal cannot back MLX evaluation; those cases + real-checkpoint suites run in the device session) |
+| Focused Edge0 unit tests | **Executed on the iPhone 17 simulator** via the sim-compat project: **21 passed / 29 skipped / 0 failures / 0 aborts** (exit 0; `build/simcompat-tests5.log`). The 7 MLX-allocating cases skip via `Edge0TestDevice.requireSimulatorMLXSupport()` — the simulated Metal device cannot back mlx (no architecture name; private-mode heaps rejected) — and run in the device session |
 | UI polish (splash, onboarding, agreement) | **Verified on the iPhone 17 simulator** — frames captured and inspected: splash sequence renders (tile → aperture ring → wordmark), onboarding shows "1 of 2" with the "Choose your models" CTA, agreement screen cards aligned with readable contrast |
 | Real-checkpoint 35B regressions | **Not run** (no checkpoint staged on this machine) |
-| IPA packaging | **Not performed in this pass** |
+| IPA packaging | **Packaged** — `build/releases/OnDeviceCoreAIStudio-sideload-entitled-1.0.0-47.ipa`; 50 independent artifact checks passed; ZIP member paths identical to build 46 |
 
 Resolved before packaging: build number bumped to 47; `[Unreleased]` changelog
 entries written; stray root file `-` moved to `build/`; the full working set
 committed together with the regenerated `project.pbxproj` and the sim-compat
 project files. Remaining: device-session runs (MLX-eval cases, real
-checkpoints, 5M/NAX A/Bs) and the IPA packaging itself. Production Edge0
+checkpoints, 5M/NAX A/Bs) on a signed build. Production Edge0
 defaults are unchanged (staged g4 prefill, per-token router readback `0`,
 boundedPrefetch decode, readahead and advisory prerouter OFF). Reminder:
 `xcodegen generate` **then** `pod install` for release builds.
+
+Artifact: `build/releases/OnDeviceCoreAIStudio-sideload-entitled-1.0.0-47.ipa`
+(`...-latest.ipa` identical)
+
+- Version **1.0.0 (47)**; the share extension also uses build **47**.
+- Size: **53,194,355 bytes**.
+- SHA-256: `736cf53c629f0738512ecdb84ba0b0df1cfde98b35f2dae4d051e6b09849ed3c`.
+- Built by the complete Xcode 27 Release sideload script; catalog invariants,
+  direct-download preflight, archive, Foundation Models symbol preflight,
+  license collection, and packaging verification all passed
+  (`build/sideload-47-run.log`).
+- **50 independent artifact checks passed** (`verification-1.0.0-47/`). ZIP
+  member paths exactly match build 46 (no added or removed paths); the llama
+  and whisper framework binaries are byte-identical to build 46. Entitlements
+  match builds 43–46 exactly: PCC, increased memory, extended virtual
+  addressing, CloudKit/iCloud, and the shared App Group remain intact. Bundle
+  IDs and minimum iOS **27.0** are unchanged.
+- Ships the redesigned splash / two-step onboarding / agreement screens (their
+  copy strings verified in the shipped binary) and the Edge0
+  read-plan/NAX/warning-cleanup work.
 
 ## Build 46 UI, voice orb, onboarding, and studio identity — 2026-09-16
 

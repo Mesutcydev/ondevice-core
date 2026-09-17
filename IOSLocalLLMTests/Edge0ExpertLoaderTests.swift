@@ -22,6 +22,7 @@ final class Edge0ExpertLoaderTests: XCTestCase {
     }
 
     func testLoaderReadsExactPerExpertSlices() async throws {
+        try Edge0TestDevice.requireSimulatorMLXSupport()
         let source = makeSource()
         let index = try writeFixture(source)
         let stores = try Edge0TensorStoreSet(
@@ -45,6 +46,7 @@ final class Edge0ExpertLoaderTests: XCTestCase {
     }
 
     func testLoadsForDifferentExpertsDoNotAlias() async throws {
+        try Edge0TestDevice.requireSimulatorMLXSupport()
         let source = makeSource()
         let index = try writeFixture(source)
         let stores = try Edge0TensorStoreSet(
@@ -104,6 +106,7 @@ final class Edge0ExpertLoaderTests: XCTestCase {
     }
 
     func testPooledLoaderCyclesTinySlotCountDeterministically() async throws {
+        try Edge0TestDevice.requireSimulatorMLXSupport()
         let source = makeSource()
         let index = try writeFixture(source)
         let stores = try Edge0TensorStoreSet(

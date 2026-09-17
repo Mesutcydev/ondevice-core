@@ -78,15 +78,16 @@ the device session — see §4 for the honest matrix.
 | --- | --- |
 | Device compile gate (build-for-testing, full test target) | **Passed**, 0 errors |
 | Open-source validator (`validate_open_source.sh`) | **Passed** — "Repository hygiene checks passed" (the previously recorded CITATION.cff version failure is resolved by the 1.0.0 metadata refresh) |
-| Focused Edge0 unit tests, simulator | **Executed** (first time) through the isolated sim-compat project: **21 passed, 22 skipped, 7 aborted the simulator test host**. Skips are environment gates (no real checkpoints, no oracle fixtures). The 7 aborts are exactly the cases that evaluate MLX arrays — the simulator's Metal device cannot back MLX evaluation (the host dies inside MLX's Metal init; xctest restarts and continues). Device-session cases, not code failures |
+| Focused Edge0 unit tests, simulator | **Executed clean** through the isolated sim-compat project: **21 passed, 29 skipped, 0 failures, 0 aborts** (`Test Suite 'Selected tests' passed`, exit 0; `build/simcompat-tests5.log`). Skips are environment gates (no real checkpoints, no oracle fixtures) plus the MLX-allocating cases, which skip via `Edge0TestDevice.requireSimulatorMLXSupport()`: the simulated Metal device cannot back mlx at all (no architecture name — mlx aborts in `metal::Device::Device()`; private-mode heaps rejected — `MTLSimDevice` assertion), and mlx's scheduler initializes the GPU stream unconditionally, so even CPU-only use is impossible there |
 | Focused Edge0 unit tests, device | **Blocked in this environment:** Xcode has no signed-in account, so automatic provisioning fails for all bundle IDs ("No Accounts … No profiles"). This is consistent with the profile-less release scheme. The 7 MLX-eval cases above and the real-checkpoint suites belong here |
 | Real-checkpoint 35B regressions (parity/oracle suite) | **Not run** — no checkpoint staged on this machine; `EDGE0_35B_MODEL` gated |
 | Device A/Bs (5M readahead, NAX engagement) | **Not run** — require the test device with a signed build |
 
-Consequence: on the simulator, all non-gated cases pass; the MLX-evaluation
-cases abort on the simulated GPU and must be exercised in the next signed
-device session before being described as passing. The real-checkpoint
-regressions likewise wait for the device session.
+Consequence: on the simulator, all non-gated cases pass and the
+MLX-allocating cases skip cleanly (the simulated GPU cannot back mlx); those
+cases must be exercised in the next signed device session before being
+described as passing. The real-checkpoint regressions likewise wait for the
+device session.
 
 ## 5. Findings and open items
 
