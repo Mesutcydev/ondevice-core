@@ -51,6 +51,12 @@ the frozen nine-ID oracle through the production staged configuration
 boundedPrefetch`, `reads 4`); peak footprint 4.42 GB, thermal nominal
 throughout.
 
+The build-54 run is the first **16/16** pass (iPhone 17 Pro Max, iOS 27.2):
+all stages green, including the new **session reuse parity** stage — the
+prompt-cache proof: reuse applied, 22 tokens reused / 30 prefilled on a
+29→52-token turn pair, answers byte-identical between the reused state and
+a fresh full prefill.
+
 Edge0 unit suites execute on the simulator through an isolated sim-compat
 project, because the simulator SDK ships no `CoreAI.framework` and the app's
 `coreai-models` package is device-only. Recipe:

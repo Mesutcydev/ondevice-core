@@ -15,6 +15,12 @@ answer on the next turn — a prompt's end never prefix-matches again.
   reused prefix grows with the conversation.
 - Probe diagnostics report turn-1/turn-2 prompt lengths.
 
+**Device outcome (2026-09-17):** build 54's validation is **16/16 PASS** —
+the first complete pass — with stage 11 proving the prompt cache on
+device: reuse applied · reused 22 tok · prefilled 30 tok · prompts 29→52 ·
+answers byte-identical (oracle 9/9 again; production numbers unchanged:
+prefill 7.40 s, decode 8.30 tok/s).
+
 | Check | Result |
 | --- | --- |
 | Version metadata | Consistent: 1.0.0 (**54**) in `project.yml` (app + extension) |

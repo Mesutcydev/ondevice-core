@@ -171,6 +171,22 @@ correctness evidence for the exactness contract; peak footprint 4.42 GB,
 thermal nominal throughout, NAX eligibility confirmed device-side
 (engagement still pending a Metal trace).
 
+### Build-54 device validation (prompt-cache proof · 2026-09-17)
+
+The 16-stage in-app validation on the sideloaded build 54 is fully green —
+the first complete pass — including the new **Session reuse parity** stage:
+
+| Stage | Result |
+| --- | --- |
+| 1–10, 12–16 | PASS (oracle 9/9 again; load 1.90 s; prefill 7.40 s; TTFT 7.46 s; decode 8.30 tok/s; cancel stop→end 0.03 s; unload 0.19 s; MLX switch 2.69 s; switch back 2.16 s) |
+| **11. Session reuse parity** | **PASS · reuse applied · reused 22 tok · prefilled 30 tok · prompts 29→52 · answers byte-identical** |
+
+The reuse numbers are the design working exactly: turn 2 restored the
+prompt-boundary snapshot (system + first user turn = 22 tokens) and
+prefilled only the 30 new tokens (assistant answer + second user turn +
+generation tail). In a long chat the reused fraction grows with the
+history, which is where the per-turn prefill cost collapses.
+
 ## 6. Verdict
 
 The pass is **source-complete, compile-clean, and test-executed on the

@@ -140,6 +140,9 @@ and intends to use semantic version tags for source releases.
   Pro Max, including the frozen nine-ID exact-reference oracle on device
   (9/9 ids) through the production staged path — the first real-hardware
   oracle pass for the 35B.
+- Build 54's device validation is the first **16/16** pass; the
+  session-reuse parity stage proves the prompt cache on device (reused 22 /
+  prefilled 30 tokens on a 29→52-token turn pair, answers byte-identical).
 - Focused Edge0 suites now execute on the simulator through an isolated
   sim-compat project (`project-simcompat.yml` + `OnDeviceSimCompat.xcworkspace`);
   see `Docs/VALIDATION.md`. Checkpoint- and fixture-gated cases skip cleanly,
