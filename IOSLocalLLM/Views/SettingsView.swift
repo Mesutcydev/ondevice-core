@@ -422,7 +422,7 @@ struct SettingsView: View {
                 HapticManager.impact(.light)
             } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: "brain")
+                    Image(systemName: "brain").accessibilityLabel("Open Models")
                         .font(.system(size: 13))
                         .foregroundColor(T.accent)
                         .frame(width: 28, height: 28)
@@ -477,7 +477,7 @@ struct SettingsView: View {
                 HapticManager.impact(.light)
             } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: "waveform")
+                    Image(systemName: "waveform").accessibilityLabel("Choose voice model")
                         .font(.system(size: 13))
                         .foregroundColor(T.accent)
                         .frame(width: 28, height: 28)
@@ -658,7 +658,7 @@ struct SettingsView: View {
                     HapticManager.impact(.light)
                 } label: {
                     HStack(spacing: 10) {
-                        Image(systemName: "chart.bar.xaxis")
+                        Image(systemName: "chart.bar.xaxis").accessibilityLabel("System status")
                             .font(.system(size: 12))
                             .foregroundColor(T.accent)
                         KMono(text: "Open full diagnostics", size: 11.5, color: T.accent, mono: false)
@@ -976,7 +976,7 @@ struct SettingsView: View {
                     HapticManager.impact(.light)
                 } label: {
                     HStack {
-                        Image(systemName: "square.and.arrow.down")
+                        Image(systemName: "square.and.arrow.down").accessibilityLabel("Save last model input")
                             .font(.system(size: 12))
                             .foregroundColor(T.ink)
                         KMono(text: "Save last model input PNG", size: 11.5, color: T.ink, mono: false)
@@ -1254,7 +1254,7 @@ struct SettingsView: View {
                                           detail: "First-use hints will show again.")
             } label: {
                 HStack {
-                    Image(systemName: "lightbulb")
+                    Image(systemName: "lightbulb").accessibilityLabel("Reset tips")
                         .font(.system(size: 12))
                         .foregroundColor(T.ink)
                     KMono(text: "Reset onboarding tips", size: 11.5, color: T.ink, mono: false)
@@ -1314,7 +1314,7 @@ struct SettingsView: View {
                     ToastCenter.shared.info("Cleared until iOS updates the reading")
                 } label: {
                     HStack {
-                        Image(systemName: "thermometer.snowflake")
+                        Image(systemName: "thermometer.snowflake").accessibilityLabel("Clear thermal warning")
                             .font(.system(size: 12))
                             .foregroundColor(T.accent)
                         KMono(text: "Clear current warning", size: 11.5, color: T.accent, mono: false)
@@ -1354,7 +1354,7 @@ struct SettingsView: View {
                     HapticManager.impact(.medium)
                 } label: {
                     HStack {
-                        Image(systemName: "trash.slash")
+                        Image(systemName: "trash.slash").accessibilityLabel("Wipe all data")
                             .font(.system(size: 12))
                             .foregroundColor(T.bad)
                         KMono(text: "Wipe all on-device data", size: 11.5, color: T.bad, mono: false)
@@ -1795,7 +1795,7 @@ private struct WhisperSTTBlock: View {
                     whisperModel?.cancel()
                     HapticManager.impact(.light)
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
+                    Image(systemName: "xmark.circle.fill").accessibilityLabel("Cancel download")
                         .font(.system(size: 14))
                         .foregroundColor(T.ink3)
                 }

@@ -134,13 +134,23 @@ struct VoiceLibraryView: View {
     private func activeHero(_ v: VoiceOption) -> some View {
         VStack(spacing: 14) {
             HStack(spacing: 13) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(T.studio.fillActive)
-                    Image(systemName: "waveform")
-                        .font(.system(size: 24, weight: .semibold)).foregroundColor(T.studio.ink)
+                // Same identity tile as the rows, scaled up — so the voice you
+                // are using looks like the one you picked out of the list.
+                VStack(spacing: 2) {
+                    Text(monogram(for: v))
+                        .font(T.mono(20, .semibold))
+                        .foregroundColor(T.bg)
+                    Text(regionCode(v.locale))
+                        .font(T.mono(9, .medium))
+                        .tracking(0.5)
+                        .foregroundColor(T.bg.opacity(0.75))
                 }
                 .frame(width: 52, height: 52)
+                .background(
+                    T.accentStrong,
+                    in: RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous)
+                )
+                .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(loc.t("NOW USING"))
@@ -170,7 +180,7 @@ struct VoiceLibraryView: View {
         }
         .padding(16)
         .kClearGlass(
-            in: RoundedRectangle(cornerRadius: 22, style: .continuous),
+            in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous),
             tint: T.accent.opacity(0.08),
             fallbackFill: T.surface,
             fallbackStroke: T.rule
@@ -316,14 +326,7 @@ struct VoiceLibraryView: View {
         let isCurrent = v.id == current?.id
         return Button(action: { preview(v) }) {
             HStack(spacing: 12) {
-                Circle()
-                    .fill(T.studio.fillActive)
-                    .frame(width: 38, height: 38)
-                    .overlay {
-                        if isCurrent {
-                            Circle().strokeBorder(T.accent, lineWidth: 2)
-                        }
-                    }
+                voiceThumbnail(v, isCurrent: isCurrent)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(v.name).font(T.sans(15.5, .semibold)).foregroundColor(T.ink).lineLimit(1)
                     Text(voiceSubtitle(v)).font(T.sans(12.5)).foregroundColor(T.ink3).lineLimit(1)
@@ -403,6 +406,50 @@ struct VoiceLibraryView: View {
         // lookup key include the voice name, so it never matched a translation
         // and the phrase was always English.
         voice.speak(String(format: loc.t("Hi, I'm %@. This is how I sound."), v.name))
+    }
+
+    /// Identity tile for a voice row.
+    ///
+    /// This used to be a bare `Circle().fill(fillActive)` with nothing inside —
+    /// an empty grey disc beside every name, which made the whole library read
+    /// as unloaded placeholder art. A voice has no artwork to show, so the tile
+    /// carries what it does have: its initial, plus the region code underneath
+    /// so two voices sharing a letter stay distinguishable.
+    private func voiceThumbnail(_ v: VoiceOption, isCurrent: Bool) -> some View {
+        let shape = RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
+        return VStack(spacing: 1) {
+            Text(monogram(for: v))
+                .font(T.mono(14, .semibold))
+                .foregroundColor(isCurrent ? T.bg : T.studio.ink)
+            Text(regionCode(v.locale))
+                .font(T.mono(7.5, .medium))
+                .tracking(0.4)
+                .foregroundColor(isCurrent ? T.bg.opacity(0.75) : T.ink3)
+        }
+        .frame(width: 38, height: 38)
+        .background(isCurrent ? T.accentStrong : T.studio.fillActive, in: shape)
+        .overlay(shape.strokeBorder(isCurrent ? .clear : T.rule, lineWidth: 1))
+        // The name and locale are already announced by the row's title and
+        // subtitle; repeating them here would make VoiceOver read each row
+        // twice.
+        .accessibilityHidden(true)
+    }
+
+    /// First letter of the voice name, uppercased. Falls back to the engine's
+    /// initial for an unnamed voice so the tile is never blank.
+    private func monogram(for v: VoiceOption) -> String {
+        let trimmed = v.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let c = trimmed.first(where: { $0.isLetter || $0.isNumber }) {
+            return String(c).uppercased()
+        }
+        return String(v.engineKind.rawValue.prefix(1)).uppercased()
+    }
+
+    /// "en-US" -> "US", "fr" -> "FR". Region when present, language otherwise.
+    private func regionCode(_ locale: String) -> String {
+        let parts = locale.split(separator: "-")
+        if parts.count >= 2 { return parts[1].uppercased() }
+        return String(locale.prefix(2)).uppercased()
     }
 
     private func voiceSubtitle(_ v: VoiceOption) -> String {

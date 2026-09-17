@@ -131,7 +131,7 @@ struct BridgePairingView: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(T.studio.fillActive)
-                    Image(systemName: "book.closed.fill")
+                    Image(systemName: "book.closed.fill").accessibilityLabel("Open documentation")
                         .font(.system(size: 22, weight: .semibold))
                         .foregroundColor(T.studio.ink)
                 }

@@ -524,7 +524,7 @@ struct HFSearchRow: View {
                     .contentTransition(.numericText())
                     .animation(.easeInOut(duration: 0.18), value: downloader.progress)
                 Button { downloader.cancel() } label: {
-                    Image(systemName: "xmark")
+                    Image(systemName: "xmark").accessibilityLabel("Cancel download")
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(T.warn)
                 }

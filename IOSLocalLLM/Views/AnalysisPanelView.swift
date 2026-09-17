@@ -494,7 +494,7 @@ struct AnalysisPanelView: View {
 
                         if !result.isStreaming {
                             Button { showCodeEditor = true } label: {
-                                Image(systemName: "pencil")
+                                Image(systemName: "pencil").accessibilityLabel("Edit code")
                                     .font(.system(size: 11))
                                     .padding(6)
                                     .background(RoundedRectangle(cornerRadius: 4).fill(T.surface2))

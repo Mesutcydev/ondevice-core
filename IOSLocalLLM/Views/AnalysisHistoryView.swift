@@ -39,7 +39,7 @@ struct AnalysisHistoryView: View {
                         Button(role: .destructive) {
                             showClearConfirm = true
                         } label: {
-                            Image(systemName: "trash")
+                            Image(systemName: "trash").accessibilityLabel("Clear history")
                                 .foregroundColor(T.bad)
                         }
                     }

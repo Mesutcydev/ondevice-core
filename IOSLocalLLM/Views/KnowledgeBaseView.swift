@@ -187,7 +187,7 @@ struct KnowledgeBaseView: View {
             Button {
                 kb.removeDocument(doc.id); HapticManager.impact(.light)
             } label: {
-                Image(systemName: "trash").font(.system(size: 13)).foregroundColor(T.bad)
+                Image(systemName: "trash").accessibilityLabel("Remove document").font(.system(size: 13)).foregroundColor(T.bad)
             }
             .buttonStyle(.plain)
         }

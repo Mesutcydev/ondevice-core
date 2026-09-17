@@ -502,7 +502,7 @@ struct CodingAssistantView: View {
                         Button {
                             stopGeneration()
                         } label: {
-                            Image(systemName: "stop.circle.fill")
+                            Image(systemName: "stop.circle.fill").accessibilityLabel("Stop generating")
                                 .foregroundColor(.red)
                                 // Variable-color pulse on the stop glyph
                                 // while it's visible — signals that the
@@ -2167,7 +2167,7 @@ struct CodingAssistantView: View {
             && assistant.state == .ready
 
         return Button { sendMessage() } label: {
-            Image(systemName: "arrow.up")
+            Image(systemName: "arrow.up").accessibilityLabel("Send")
                 .font(.system(size: 14, weight: .bold))
                 .foregroundColor(.white)
                 .frame(width: 36, height: 36)

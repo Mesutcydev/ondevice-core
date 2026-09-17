@@ -89,7 +89,7 @@ struct VoiceModelPickerView: View {
                 .textInputAutocapitalization(.never)
                 .accessibilityIdentifier("voiceCatalogSearch")
             if !query.isEmpty {
-                Button { query = "" } label: { Image(systemName: "xmark.circle.fill") }
+                Button { query = "" } label: { Image(systemName: "xmark.circle.fill").accessibilityLabel("Clear search") }
                     .buttonStyle(.plain)
             }
         }

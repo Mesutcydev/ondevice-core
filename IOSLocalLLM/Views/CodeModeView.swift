@@ -37,7 +37,7 @@ struct CodeModeView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { dismiss() } label: {
-                        Image(systemName: "xmark.circle.fill")
+                        Image(systemName: "xmark.circle.fill").accessibilityLabel("Close")
                             .foregroundStyle(T.ink3)
                     }
                 }

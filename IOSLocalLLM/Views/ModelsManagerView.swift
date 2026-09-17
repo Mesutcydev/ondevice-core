@@ -1520,7 +1520,7 @@ struct ModelsManagerView: View {
             Button {
                 selectedSection = sectionFor(pick.role)
             } label: {
-                Image(systemName: "chevron.right")
+                Image(systemName: "chevron.right").accessibilityLabel("Open section")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundColor(T.ink3)
                     .frame(width: 34, height: 30)
@@ -2536,7 +2536,7 @@ struct ModelsManagerView: View {
                 HapticManager.impact(.light)
             } label: {
                 HStack(spacing: 12) {
-                    Image(systemName: "trash.slash")
+                    Image(systemName: "trash.slash").accessibilityLabel("Remove partial downloads")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(S.ink)
                         .frame(width: 34, height: 34)
@@ -3483,7 +3483,7 @@ struct ModelsManagerView: View {
                 Button {
                     UIApplication.shared.open(url)
                 } label: {
-                    Image(systemName: "arrow.up.right.square")
+                    Image(systemName: "arrow.up.right.square").accessibilityLabel("Open in browser")
                         .font(.system(size: 14))
                         .foregroundColor(T.ink3)
                         .padding(6)

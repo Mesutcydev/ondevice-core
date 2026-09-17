@@ -20,6 +20,10 @@ struct ContentView: View {
     // Presented as a sheet. AppBridge.requestTab(.mac) (index 3) also opens it.
     @State private var showMac = false
     @State private var showImageGeneration = false
+    /// Full searchable conversation list, opened from Home. The Assistant tab
+    /// has its own copy behind a toolbar glyph; this is the entry point that
+    /// does not vanish while a generation is running.
+    @State private var showHistory = false
     // Bottom tabs: Home · Assistant · Lens · Voice · Models.
     enum Tab: CaseIterable, Hashable {
         case home, assistant, camera, voice, models
@@ -243,6 +247,12 @@ struct ContentView: View {
         .sheet(isPresented: $showImageGeneration) {
             ImageGenerationView()
         }
+        .sheet(isPresented: $showHistory) {
+            ConversationPickerView(store: ConversationStore.shared) { conv in
+                showHistory = false
+                AppBridge.shared.openConversation(id: conv.id)
+            }
+        }
         // Legal acceptance is the FIRST gate — must accept before anything else.
         // Gate on ANY outstanding acceptance (EULA version, AI disclaimer, or
         // device-safety notice), not just the version, so each can re-prompt.
@@ -348,7 +358,10 @@ struct ContentView: View {
             onOpenModels: { selectedTab = .models },
             onGenerateImage: { showImageGeneration = true },
             onOpenSettings: { showSettings = true },
-            onOpenConversation: { AppBridge.shared.openConversation(id: $0.id) }
+            onOpenConversation: { AppBridge.shared.openConversation(id: $0.id) },
+            onOpenLens: { selectedTab = .camera },
+            onOpenVoice: { selectedTab = .voice },
+            onOpenHistory: { showHistory = true }
         )
     }
 

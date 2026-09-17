@@ -111,10 +111,19 @@ struct VoiceSettingsView: View {
     private var voiceSection: some View {
         KSection(title: "voice") {
             if vm.voices.isEmpty {
-                Text("No voices available for this engine.")
-                    .font(T.sans(11))
-                    .foregroundColor(T.ink3)
-                    .padding(14)
+                // Was a bare sentence with nothing to act on. The engine is
+                // the thing that has to change, so say that and point at it.
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("No voices for this engine")
+                        .font(T.sans(14, .semibold))
+                        .foregroundColor(T.ink)
+                    Text("Its voices haven't been downloaded yet. Pick a different engine above, or install this one from Models.")
+                        .font(T.sans(12.5))
+                        .foregroundColor(T.ink3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
             } else {
                 KRow(label: "voice", trailing: {
                     Picker("", selection: Binding(
@@ -377,7 +386,7 @@ struct VoiceSettingsView: View {
                 showPerModelOverrides.toggle()
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "arrow.uturn.backward")
+                    Image(systemName: "arrow.uturn.backward").accessibilityLabel("Reset voice settings")
                         .font(.system(size: 11))
                     KMono(text: "reset to profile defaults", size: 11, color: T.bad)
                     Spacer()
