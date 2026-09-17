@@ -305,7 +305,7 @@ enum DeviceTierAdvisor {
         if Self.forciblyMigrateAwayVisualModelRepoIDs.contains(s.cameraVisualModelID) {
             s.hasPickedCameraVisualModel = false
             s.cameraVisualModelID = ""
-            print("[DeviceTierAdvisor] Forcibly migrated user off retired VLM repo")
+            Diagnostics.shared.warning("Forcibly migrated user off retired VLM repo", category: "devicetieradvisor")
         }
 
         // `inaccurateAutoPickedVisualModelRepoIDs` is the softer

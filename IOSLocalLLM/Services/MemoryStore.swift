@@ -16,7 +16,11 @@ final class MemoryStore: ObservableObject {
 
     @Published private(set) var facts: [MemoryFact] = []
 
-    private let storageKey = "memoryFacts.v1"
+    /// UserDefaults key for the remembered facts. Exposed (not private) so
+    /// `WipeAllDataService` removes the key the store actually writes — it used
+    /// to hardcode a different, never-written key, so "Wipe all data" silently
+    /// left every personal memory fact on disk and injectable into prompts.
+    static let storageKey = "memoryFacts.v1"
 
     struct MemoryFact: Identifiable, Codable, Hashable {
         var id: UUID
@@ -95,7 +99,7 @@ final class MemoryStore: ObservableObject {
     // MARK: - Persistence
 
     private func load() {
-        guard let data = UserDefaults.standard.data(forKey: storageKey),
+        guard let data = UserDefaults.standard.data(forKey: Self.storageKey),
               let decoded = try? JSONDecoder().decode([MemoryFact].self, from: data)
         else { return }
         facts = decoded
@@ -103,7 +107,7 @@ final class MemoryStore: ObservableObject {
 
     private func persist() {
         if let data = try? JSONEncoder().encode(facts) {
-            UserDefaults.standard.set(data, forKey: storageKey)
+            UserDefaults.standard.set(data, forKey: Self.storageKey)
         }
     }
 }

@@ -71,7 +71,7 @@ struct BridgePairingView: View {
                 }
                 .padding(20)
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             // Start the iPhone's inference server as soon as the tab opens so it's
             // ready by the time the QR is scanned and the Mac tries to connect.
             .task {
@@ -130,17 +130,10 @@ struct BridgePairingView: View {
             HStack(spacing: 14) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [T.accent.opacity(0.22),
-                                         T.accent.opacity(0.08)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .fill(T.studio.fillActive)
                     Image(systemName: "book.closed.fill")
                         .font(.system(size: 22, weight: .semibold))
-                        .foregroundColor(T.accent)
+                        .foregroundColor(T.studio.ink)
                 }
                 .frame(width: 48, height: 48)
 
@@ -155,7 +148,7 @@ struct BridgePairingView: View {
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(
-                                Capsule().fill(T.surface3)
+                                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.surface3)
                             )
                     }
                     Text("Review the public pairing protocol, security boundaries, and client implementation notes.")
@@ -223,46 +216,41 @@ struct BridgePairingView: View {
     // MARK: - Header
 
     // Design-language hero (matches Home / the local LLM foundation handoff). The
-    // Mac tab isn't in the design files, so this is built from the same
-    // primitives: pink gradient, white type, a live status dot, soft bloom.
+    // Mac tab isn't in the design files; Studio language applied: flat
+    // surface, hairline, mono eyebrow, live status dot.
     private var header: some View {
         let running: Bool = { if case .running = manager.serverState { return true } else { return false } }()
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 Circle()
-                    .fill(running ? T.good : Color.white.opacity(0.7))
+                    .fill(running ? T.good : T.ink4)
                     .frame(width: 7, height: 7)
-                    .shadow(color: running ? T.good.opacity(0.9) : .clear, radius: 4)
-                Text("MAC BRIDGE")
-                    .font(T.sans(12, .bold)).tracking(0.8)
-                    .foregroundColor(.white)
+                StudioMonoLabel(text: "Mac bridge", size: 11, tracking: 0.9)
                 Spacer()
                 Image(systemName: "desktopcomputer")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.92))
+                    .foregroundColor(T.ink3)
             }
             Text("Control from your Mac")
-                .font(T.display(23, .bold))
-                .foregroundColor(.white)
+                .font(T.sans(23, .semibold))
+                .tracking(-0.4)
+                .foregroundColor(T.ink)
                 .padding(.top, 12)
             Text("Pair a Mac to run its prompts on this iPhone — nothing leaves your devices.")
                 .font(T.sans(14))
-                .foregroundColor(.white.opacity(0.92))
+                .foregroundColor(T.ink2)
                 .padding(.top, 3)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(LinearGradient(colors: [T.roseHi, T.accent, T.accentStrong],
-                                         startPoint: .topLeading, endPoint: .bottomTrailing))
-                Circle().fill(Color.white.opacity(0.16))
-                    .frame(width: 150, height: 150).blur(radius: 6)
-                    .offset(x: 120, y: -70)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(T.surface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(T.rule, lineWidth: 1)
         )
     }
 
@@ -571,7 +559,7 @@ private struct LocalAPIServerCard: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Capsule().fill(theme.accent))
+                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(theme.accent))
                 }
                 .buttonStyle(.plain)
             }
@@ -901,7 +889,7 @@ private struct ScannerSheet: View {
                 // its overlay into the next presentation.
                 .id(showScanner ? "scanner-on" : "scanner-off")
             } else {
-                LiquidPinkBackdrop()
+                StudioPageBackground()
                 Text("Camera scanner not available on this device.")
                     .font(T.mono(14, .regular))
                     .foregroundColor(T.ink2)
@@ -933,7 +921,7 @@ private struct ScannerSheet: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
-                    .background(Color.black.opacity(0.55).clipShape(Capsule()))
+                    .background(Color.black.opacity(0.55).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous)))
                     .padding(.bottom, 60)
             }
         }

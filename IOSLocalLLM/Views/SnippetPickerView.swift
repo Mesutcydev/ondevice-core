@@ -24,7 +24,7 @@ struct SnippetPickerView: View {
                 }
                 .padding(.bottom, 32)
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
@@ -148,7 +148,7 @@ struct SnippetPickerView: View {
             }
             .foregroundColor(T.bg)
             .padding(.horizontal, 16)
-            .frame(height: 44)
+            .frame(minHeight: 44)
             .frame(maxWidth: .infinity)
             .background(RoundedRectangle(cornerRadius: 8).fill(T.ink))
         }
@@ -197,7 +197,7 @@ struct SnippetEditorView: View {
                 }
                 .padding(.bottom, 24)
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .navigationTitle(isNew ? "new snippet" : "edit snippet")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)

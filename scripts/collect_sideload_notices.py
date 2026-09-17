@@ -23,7 +23,7 @@ for location in checkouts:
         if package.is_dir():
             for pattern in ['LICENSE*', 'NOTICE*', 'COPYING*']:
                 paths.extend(sorted(package.glob(pattern)))
-sections = ['OnDevice Core — bundled third-party notices\n']
+sections = ['OnDevice Max — bundled third-party notices\n']
 seen = set()
 for path in paths:
     if not path.is_file() or path.resolve() in seen:

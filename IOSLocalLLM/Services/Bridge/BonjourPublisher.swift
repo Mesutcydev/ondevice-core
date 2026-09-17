@@ -43,9 +43,9 @@ final class BonjourPublisher: NSObject {
 
 extension BonjourPublisher: NetServiceDelegate {
     nonisolated func netServiceDidPublish(_ sender: NetService) {
-        print("[BonjourPublisher] Published: \(sender.name)")
+        Diagnostics.shared.debug("Published: \(sender.name)", category: "bonjourpublisher")
     }
     nonisolated func netService(_ sender: NetService, didNotPublish errorDict: [String: NSNumber]) {
-        print("[BonjourPublisher] Failed: \(errorDict)")
+        Diagnostics.shared.error("Failed: \(errorDict)", category: "bonjourpublisher")
     }
 }

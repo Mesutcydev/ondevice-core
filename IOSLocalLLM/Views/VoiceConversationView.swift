@@ -22,6 +22,7 @@ struct VoiceConversationView: View {
     @ObservedObject private var routeManager = VoiceAudioSessionManager.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.koduTheme) private var T
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var showModelPicker = false
@@ -82,7 +83,8 @@ struct VoiceConversationView: View {
                         .padding(.horizontal, 20)
                         .padding(.bottom, 10)
                         .padding(.top, 8)
-                        .background(.ultraThinMaterial.opacity(0.92))
+                        .background(.adaptiveMaterial(reduceTransparency: reduceTransparency,
+                                                      opaque: T.studio.surfaceRaised))
                 }
             }
         }
@@ -217,7 +219,7 @@ struct VoiceConversationView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
             .kGlassCapsule(fallbackFill: T.surface)
-            .contentShape(Capsule())
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
@@ -467,8 +469,8 @@ struct VoiceConversationView: View {
         .foregroundColor(T.ink3)
         .padding(.horizontal, 7).padding(.vertical, 3)
         .background(
-            Capsule().fill(T.surface)
-                .overlay(Capsule().stroke(T.rule, lineWidth: 0.5))
+            RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.surface)
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.rule, lineWidth: 0.5))
         )
         .accessibilityLabel("TTS engine: \(engineLabel)")
     }
@@ -484,8 +486,8 @@ struct VoiceConversationView: View {
             .foregroundStyle(color)
             .padding(.horizontal, 7).padding(.vertical, 3)
             .background(
-                Capsule().fill(color.opacity(0.12))
-                    .overlay(Capsule().stroke(color.opacity(0.35), lineWidth: 0.5))
+                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(color.opacity(0.12))
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(color.opacity(0.35), lineWidth: 0.5))
             )
     }
 
@@ -508,8 +510,8 @@ struct VoiceConversationView: View {
             .foregroundColor(T.accent)
             .padding(.horizontal, 8).padding(.vertical, 4)
             .background(
-                Capsule().fill(T.accentSoft)
-                    .overlay(Capsule().stroke(T.accent.opacity(0.3), lineWidth: 0.5))
+                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accentSoft)
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.accent.opacity(0.3), lineWidth: 0.5))
             )
         }
         .buttonStyle(.plain)
@@ -718,10 +720,11 @@ struct VoiceConversationView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(.ultraThinMaterial)
+            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+                .fill(.adaptiveMaterial(reduceTransparency: reduceTransparency,
+                                        opaque: T.studio.surfaceRaised))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                         .stroke(T.rule.opacity(0.6), lineWidth: 0.5)
                 )
         )
@@ -905,7 +908,7 @@ private struct VoiceModelPickerSheet: View {
                 }
                 .padding(.bottom, 32)
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {

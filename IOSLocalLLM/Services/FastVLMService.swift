@@ -590,7 +590,7 @@ final class FastVLMService: ObservableObject {
                 print("[FastVLMService] Installed companion file \(name) from bundle")
                 #endif
             } catch {
-                print("[FastVLMService] Failed to copy \(name): \(error)")
+                Diagnostics.shared.error("Failed to copy \(name): \(error)", category: "fastvlmservice")
             }
         }
     }

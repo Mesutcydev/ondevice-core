@@ -15,7 +15,7 @@ struct SettingsView: View {
 
     @State private var showingHFTokenSheet: Bool = false
     #if !targetEnvironment(macCatalyst)
-    /// nil = default "Silver" icon; "AppIconClassic" = previous pink mark.
+    /// nil = default "Max" wordmark; "AppIconClassic" = previous pink mark.
     @State private var activeIconName: String? = UIApplication.shared.alternateIconName
     #endif
     /// Presents the onboarding model picker as a sheet so existing
@@ -85,7 +85,7 @@ struct SettingsView: View {
                 }
                 .padding(.bottom, 32)
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -219,7 +219,7 @@ struct SettingsView: View {
     private func categoryRow(_ cat: SettingsCategory) -> some View {
         HStack(spacing: 13) {
             ZStack {
-                RoundedRectangle(cornerRadius: 11, style: .continuous).fill(T.accentSoft)
+                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accentSoft)
                 Image(systemName: cat.icon)
                     .font(.system(size: 17, weight: .regular))
                     .foregroundColor(T.accent)
@@ -280,7 +280,7 @@ struct SettingsView: View {
             }
             .padding(.bottom, 32)
         }
-        .background(LiquidPinkBackdrop())
+        .background(StudioPageBackground())
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
     }
@@ -742,8 +742,8 @@ struct SettingsView: View {
                             .foregroundColor(T.accent)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
-                            .background(Capsule().fill(T.accentSoft))
-                            .overlay(Capsule().stroke(T.accent.opacity(0.4), lineWidth: 0.5))
+                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accentSoft))
+                            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.accent.opacity(0.4), lineWidth: 0.5))
                     }
                     .buttonStyle(.plain)
                     .fixedSize()
@@ -859,7 +859,7 @@ struct SettingsView: View {
                         }
                         .foregroundColor(T.bg)
                         .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(RoundedRectangle(cornerRadius: 5).fill(T.ink))
+                        .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
                     }
                     .buttonStyle(.plain)
                 }
@@ -1163,7 +1163,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 8) {
             KMono(text: "app icon", size: 11.5, color: T.ink, mono: false)
             HStack(spacing: 14) {
-                appIconOption(name: nil, title: "Silver", preview: "AppIconPreview")
+                appIconOption(name: nil, title: "Max", preview: "AppIconPreview")
                 appIconOption(name: "AppIconClassic", title: "Classic", preview: "AppIconClassicPreview")
                 Spacer()
             }
@@ -1246,23 +1246,6 @@ struct SettingsView: View {
             KRow(label: "show fps counter", trailing: {
                 KToggle(isOn: $settings.showFPSCounter)
             })
-            Rectangle().fill(T.rule).frame(height: 1)
-            Button {
-                settings.hasSeenOnboarding = false
-                dismiss()
-            } label: {
-                HStack {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.system(size: 12))
-                        .foregroundColor(T.ink)
-                    KMono(text: "Show onboarding again", size: 11.5, color: T.ink, mono: false)
-                    Spacer()
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-            }
-            .buttonStyle(.plain)
-
             Rectangle().fill(T.rule).frame(height: 1)
             Button {
                 TipsManager.shared.resetAll()
@@ -1557,8 +1540,8 @@ struct SettingsView: View {
                         .foregroundColor(T.warn)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 5)
-                        .background(Capsule().fill(T.warn.opacity(0.10)))
-                        .overlay(Capsule().stroke(T.warn.opacity(0.32), lineWidth: 0.5))
+                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.warn.opacity(0.10)))
+                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.warn.opacity(0.32), lineWidth: 0.5))
                 }
 
                 HStack(spacing: 8) {
@@ -1578,15 +1561,15 @@ struct SettingsView: View {
                     .foregroundColor(T.ink)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(T.surface2))
-                    .overlay(Capsule().stroke(T.rule, lineWidth: 1))
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.surface2))
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.rule, lineWidth: 1))
                 }
             }
             .padding(15)
             .frame(maxWidth: .infinity, alignment: .leading)
             .kGlass(cornerRadius: 20, fallbackFill: T.surface, fallbackStroke: T.rule)
         }
-        .buttonStyle(KTactileButtonStyle())
+        .buttonStyle(StudioPressStyle())
         .accessibilityLabel("Open the OnDevice AI Image Studio preview website. App Store release coming soon.")
     }
 
@@ -1601,8 +1584,8 @@ struct SettingsView: View {
         .foregroundColor(T.ink2)
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
-        .background(Capsule().fill(T.surface2))
-        .overlay(Capsule().stroke(T.rule, lineWidth: 0.5))
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.surface2))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.rule, lineWidth: 0.5))
     }
 
     private var appVersionLabel: String {

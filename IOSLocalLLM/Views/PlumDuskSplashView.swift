@@ -29,7 +29,7 @@ struct PlumDuskSplashView: View {
                         .accessibilityHidden(true)
 
                     VStack(spacing: 10) {
-                        Text("OnDevice Core")
+                        Text("OnDevice Max")
                             .font(.system(.largeTitle, design: .default, weight: .semibold))
                             .tracking(-0.7)
                             .foregroundStyle(Color(white: 0.16))

@@ -29,7 +29,7 @@ struct UnsupportedDeviceView: View {
 
     var body: some View {
         ZStack {
-            LiquidPinkBackdrop()
+            StudioPageBackground()
             ScrollView {
                 VStack(spacing: 28) {
                     Spacer().frame(height: 8)

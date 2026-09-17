@@ -88,7 +88,7 @@ struct VoiceLibraryView: View {
             .padding(.top, 8)
             .padding(.bottom, 28)
         }
-        .background(LiquidPinkBackdrop())
+        .background(StudioPageBackground())
         .scrollIndicators(.hidden)
         .onAppear { tabVisible = true }
         .onDisappear { tabVisible = false }
@@ -135,11 +135,10 @@ struct VoiceLibraryView: View {
         VStack(spacing: 14) {
             HStack(spacing: 13) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(LinearGradient(colors: [T.roseHi, T.accentStrong],
-                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(T.studio.fillActive)
                     Image(systemName: "waveform")
-                        .font(.system(size: 24, weight: .semibold)).foregroundColor(.white)
+                        .font(.system(size: 24, weight: .semibold)).foregroundColor(T.studio.ink)
                 }
                 .frame(width: 52, height: 52)
 
@@ -153,10 +152,9 @@ struct VoiceLibraryView: View {
 
                 Button(action: { preview(v) }) {
                     ZStack {
-                        Circle().fill(LinearGradient(colors: [T.roseHi, T.accentStrong],
-                                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                        Circle().fill(T.ink)
                         Image(systemName: voice.isPlaying ? "stop.fill" : "play.fill")
-                            .font(.system(size: 16, weight: .bold)).foregroundColor(.white)
+                            .font(.system(size: 16, weight: .bold)).foregroundColor(T.bg)
                             .offset(x: voice.isPlaying ? 0 : 1)
                     }
                     .frame(width: 46, height: 46)
@@ -168,7 +166,7 @@ struct VoiceLibraryView: View {
             // Always-on animated equalizer (design 04 hero) — calmer when idle,
             // more energetic while a preview is playing.
             EqualizerBars(playing: voice.isPlaying, active: isActive && tabVisible)
-                .frame(height: 30)
+                .frame(minHeight: 30)
         }
         .padding(16)
         .kClearGlass(
@@ -211,7 +209,7 @@ struct VoiceLibraryView: View {
         Button(action: { HapticManager.impact(.light); showEnginePicker = true }) {
             HStack(spacing: 12) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 11, style: .continuous).fill(T.accentSoft)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accentSoft)
                     Image(systemName: "slider.horizontal.3")
                         .font(.system(size: 16, weight: .semibold)).foregroundColor(T.accent)
                 }
@@ -251,7 +249,7 @@ struct VoiceLibraryView: View {
                                 .foregroundColor(on ? .white : T.ink2)
                                 .padding(.horizontal, 15).padding(.vertical, 7)
                                 .kClearGlass(
-                                    in: Capsule(),
+                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous),
                                     tint: on ? T.accent.opacity(0.72) : nil,
                                     interactive: true,
                                     fallbackFill: on ? T.accent : T.surface,
@@ -319,8 +317,7 @@ struct VoiceLibraryView: View {
         return Button(action: { preview(v) }) {
             HStack(spacing: 12) {
                 Circle()
-                    .fill(LinearGradient(colors: avatarColors(for: v),
-                                         startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(T.studio.fillActive)
                     .frame(width: 38, height: 38)
                     .overlay {
                         if isCurrent {
@@ -370,7 +367,7 @@ struct VoiceLibraryView: View {
                 Text(loc.t("Coming soon"))
                     .font(T.sans(11, .bold)).foregroundColor(T.ink3)
                     .padding(.horizontal, 9).padding(.vertical, 4)
-                    .background(Capsule().fill(T.surface3))
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.surface3))
             }
             .padding(.horizontal, 15).padding(.vertical, 13)
             .contentShape(Rectangle())
@@ -464,7 +461,7 @@ private struct EqualizerBars: View {
                 ForEach(0..<13, id: \.self) { i in
                     let phase = Double(i) * 0.55
                     let h = active ? floor + amp * (0.5 + 0.5 * sin(t * speed + phase)) : 0.5
-                    Capsule()
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(shades[i % shades.count])
                         .frame(height: CGFloat(30 * h))
                 }

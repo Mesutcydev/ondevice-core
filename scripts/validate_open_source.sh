@@ -86,8 +86,8 @@ if [[ -n "$secret_matches" ]]; then
 fi
 
 if ! cmp -s \
-  IOSLocalLLM.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved \
-  IOSLocalLLM.xcworkspace/xcshareddata/swiftpm/Package.resolved; then
+  OnDeviceMax.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved \
+  OnDeviceMax.xcworkspace/xcshareddata/swiftpm/Package.resolved; then
   echo "error: committed Swift package lockfiles differ" >&2
   exit 1
 fi

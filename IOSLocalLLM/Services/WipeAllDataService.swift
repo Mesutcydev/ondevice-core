@@ -98,19 +98,28 @@ enum WipeAllDataService {
 
         // 4. Snippets, memory, benchmark history, metrickit entries
         let defaults = UserDefaults.standard
+        // These MUST be the keys the owning stores actually write. Three of
+        // them used to be a never-written `ioslocalllm.*` spelling, so the
+        // wipe reported success while saved snippets, personal memory facts
+        // and the recent-prompt history all stayed on disk — a privacy defect,
+        // not just dead code. Reference the stores' own constants where they
+        // exist so the two cannot drift apart again.
         let keysToWipe = [
-            "ioslocalllm.snippets.v1",
-            "ioslocalllm.memory.v1",
-            "ioslocalllm.benchmark.history.v1",
-            "ioslocalllm.metrickit.entries.v1",
-            "ioslocalllm.recentPrompts",
+            SnippetStore.storageKey,
+            MemoryStore.storageKey,
+            BenchmarkService.storageKey,
+            MetricKitHandler.storageKey,
+            // Composer recents. Written by @AppStorage in KeyboardToolbar and
+            // StudioComposer, which hold the literal, so it stays a literal
+            // here too — kept adjacent to the other keys for reviewability.
+            "recentPromptsBlob",
         ]
         // Snippet / memory counts (best-effort)
-        if let snipData = defaults.data(forKey: "ioslocalllm.snippets.v1"),
+        if let snipData = defaults.data(forKey: SnippetStore.storageKey),
            let snips = try? JSONSerialization.jsonObject(with: snipData) as? [Any] {
             r.snippetsDeleted = snips.count
         }
-        if let memData = defaults.data(forKey: "ioslocalllm.memory.v1"),
+        if let memData = defaults.data(forKey: MemoryStore.storageKey),
            let mems = try? JSONSerialization.jsonObject(with: memData) as? [Any] {
             r.memoriesDeleted = mems.count
         }

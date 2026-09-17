@@ -1,14 +1,17 @@
 import SwiftUI
-import UIKit   // UIFont probe in the font-name fallback path
+import UIKit   // resolves the concrete SF face names for the type helpers
 
 // MARK: - KoduTheme
-// Studio design language for IOSLocalLLM — Apple clear glass, neutral content,
-// and color reserved for state or a primary action. Surface colors are
-// intentionally translucent: native iOS 26 chrome gets real `.clear` glass,
-// while legacy/custom fills still reveal the shared ambient backdrop.
 //
-// Source: Direction B from the Kodu design handoff.
-//   Geist + Geist Mono · #fafaf9 background · #1d4ed8 accent · table density.
+// The app's single source of colour and type. Three appearances (light, dark,
+// OLED) and a brand-accent family, injected at the root and read everywhere via
+// `@Environment(\.koduTheme)`. `StudioTokens` is a view onto this, not a
+// second palette.
+//
+// Neutral content, hairline boundaries, colour reserved for state or the one
+// primary action on a screen. Set in SF Pro / SF Mono — an earlier revision
+// specified Geist, but no font files were ever added to the target, so the
+// helpers below resolve the system faces and say so.
 //
 // Usage:
 //   @Environment(\.koduTheme) var T
@@ -49,10 +52,9 @@ struct KoduTheme {
     let gap: CGFloat
 
     let isDark: Bool
-    /// True for the pure-black OLED appearance. Defaulted so existing
-    /// initializers/call sites are unaffected. Decorative surfaces (the
-    /// LiquidPinkBackdrop blooms/orbs) suppress themselves when this is set so
-    /// the page stays true #000000.
+    /// True for the pure-black OLED appearance, where `bg` is #010102 rather
+    /// than a near-black. Raised surfaces read this so they lift just enough
+    /// to register without pulling the page off true black.
     var isOLED: Bool = false
 
     // Brand-accent anchors. Stored (not computed) so `KoduTheme.make(appearance:accent:)`
@@ -63,56 +65,56 @@ struct KoduTheme {
     let roseDeep: Color      // inline code / deep edge of user bubble
     let accentStrong: Color  // primary CTA / active tab — deeper than `accent`
 
-    // MARK: - Light — neutral utility
+    // MARK: - Light — original white tone (no cream)
     static let light = KoduTheme(
-        bg:        Color(red: 0.968, green: 0.976, blue: 0.992),  // airy pearl canvas
-        surface:   Color.white.opacity(0.26),
-        surface2:  Color.white.opacity(0.18),
-        surface3:  Color.white.opacity(0.10),
-        ink:       Color(red: 0.110, green: 0.110, blue: 0.118),  // #1C1C1E label
-        ink2:      Color(red: 0.427, green: 0.427, blue: 0.447),  // #6D6D72 secondary
-        ink3:      Color(red: 0.557, green: 0.557, blue: 0.576),  // #8E8E93 tertiary
-        ink4:      Color(red: 0.780, green: 0.780, blue: 0.800),  // #C7C7CC quaternary
-        rule:      Color.black.opacity(0.10),
-        rule2:     Color.black.opacity(0.18),
-        accent:    Color(red: 0.000, green: 0.478, blue: 1.000),  // system blue fallback
-        accentSoft:   Color(red: 0.000, green: 0.478, blue: 1.000).opacity(0.10),
-        accentSofter: Color(red: 0.000, green: 0.478, blue: 1.000).opacity(0.06),
-        good:      Color(red: 0.133, green: 0.545, blue: 0.302),
-        warn:      Color(red: 0.690, green: 0.424, blue: 0.047),
-        bad:       Color(red: 0.784, green: 0.118, blue: 0.196),
+        bg:        Color(hex: 0xF7F9FD),                          // original pearl-white canvas
+        surface:   Color(hex: 0x1C1C1E).opacity(0.04),            // quiet panel tint
+        surface2:  Color(hex: 0x1C1C1E).opacity(0.07),            // raised tint
+        surface3:  Color(hex: 0x1C1C1E).opacity(0.03),            // whisper tint
+        ink:       Color(hex: 0x1C1C1E),
+        ink2:      Color(hex: 0x6D6D72),
+        ink3:      Color(hex: 0x5A5A5F),                          // glyphs / mono metrics (4.5:1 floor)
+        ink4:      Color(hex: 0xC7C7CC),                          // placeholders and chevrons only
+        rule:      Color(hex: 0x1C1C1E).opacity(0.10),
+        rule2:     Color(hex: 0x1C1C1E).opacity(0.14),
+        accent:    Color(hex: 0x1F5E46),                          // sage, state only
+        accentSoft:   Color(hex: 0x1F5E46).opacity(0.10),
+        accentSofter: Color(hex: 0x1F5E46).opacity(0.06),
+        good:      Color(hex: 0x1F5E46),
+        warn:      Color(hex: 0x8A6116),
+        bad:       Color(hex: 0xA8352C),
         pad: 16, gap: 10,
         isDark: false,
-        roseHi:       Color(red: 0.200, green: 0.560, blue: 1.000),
-        roseDeep:     Color(red: 0.000, green: 0.330, blue: 0.780),
-        accentStrong: Color(red: 0.000, green: 0.400, blue: 0.900)
+        roseHi:       Color(hex: 0x2F7A5C),
+        roseDeep:     Color(hex: 0x17452F),
+        accentStrong: Color(hex: 0x1C1C1E)
     )
 
-    // MARK: - Dark — neutral utility
+    // MARK: - Dark — neutral ink
     static let dark = KoduTheme(
-        // Lift the canvas above black so clear glass reads as smoked crystal,
-        // while keeping enough depth for bright, fully opaque foreground ink.
-        bg:        Color(red: 0.140, green: 0.155, blue: 0.190),
-        surface:   Color.white.opacity(0.13),
-        surface2:  Color.white.opacity(0.18),
-        surface3:  Color.white.opacity(0.08),
-        ink:       Color(red: 0.929, green: 0.929, blue: 0.937),
-        ink2:      Color(red: 0.706, green: 0.706, blue: 0.729),
-        ink3:      Color(red: 0.510, green: 0.510, blue: 0.533),
-        ink4:      Color(red: 0.337, green: 0.337, blue: 0.357),
-        rule:      Color.white.opacity(0.15),
-        rule2:     Color.white.opacity(0.25),
-        accent:    Color(red: 0.220, green: 0.600, blue: 1.000),
-        accentSoft:   Color(red: 0.220, green: 0.600, blue: 1.000).opacity(0.16),
-        accentSofter: Color(red: 0.220, green: 0.600, blue: 1.000).opacity(0.09),
-        good:      Color(red: 0.392, green: 0.784, blue: 0.533),
-        warn:      Color(red: 0.898, green: 0.643, blue: 0.263),
-        bad:       Color(red: 0.902, green: 0.404, blue: 0.431),
+        // The dark appearance inverts the white-tone palette: ink becomes the
+        // page, paper becomes the text, rules lift to warm-neutral white.
+        bg:        Color(hex: 0x151517),
+        surface:   Color(hex: 0xF5F6F8).opacity(0.06),
+        surface2:  Color(hex: 0xF5F6F8).opacity(0.10),
+        surface3:  Color(hex: 0xF5F6F8).opacity(0.04),
+        ink:       Color(hex: 0xF5F6F8),
+        ink2:      Color(hex: 0xB4B4B9),
+        ink3:      Color(hex: 0xA0A0A5),
+        ink4:      Color(hex: 0x6F6F74),
+        rule:      Color(hex: 0xF5F6F8).opacity(0.10),
+        rule2:     Color(hex: 0xF5F6F8).opacity(0.16),
+        accent:    Color(hex: 0x8FBFA8),
+        accentSoft:   Color(hex: 0x8FBFA8).opacity(0.14),
+        accentSofter: Color(hex: 0x8FBFA8).opacity(0.08),
+        good:      Color(hex: 0x8FBFA8),
+        warn:      Color(hex: 0xD9A75F),
+        bad:       Color(hex: 0xE2836F),
         pad: 16, gap: 10,
         isDark: true,
-        roseHi:       Color(red: 0.360, green: 0.660, blue: 1.000),
-        roseDeep:     Color(red: 0.040, green: 0.450, blue: 0.920),
-        accentStrong: Color(red: 0.220, green: 0.600, blue: 1.000)
+        roseHi:       Color(hex: 0xA8CFBB),
+        roseDeep:     Color(hex: 0x5F8F76),
+        accentStrong: Color(hex: 0x8FBFA8)
     )
 
     // MARK: - OLED Dark — Plum Dusk
@@ -347,86 +349,46 @@ struct KoduTheme {
     }
 
     // MARK: - Typography helpers
-    // Falls back to system fonts when Geist isn't installed.
     //
-    // Each helper returns a Font that respects iOS Dynamic Type by mapping
-    // the design's nominal size to the closest semantic TextStyle relative-
-    // weight. The result still LOOKS like our design at default settings, but
-    // scales when the user has Larger Text enabled in iOS Accessibility.
+    // The app is set in SF Pro / SF Mono. These helpers exist for one reason:
+    // to get an ARBITRARY point size that still follows Dynamic Type.
+    //
+    // `.font(.system(size: 17))` is a fixed size — it ignores the user's text
+    // size entirely. `Font.custom(_:size:relativeTo:)` is the only way to ask
+    // for "17pt, but scale it like body text does", so every helper below
+    // routes through it. Prefer these over `.system(size:)` for anything the
+    // user reads.
+    //
+    // These previously probed for a bundled "Geist" family first. No Geist
+    // files were ever added to the target and `UIAppFonts` is absent from
+    // Info.plist, so every call had always fallen through to the system face —
+    // the lookup, its cache and its weight-name mapping were dead code
+    // describing a design intent that did not ship.
 
-    /// Display / sans body. Uses Geist when the font is bundled, otherwise
-    /// falls back to the system default. The Kodu prototype targets Geist
-    /// specifically; this respects that intent without crashing on devices
-    /// that don't have the file.
+    /// Cached system face names. `UIFont.systemFont(...).fontName` resolves to
+    /// the concrete SF face (e.g. ".SFUI-Regular"); it does not change at
+    /// runtime, so resolving it once avoids a UIFont construction per call.
+    nonisolated(unsafe) private static let sansFace: String =
+        UIFont.systemFont(ofSize: 17).fontName
+    nonisolated(unsafe) private static let monoFace: String =
+        UIFont.monospacedSystemFont(ofSize: 17, weight: .regular).fontName
+
+    /// Display / sans body at an arbitrary size, scaling with Dynamic Type.
     func display(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
-        Self.named("Geist", size: size, weight: weight)
-            ?? Font.custom(UIFont.systemFont(ofSize: size).fontName, size: size, relativeTo: .body).weight(weight)
+        Font.custom(Self.sansFace, size: size, relativeTo: .body).weight(weight)
     }
 
     /// Shared reading size for prompts, live responses, and completed transcripts.
-    /// Both the bundled font and system fallback follow Dynamic Type.
-    var conversationBody: Font {
-        Self.named("Geist", size: 17, weight: .regular) ?? .body
-    }
+    var conversationBody: Font { .body }
 
     func sans(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        Self.named("Geist", size: size, weight: weight)
-            ?? Font.custom(UIFont.systemFont(ofSize: size).fontName, size: size, relativeTo: .body).weight(weight)
+        Font.custom(Self.sansFace, size: size, relativeTo: .body).weight(weight)
     }
 
-    /// Monospaced — pervasive in this design language. Prefers Geist Mono,
-    /// falls back to the system monospaced face.
+    /// Monospaced — pervasive in this design language, used for every machine
+    /// fact (metrics, byte counts, model ids).
     func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        Self.named("Geist Mono", size: size, weight: weight)
-            ?? Font.custom(UIFont.monospacedSystemFont(ofSize: size, weight: .regular).fontName, size: size, relativeTo: .body).weight(weight)
-    }
-
-    /// Returns nil when the family isn't registered with UIFont — the caller
-    /// then falls back to a system font. Cached per (family,weight) since
-    /// CTFontManager lookups aren't free.
-    private static func named(_ family: String, size: CGFloat, weight: Font.Weight) -> Font? {
-        let key = "\(family)|\(weight.weightString)"
-        if let cached = fontCache[key] {
-            return cached.map { Font.custom($0, size: size).weight(weight) }
-        }
-        // Probe UIFont — cheap miss is fine, we'll cache the negative result.
-        let candidate = uiFontName(family: family, weight: weight)
-        if UIFont(name: candidate, size: size) != nil {
-            fontCache[key] = candidate
-            return Font.custom(candidate, size: size).weight(weight)
-        }
-        fontCache[key] = .some(nil)   // negative cache
-        return nil
-    }
-
-    /// Font lookups happen on the main thread only (SwiftUI body evaluation).
-    /// Marking nonisolated(unsafe) is honest about the contract and silences
-    /// the Swift 6 strict-concurrency warning without forcing an actor hop.
-    nonisolated(unsafe) private static var fontCache: [String: String?] = [:]
-
-    /// Maps "Geist" + .semibold etc → "Geist-SemiBold" / "GeistMono-Regular".
-    /// Foundries register weighted variants this way; an exact name avoids
-    /// CoreText synthetic-bolding the regular face.
-    private static func uiFontName(family: String, weight: Font.Weight) -> String {
-        let base = family.replacingOccurrences(of: " ", with: "")
-        return "\(base)-\(weight.weightString)"
-    }
-}
-
-private extension Font.Weight {
-    var weightString: String {
-        switch self {
-        case .ultraLight: return "UltraLight"
-        case .thin:       return "Thin"
-        case .light:      return "Light"
-        case .regular:    return "Regular"
-        case .medium:     return "Medium"
-        case .semibold:   return "SemiBold"
-        case .bold:       return "Bold"
-        case .heavy:      return "Heavy"
-        case .black:      return "Black"
-        default:          return "Regular"
-        }
+        Font.custom(Self.monoFace, size: size, relativeTo: .body).weight(weight)
     }
 }
 

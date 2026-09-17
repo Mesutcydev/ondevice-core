@@ -4,7 +4,7 @@
 <dict>
   <key>com.apple.security.application-groups</key>
   <array>
-    <string>group.com.mesutcydev.ondevicecore.shared</string>
+    <string>group.com.mesutcydev.ondevicemax.shared</string>
   </array>
 </dict>
 </plist>

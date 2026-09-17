@@ -258,8 +258,8 @@ struct ReviewPromptSheet: View {
                         .padding(.vertical, 10)
                         .frame(maxWidth: .infinity)
                         .background(
-                            Capsule().fill(.clear)
-                                .overlay(Capsule().stroke(T.rule, lineWidth: 0.5))
+                            RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.clear)
+                                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.rule, lineWidth: 0.5))
                         )
                 }
                 .buttonStyle(.plain)

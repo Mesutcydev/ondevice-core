@@ -256,7 +256,7 @@ struct CoreAIModelsSectionView: View {
             .foregroundStyle(T.ink2)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
-            .background(T.ink.opacity(0.06), in: Capsule())
+            .background(T.ink.opacity(0.06), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private func removeInstalledPack(id: String) {

@@ -33,13 +33,13 @@ final class VoiceCatalogStore: ObservableObject {
             loadError = nil
             loadState = .loaded
             UserDefaults.standard.set(Self.schemaVersion, forKey: "voiceCatalogSchemaVersion")
-            print("[VoiceCatalog] loaded \(allEntries.count) production entries from \(url.lastPathComponent)")
+            Diagnostics.shared.debug("loaded \(allEntries.count) production entries from \(url.lastPathComponent)", category: "voicecatalog")
         } catch {
             loadError = error.localizedDescription
             loadState = .failed
             allEntries = Self.completeFallback
             assertionFailure("Voice catalog decode failed: \(error)")
-            print("[VoiceCatalog] decode failed: \(error); using complete fallback (\(allEntries.count) entries)")
+            Diagnostics.shared.error("decode failed: \(error); using complete fallback (\(allEntries.count) entries)", category: "voicecatalog")
         }
     }
 

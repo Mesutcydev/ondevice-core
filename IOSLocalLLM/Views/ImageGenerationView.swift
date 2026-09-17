@@ -22,7 +22,7 @@ struct ImageGenerationView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                LiquidPinkBackdrop()
+                StudioPageBackground()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         modelPicker
@@ -96,7 +96,7 @@ struct ImageGenerationView: View {
                                 .font(T.mono(8, .semibold))
                                 .foregroundColor(T.good)
                                 .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(Capsule().fill(T.good.opacity(0.14)))
+                                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.good.opacity(0.14)))
                         }
                     }
                     Text(m.subtitle)

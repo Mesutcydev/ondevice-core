@@ -12,10 +12,10 @@ export DEVELOPER_DIR="$XCODE/Contents/Developer"
 OUT_DIR="${1:-$HOME/Desktop}"
 VERSION="$(awk -F'"' '/CFBundleShortVersionString:/ { print $2; exit }' project.yml)"
 BUILD="$(awk -F'"' '/CURRENT_PROJECT_VERSION:/ { print $2; exit }' project.yml)"
-ARCHIVE="$ROOT/build/OnDeviceCoreAIStudio-$VERSION-$BUILD.xcarchive"
-IPA="$OUT_DIR/OnDeviceCoreAIStudio-sideload-entitled-$VERSION-$BUILD.ipa"
-LATEST="$OUT_DIR/OnDeviceCoreAIStudio-sideload-entitled-latest.ipa"
-APP="$ARCHIVE/Products/Applications/OnDeviceCoreAIStudio.app"
+ARCHIVE="$ROOT/build/OnDeviceMax-$VERSION-$BUILD.xcarchive"
+IPA="$OUT_DIR/OnDeviceMax-sideload-entitled-$VERSION-$BUILD.ipa"
+LATEST="$OUT_DIR/OnDeviceMax-sideload-entitled-latest.ipa"
+APP="$ARCHIVE/Products/Applications/OnDeviceMax.app"
 MAIN_ENTITLEMENTS="$ROOT/IOSLocalLLM/IOSLocalLLM-PCC.entitlements"
 EXT_ENTITLEMENTS="$ROOT/IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements"
 
@@ -36,8 +36,8 @@ echo "=== 3/8  Archive the full workbench unsigned"
 rm -rf "$ARCHIVE"
 mkdir -p build "$OUT_DIR"
 xcodebuild archive \
-  -workspace OnDeviceCoreAIStudio.xcworkspace \
-  -scheme OnDeviceCoreAIStudio \
+  -workspace OnDeviceMax.xcworkspace \
+  -scheme OnDeviceMax \
   -configuration Release \
   -destination 'generic/platform=iOS' \
   -archivePath "$ARCHIVE" \
@@ -45,7 +45,7 @@ xcodebuild archive \
   CODE_SIGNING_REQUIRED=NO \
   > build/sideload-archive.log 2>&1 \
   || { tail -80 build/sideload-archive.log; die "archive failed"; }
-[[ -d "$APP" ]] || die "archive contains no OnDeviceCoreAIStudio.app"
+[[ -d "$APP" ]] || die "archive contains no OnDeviceMax.app"
 
 echo "=== 4/8  Reject unsafe FoundationModels imports"
 ./scripts/verify_foundationmodels_symbols.sh "$APP" >/dev/null \
@@ -53,9 +53,9 @@ echo "=== 4/8  Reject unsafe FoundationModels imports"
 
 echo "=== 5/8  Verify archive identity and required resources"
 PLIST="$APP/Info.plist"
-[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")" == "com.mesutcydev.ondevicecore" ]] \
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")" == "com.mesutcydev.ondevicemax" ]] \
   || die "wrong bundle id"
-[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$PLIST")" == "OnDevice Core" ]] \
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$PLIST")" == "OnDevice Max" ]] \
   || die "wrong display name"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")" == "$VERSION" ]] \
   || die "wrong version"
@@ -64,10 +64,10 @@ PLIST="$APP/Info.plist"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST")" == "27.0" ]] \
   || die "wrong minimum OS"
 [[ -f "$APP/PrivacyInfo.xcprivacy" ]] || die "privacy manifest missing"
-[[ -d "$APP/PlugIns/OnDeviceCoreShare.appex" ]] || die "share extension missing"
+[[ -d "$APP/PlugIns/OnDeviceMaxShare.appex" ]] || die "share extension missing"
 [[ -d "$APP/Frameworks/llama.framework" ]] || die "llama framework missing"
 [[ -d "$APP/Frameworks/whisper.framework" ]] || die "whisper framework missing"
-otool -L "$APP/OnDeviceCoreAIStudio" | grep -q 'CoreAI.framework' || die "CoreAI framework is not linked"
+otool -L "$APP/OnDeviceMax" | grep -q 'CoreAI.framework' || die "CoreAI framework is not linked"
 
 python3 scripts/collect_sideload_notices.py "$APP" build/sideload-archive.log
 
@@ -78,14 +78,14 @@ rm -f "$IPA" "$LATEST"
 cp "$IPA" "$LATEST"
 
 echo "=== 7/8  Verify final Payload, signatures, flags and entitlements"
-VERIFY="$(mktemp -d "${TMPDIR:-/tmp}/ondevice-core-ipa.XXXXXX")"
+VERIFY="$(mktemp -d "${TMPDIR:-/tmp}/ondevice-max-ipa.XXXXXX")"
 trap 'rm -rf "$VERIFY"' EXIT
 unzip -tq "$IPA" >/dev/null || die "IPA zip integrity failed"
 unzip -q "$IPA" -d "$VERIFY"
 ROOT_ENTRIES="$(find "$VERIFY" -mindepth 1 -maxdepth 1 -print | wc -l | tr -d ' ')"
 [[ "$ROOT_ENTRIES" == "1" && -d "$VERIFY/Payload" ]] || die "IPA root must contain only Payload/"
-SIGNED_APP="$VERIFY/Payload/OnDeviceCoreAIStudio.app"
-SIGNED_EXT="$SIGNED_APP/PlugIns/OnDeviceCoreShare.appex"
+SIGNED_APP="$VERIFY/Payload/OnDeviceMax.app"
+SIGNED_EXT="$SIGNED_APP/PlugIns/OnDeviceMaxShare.appex"
 codesign --verify --deep --strict "$SIGNED_APP" || die "final app signature invalid"
 [[ -f "$SIGNED_APP/PrivacyInfo.xcprivacy" ]] || die "final privacy manifest missing"
 for key in UIFileSharingEnabled LSSupportsOpeningDocumentsInPlace; do
@@ -106,7 +106,7 @@ done
 EXT_ACTUAL="$VERIFY/extension-entitlements.plist"
 codesign -d --entitlements :- "$SIGNED_EXT" > "$EXT_ACTUAL" 2>/dev/null
 /usr/libexec/PlistBuddy -c 'Print :com.apple.security.application-groups:0' "$EXT_ACTUAL" \
-  | grep -q '^group.com.mesutcydev.ondevicecore.shared$' \
+  | grep -q '^group.com.mesutcydev.ondevicemax.shared$' \
   || die "share extension app-group entitlement mismatch"
 
 echo "=== 8/8  Artifact"

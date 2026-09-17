@@ -22,31 +22,31 @@ struct KCapabilityPill: View {
     @Environment(\.koduTheme) private var T
 
     var body: some View {
-        HStack(spacing: glyphSpacing) {
-            Image(systemName: capability.symbol)
-                .font(.system(size: glyphSize, weight: .bold))
-            Text(capability.label.uppercased())
-                .font(T.mono(textSize, .semibold))
-                .tracking(0.6)
+        // Studio: capabilities read as quiet mono tags on a whisper fill —
+        // the semantic hue survives as a small leading dot only, so a card
+        // never becomes a rainbow of bordered capsules.
+        HStack(spacing: 5) {
+            Circle()
+                .fill(capability.tint)
+                .frame(width: 4, height: 4)
+            Text(capability.label.lowercased())
+                .font(T.mono(textSize))
+                .tracking(0.2)
         }
-        .foregroundColor(capability.tint)
+        .foregroundColor(T.studio.ink2)
         .padding(.horizontal, hPad)
         .padding(.vertical, vPad)
         .background(
-            Capsule().fill(capability.tint.opacity(T.isDark ? 0.16 : 0.12))
-        )
-        .overlay(
-            Capsule().stroke(capability.tint.opacity(T.isDark ? 0.40 : 0.28),
-                             lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: StudioRadius.chip, style: .continuous)
+                .fill(T.studio.fillActive)
         )
         .fixedSize(horizontal: true, vertical: false)
+        .accessibilityLabel(capability.label)
     }
 
     // MARK: - Size knobs
 
-    private var glyphSize: CGFloat { size == .standard ? 9.5 : 8 }
-    private var textSize: CGFloat  { size == .standard ? 9.5 : 8.5 }
-    private var glyphSpacing: CGFloat { size == .standard ? 4 : 3 }
+    private var textSize: CGFloat  { size == .standard ? 10 : 9 }
     private var hPad: CGFloat      { size == .standard ? 8 : 6 }
     private var vPad: CGFloat      { size == .standard ? 3.5 : 2.5 }
 }
@@ -115,28 +115,23 @@ struct KVendorThumb: View {
 
     var body: some View {
         ZStack {
-            // Brand-tinted gradient fill — the visual fingerprint.
+            // Flat neutral fill — vendor gradients were retired with the
+            // Studio reskin; identity comes from the monogram, not color.
             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [vendor.gradient.0, vendor.gradient.1],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+                .fill(T.studio.fillActive)
 
             // Mark — SF Symbol when the vendor has one (Apple), monogram
             // otherwise. Emojis (HF) render through Text just fine.
             if let symbol = vendor.systemSymbol {
                 Image(systemName: symbol)
                     .font(.system(size: glyphSize, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(T.studio.ink)
             } else {
                 Text(vendor.monogram)
                     .font(.system(size: monogramSize,
                                   weight: .heavy,
                                   design: vendor == .ggmlOrg ? .monospaced : .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(T.studio.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                     .padding(.horizontal, 4)

@@ -44,6 +44,21 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// True for scripts written right-to-left.
+    ///
+    /// This matters because the app has its OWN language picker, independent
+    /// of the system language. SwiftUI derives `layoutDirection` from the
+    /// system locale, so a user whose phone is in English but who selects
+    /// Arabic here would otherwise read Arabic in a left-to-right layout.
+    /// `.system` is excluded deliberately — in that case iOS has already set
+    /// the correct direction and we must not override it.
+    var isRightToLeft: Bool {
+        switch self {
+        case .arabic: return true
+        default: return false
+        }
+    }
+
     var displayName: String {
         switch self {
         case .system:     return "System default"
@@ -135,27 +150,31 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     /// Falls back to the English source if no translation is registered,
     /// so the UI never goes blank for a missing key. Safe to call from
     /// any thread — reads an immutable lookup table.
+    /// The language actually in force: the explicit choice, or the closest
+    /// supported match for the device's preferred language when set to
+    /// `.system`. Never returns `.system` itself.
+    var effectiveLanguage: AppLanguage {
+        if language != .system { return language }
+        let preferred = Locale.preferredLanguages.first ?? "en"
+        if preferred.hasPrefix("de") { return .german }
+        if preferred.hasPrefix("fr") { return .french }
+        if preferred.hasPrefix("es") { return .spanish }
+        if preferred.hasPrefix("pt") { return .portuguese }
+        if preferred.hasPrefix("it") { return .italian }
+        if preferred.hasPrefix("el") { return .greek }
+        if preferred.hasPrefix("ro") { return .romanian }
+        if preferred.hasPrefix("ru") { return .russian }
+        if preferred.hasPrefix("tr") { return .turkish }
+        if preferred.hasPrefix("ar") { return .arabic }
+        if preferred.hasPrefix("hi") { return .hindi }
+        if preferred.hasPrefix("zh") { return .chinese }
+        if preferred.hasPrefix("ja") { return .japanese }
+        if preferred.hasPrefix("ko") { return .korean }
+        return .english
+    }
+
     func t(_ key: String) -> String {
-        let effective: AppLanguage = {
-            if language != .system { return language }
-            let preferred = Locale.preferredLanguages.first ?? "en"
-            if preferred.hasPrefix("de") { return .german }
-            if preferred.hasPrefix("fr") { return .french }
-            if preferred.hasPrefix("es") { return .spanish }
-            if preferred.hasPrefix("pt") { return .portuguese }
-            if preferred.hasPrefix("it") { return .italian }
-            if preferred.hasPrefix("el") { return .greek }
-            if preferred.hasPrefix("ro") { return .romanian }
-            if preferred.hasPrefix("ru") { return .russian }
-            if preferred.hasPrefix("tr") { return .turkish }
-            if preferred.hasPrefix("ar") { return .arabic }
-            if preferred.hasPrefix("hi") { return .hindi }
-            if preferred.hasPrefix("zh") { return .chinese }
-            if preferred.hasPrefix("ja") { return .japanese }
-            if preferred.hasPrefix("ko") { return .korean }
-            return .english
-        }()
-        switch effective {
+        switch effectiveLanguage {
         case .english, .system: return key
         case .german:           return Self.de[key] ?? key
         case .french:           return Self.fr[key] ?? key

@@ -52,7 +52,7 @@ The script must run with Xcode 27 and performs the complete release contract:
 
 1. Regenerate the Xcode project from `project.yml` and install CocoaPods.
 2. Verify catalog invariants and every direct Core AI model URL.
-3. Archive the `OnDeviceCoreAIStudio` scheme in `Release` for generic iOS with
+3. Archive the `OnDeviceMax` scheme in `Release` for generic iOS with
    signing disabled.
 4. Reject unsafe Foundation Models imports and confirm Core AI linkage.
 5. Verify the bundle ID, display name, version/build, iOS 27 minimum, privacy

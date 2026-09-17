@@ -10,7 +10,8 @@ Product line: OnDevice
 Repository: https://github.com/Mesutcydev/ios-local-llm
 Website: https://mesutcydev.github.io/ios-local-llm/
 License: MIT for original project code and documentation
-Swift module and Xcode scheme: IOSLocalLLM
+Swift module: IOSLocalLLM
+Xcode scheme and workspace: OnDeviceMax
 
 ## OnDevice product line
 
@@ -32,6 +33,16 @@ Swift module and Xcode scheme: IOSLocalLLM
 - [Security policy](https://github.com/Mesutcydev/ios-local-llm/blob/main/SECURITY.md)
 - [Third-party notices](https://github.com/Mesutcydev/ios-local-llm/blob/main/THIRD_PARTY_NOTICES.md)
 - [Structured metadata](https://github.com/Mesutcydev/ios-local-llm/blob/main/codemeta.json)
+
+## Fork-local documentation
+
+These describe the OnDevice Max fork itself and are not part of the upstream
+source distribution:
+
+- `Docs/MAX_RELEASE_AUDIT.md` — fork identity verification, release-packaging
+  audit, defects found and fixed, and outstanding items
+- `RELEASE_AUDIT.md` — upstream OnDevice Core release record, intentionally
+  unmodified because it documents Core's real builds and digests
 
 ## Capabilities
 

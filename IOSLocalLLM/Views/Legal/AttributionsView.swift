@@ -57,7 +57,7 @@ struct AttributionsView: View {
                     Button("Done") { dismiss() }.foregroundColor(T.ink)
                 }
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
         }
     }
 

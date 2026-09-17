@@ -94,7 +94,7 @@ final class SpeechDictationService: ObservableObject {
         for locale in candidates where seen.insert(locale.identifier).inserted {
             if let rec = SFSpeechRecognizer(locale: locale), rec.isAvailable {
                 if locale.identifier != deviceLocale.identifier {
-                    print("[SpeechDictation] Falling back from \(deviceLocale.identifier) to \(locale.identifier)")
+                    Diagnostics.shared.warning("Falling back from \(deviceLocale.identifier) to \(locale.identifier)", category: "speechdictation")
                 }
                 return rec
             }
@@ -317,7 +317,7 @@ final class SpeechDictationService: ObservableObject {
                 // Older devices / certain audio routes refuse voice
                 // processing. Barge-in becomes less reliable but the
                 // rest of the conversation flow still works.
-                print("[SpeechDictation] voice processing unavailable: \(error)")
+                Diagnostics.shared.error("voice processing unavailable: \(error)", category: "speechdictation")
             }
         }
 
@@ -532,7 +532,7 @@ final class SpeechDictationService: ObservableObject {
             do {
                 try inputNode.setVoiceProcessingEnabled(true)
             } catch {
-                print("[SpeechDictation] voice processing unavailable on resume: \(error)")
+                Diagnostics.shared.error("voice processing unavailable on resume: \(error)", category: "speechdictation")
             }
         }
         _ = try validInputFormat(inputNode, label: "system dictation resume")
@@ -599,8 +599,8 @@ final class SpeechDictationService: ObservableObject {
         // the input side sometimes still has the real hardware rate.
         let hwFormat = inputNode.inputFormat(forBus: 0)
         if hwFormat.sampleRate > 0 && hwFormat.channelCount > 0 { return hwFormat }
-        print("[SpeechDictation] \(label) input format invalid: " +
-              "out=\(format), in=\(hwFormat)")
+        Diagnostics.shared.error("\(label) input format invalid: out=\(format), in=\(hwFormat)",
+                                 category: "speechdictation")
         throw NSError(domain: "SpeechDictation", code: -2, userInfo: [
             NSLocalizedDescriptionKey:
                 "Microphone isn't ready yet. Tap voice mode again in a moment."
@@ -728,7 +728,7 @@ final class SpeechDictationService: ObservableObject {
                 } else {
                     message = error.localizedDescription
                 }
-                print("[Whisper] transcription failed: \(error)")
+                Diagnostics.shared.error("transcription failed: \(error)", category: "whisper")
                 await MainActor.run {
                     ToastCenter.shared.error(
                         "Whisper transcription failed",

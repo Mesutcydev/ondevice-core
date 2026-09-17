@@ -120,8 +120,8 @@ struct KeyboardToolbar: View {
                             .foregroundColor(T.ink2)
                             .lineLimit(1)
                             .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(RoundedRectangle(cornerRadius: 5).fill(T.surface2))
-                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(T.rule, lineWidth: 1))
+                            .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
+                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                 }
@@ -149,7 +149,7 @@ struct KeyboardToolbar: View {
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(T.ink2)
                 .frame(width: 34, height: 34)
-                .kGlass(cornerRadius: 7, fallbackFill: T.surface2)
+                .kGlass(cornerRadius: 6, fallbackFill: T.surface2)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -182,22 +182,25 @@ struct KeyboardToolbar: View {
                     .font(T.mono(11, .semibold))
                     .tracking(0.3)
                     // Cross-fade the label text rather than snapping. Pairs
-                    // with the symbol bounce above so the entire pill morphs
+                    // with the symbol bounce above so the whole button morphs
                     // as one unit on state change.
                     .contentTransition(.identity)
                     .animation(.easeInOut(duration: 0.18), value: isSending)
             }
-            .foregroundColor(.white)
+            .foregroundColor(T.studio.paper)
             .padding(.horizontal, 12).padding(.vertical, 9)
             .frame(minWidth: 78)
+            // Matches the Assistant composer's send button. This used to be a
+            // 9999-radius pill filled with the accent — the only pill left in
+            // the app, on the one other composer the user sees.
             .background(
-                RoundedRectangle(cornerRadius: 9999, style: .continuous)
+                RoundedRectangle(cornerRadius: StudioRadius.send, style: .continuous)
                     .fill(
-                        canSend ? AnyShapeStyle(T.accentStrong) : AnyShapeStyle(T.ink3)
+                        canSend ? AnyShapeStyle(T.studio.ink) : AnyShapeStyle(T.ink4)
                     )
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(StudioPressStyle())
         .disabled(!canSend || isSending)
         .accessibilityLabel("Send")
     }

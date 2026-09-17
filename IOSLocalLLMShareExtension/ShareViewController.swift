@@ -11,9 +11,9 @@ import SwiftUI
 // the main app via a custom URL scheme.
 //
 // Hand-off URLs:
-//   ondevice-core://share?file=<jpg-name>          → image (lens tab)
-//   ondevice-core://share?text=<percent-encoded>   → text snippet (assistant tab)
-//   ondevice-core://share?url=<percent-encoded>    → URL (assistant tab)
+//   ondevice-max://share?file=<jpg-name>          → image (lens tab)
+//   ondevice-max://share?text=<percent-encoded>   → text snippet (assistant tab)
+//   ondevice-max://share?url=<percent-encoded>    → URL (assistant tab)
 //
 // Long text shares (>1500 chars) go through the file-staging path instead of
 // the URL — iOS truncates open URLs around 2KB and Safari/Mail share
@@ -22,8 +22,8 @@ import SwiftUI
 final class ShareViewController: UIViewController {
 
     // App Group identifier — must match the main app's entitlements.
-    private static let appGroupID = "group.com.mesutcydev.ondevicecore.shared"
-    private static let urlScheme  = "ondevice-core"
+    private static let appGroupID = "group.com.mesutcydev.ondevicemax.shared"
+    private static let urlScheme  = "ondevice-max"
 
     /// Threshold above which we stash text in a file and hand the
     /// filename to the main app instead of inlining via URL query.

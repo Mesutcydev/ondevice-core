@@ -33,7 +33,7 @@ struct HFSearchView: View {
                 Rectangle().fill(T.rule).frame(height: 1)
                 resultsList
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .navigationTitle("Find Models")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
@@ -89,7 +89,7 @@ struct HFSearchView: View {
                         .font(T.sans(14, .medium))
                         .foregroundColor(T.ink)
                         .padding(.horizontal, 12)
-                        .frame(height: 38)
+                        .frame(minHeight: 38)
                         .kGlassCapsule(fallbackFill: T.surface, fallbackStroke: T.glassBorder)
                 }
 
@@ -298,7 +298,7 @@ struct HFSearchRow: View {
                     .font(.system(size: 17, weight: .semibold))
                     .frame(width: 44, height: 44)
                     .background(
-                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .fill(T.accentSoft)
                     )
 
@@ -349,8 +349,8 @@ struct HFSearchRow: View {
                             .foregroundColor(tagColor(tag).contentColor)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Capsule().fill(tagColor(tag).background))
-                            .overlay(Capsule()
+                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(tagColor(tag).background))
+                            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
                                 .stroke(tagColor(tag).contentColor.opacity(0.22), lineWidth: 0.5))
                     }
                 }
@@ -466,8 +466,8 @@ struct HFSearchRow: View {
             }
             .foregroundColor(T.accent2)
             .padding(.horizontal, 14)
-            .frame(height: 36)
-            .background(Capsule().fill(T.accent2.opacity(0.12)))
+            .frame(minHeight: 36)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accent2.opacity(0.12)))
         } else {
         switch state {
         case .idle, .failed:
@@ -495,8 +495,8 @@ struct HFSearchRow: View {
                 }
                 .foregroundColor(.white)
                 .padding(.horizontal, 14)
-                .frame(height: 36)
-                .background(Capsule().fill(isBlocked ? T.ink3 : T.accentStrong))
+                .frame(minHeight: 36)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(isBlocked ? T.ink3 : T.accentStrong))
             }
             .buttonStyle(.plain)
             .disabled(isBlocked)
@@ -617,12 +617,12 @@ struct SearchRowSkeleton: View {
                 .frame(width: 18, height: 18)
                 .shimmer(duration: 1.4)
             VStack(alignment: .leading, spacing: 5) {
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: 3)
                     .fill(T.surface2)
                     .frame(height: 12)
                     .frame(maxWidth: .infinity)
                     .shimmer(duration: 1.4)
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: 3)
                     .fill(T.surface2)
                     .frame(width: 110, height: 9)
                     .shimmer(duration: 1.4)

@@ -56,7 +56,7 @@ struct AnalysisHistoryView: View {
                 Button("Clear", role: .destructive) { analysis.clearHistory() }
                 Button("Cancel", role: .cancel) {}
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
         }
     }
 

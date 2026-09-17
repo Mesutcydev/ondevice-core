@@ -15,10 +15,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "D039FFCCC31D7FCFA7ACA5C0"
+               BlueprintIdentifier = "E66FE63C75ADA0B821ED8AA9"
                BuildableName = "IOSLocalLLM.app"
                BlueprintName = "IOSLocalLLM"
-               ReferencedContainer = "container:OnDeviceCoreAIStudio.xcodeproj">
+               ReferencedContainer = "container:OnDeviceMax.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -29,10 +29,10 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "58083E2B670DCF31AEB6EEBE"
+               BlueprintIdentifier = "50EB884A41CC0B41FA041104"
                BuildableName = "IOSLocalLLMTests.xctest"
                BlueprintName = "IOSLocalLLMTests"
-               ReferencedContainer = "container:OnDeviceCoreAIStudio.xcodeproj">
+               ReferencedContainer = "container:OnDeviceMax.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -43,10 +43,10 @@
             buildForAnalyzing = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "BE4063E50C93784CE1545804"
+               BlueprintIdentifier = "74A27AC8A5E43D936FA642F3"
                BuildableName = "IOSLocalLLMUITests.xctest"
                BlueprintName = "IOSLocalLLMUITests"
-               ReferencedContainer = "container:OnDeviceCoreAIStudio.xcodeproj">
+               ReferencedContainer = "container:OnDeviceMax.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -60,10 +60,10 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "D039FFCCC31D7FCFA7ACA5C0"
+            BlueprintIdentifier = "E66FE63C75ADA0B821ED8AA9"
             BuildableName = "IOSLocalLLM.app"
             BlueprintName = "IOSLocalLLM"
-            ReferencedContainer = "container:OnDeviceCoreAIStudio.xcodeproj">
+            ReferencedContainer = "container:OnDeviceMax.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
@@ -72,10 +72,10 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "58083E2B670DCF31AEB6EEBE"
+               BlueprintIdentifier = "50EB884A41CC0B41FA041104"
                BuildableName = "IOSLocalLLMTests.xctest"
                BlueprintName = "IOSLocalLLMTests"
-               ReferencedContainer = "container:OnDeviceCoreAIStudio.xcodeproj">
+               ReferencedContainer = "container:OnDeviceMax.xcodeproj">
             </BuildableReference>
          </TestableReference>
          <TestableReference
@@ -83,10 +83,10 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "BE4063E50C93784CE1545804"
+               BlueprintIdentifier = "74A27AC8A5E43D936FA642F3"
                BuildableName = "IOSLocalLLMUITests.xctest"
                BlueprintName = "IOSLocalLLMUITests"
-               ReferencedContainer = "container:OnDeviceCoreAIStudio.xcodeproj">
+               ReferencedContainer = "container:OnDeviceMax.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -107,10 +107,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "D039FFCCC31D7FCFA7ACA5C0"
+            BlueprintIdentifier = "E66FE63C75ADA0B821ED8AA9"
             BuildableName = "IOSLocalLLM.app"
             BlueprintName = "IOSLocalLLM"
-            ReferencedContainer = "container:OnDeviceCoreAIStudio.xcodeproj">
+            ReferencedContainer = "container:OnDeviceMax.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -124,10 +124,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "D039FFCCC31D7FCFA7ACA5C0"
+            BlueprintIdentifier = "E66FE63C75ADA0B821ED8AA9"
             BuildableName = "IOSLocalLLM.app"
             BlueprintName = "IOSLocalLLM"
-            ReferencedContainer = "container:OnDeviceCoreAIStudio.xcodeproj">
+            ReferencedContainer = "container:OnDeviceMax.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

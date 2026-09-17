@@ -41,7 +41,7 @@ struct AnalysisPanelView: View {
 
             if result.mode == .visual {
                 // Visual mode: single description panel, no tabs
-                Divider().background(Color.white.opacity(0.1))
+                Divider().background(T.rule)
                 visualDescriptionTab
             } else {
                 // Code mode: Code / Review tabs + Q&A bar
@@ -53,7 +53,7 @@ struct AnalysisPanelView: View {
                 .padding(.horizontal)
                 .padding(.vertical, 8)
 
-                Divider().background(Color.white.opacity(0.1))
+                Divider().background(T.rule)
 
                 TabView(selection: $selectedTab) {
                     codeTab.tag(0)
@@ -585,8 +585,8 @@ struct AnalysisPanelView: View {
             .foregroundColor(tint)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(Capsule().fill(tint.opacity(0.12)))
-            .overlay(Capsule().stroke(tint.opacity(0.40), lineWidth: 0.5))
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(tint.opacity(0.12)))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(tint.opacity(0.40), lineWidth: 0.5))
         }
         .buttonStyle(.plain)
     }
@@ -630,7 +630,7 @@ struct StreamingCaret: View {
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 15, paused: reduceMotion || scenePhase != .active)) { context in
             let phase = context.date.timeIntervalSinceReferenceDate * .pi * 2 / 1.2
-            RoundedRectangle(cornerRadius: 1)
+            RoundedRectangle(cornerRadius: 3)
                 .fill(T.ink)
                 .frame(width: 2, height: caretHeight)
                 .opacity(reduceMotion ? 0.65 : 0.35 + 0.65 * (sin(phase) + 1) / 2)

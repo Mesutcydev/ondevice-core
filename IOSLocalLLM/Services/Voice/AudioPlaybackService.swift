@@ -162,7 +162,7 @@ final class AudioPlaybackService: ObservableObject {
                 installMeterTapIfNeeded(format: mainMixer.outputFormat(forBus: 0))
             }
         } catch {
-            print("[AudioPlaybackService] Engine start failed: \(error)")
+            Diagnostics.shared.error("Engine start failed: \(error)", category: "audioplaybackservice")
             return scheduledSampleCount
         }
 
@@ -228,7 +228,7 @@ final class AudioPlaybackService: ObservableObject {
                     guard let self else { return }
                     if guardian.resume() {
                         self.handleWatchdogTimeout()
-                        print("[AudioPlaybackService] playback watchdog fired after \(String(format: "%.1f", budget))s")
+                        Diagnostics.shared.warning("playback watchdog fired after \(String(format: "%.1f", budget))s", category: "audioplaybackservice")
                     }
                 }
             }

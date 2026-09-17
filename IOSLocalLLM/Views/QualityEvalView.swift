@@ -29,7 +29,7 @@ struct QualityEvalView: View {
                 }
                 .padding(.bottom, 32)
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
@@ -204,7 +204,7 @@ struct QualityEvalView: View {
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(6)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(T.surface2))
+                    .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
             }
         }
         .padding(.vertical, 6)

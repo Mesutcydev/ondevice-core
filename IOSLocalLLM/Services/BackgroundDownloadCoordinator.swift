@@ -30,7 +30,7 @@ final class BackgroundDownloadCoordinator: NSObject {
 
     private lazy var session: URLSession = {
         let cfg = URLSessionConfiguration.background(
-            withIdentifier: "com.mesutcydev.ondevicecore.background-downloads"
+            withIdentifier: "com.mesutcydev.ondevicemax.background-downloads"
         )
         cfg.isDiscretionary = false
         cfg.sessionSendsLaunchEvents = true
@@ -49,7 +49,7 @@ final class BackgroundDownloadCoordinator: NSObject {
     /// whether we're on an expensive (cellular / hotspot) link.
     private let pathMonitor: NWPathMonitor = {
         let monitor = NWPathMonitor()
-        monitor.start(queue: DispatchQueue(label: "com.mesutcydev.ondevicecore.download-path-monitor"))
+        monitor.start(queue: DispatchQueue(label: "com.mesutcydev.ondevicemax.download-path-monitor"))
         return monitor
     }()
 

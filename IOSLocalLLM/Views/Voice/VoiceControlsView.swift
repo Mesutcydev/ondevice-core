@@ -85,7 +85,7 @@ struct SpeakerAnimationView: View {
             let phase = reduceMotion ? 0 : context.date.timeIntervalSinceReferenceDate * .pi * 2
             HStack(spacing: 2) {
                 ForEach(0..<3) { i in
-                    Capsule()
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(T.ink2)
                         .frame(width: 2, height: 5 + CGFloat(sin(phase + Double(i) * .pi / 2)) * 3)
                 }

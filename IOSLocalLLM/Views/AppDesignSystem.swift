@@ -1,6 +1,17 @@
 import SwiftUI
 
 // MARK: - Shared semantic design tokens
+//
+// What remains here after the Studio consolidation. `StudioTokens` /
+// `StudioSpacing` / `StudioRadius` are the app's design language; this file
+// holds the few tokens that outlived the old system because they are still
+// load-bearing for the Lens (camera) chrome, which has different constraints
+// to the rest of the app — it composites over a live camera feed, so it needs
+// a heavier material than any Studio surface.
+//
+// Removed with the landing screen: AppRadius, AssistantSpacing,
+// AssistantRadius, AppStroke, AppShadow, AppTypography and
+// KeyboardDismissModifier — all of them had zero remaining call sites.
 
 enum AppSpacing {
     static let xSmall: CGFloat = 4
@@ -11,57 +22,16 @@ enum AppSpacing {
     static let xxLarge: CGFloat = 32
 }
 
-enum AppRadius {
-    static let control: CGFloat = 12
-    static let card: CGFloat = 20
-    static let panel: CGFloat = 24
-    static let composer: CGFloat = 24
-}
-
-// Assistant-specific rhythm. These names describe the density of the chat
-// surface and keep its header, empty state, actions, and composer aligned.
-enum AssistantSpacing {
-    static let xxxSmall: CGFloat = 4
-    static let xxSmall: CGFloat = 8
-    static let xSmall: CGFloat = 12
-    static let small: CGFloat = 16
-    static let medium: CGFloat = 20
-    static let large: CGFloat = 24
-    static let xLarge: CGFloat = 32
-}
-
-enum AssistantRadius {
-    static let small: CGFloat = 12
-    static let medium: CGFloat = 16
-    static let large: CGFloat = 22
-    static let composer: CGFloat = 26
-}
-
-enum AppTypography {
-    static let eyebrow: Font = .caption2.weight(.semibold)
-    static let secondary: Font = .subheadline
-    static let body: Font = .body
-    static let title: Font = .title3.weight(.semibold)
-}
-
-enum AppStroke {
-    static let hairline: CGFloat = 0.5
-    static let regular: CGFloat = 1
-}
-
-enum AppShadow {
-    static let panelColor = Color.black.opacity(0.16)
-    static let panelRadius: CGFloat = 18
-    static let panelY: CGFloat = 6
-}
-
 enum AppAnimation {
     static let quick = Animation.easeOut(duration: 0.16)
     static let state = Animation.spring(response: 0.36, dampingFraction: 0.86)
 }
 
+/// Camera-safe panel used by the Lens overlays. Deliberately heavier than a
+/// Studio surface: `.regularMaterial` and a brighter stroke, because a thin
+/// material over a live camera feed reads as a smudge rather than a panel.
 struct AppPanelBackground: ViewModifier {
-    var cornerRadius: CGFloat = AppRadius.panel
+    var cornerRadius: CGFloat = StudioRadius.panel
     var cameraSafe = false
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -82,36 +52,19 @@ struct AppPanelBackground: ViewModifier {
                     cameraSafe
                         ? Color.white.opacity(colorScheme == .dark ? 0.22 : 0.34)
                         : Color.primary.opacity(0.10),
-                    lineWidth: AppStroke.hairline
+                    lineWidth: 0.5
                 )
             }
-            .shadow(color: AppShadow.panelColor, radius: AppShadow.panelRadius, y: AppShadow.panelY)
+            .shadow(color: Color.black.opacity(0.16), radius: 18, y: 6)
     }
 }
 
 extension View {
-    func appPanel(cornerRadius: CGFloat = AppRadius.panel, cameraSafe: Bool = false) -> some View {
+    func appPanel(cornerRadius: CGFloat = StudioRadius.panel, cameraSafe: Bool = false) -> some View {
         modifier(AppPanelBackground(cornerRadius: cornerRadius, cameraSafe: cameraSafe))
     }
 
     func minimumInteractiveSize() -> some View {
         frame(minWidth: 44, minHeight: 44)
-    }
-}
-
-/// Keeps focus cleanup consistent for controls that remain mounted inside a TabView.
-struct KeyboardDismissModifier<Trigger: Equatable>: ViewModifier {
-    let trigger: Trigger
-
-    func body(content: Content) -> some View {
-        content.onChange(of: trigger) { _, _ in
-            KeyboardDismiss.now()
-        }
-    }
-}
-
-extension View {
-    func dismissKeyboardWhen<Trigger: Equatable>(_ trigger: Trigger) -> some View {
-        modifier(KeyboardDismissModifier(trigger: trigger))
     }
 }

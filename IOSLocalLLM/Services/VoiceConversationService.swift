@@ -371,7 +371,7 @@ final class VoiceConversationService: ObservableObject {
             try dictation.start(continuous: true, handler)
             return true
         } catch {
-            print("[VoiceConversation] hard mic restart failed: \(error)")
+            Diagnostics.shared.error("hard mic restart failed: \(error)", category: "voiceconversation")
             return false
         }
     }

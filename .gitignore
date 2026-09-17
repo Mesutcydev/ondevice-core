@@ -92,6 +92,12 @@ tmp/
 *.bak
 *.swp
 *~
+
+# Python bytecode caches written by the release tooling in `scripts/`
+# (verify_zoo_downloads.py, collect_sideload_notices.py). Generated, never
+# source — the ThirdParty submodule trees carry their own and stay untouched.
+__pycache__/
+*.py[cod]
 # Local GitHub Pages preview output and Codex workspace notes. The published
 # site is maintained on the gh-pages branch, not in the source checkout.
 /.zcode/

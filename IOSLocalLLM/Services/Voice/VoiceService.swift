@@ -152,7 +152,7 @@ final class VoiceService: ObservableObject {
         var available: Set<VoiceEngineKind> = [.appleSystem]
         if VoiceModelBundleValidator.isKittenTTSAvailable() { available.insert(.kittenTTS) }
         if VoiceModelBundleValidator.isKokoroAvailable() { available.insert(.kokoro) }
-        print("[VoiceService] installed neural engines discovered=\(available.map(\.rawValue).sorted())")
+        Diagnostics.shared.debug("installed neural engines discovered=\(available.map(\.rawValue).sorted())", category: "voiceservice")
         VoiceSettingsStore.shared.completeAvailabilityCheck(availableEngines: available)
         if restored != .appleSystem,
            VoiceSettingsStore.shared.selectedEngine == .appleSystem {
@@ -336,7 +336,7 @@ final class VoiceService: ObservableObject {
                 } catch {
                     // KittenTTS/Kokoro can fail on some inputs — fall back
                     // to AVSpeechSynthesizer for the rest of the utterance.
-                    print("[VoiceService] synthesis error: \(error)")
+                    Diagnostics.shared.error("synthesis error: \(error)", category: "voiceservice")
                     if !fellBack {
                         fellBack = true
                         await MainActor.run { self.playbackService.stop() }
@@ -587,7 +587,7 @@ final class VoiceService: ObservableObject {
                         // on the next chunk and could produce another
                         // garbled "zombie voice" burst between clean system
                         // utterances.
-                        print("[VoiceService] stream synthesis error: \(error)")
+                        Diagnostics.shared.error("stream synthesis error: \(error)", category: "voiceservice")
                         if !fellBackHard {
                             fellBackHard = true
                             // Stop any in-flight PCM playback so a half-
@@ -796,7 +796,7 @@ final class VoiceService: ObservableObject {
             "\(displayLanguage) voice not installed",
             detail: "Open Settings → Accessibility → Spoken Content → Voices → \(displayLanguage) to install. Falling back to your current voice for now."
         )
-        print("[VoiceService] No installed voice for language '\(language)' — falling back to '\(language == prefix ? prefix : language)'-incapable preferred voice. Chunks may sound wrong.")
+        Diagnostics.shared.warning("No installed voice for language '\(language)' — falling back to '\(language == prefix ? prefix : language)'-incapable preferred voice. Chunks may sound wrong.", category: "voiceservice")
     }
 
     private func voiceMatchesLanguage(_ voice: VoiceOption, language: String) -> Bool {
@@ -882,7 +882,7 @@ final class VoiceService: ObservableObject {
             // though the session is inactive. Always reactivate it.
             try session.setActive(true, options: [])
         } catch {
-            print("[VoiceService] Failed to set playback session: \(error)")
+            Diagnostics.shared.error("Failed to set playback session: \(error)", category: "voiceservice")
         }
     }
 

@@ -312,7 +312,7 @@ final class ModelDownloadCenter: ObservableObject {
         let brokenFastVLM = "mlx-community/llava-fastvithd_0.5b_stage3_llm.fp16"
         if s.fastVLMRepoID == brokenFastVLM {
             s.fastVLMRepoID = "apple/FastVLM-0.5B-MLX"
-            print("[ModelDownloadCenter] Migrated stale FastVLM repo ID")
+            Diagnostics.shared.warning("Migrated stale FastVLM repo ID", category: "modeldownloadcenter")
         }
         // REMOVED: a previous version of this code reset
         // assistantModelID from "qwen3-4b" to "qwen2.5-coder-1.5b" on
@@ -1226,7 +1226,7 @@ final class ModelDownloadCenter: ObservableObject {
                 try fm.removeItem(at: url)
                 freed += size
             } catch {
-                print("[ModelDownloadCenter] Failed to remove orphan \(url.lastPathComponent): \(error)")
+                Diagnostics.shared.error("Failed to remove orphan \(url.lastPathComponent): \(error)", category: "modeldownloadcenter")
             }
         }
         refreshStorageStats()

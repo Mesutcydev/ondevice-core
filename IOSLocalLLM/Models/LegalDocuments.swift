@@ -41,7 +41,7 @@ enum LegalDocuments {
     ## 2. What stays on your device
     - **Camera frames** captured for analysis are processed in-memory and discarded immediately. They are never written to disk by the app unless you explicitly save them via the iOS share sheet.
     - **Photos** you import from your Photo Library are read into memory, analysed, and discarded.
-    - **Chat conversations** with the Coding Assistant are stored locally in the app's sandbox (Documents folder). You can delete them at any time. They are never uploaded.
+    - **Chat conversations** with the Assistant are stored locally in the app's sandbox (Documents folder). You can delete them at any time. They are never uploaded.
     - **Downloaded AI models** (e.g. Qwen3, FastVLM, KittenTTS) are stored in the app's sandbox. They are downloaded directly from Hugging Face on first use and used entirely locally afterwards.
 
     ## 3. Network usage
@@ -255,7 +255,7 @@ enum LegalDocuments {
             licenseURL: "https://github.com/QwenLM/Qwen3/blob/main/LICENSE",
             sourceURL: "https://huggingface.co/mlx-community/Qwen3-4B-4bit",
             paperURL: "https://arxiv.org/abs/2502.12119",
-            note: "Used as the default on-device coding assistant. Qwen3 source and weights are published under Apache-2.0; verify the selected model repository before redistribution.",
+            note: "Available for on-device conversations in Assistant. Qwen3 source and weights are published under Apache-2.0; verify the selected model repository before redistribution.",
             category: "Language Model"
         ),
         Attribution(

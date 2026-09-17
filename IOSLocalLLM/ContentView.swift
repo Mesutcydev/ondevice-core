@@ -252,22 +252,23 @@ struct ContentView: View {
         )) {
             LegalAcceptanceView { /* dismiss when accepted */ }
         }
-        // Onboarding full-screen cover on first launch (after legal accepted)
+        // First-run capability one-pager — the single onboarding page,
+        // shown once the legal gate is accepted. Replaces the retired
+        // multi-page tour.
         .fullScreenCover(isPresented: Binding(
             get: { !legal.needsAnyAcceptance && !settings.hasSeenOnboarding },
             set: { if !$0 { settings.hasSeenOnboarding = true } }
         )) {
-            OnboardingView()
+            OnboardingOnePager { settings.hasSeenOnboarding = true }
         }
         // Rate-the-app pre-prompt — service decides when (≥5 turns,
         // ≥3 days installed, ≥30 days cooldown). Mounted at the root so
         // it surfaces regardless of which tab is active when the
-        // threshold is hit. Suppressed during onboarding/legal so we
+        // threshold is hit. Suppressed during the legal gate so we
         // never stack sheets.
         .sheet(isPresented: Binding(
             get: { reviewPrompt.shouldShowPrompt
-                    && !legal.needsAnyAcceptance
-                    && settings.hasSeenOnboarding },
+                    && !legal.needsAnyAcceptance },
             set: { newValue in
                 if !newValue { reviewPrompt.userDeferred() }
             }
@@ -344,10 +345,7 @@ struct ContentView: View {
     private var homeTab: some View {
         HomeView(
             onNewChat: { AppBridge.shared.startNewChat() },
-            onOpenLens: { selectedTab = .camera },
-            onOpenVoice: { selectedTab = .voice },
             onOpenModels: { selectedTab = .models },
-            onOpenMac: { showMac = true },
             onGenerateImage: { showImageGeneration = true },
             onOpenSettings: { showSettings = true },
             onOpenConversation: { AppBridge.shared.openConversation(id: $0.id) }
@@ -526,9 +524,9 @@ struct CameraRootView: View {
                     } icon: {
                         Image(systemName: "cpu")
                     }
-                    .font(.subheadline.weight(.semibold))
+                    .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.white)
-                    Text(activeVLMReady ? "Ready · On-device" : "On-device")
+                    Text(activeVLMReady ? "Sees on device" : "On-device")
                         .font(.caption2)
                         .foregroundStyle(.white.opacity(0.72))
                 }
@@ -538,13 +536,10 @@ struct CameraRootView: View {
                     .foregroundStyle(.white.opacity(0.65))
             }
             .padding(.horizontal, AppSpacing.medium)
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .glassSurface(.capsule, cornerRadius: 22)
+            .frame(maxWidth: .infinity, minHeight: 36)
+            .background(Color.black.opacity(0.4),
+                        in: RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous))
             .environment(\.colorScheme, .dark)
-            .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(.white.opacity(0.18), lineWidth: AppStroke.hairline)
-            }
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
@@ -843,8 +838,6 @@ struct CameraRootView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             lensBottomControls
-                .padding(.horizontal, AppSpacing.medium)
-                .padding(.bottom, AppSpacing.small)
         }
         .sheet(isPresented: $showAnalysisPanel, onDismiss: {
             // Reset detent so the next presentation starts at the comfy size
@@ -1106,19 +1099,28 @@ struct CameraRootView: View {
 
     @ViewBuilder
     private var lensBottomControls: some View {
-        VStack(spacing: AppSpacing.medium) {
+        VStack(spacing: 0) {
             if activeMode == .visual {
-                LensTaskPanel(
+                // Type mode bar over the camera — hidden while a frame is
+                // being read so nothing competes with the status line.
+                if lensPanelState != .analyzing && lensPanelState != .captured {
+                    StudioLensModeBar(selection: $selectedLensMode, onSelection: selectLensMode)
+                        .padding(.horizontal, StudioSpacing.xl)
+                        .padding(.bottom, 18)
+                }
+                StudioLensPanel(
                     state: $lensPanelState,
-                    mode: $selectedLensMode,
                     prompt: $settings.lensCustomPrompt,
                     promptFocused: $lensPromptFocused,
+                    mode: selectedLensMode,
                     thumbnail: analysis.activeResult?.thumbnail,
                     resultText: lensResultText,
                     errorText: lensErrorText,
-                    isBusy: analysis.isAnalyzing,
                     canAnalyze: !visualModelMissing && !analysis.isAnalyzing,
-                    onModeChange: selectLensMode,
+                    onOpenPresets: {
+                        HapticManager.impact(.light)
+                        presetPickerSheet = true
+                    },
                     onAnalyze: captureLensTask,
                     onCancel: cancelLensAnalysis,
                     onCopy: {
@@ -1134,12 +1136,16 @@ struct CameraRootView: View {
                         lensPromptFocused = true
                     },
                     onRetake: resetLensPanel,
-                    onExpand: { showAnalysisPanel = analysis.activeResult != nil }
+                    onExpand: { showAnalysisPanel = analysis.activeResult != nil },
+                    onSendToAssistant: {
+                        HapticManager.impact(.light)
+                        AppBridge.shared.sendToAssistant(code: lensResultText, source: "Lens")
+                    }
                 )
             } else {
                 VStack(alignment: .leading, spacing: AppSpacing.small) {
                     Text("CODE · ON-DEVICE")
-                        .font(AppTypography.eyebrow)
+                        .font(.caption2.weight(.semibold))
                         .foregroundStyle(.secondary)
                     Text("Frame code and capture a still for OCR and review.")
                         .font(.headline)
@@ -1147,11 +1153,14 @@ struct CameraRootView: View {
                 .padding(AppSpacing.large)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .appPanel(cameraSafe: true)
+                .padding(.horizontal, AppSpacing.medium)
             }
 
             if lensPanelState == .collapsed || activeMode == .code {
                 shutterRow
                     .padding(.horizontal, AppSpacing.large)
+                    .padding(.top, AppSpacing.medium)
+                    .padding(.bottom, AppSpacing.small)
                     .transition(.opacity.combined(with: .scale(scale: 0.94)))
             }
         }
@@ -1242,7 +1251,7 @@ struct CameraRootView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 9)
                 .background(
-                    Capsule(style: .continuous)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(T.accentStrong)
                 )
             }
@@ -1387,10 +1396,17 @@ struct CameraRootView: View {
         HStack(spacing: 10) {
             lensCircleButton("xmark") { onClose() }
             lensTopStrip
+            if camera.torchAvailable {
+                lensCircleButton(camera.torchOn ? "bolt.fill" : "bolt.slash.fill") {
+                    camera.toggleTorch()
+                }
+            }
             lensMoreMenu
         }
     }
 
+    /// 36pt square-cut camera control — translucent black, radius 10. No
+    /// circle, no glass (design: ✕ left, ⚡ right, status readout between).
     private func lensCircleButton(_ icon: String, action: @escaping () -> Void) -> some View {
         Button {
             HapticManager.impact(.light); action()
@@ -1398,12 +1414,13 @@ struct CameraRootView: View {
             Image(systemName: icon)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.white)
-                .frame(width: 44, height: 44)
-                .glassSurface(.toolbarButton, cornerRadius: 22)
-                .overlay(Circle().stroke(.white.opacity(0.16), lineWidth: 1))
+                .frame(width: 36, height: 36)
+                .background(Color.black.opacity(0.4),
+                            in: RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(icon == "xmark" ? "Close Lens" : "Lens control")
+        .accessibilityLabel(icon == "xmark" ? "Close Lens"
+                            : (icon.hasPrefix("bolt") ? "Torch" : "Lens control"))
     }
 
     /// ⋯ menu — the contextual actions that used to live in the bottom
@@ -1460,9 +1477,9 @@ struct CameraRootView: View {
             Image(systemName: "ellipsis")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(.white)
-                .frame(width: 44, height: 44)
-                .glassSurface(.toolbarButton, cornerRadius: 22)
-                .overlay(Circle().stroke(.white.opacity(0.16), lineWidth: 1))
+                .frame(width: 36, height: 36)
+                .background(Color.black.opacity(0.4),
+                            in: RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous))
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
@@ -1481,7 +1498,7 @@ struct CameraRootView: View {
                         .font(T.sans(12, .semibold))
                         .foregroundColor(.white)
                         .padding(.horizontal, 12).padding(.vertical, 5)
-                        .background(Capsule().fill(Color.black.opacity(0.72)))
+                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.black.opacity(0.72)))
                         .offset(y: -30)
                         .transition(.opacity)
                 }
@@ -1538,13 +1555,13 @@ struct CameraRootView: View {
                         .padding(.vertical, 8)
                         .background(
                             ZStack {
-                                Capsule().fill(Color.black.opacity(on ? 0.78 : 0.44))
+                                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.black.opacity(on ? 0.78 : 0.44))
                                 if on {
-                                    Capsule().stroke(.white.opacity(0.22), lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(.white.opacity(0.22), lineWidth: 1)
                                 }
                             }
                         )
-                        .overlay(Capsule().stroke(.white.opacity(on ? 0.22 : 0.12), lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(.white.opacity(on ? 0.22 : 0.12), lineWidth: 1))
                 }
                 .buttonStyle(.plain)
             }
@@ -1651,14 +1668,9 @@ struct CameraRootView: View {
 
             Spacer()
 
-            // Right control — torch when available, else document scan.
-            if camera.torchAvailable {
-                lensCircleButton(camera.torchOn ? "bolt.fill" : "bolt.slash.fill") {
-                    camera.toggleTorch()
-                }
-            } else {
-                lensCircleButton("doc.viewfinder") { showDocumentScanner = true }
-            }
+            // Right control — document scan. (The torch lives in the top bar
+            // now, matching the design's ✕ / ⚡ / status row.)
+            lensCircleButton("doc.viewfinder") { showDocumentScanner = true }
         }
     }
 

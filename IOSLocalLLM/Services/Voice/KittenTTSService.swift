@@ -776,7 +776,7 @@ struct NPZLoader {
         var result: [String: [Float]] = [:]
 
         guard let eocdOffset = findEOCD(in: data) else {
-            print("[NPZLoader] no End-of-Central-Directory record found — file may be truncated or not a ZIP")
+            Diagnostics.shared.error("no End-of-Central-Directory record found — file may be truncated or not a ZIP", category: "npzloader")
             return result
         }
         let numEntries = Int(
@@ -855,13 +855,13 @@ struct NPZLoader {
                     case 8:
                         payload = inflateDeflate(raw, expectedSize: uncompressedSize)
                     default:
-                        print("[NPZLoader] unsupported ZIP compression method \(compressionMethod) for \(name)")
+                        Diagnostics.shared.error("unsupported ZIP compression method \(compressionMethod) for \(name)", category: "npzloader")
                         payload = nil
                     }
                     if let payload, let floats = parseNPY(data: payload) {
                         result[key] = floats
                     } else if payload != nil {
-                        print("[NPZLoader] entry \(name) decompressed but failed NPY parse (\(payload?.count ?? 0) bytes)")
+                        Diagnostics.shared.error("entry \(name) decompressed but failed NPY parse (\(payload?.count ?? 0) bytes)", category: "npzloader")
                     }
                 }
             }
@@ -870,7 +870,7 @@ struct NPZLoader {
         }
 
         if result.isEmpty {
-            print("[NPZLoader] central directory had \(numEntries) entries but none parsed into Float arrays")
+            Diagnostics.shared.error("central directory had \(numEntries) entries but none parsed into Float arrays", category: "npzloader")
         }
         return result
     }
@@ -920,7 +920,7 @@ struct NPZLoader {
             }
         }
         guard written > 0 else {
-            print("[NPZLoader] DEFLATE inflate produced 0 bytes (capacity=\(capacity), compressed=\(compressed.count))")
+            Diagnostics.shared.error("DEFLATE inflate produced 0 bytes (capacity=\(capacity), compressed=\(compressed.count))", category: "npzloader")
             return nil
         }
         output.removeSubrange(written..<output.count)
@@ -973,7 +973,7 @@ struct NPZLoader {
         let headerRange = (data.startIndex + (majorVersion >= 2 ? 12 : 10))..<(data.startIndex + dataOffset)
         let headerString = String(data: data[headerRange], encoding: .utf8) ?? ""
         if !headerString.contains("'<f4'") && !headerString.contains("\"<f4\"") {
-            print("[NPZLoader] non-<f4 dtype in NPY header (continuing as float32): \(headerString.prefix(80))")
+            Diagnostics.shared.warning("non-<f4 dtype in NPY header (continuing as float32): \(headerString.prefix(80))", category: "npzloader")
         }
 
         let payloadStart = data.startIndex + dataOffset

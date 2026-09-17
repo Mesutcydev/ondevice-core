@@ -71,13 +71,13 @@ struct VoiceStatusPill: View {
 
                 if let flag = Self.flagEmoji(forBCP47: audioQueue.currentLanguage), !flag.isEmpty {
                     Text(flag)
-                        .font(.system(size: 11))
+                        .font(T.sans(11))
                         .accessibilityLabel(audioQueue.currentLanguage ?? "")
                 }
             }
             .padding(.horizontal, 9).padding(.vertical, 4)
             .kGlassCapsule(fallbackFill: T.surface)
-            .contentShape(Capsule())
+            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)

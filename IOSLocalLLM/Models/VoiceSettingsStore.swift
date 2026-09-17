@@ -54,7 +54,7 @@ final class VoiceSettingsStore: ObservableObject {
         defaults.set(selectedEngine.rawValue, forKey: Self.selectedEngineKey)
         defaults.set(selectedVoiceID, forKey: Self.selectedVoiceKey)
         defaults.set(renderingMode.rawValue, forKey: Self.renderingModeKey)
-        print("[VoiceSettings] restored engine=\(selectedEngine.rawValue)")
+        Diagnostics.shared.debug("restored engine=\(selectedEngine.rawValue)", category: "voicesettings")
     }
 
     func setRenderingMode(_ mode: VoiceRenderingMode) {
@@ -73,7 +73,7 @@ final class VoiceSettingsStore: ObservableObject {
         }
         defaults.set(engine.rawValue, forKey: Self.selectedEngineKey)
         defaults.set(engine.rawValue, forKey: Self.legacyEngineKey)
-        print("[VoiceSettings] user selected engine=\(engine.rawValue)")
+        Diagnostics.shared.debug("user selected engine=\(engine.rawValue)", category: "voicesettings")
     }
 
     func selectVoice(_ voiceID: String) {
@@ -98,20 +98,20 @@ final class VoiceSettingsStore: ObservableObject {
     /// may temporarily synthesize with Apple while preserving the preference.
     func completeAvailabilityCheck(availableEngines: Set<VoiceEngineKind>) {
         availabilityState = .ready
-        print("[VoiceSettings] availability complete engines=\(availableEngines.map(\.rawValue).sorted())")
+        Diagnostics.shared.debug("availability complete engines=\(availableEngines.map(\.rawValue).sorted())", category: "voicesettings")
         guard !availableEngines.contains(selectedEngine) else {
-            print("[VoiceSettings] active engine resolved=\(selectedEngine.rawValue)")
+            Diagnostics.shared.debug("active engine resolved=\(selectedEngine.rawValue)", category: "voicesettings")
             return
         }
 
         let unavailable = selectedEngine
         selectEngine(.appleSystem)
-        print("[VoiceSettings] fallback engine=apple_system reason=\(unavailable.rawValue)_unavailable")
+        Diagnostics.shared.error("fallback engine=apple_system reason=\(unavailable.rawValue)_unavailable", category: "voicesettings")
     }
 
     func markAvailabilityCheckFailed() {
         availabilityState = .failed
-        print("[VoiceSettings] availability failed; preserving engine=\(selectedEngine.rawValue)")
+        Diagnostics.shared.error("availability failed; preserving engine=\(selectedEngine.rawValue)", category: "voicesettings")
     }
 
     private static func voiceKey(for engine: VoiceEngineKind) -> String {

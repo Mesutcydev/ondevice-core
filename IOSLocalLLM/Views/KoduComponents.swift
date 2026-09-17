@@ -80,18 +80,6 @@ struct KStatusBadge: View {
     }
 }
 
-// MARK: - Tactile Button Style
-
-/// Reusable tactile feedback button style for the Kodu Studio design language.
-struct KTactileButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
-            .opacity(configuration.isPressed ? 0.90 : 1.0)
-            .animation(.spring(response: 0.15, dampingFraction: 0.6), value: configuration.isPressed)
-    }
-}
-
 // MARK: - Icon button (32×32 square)
 
 /// Square 32×32 icon button — used in nav bars, toolbars, composers.
@@ -114,7 +102,7 @@ struct KIconButton<Icon: View>: View {
                     fallbackStroke: T.rule
                 )
         }
-        .buttonStyle(KTactileButtonStyle())
+        .buttonStyle(StudioPressStyle())
     }
 }
 
@@ -146,19 +134,14 @@ struct KPrimaryButton: View {
                         .foregroundColor(T.ink4)
                 }
             }
-            .foregroundColor(T.accentStrong)
+            .foregroundColor(T.bg)
             .padding(.horizontal, 14)
             .frame(height: 50)
             .frame(maxWidth: .infinity)
-            .kClearGlass(
-                in: RoundedRectangle(cornerRadius: 10, style: .continuous),
-                tint: T.accentStrong,
-                interactive: true,
-                fallbackFill: T.accentStrong
-            )
+            .background(T.ink, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .opacity(disabled ? 0.45 : 1)
         }
-        .buttonStyle(KTactileButtonStyle())
+        .buttonStyle(StudioPressStyle())
         .disabled(disabled)
     }
 }
@@ -192,7 +175,7 @@ struct KSecondaryButton: View {
                 }
             }
             .padding(.horizontal, 14)
-            .frame(height: 44)
+            .frame(minHeight: 44)
             .frame(maxWidth: .infinity)
             .kClearGlass(
                 in: RoundedRectangle(cornerRadius: 10, style: .continuous),
@@ -201,7 +184,7 @@ struct KSecondaryButton: View {
                 fallbackStroke: T.rule
             )
         }
-        .buttonStyle(KTactileButtonStyle())
+        .buttonStyle(StudioPressStyle())
     }
 }
 
@@ -228,7 +211,7 @@ struct KSection<Content: View>: View {
                 content()
             }
             .kClearGlass(
-                in: RoundedRectangle(cornerRadius: 12, style: .continuous),
+                in: RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous),
                 tint: tinted ? T.accentSofter : nil,
                 fallbackFill: T.surface,
                 fallbackStroke: T.rule
@@ -302,7 +285,7 @@ struct KCollapsibleSection<Content: View>: View {
             }
             .buttonStyle(.plain)
             .kClearGlass(
-                in: RoundedRectangle(cornerRadius: 12, style: .continuous),
+                in: RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous),
                 tint: tinted ? T.accentSofter : nil,
                 fallbackFill: T.surface,
                 fallbackStroke: T.rule
@@ -590,7 +573,7 @@ struct KCompatChip: View {
             }
             .foregroundColor(color)
             .padding(.horizontal, 7).padding(.vertical, 2.5)
-            .kClearGlass(in: Capsule(), tint: color.opacity(T.isDark ? 0.16 : 0.10))
+            .kClearGlass(in: RoundedRectangle(cornerRadius: 10, style: .continuous), tint: color.opacity(T.isDark ? 0.16 : 0.10))
         }
         .buttonStyle(.plain)
         .disabled(detail == nil)
@@ -655,7 +638,7 @@ struct KDisclosureRows<Content: View>: View {
 // MARK: - Wordmark (kodu/IOSLocalLLM monogram)
 
 struct KWordmark: View {
-    var name: String = "OnDevice Core"
+    var name: String = "OnDevice Max"
     var monogram: String = "k"
     /// Asset name of an image logo; when set it replaces the letter monogram.
     var logoAsset: String? = nil
@@ -713,7 +696,7 @@ struct KToggle: View {
             withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) { isOn.toggle() }
         } label: {
             ZStack(alignment: isOn ? .trailing : .leading) {
-                RoundedRectangle(cornerRadius: 9)
+                RoundedRectangle(cornerRadius: 10)
                     .fill(isOn ? T.accent : T.ink4.opacity(0.5))
                     .frame(width: 32, height: 18)
                 Circle()

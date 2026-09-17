@@ -2,10 +2,10 @@
   "spdxVersion": "SPDX-2.3",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "name": "ios-local-llm-3.2.6-source",
-  "documentNamespace": "https://github.com/Mesutcydev/ios-local-llm/sbom/3.2.6/2026-07-29",
+  "name": "ios-local-llm-1.0.0-source",
+  "documentNamespace": "https://github.com/Mesutcydev/ios-local-llm/sbom/1.0.0/2026-09-17",
   "creationInfo": {
-    "created": "2026-07-29T00:00:00Z",
+    "created": "2026-09-17T00:00:00Z",
     "creators": [
       "Tool: manual-lockfile-inventory",
       "Organization: iOS Local LLM contributors"
@@ -19,7 +19,7 @@
     {
       "name": "ios-local-llm",
       "SPDXID": "SPDXRef-Package-ios-local-llm",
-      "versionInfo": "3.2.6",
+      "versionInfo": "1.0.0",
       "downloadLocation": "git+https://github.com/Mesutcydev/ios-local-llm.git",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT AND LicenseRef-Apple-Sample-Code AND LicenseRef-CMUdict",

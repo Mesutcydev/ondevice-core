@@ -1,4 +1,4 @@
-# coreai-models (OnDevice Core AI Studio pin)
+# coreai-models (OnDevice Max AI Studio pin)
 
 Vendored from https://github.com/apple/coreai-models.git
 at revision `938d0b8943b942ce66438b94ab017c5631d1aef4`.

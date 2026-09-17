@@ -151,7 +151,7 @@ struct ModelsManagerView: View {
 
     var body: some View {
         ZStack {
-            LiquidPinkBackdrop()
+            StudioPageBackground()
                 .allowsHitTesting(false)
                 .opacity(0.6)
 
@@ -335,22 +335,36 @@ struct ModelsManagerView: View {
     // profile strip, not two card-sized tiles.
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let S = T.studio
+        return VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 4) {
-                    KCaption(text: loc.t("Models"), color: T.accent)
-                    KPageTitle(title: loc.t("models"), size: 31)
+                VStack(alignment: .leading, spacing: 6) {
+                    StudioMonoLabel(text: loc.t("Models"), size: 11, tracking: 0.9)
+                    Text(loc.t("Model library"))
+                        .font(S.sans(32, .semibold))
+                        .tracking(-0.8)
+                        .foregroundStyle(S.ink)
+                        .lineLimit(1)
                 }
                 Spacer(minLength: 8)
-                if activeDownloadCount > 0 { downloadsPill.padding(.top, 6) }
-                inventoryBadge
-                    .padding(.top, 6)
+                VStack(alignment: .trailing, spacing: 6) {
+                    if activeDownloadCount > 0 {
+                        downloadsButton
+                    }
+                    liveCountLabel
+                }
+                .padding(.top, 4)
             }
-            // At-a-glance storage / install counts folded into the header
-            // (was a separate strip) so the page leads straight into search.
+            .padding(.bottom, 16)
+            StudioHairline(color: S.rule2)
             summaryStats
-            // On-device storage card with a role-segmented bar (design 05).
-            if center.totalStorageUsed > 0 { storageCard }
+                .padding(.top, 10)
+            // On-device storage detail — only worth a block when there's
+            // actually something on disk; otherwise it's a zero-bar card.
+            if center.totalStorageUsed > 0 {
+                storageBlock
+                    .padding(.top, 14)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -382,24 +396,30 @@ struct ModelsManagerView: View {
         }
     }
 
-    /// Header pill: tap to open the Downloads sheet. Only shown when
+    /// Header control: tap to open the Downloads sheet. Only shown when
     /// `activeDownloadCount > 0` (see `header`).
-    private var downloadsPill: some View {
-        Button {
+    private var downloadsButton: some View {
+        let S = T.studio
+        return Button {
             HapticManager.impact(.light)
             showDownloads = true
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "arrow.down.circle.fill")
-                    .font(.system(size: 11, weight: .semibold))
+            HStack(spacing: 6) {
+                Image(systemName: "arrow.down.circle")
+                    .font(.system(size: 12, weight: .medium))
                     .symbolEffect(.variableColor.iterative.dimInactiveLayers,
                                   options: .repeating, isActive: true)
-                Text("\(activeDownloadCount)")
-                    .font(T.mono(12, .bold))
+                Text("\(activeDownloadCount) " + loc.t("downloading"))
+                    .font(S.mono(10.5))
+                    .tracking(0.2)
             }
-            .foregroundColor(.white)
-            .padding(.horizontal, 10).padding(.vertical, 6)
-            .background(Capsule().fill(T.accent))
+            .foregroundColor(S.ink2)
+            .padding(.horizontal, 10)
+            .frame(minHeight: 28)
+            .background(
+                RoundedRectangle(cornerRadius: StudioRadius.chip, style: .continuous)
+                    .fill(S.fillActive)
+            )
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(activeDownloadCount) " + loc.t("downloading"))
@@ -411,7 +431,7 @@ struct ModelsManagerView: View {
     private var downloadsSheet: some View {
         let items = allInFlightDownloads
         return ZStack {
-            LiquidPinkBackdrop()
+            StudioPageBackground()
             ScrollView {
                 VStack(spacing: 14) {
                     HStack {
@@ -448,11 +468,12 @@ struct ModelsManagerView: View {
         }
     }
 
-    /// On-device storage card (design 05) — total used + a segmented bar split
-    /// by model role (Language / Vision / Voice). Proportions are parsed from
-    /// each ready model's size label (ready models have no live downloader, so
-    /// byte counters read 0 — the label is the reliable source).
-    private var storageCard: some View {
+    /// On-device storage block — flat, hairline-ruled: eyebrow + total,
+    /// the role-segmented bar, legend, and the cleanup affordance. No
+    /// glass card; the page is one paper surface and this is a section
+    /// of it, not a floating object.
+    private var storageBlock: some View {
+        let S = T.studio
         func bytes(_ cat: DownloadableModel.Category) -> Int64 {
             center.models
                 .filter { $0.isReady && $0.category == cat }
@@ -462,20 +483,20 @@ struct ModelsManagerView: View {
         let vision = bytes(.vlm)
         let voice = bytes(.voice)
         let sum = max(1, lang + vision + voice)
-        let visionColor = Color(red: 0.24, green: 0.36, blue: 1.0)
-        let voiceColor = Color(red: 0.06, green: 0.64, blue: 0.50)
-        return VStack(alignment: .leading, spacing: 11) {
-            HStack {
-                Text(loc.t("On-device storage"))
-                    .font(T.sans(15, .semibold)).foregroundColor(T.ink)
+        let visionColor = S.ink2.opacity(0.55)
+        let voiceColor = S.ink4
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                StudioMonoLabel(text: loc.t("On-device storage"), size: 11, tracking: 0.9)
                 Spacer()
                 Text(center.totalStorageUsed.formattedBytes)
-                    .font(T.sans(13)).foregroundColor(T.ink2)
+                    .font(S.mono(11))
+                    .foregroundColor(S.ink2)
             }
             GeometryReader { geo in
                 let w = geo.size.width
                 HStack(spacing: 0) {
-                    Rectangle().fill(T.accent)
+                    Rectangle().fill(S.ink)
                         .frame(width: w * CGFloat(lang) / CGFloat(sum))
                     Rectangle().fill(visionColor)
                         .frame(width: w * CGFloat(vision) / CGFloat(sum))
@@ -484,52 +505,42 @@ struct ModelsManagerView: View {
                     Spacer(minLength: 0)
                 }
             }
-            .frame(height: 10)
-            .background(T.ink4.opacity(0.3))
-            .clipShape(Capsule())
+            .frame(height: 6)
+            .background(S.ink4.opacity(0.18))
+            .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
             HStack(spacing: 16) {
-                storageLegend(loc.t("Language"), T.accent)
+                storageLegend(loc.t("Language"), S.ink)
                 storageLegend(loc.t("Vision"), visionColor)
                 storageLegend(loc.t("Voice"), voiceColor)
-            }
-
-            Rectangle().fill(T.rule).frame(height: 1)
-
-            HStack(alignment: .center, spacing: 10) {
-                Image(systemName: "externaldrive.badge.exclamationmark")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(T.warn)
-                Text(loc.t("Model downloads can grow quickly. Keep the ones you use and remove the rest without resetting the app."))
-                    .font(T.sans(11.5))
-                    .foregroundColor(T.ink2)
-                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 4)
                 Button {
                     showStorageCleanup = true
                     HapticManager.impact(.light)
                 } label: {
                     Text(loc.t("Clean up"))
-                        .font(T.sans(12, .semibold))
-                        .foregroundColor(T.accent)
-                        .padding(.horizontal, 11)
-                        .frame(height: 32)
-                        .background(Capsule().fill(T.accentSoft))
+                        .font(S.sans(12.5, .medium))
+                        .foregroundColor(S.ink)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 28)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: StudioRadius.chip, style: .continuous)
+                                .stroke(S.rule, lineWidth: 1)
+                        )
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(16)
-        .kClearGlass(
-            in: RoundedRectangle(cornerRadius: 18, style: .continuous),
-            fallbackFill: T.surface,
-            fallbackStroke: T.rule
+        .padding(StudioSpacing.l)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(S.rule, lineWidth: 1)
         )
     }
 
     private func storageLegend(_ label: String, _ color: Color) -> some View {
         HStack(spacing: 5) {
-            RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 8, height: 8)
-            Text(label).font(T.sans(12)).foregroundColor(T.ink2)
+            RoundedRectangle(cornerRadius: 3).fill(color).frame(width: 7, height: 7)
+            Text(label).font(T.studio.sans(11.5)).foregroundColor(T.studio.ink3)
         }
     }
 
@@ -544,66 +555,29 @@ struct ModelsManagerView: View {
         return Int64(value)
     }
 
-    private var inventoryBadge: some View {
-        HStack(spacing: 10) {
-            Image(systemName: activeLoadedCount > 0 ? "bolt.horizontal.circle.fill" : "circle.dashed")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(activeLoadedCount > 0 ? T.good : T.ink3)
-                .frame(width: 28, height: 28)
-                .background(
-                    Circle()
-                        .fill((activeLoadedCount > 0 ? T.good : T.ink3).opacity(T.isDark ? 0.18 : 0.10))
-                )
-                // Cross-fade the glyph between bolt / dashed-circle when
-                // the live count rises off (or falls back to) zero, so
-                // unloading the last model gives an explicit visual cue.
-                .contentTransition(.symbolEffect(.replace))
-                .animation(.easeInOut(duration: 0.22), value: activeLoadedCount > 0)
-            Text("\(activeLoadedCount)")
-                .font(T.display(17, .semibold))
-                .foregroundColor(T.ink)
-                // Roll the counter rather than snapping. The numericText
-                // transition only fires on the actual number change, not
-                // on unrelated re-renders, so it stays performant even
-                // inside the LazyVStack hot path.
-                .contentTransition(.numericText())
-                .animation(.snappy(duration: 0.25), value: activeLoadedCount)
-            VStack(alignment: .leading, spacing: 1) {
-                KMono(text: "live", size: 9.5, weight: .semibold, color: T.ink3)
-                KMono(text: activeLoadedCount == 1 ? "model" : "models",
-                      size: 8.5, weight: .semibold, color: T.ink3.opacity(0.8))
-            }
+    /// How many models are resident in memory right now. Studio: a plain
+    /// mono readout with a state dot — no glass badge, no big numeral.
+    private var liveCountLabel: some View {
+        let S = T.studio
+        let live = activeLoadedCount > 0
+        return HStack(spacing: 5) {
+            Circle()
+                .fill(live ? S.accent : S.ink4)
+                .frame(width: 5, height: 5)
+                .contentTransition(.opacity)
+                .animation(.easeInOut(duration: 0.22), value: live)
+            Text(live
+                 ? "\(activeLoadedCount) " + loc.t(activeLoadedCount == 1 ? "model live" : "models live")
+                 : loc.t("nothing loaded"))
+                .font(S.mono(10.5))
+                .tracking(0.2)
+                .foregroundColor(S.ink3)
+                .contentTransition(.opacity)
         }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 9)
-        .kClearGlass(
-            in: Capsule(),
-            fallbackFill: T.surface,
-            fallbackStroke: T.rule
-        )
-    }
-
-    private var libraryHero: some View {
-        modelCardShell(accent: T.accent, prominence: 0.16) {
-            HStack(alignment: .center, spacing: 14) {
-                VStack(alignment: .leading, spacing: 6) {
-                    KCaption(text: "Library Overview", color: T.accent)
-                    Text("Chat, vision, and imported MLX models.")
-                        .font(T.sans(16, .semibold))
-                        .foregroundColor(T.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "square.stack.3d.up.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(T.accent)
-                    .frame(width: 38, height: 38)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(T.accentSoft)
-                    )
-            }
-        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(live
+                            ? "\(activeLoadedCount) " + loc.t(activeLoadedCount == 1 ? "model live" : "models live")
+                            : loc.t("nothing loaded"))
     }
 
     // MARK: - Storage / counts strip
@@ -617,13 +591,10 @@ struct ModelsManagerView: View {
     // expectation which drops to 0 once a download completes.
 
     /// One-line at-a-glance summary: storage used · models installed ·
-    /// families · in-flight downloads (when any). The previous version
-    /// stacked two card-sized tiles on top of a metadata row, which
-    /// repeated the install count and ate ~140pt of vertical real
-    /// estate before the user reached the section picker. Collapsing
-    /// to a single horizontal strip cuts the preamble height roughly
-    /// in half while preserving every datum.
+    /// families · in-flight downloads (when any). Studio: a single mono
+    /// line of dot-separated facts on the paper — no chip capsules.
     private var summaryStats: some View {
+        let S = T.studio
         let imageInstalled = ImageGenerationService.catalog.filter { imageGen.isInstalled($0) }
         let installedCount = center.models.filter { $0.isReady }.count + imageInstalled.count
         // totalStorageUsed now covers the HubApi cache (which is where the
@@ -637,89 +608,20 @@ struct ModelsManagerView: View {
             }
         }.count
 
-        return HStack(spacing: 8) {
-            metaChip(
-                text: storage > 0 ? storage.formattedBytes : "0 mb",
-                color: T.accent
-            )
-            metaChip(text: "\(installedCount) installed", color: T.ink3)
-            metaChip(text: "\(familyGroups.count) families", color: T.ink3)
-            if downloading > 0 {
-                metaChip(text: "\(downloading) downloading", color: T.accent)
-            }
-            Spacer(minLength: 0)
+        var parts: [String] = []
+        parts.append(storage > 0 ? storage.formattedBytes.lowercased() : "0 mb")
+        parts.append("\(installedCount) " + loc.t("installed"))
+        parts.append("\(familyGroups.count) " + loc.t("families"))
+        if downloading > 0 {
+            parts.append("\(downloading) " + loc.t("downloading"))
         }
-    }
 
-    @ViewBuilder
-    private func metaChip(text: String, color: Color) -> some View {
-        HStack(spacing: 5) {
-            Circle()
-                .fill(color)
-                .frame(width: 4, height: 4)
-            Text(text)
-                .font(T.mono(10))
-                .foregroundColor(T.ink2)
-        }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 4)
-        .kClearGlass(
-            in: Capsule(style: .continuous),
-            fallbackFill: T.surface,
-            fallbackStroke: T.rule
-        )
-    }
-
-    @ViewBuilder
-    private func statChip(icon: String, title: String, value: String, detail: String, tint: Color, soft: Color) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(tint)
-                .frame(width: 34, height: 34)
-                .background(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(soft)
-                )
-            VStack(alignment: .leading, spacing: 3) {
-                Text(value)
-                    .font(T.display(20, .semibold))
-                    .foregroundColor(T.ink)
-                Text(title)
-                    .font(T.mono(9.5, .semibold))
-                    .tracking(0.6)
-                    .foregroundColor(T.ink3)
-                Text(detail)
-                    .font(T.mono(8.5))
-                    .foregroundColor(T.ink3.opacity(0.75))
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 14)
-        .frame(maxWidth: .infinity)
-        .background(
-            ZStack {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(T.surface.opacity(0.96))
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                tint.opacity(T.isDark ? 0.12 : 0.09),
-                                .clear,
-                                T.surface.opacity(0.03)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-            }
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(T.glassBorder, lineWidth: 0.5)
-        )
+        return Text(parts.joined(separator: "  ·  "))
+            .font(S.mono(10.5))
+            .tracking(0.2)
+            .foregroundColor(S.ink3)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(parts.joined(separator: ", "))
     }
 
     private func totalStorageBytes() -> Int64 {
@@ -729,19 +631,20 @@ struct ModelsManagerView: View {
     // MARK: - Search bar
 
     private var searchBar: some View {
-        HStack(spacing: 8) {
+        let S = T.studio
+        return HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(T.ink3)
+                .foregroundColor(S.ink3)
             TextField(
                 showDownloadedOnly
                     ? loc.t("Search downloaded models…")
                     : loc.t("Search HuggingFace…"),
                 text: $searchText
             )
-                .font(T.mono(12))
-                .foregroundColor(T.ink)
-                .tint(T.accent)
+                .font(S.sans(14.5))
+                .foregroundColor(S.ink)
+                .tint(S.accent)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .submitLabel(.search)
@@ -759,18 +662,17 @@ struct ModelsManagerView: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 14))
-                        .foregroundColor(T.ink3)
+                        .foregroundColor(S.ink4)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(loc.t("Clear search"))
             }
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 14)
-        .kClearGlass(
-            in: RoundedRectangle(cornerRadius: 18, style: .continuous),
-            tint: T.accent.opacity(0.05),
-            fallbackFill: T.surface,
-            fallbackStroke: T.accent.opacity(0.18)
+        .frame(minHeight: 44)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(S.fillActive)
         )
     }
 
@@ -805,45 +707,41 @@ struct ModelsManagerView: View {
     /// inventory. The count includes image-generation models, which live
     /// outside ModelDownloadCenter.
     private var downloadedOnlyFilter: some View {
+        let S = T.studio
         let downloadedCount = center.models.filter(\.isReady).count
             + coreAIStore.installations.count
             + ImageGenerationService.catalog.filter { imageGen.isInstalled($0) }.count
-        return Toggle(isOn: Binding(
-            get: { showDownloadedOnly },
-            set: { enabled in
-                withAnimation(.snappy(duration: 0.22)) {
-                    showDownloadedOnly = enabled
-                }
-                searchTask?.cancel()
-                HapticManager.impact(.light)
+        return HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(loc.t("Downloaded only"))
+                    .font(S.sans(14.5, .medium))
+                    .foregroundColor(S.ink)
+                Text(
+                    showDownloadedOnly
+                        ? loc.t("Showing every model stored on this device")
+                        : "\(downloadedCount) " + loc.t(downloadedCount == 1 ? "model downloaded" : "models downloaded")
+                )
+                .font(S.sans(12))
+                .foregroundColor(S.ink3)
             }
-        )) {
-            HStack(spacing: 9) {
-                Image(systemName: showDownloadedOnly ? "internaldrive.fill" : "internaldrive")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(showDownloadedOnly ? T.good : T.ink3)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(loc.t("Downloaded only"))
-                        .font(T.sans(13.5, .semibold))
-                        .foregroundColor(T.ink)
-                    Text(
-                        showDownloadedOnly
-                            ? loc.t("Showing every model stored on this device")
-                            : "\(downloadedCount) " + loc.t(downloadedCount == 1 ? "model downloaded" : "models downloaded")
-                    )
-                    .font(T.mono(9))
-                    .foregroundColor(T.ink3)
+            Spacer(minLength: 6)
+            StudioSquareToggle(isOn: Binding(
+                get: { showDownloadedOnly },
+                set: { enabled in
+                    withAnimation(.snappy(duration: 0.22)) {
+                        showDownloadedOnly = enabled
+                    }
+                    searchTask?.cancel()
+                    HapticManager.impact(.light)
                 }
-            }
+            ))
+            .accessibilityLabel(loc.t("Downloaded only"))
         }
-        .tint(T.good)
         .padding(.horizontal, 14)
-        .padding(.vertical, 10)
-        .kClearGlass(
-            in: RoundedRectangle(cornerRadius: 16, style: .continuous),
-            tint: showDownloadedOnly ? T.good.opacity(0.07) : .clear,
-            fallbackFill: T.surface,
-            fallbackStroke: showDownloadedOnly ? T.good.opacity(0.28) : T.rule
+        .padding(.vertical, 12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(S.rule, lineWidth: 1)
         )
         .accessibilityIdentifier("modelsDownloadedOnlyToggle")
     }
@@ -857,55 +755,54 @@ struct ModelsManagerView: View {
     // Fixed four-segment control. There are exactly four roles, and they all
     // fit on one row — so the previous horizontal-scroll + edge-fade + ">"
     // chevron (which implied hidden tabs that didn't exist) is gone. Each tab
-    // carries its category glyph and lights up in that category's colour.
+    // carries its category glyph; the active role is marked by an ink
+    // underline (Studio grammar) instead of a colored pill.
     private var sectionPicker: some View {
-        HStack(spacing: 4) {
-            ForEach(Section.allCases) { section in
-                sectionTab(section)
-                    .frame(maxWidth: .infinity)
+        VStack(spacing: 0) {
+            HStack(spacing: 2) {
+                ForEach(Section.allCases) { section in
+                    sectionTab(section)
+                        .frame(maxWidth: .infinity)
+                }
             }
+            Rectangle().fill(T.rule).frame(height: 1)
         }
-        .padding(5)
-        .kClearGlass(
-            in: RoundedRectangle(cornerRadius: 18, style: .continuous),
-            fallbackFill: T.surface2,
-            fallbackStroke: T.rule
-        )
     }
 
     @ViewBuilder
     private func sectionTab(_ section: Section) -> some View {
         let active = section == selectedSection
-        let tint = sectionAccent(for: section)
         Button {
             withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
                 selectedSection = section
             }
             HapticManager.impact(.light)
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: section.glyph)
-                    .font(.system(size: 10, weight: .semibold))
-                Text(loc.t(section.rawValue))
-                    .font(T.mono(10.5, active ? .semibold : .medium))
-                    .tracking(0.2)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-            .foregroundColor(active ? tint : T.ink2)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 9)
-            // Gated on `active` so only the selected tab contributes a pill
-            // geometry; matchedGeometryEffect slides that single shape from
-            // the old tab to the new one.
-            .background {
-                if active {
-                    Capsule()
-                        .fill(tint.opacity(T.isDark ? 0.22 : 0.14))
-                        .overlay(Capsule().stroke(tint.opacity(0.32), lineWidth: 0.5))
-                        .matchedGeometryEffect(id: "sectionPill", in: sectionPillNS)
+            VStack(spacing: 8) {
+                HStack(spacing: 5) {
+                    Image(systemName: section.glyph)
+                        .font(.system(size: 10, weight: .semibold))
+                    Text(loc.t(section.rawValue))
+                        .font(T.mono(10.5, active ? .semibold : .medium))
+                        .tracking(0.2)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                .foregroundColor(active ? T.ink : T.ink3)
+                // Gated on `active` so only the selected tab registers the
+                // matched geometry; the underline slides between roles.
+                ZStack {
+                    Rectangle().fill(.clear).frame(height: 2)
+                    if active {
+                        Rectangle()
+                            .fill(T.ink)
+                            .frame(height: 2)
+                            .matchedGeometryEffect(id: "sectionPill", in: sectionPillNS)
+                    }
                 }
             }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 10)
         }
         .buttonStyle(.plain)
     }
@@ -1340,18 +1237,17 @@ struct ModelsManagerView: View {
     /// to what?), and the toggle is the single control that gates whether any
     /// risky model is ever shown or loadable.
     private var suggestedHeader: some View {
+        let S = T.studio
         let avail = MemoryAdvisor.availableMemoryForModel
         return VStack(spacing: 9) {
             HStack(spacing: 6) {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 11))
-                    .foregroundColor(T.accent)
-                KCaption(text: loc.t("Suggested · best fit first").uppercased(), color: T.accent)
+                StudioMonoLabel(text: loc.t("Suggested · best fit first"), size: 11, tracking: 0.9)
                 Spacer(minLength: 0)
                 if avail > 0 {
                     Text("~\(avail.formattedBytes) " + loc.t("free"))
-                        .font(T.mono(8.5, .semibold))
-                        .foregroundColor(T.ink3)
+                        .font(S.mono(10))
+                        .tracking(0.2)
+                        .foregroundColor(S.ink3)
                 }
             }
             edgeToggle
@@ -1362,6 +1258,7 @@ struct ModelsManagerView: View {
     /// that safely fit — zero OOM risk. ON: "tight" edge models are revealed
     /// and the load gate drops its reserve so they can actually run.
     private var edgeToggle: some View {
+        let S = T.studio
         let on = settings.showEdgeModels
         return Button {
             withAnimation(.snappy(duration: 0.2)) { settings.showEdgeModels.toggle() }
@@ -1370,26 +1267,24 @@ struct ModelsManagerView: View {
             HStack(spacing: 8) {
                 Image(systemName: on ? "hammer.fill" : "hammer")
                     .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(on ? T.warn : S.ink3)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(loc.t(on ? "Edge / developer mode — ON" : "Edge / developer mode"))
-                        .font(T.mono(9.5, .semibold))
-                        .tracking(0.3)
+                        .font(S.sans(12.5, .medium))
+                        .foregroundColor(S.ink)
                     Text(on
                          ? loc.t("Tight models shown — experimental, may be unstable")
                          : loc.t("Only models that safely fit this device are shown"))
-                        .font(T.mono(8.5))
-                        .foregroundColor((on ? T.warn : T.ink3).opacity(0.9))
+                        .font(S.sans(11))
+                        .foregroundColor(S.ink3)
                 }
                 Spacer(minLength: 0)
-                Image(systemName: on ? "circle.inset.filled" : "circle")
-                    .font(.system(size: 16, weight: .semibold))
             }
-            .foregroundColor(on ? T.warn : T.ink2)
-            .padding(.horizontal, 12).padding(.vertical, 9)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill((on ? T.warn : T.ink3).opacity(on ? 0.12 : 0.06)))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(on ? T.warn.opacity(0.40) : T.glassBorder, lineWidth: 0.5))
+            .padding(.horizontal, 12).padding(.vertical, 10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(on ? T.warn.opacity(0.40) : S.rule, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
     }
@@ -1443,27 +1338,25 @@ struct ModelsManagerView: View {
     /// each with an honest device-fit badge based on the heaviest single model
     /// — models load one at a time, so the largest pick is the binding limit.
     private var recommendedSetupsCard: some View {
-        VStack(spacing: 10) {
+        let S = T.studio
+        return VStack(spacing: 10) {
             Button {
                 withAnimation(.snappy(duration: 0.22)) { showRecommendedSetups.toggle() }
                 HapticManager.impact(.light)
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "square.stack.3d.up.fill")
-                        .font(.system(size: 11))
-                        .foregroundColor(T.accent)
-                    KCaption(text: loc.t("Recommended setups").uppercased(), color: T.accent)
-                    Rectangle().fill(T.rule).frame(height: 1)
+                    StudioMonoLabel(text: loc.t("Recommended setups"), size: 11, tracking: 0.9)
+                    Rectangle().fill(S.rule2).frame(height: 1)
                     Image(systemName: showRecommendedSetups ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(T.ink3)
+                        .foregroundColor(S.chevron)
                 }
             }
             .buttonStyle(.plain)
             if showRecommendedSetups {
                 Text(loc.t("Coherent Light · Medium · Heavy stacks for your device. Tap a model to open its category."))
-                    .font(T.mono(9))
-                    .foregroundColor(T.ink3)
+                    .font(S.sans(12))
+                    .foregroundColor(S.ink3)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 ForEach(Self.modelCombos) { combo in
                     comboCard(combo)
@@ -1474,10 +1367,10 @@ struct ModelsManagerView: View {
 
     @ViewBuilder
     private func comboCard(_ combo: ModelCombo) -> some View {
-        let accent = comboAccent(combo.tier)
+        let S = T.studio
         let maxRAM = combo.picks.map(\.approxRAM).max() ?? 0
         let expanded = expandedComboID == combo.id
-        modelCardShell(accent: accent, prominence: expanded ? 0.14 : 0.09, padding: 14) {
+        modelCardShell(accent: T.accent, prominence: expanded ? 0.14 : 0.09, padding: 14) {
             VStack(alignment: .leading, spacing: expanded ? 12 : 0) {
                 Button {
                     withAnimation(.snappy(duration: 0.22)) {
@@ -1488,20 +1381,20 @@ struct ModelsManagerView: View {
                     HStack(spacing: 12) {
                         Image(systemName: combo.glyph)
                             .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(accent)
+                            .foregroundColor(S.ink)
                             .frame(width: 40, height: 40)
-                            .background(RoundedRectangle(cornerRadius: 11, style: .continuous)
-                                .fill(accent.opacity(0.14)))
+                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(S.fillActive))
                         VStack(alignment: .leading, spacing: 3) {
                             HStack(spacing: 6) {
                                 Text(loc.t(combo.tier))
-                                    .font(T.display(17, .semibold))
-                                    .foregroundColor(T.ink)
+                                    .font(S.sans(16.5, .semibold))
+                                    .foregroundColor(S.ink)
                                 fitBadge(forFootprint: maxRAM)
                             }
                             Text(loc.t(combo.tagline))
-                                .font(T.mono(9))
-                                .foregroundColor(T.ink3)
+                                .font(S.sans(12))
+                                .foregroundColor(S.ink3)
                                 .lineLimit(2)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
@@ -1510,7 +1403,7 @@ struct ModelsManagerView: View {
                             metricBadge("↓ " + combo.totalDownload.formattedBytes)
                             Image(systemName: expanded ? "chevron.up" : "chevron.down")
                                 .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(T.ink3)
+                                .foregroundColor(S.chevron)
                         }
                     }
                 }
@@ -1527,21 +1420,22 @@ struct ModelsManagerView: View {
                         startDownloads(for: combo)
                     } label: {
                         HStack(spacing: 7) {
-                            Image(systemName: "arrow.down.circle.fill")
+                            Image(systemName: "arrow.down")
+                                .font(.system(size: 12, weight: .semibold))
                             Text(loc.t("Download all"))
                             Spacer(minLength: 0)
                             Text(combo.totalDownload.formattedBytes)
-                                .font(T.mono(9.5, .semibold))
-                                .foregroundColor(.white.opacity(0.78))
+                                .font(S.mono(11))
+                                .foregroundColor(S.paper.opacity(0.72))
                         }
-                        .font(T.sans(14, .semibold))
-                        .foregroundColor(.white)
+                        .font(S.sans(14, .medium))
+                        .foregroundColor(S.paper)
                         .padding(.horizontal, 14)
                         .frame(height: 42)
                         .frame(maxWidth: .infinity)
                         .background(
-                            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                                .fill(accent)
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(S.ink)
                         )
                     }
                     .buttonStyle(.plain)
@@ -1585,10 +1479,8 @@ struct ModelsManagerView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(T.surface2.opacity(0.6)))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .stroke(T.glassBorder, lineWidth: 0.5))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+            .stroke(T.studio.rule, lineWidth: 1))
     }
 
     @ViewBuilder
@@ -1682,8 +1574,8 @@ struct ModelsManagerView: View {
                 .font(T.sans(12, .semibold))
                 .foregroundColor(tint)
                 .padding(.horizontal, 12)
-                .frame(height: 30)
-                .background(Capsule().fill(tint.opacity(0.12)))
+                .frame(minHeight: 30)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(tint.opacity(0.12)))
         }
         .buttonStyle(.plain)
     }
@@ -1698,7 +1590,7 @@ struct ModelsManagerView: View {
                 .font(T.mono(9, .semibold))
                 .foregroundColor(tint)
         }
-        .frame(height: 30)
+        .frame(minHeight: 30)
     }
 
     @ViewBuilder
@@ -1710,11 +1602,10 @@ struct ModelsManagerView: View {
     }
 
     private func comboAccent(_ tier: String) -> Color {
-        switch tier {
-        case "Light": return T.good
-        case "Heavy": return T.warn
-        default:      return T.accent
-        }
+        // Studio is monochrome: tier identity rides on the tagline + fit
+        // badge, not hue. Kept as ink so any remaining call sites render
+        // in the quiet language.
+        return T.studio.ink
     }
 
     private func sectionFor(_ role: DownloadableModel.Category) -> Section {
@@ -1729,45 +1620,35 @@ struct ModelsManagerView: View {
     /// Image hero card + generator launcher (replaces the active-role row for
     /// the Image category, which has no persistent "active" selection).
     private var imageHeroCard: some View {
-        VStack(spacing: 12) {
+        let S = T.studio
+        return VStack(spacing: 12) {
             categorySectionHeader(.imageGen)
             modelCardShell(accent: T.accent, prominence: 0.16) {
                 HStack(alignment: .center, spacing: 14) {
                     Image(systemName: "wand.and.stars")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(T.accent)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(S.ink)
                         .frame(width: 44, height: 44)
-                        .background(RoundedRectangle(cornerRadius: 13, style: .continuous)
-                            .fill(T.accentSoft))
-                    VStack(alignment: .leading, spacing: 4) {
-                        KCaption(text: loc.t("Text to image"), color: T.accent)
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(S.fillActive))
+                    VStack(alignment: .leading, spacing: 3) {
                         Text(loc.t("Generate images on-device"))
-                            .font(T.display(18, .semibold))
-                            .foregroundColor(T.ink)
+                            .font(S.sans(16.5, .semibold))
+                            .foregroundColor(S.ink)
                         Text(loc.t("SD / SDXL diffusion via MLX. FLUX is too large for iOS memory."))
-                            .font(T.mono(9.5))
-                            .foregroundColor(T.ink3)
+                            .font(S.sans(12))
+                            .foregroundColor(S.ink3)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 0)
                 }
             }
-            Button {
+            StudioPrimaryButton(title: loc.t("Open generator")) {
                 showImageGen = true
                 HapticManager.impact(.medium)
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "sparkles")
-                    Text(loc.t("Open generator"))
-                }
-                .font(T.display(16, .semibold))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(T.roseHi))
             }
-            .buttonStyle(.plain)
+            .frame(height: 46)
         }
     }
 
@@ -1808,27 +1689,25 @@ struct ModelsManagerView: View {
 
     @ViewBuilder
     private func categoryUtilitiesFooter(_ section: Section) -> some View {
+        let S = T.studio
         VStack(spacing: 12) {
             Button {
                 withAnimation(.snappy(duration: 0.22)) { showUtilities.toggle() }
                 HapticManager.impact(.light)
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "wrench.and.screwdriver")
-                        .font(.system(size: 11))
-                        .foregroundColor(T.ink3)
-                    KCaption(text: loc.t("Tools & storage").uppercased(), color: T.ink3)
-                    Rectangle().fill(T.rule).frame(height: 1)
+                    StudioMonoLabel(text: loc.t("Tools & storage"), size: 11, tracking: 0.9)
+                    Rectangle().fill(S.rule2).frame(height: 1)
                     // Surface reclaimable bytes even while collapsed so the
                     // user knows there's space to free without expanding.
                     if center.orphanedDownloadBytes > 0 {
                         Text(center.orphanedDownloadBytes.formattedBytes)
-                            .font(T.mono(9, .semibold))
+                            .font(S.mono(10))
                             .foregroundColor(T.warn)
                     }
                     Image(systemName: showUtilities ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(T.ink3)
+                        .foregroundColor(S.chevron)
                 }
             }
             .buttonStyle(.plain)
@@ -1846,47 +1725,46 @@ struct ModelsManagerView: View {
     }
 
     private var storageCleanupRow: some View {
-        Button {
+        let S = T.studio
+        return Button {
             showStorageCleanup = true
             HapticManager.impact(.light)
         } label: {
-            modelCardShell(accent: T.accent, prominence: 0.08, padding: 14) {
-                HStack(spacing: 12) {
-                    Image(systemName: "externaldrive.badge.minus")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(T.accent)
-                        .frame(width: 40, height: 40)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(T.accentSoft))
-                    VStack(alignment: .leading, spacing: 4) {
-                        KCaption(text: loc.t("Storage cleanup").uppercased(), color: T.accent)
-                        Text(loc.t("Choose models to keep"))
-                            .font(T.sans(14, .semibold))
-                            .foregroundColor(T.ink)
-                        Text(loc.t("Review installed models together and safely remove everything you no longer need."))
-                            .font(T.mono(9.5))
-                            .foregroundColor(T.ink3)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(T.ink3)
+            HStack(spacing: 12) {
+                Image(systemName: "externaldrive.badge.minus")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(S.ink)
+                    .frame(width: 34, height: 34)
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
+                        .fill(S.fillActive))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(loc.t("Storage cleanup"))
+                        .font(S.sans(14.5, .medium))
+                        .foregroundColor(S.ink)
+                    Text(loc.t("Choose what to keep, remove the rest"))
+                        .font(S.sans(12))
+                        .foregroundColor(S.ink3)
+                        .lineLimit(1)
                 }
+                Spacer(minLength: 6)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(S.chevron)
             }
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
     /// Thin labelled divider used to head a block inside a category page.
+    /// The `tint` parameter is kept for call-site compatibility but the
+    /// Studio language renders every section label in neutral mono.
     @ViewBuilder
     private func sectionLabel(_ title: String, glyph: String, tint: Color) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: glyph)
-                .font(.system(size: 11))
-                .foregroundColor(tint)
-            KCaption(text: title, color: tint)
-            Rectangle().fill(T.rule).frame(height: 1)
+            StudioMonoLabel(text: title, size: 11, tracking: 0.9)
+            Rectangle().fill(T.studio.rule2).frame(height: 1)
         }
     }
 
@@ -2492,10 +2370,10 @@ struct ModelsManagerView: View {
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(
-                            Capsule().fill(T.bad.opacity(0.10))
+                            RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.bad.opacity(0.10))
                         )
                         .overlay(
-                            Capsule().stroke(T.bad.opacity(0.35), lineWidth: 0.5)
+                            RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.bad.opacity(0.35), lineWidth: 0.5)
                         )
                     }
                     .buttonStyle(.plain)
@@ -2650,38 +2528,36 @@ struct ModelsManagerView: View {
     /// and can silently grow to many GB.
     @ViewBuilder
     private var cleanupRow: some View {
+        let S = T.studio
         let orphanBytes = center.orphanedDownloadBytes
         if orphanBytes > 0 {
             Button {
                 pendingCleanupBytes = orphanBytes
                 HapticManager.impact(.light)
             } label: {
-                modelCardShell(accent: T.warn, prominence: 0.08, padding: 14) {
-                    HStack(spacing: 12) {
-                        Image(systemName: "trash.slash")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(T.warn)
-                            .frame(width: 40, height: 40)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(T.warn.opacity(T.isDark ? 0.16 : 0.10))
-                            )
-                        VStack(alignment: .leading, spacing: 4) {
-                            KCaption(text: "Reclaim space", color: T.warn)
-                            Text("Clean up partial downloads")
-                                .font(T.sans(14, .semibold))
-                                .foregroundColor(T.ink)
-                            Text("\(orphanBytes.formattedBytes) from cancelled or failed downloads")
-                                .font(T.mono(9.5))
-                                .foregroundColor(T.ink3)
-                                .lineLimit(2)
-                        }
-                        Spacer(minLength: 0)
-                        Text(orphanBytes.formattedBytes)
-                            .font(T.mono(11, .semibold))
-                            .foregroundColor(T.warn)
+                HStack(spacing: 12) {
+                    Image(systemName: "trash.slash")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(S.ink)
+                        .frame(width: 34, height: 34)
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
+                            .fill(S.fillActive))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(loc.t("Clean up partial downloads"))
+                            .font(S.sans(14.5, .medium))
+                            .foregroundColor(S.ink)
+                        Text("\(orphanBytes.formattedBytes) " + loc.t("from cancelled or failed downloads"))
+                            .font(S.sans(12))
+                            .foregroundColor(S.ink3)
+                            .lineLimit(1)
                     }
+                    Spacer(minLength: 6)
+                    Text(orphanBytes.formattedBytes)
+                        .font(S.mono(10.5))
+                        .foregroundColor(T.warn)
                 }
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
@@ -2692,41 +2568,34 @@ struct ModelsManagerView: View {
     /// the user's Files app, then registers the imported folder into the
     /// catalog so it appears in the Installed list immediately.
     private var importLocalRow: some View {
-        Button {
+        let S = T.studio
+        return Button {
             showImportPicker = true
             HapticManager.impact(.light)
         } label: {
-            modelCardShell(accent: T.accent, prominence: 0.08, padding: 14) {
-                HStack(spacing: 12) {
-                    Image(systemName: "folder.badge.plus")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(T.accent)
-                        .frame(width: 40, height: 40)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(T.accentSoft)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(T.accent.opacity(0.35),
-                                        style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                        )
-                    VStack(alignment: .leading, spacing: 4) {
-                        KCaption(text: "Import local model", color: T.accent)
-                        Text("Import a model from Files")
-                            .font(T.sans(14, .semibold))
-                            .foregroundColor(T.ink)
-                        Text("Add an MLX folder with `config.json` and weights, then surface it in Installed immediately.")
-                            .font(T.mono(9.5))
-                            .foregroundColor(T.ink3)
-                            .lineLimit(2)
-                    }
-                    Spacer(minLength: 0)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(T.ink3)
+            HStack(spacing: 12) {
+                Image(systemName: "folder.badge.plus")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(S.ink)
+                    .frame(width: 34, height: 34)
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
+                        .fill(S.fillActive))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(loc.t("Import a model from Files"))
+                        .font(S.sans(14.5, .medium))
+                        .foregroundColor(S.ink)
+                    Text(loc.t("MLX folder with config.json and weights"))
+                        .font(S.sans(12))
+                        .foregroundColor(S.ink3)
+                        .lineLimit(1)
                 }
+                Spacer(minLength: 6)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(S.chevron)
             }
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -2831,16 +2700,16 @@ struct ModelsManagerView: View {
                                 .foregroundColor(T.good)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 7)
-                                .background(Capsule().fill(T.good.opacity(0.12)))
-                                .overlay(Capsule().stroke(T.good.opacity(0.30), lineWidth: 0.5))
+                                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.good.opacity(0.12)))
+                                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.good.opacity(0.30), lineWidth: 0.5))
                         } else {
                             Text(loc.t("No in-app voice engine for this repo yet"))
                                 .font(T.mono(9.5, .semibold))
                                 .foregroundColor(T.warn)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 7)
-                                .background(Capsule().fill(T.warn.opacity(0.10)))
-                                .overlay(Capsule().stroke(T.warn.opacity(0.25), lineWidth: 0.5))
+                                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.warn.opacity(0.10)))
+                                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.warn.opacity(0.25), lineWidth: 0.5))
                         }
                     }
                     if model.downloader != nil {
@@ -3009,7 +2878,7 @@ struct ModelsManagerView: View {
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundColor(T.accent)
                         .frame(width: 44, height: 44)
-                        .background(RoundedRectangle(cornerRadius: 13, style: .continuous)
+                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .fill(T.accentSoft))
                     VStack(alignment: .leading, spacing: 4) {
                         KCaption(text: "Text to image", color: T.accent)
@@ -3057,7 +2926,7 @@ struct ModelsManagerView: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(T.accent)
                     .frame(width: 40, height: 40)
-                    .background(RoundedRectangle(cornerRadius: 11, style: .continuous)
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(T.accentSoft))
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 6) {
@@ -3069,7 +2938,7 @@ struct ModelsManagerView: View {
                                 .font(T.mono(8, .semibold))
                                 .foregroundColor(T.good)
                                 .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(Capsule().fill(T.good.opacity(0.14)))
+                                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.good.opacity(0.14)))
                         }
                     }
                     Text(m.subtitle)
@@ -3410,8 +3279,8 @@ struct ModelsManagerView: View {
                             .foregroundColor(T.warn)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 7)
-                            .background(Capsule().fill(T.warn.opacity(0.10)))
-                            .overlay(Capsule().stroke(T.warn.opacity(0.25), lineWidth: 0.5))
+                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.warn.opacity(0.10)))
+                            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.warn.opacity(0.25), lineWidth: 0.5))
                     }
                     Spacer(minLength: 0)
                     if !model.isRequired {
@@ -3562,7 +3431,7 @@ struct ModelsManagerView: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(accent)
                 .frame(width: 40, height: 40)
-                .background(RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(accent.opacity(T.isDark ? 0.18 : 0.12)))
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 5) {
@@ -3731,39 +3600,32 @@ struct ModelsManagerView: View {
         padding: CGFloat = 16,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        // Native clear glass keeps large model lists airy while the restrained
-        // role tint preserves wayfinding. The same helper backs active,
-        // installed, catalog, recommendation, and utility cards.
+        // Studio language: one flat paper card with a 1px hairline. The
+        // accent/prominence parameters are kept for call-site compatibility
+        // but intentionally no longer tint the surface — hierarchy comes
+        // from typography and the single ink primary, not card color.
         content()
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .kClearGlass(
-                in: RoundedRectangle(cornerRadius: 22, style: .continuous),
-                tint: accent.opacity(min(0.10, prominence * 0.55)),
-                fallbackFill: T.surface,
-                fallbackStroke: T.rule
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(T.studio.rule, lineWidth: 1)
             )
-            // Pointer-device lift (iPad cursor, Stage Manager, Vision). No-op
-            // on touch — UIKit only resolves .lift for indirect pointers, so
-            // it costs nothing on iPhone while keeping the iPad affordance.
-            .hoverEffect(.lift)
-            .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     @ViewBuilder
     private func metricBadge(_ text: String) -> some View {
+        // Studio: machine facts are mono ink on the paper — no chip fill,
+        // no border. The hairline cards around them already group them.
         Text(text)
-            .font(T.mono(10, .semibold))
-            .foregroundColor(T.ink2)
+            .font(T.mono(10.5))
+            .foregroundColor(T.studio.ink3)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(
-                Capsule()
-                    .fill(T.surface2.opacity(0.95))
-            )
-            .overlay(
-                Capsule()
-                    .stroke(T.glassBorder, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: StudioRadius.chip, style: .continuous)
+                    .fill(T.studio.fillActive)
             )
     }
 
@@ -3772,42 +3634,40 @@ struct ModelsManagerView: View {
     /// this iPhone, using the corrected memory math in `MemoryAdvisor`.
     @ViewBuilder
     private func fitBadge(forFootprint footprint: Int64) -> some View {
+        // Studio: a verdict is a dot + mono word. Only a warning/blocked
+        // verdict earns color; a healthy "fits" stays quiet ink so lists
+        // of safe models don't turn into a wall of green chips.
         let fit = MemoryAdvisor.fit(forFootprint: footprint)
         let (color, glyph): (Color, String) = {
             switch fit {
-            case .fits:  return (T.good, "checkmark.circle.fill")
+            case .fits:  return (T.studio.ink3, "checkmark.circle.fill")
             case .tight: return (T.warn, "exclamationmark.circle.fill")
             case .over:  return (T.bad,  "xmark.circle.fill")
             }
         }()
-        HStack(spacing: 3) {
+        HStack(spacing: 4) {
             Image(systemName: glyph)
                 .font(.system(size: 8, weight: .semibold))
-            Text(loc.t(fit.label))
-                .font(T.mono(9, .semibold))
-                .tracking(0.3)
+            Text(loc.t(fit.label).lowercased())
+                .font(T.mono(9.5))
+                .tracking(0.2)
         }
         .foregroundColor(color)
-        .padding(.horizontal, 7).padding(.vertical, 3)
-        .background(Capsule().fill(color.opacity(0.12)))
-        .overlay(Capsule().stroke(color.opacity(0.22), lineWidth: 0.5))
+        .accessibilityLabel(loc.t(fit.label))
     }
 
     @ViewBuilder
     private func platformCompatibilityBadge(_ compatibility: ModelPlatformCompatibility) -> some View {
         let supported = compatibility.supportsCurrentPlatform
-        let color = supported ? T.ink2 : T.bad
-        HStack(spacing: 3) {
+        let color = supported ? T.studio.ink3 : T.bad
+        HStack(spacing: 4) {
             Image(systemName: compatibility.symbol)
                 .font(.system(size: 8, weight: .semibold))
-            Text(compatibility.label)
-                .font(T.mono(8.5, .semibold))
+            Text(compatibility.label.lowercased())
+                .font(T.mono(9))
                 .tracking(0.2)
         }
         .foregroundColor(color)
-        .padding(.horizontal, 7).padding(.vertical, 3)
-        .background(Capsule().fill(color.opacity(0.10)))
-        .overlay(Capsule().stroke(color.opacity(0.22), lineWidth: 0.5))
         .accessibilityHint(compatibility.detail)
     }
 
@@ -3839,54 +3699,40 @@ struct ModelsManagerView: View {
     }
 
     private func cardButton(label: String, kind: CardButtonKind, action: @escaping () -> Void) -> some View {
-        // README §Models: Load is primary (rose gradient + white text),
-        // Swap is a ghost button (T.ink2, no fill) — they should NOT
-        // render at the same weight. The new `.ghost` kind makes that
-        // hierarchy explicit at the call site.
+        // Studio grammar: ONE filled action per context (flat ink, paper
+        // text — never a gradient), secondary = hairline border, ghost =
+        // borderless ink2 text, destructive = quiet bad-tinted text.
+        let S = T.studio
         let fg: Color = {
             switch kind {
-            case .primary:     return .white
-            case .destructive: return T.bad
-            case .ghost:       return T.ink2
-            case .secondary:   return T.ink
+            case .primary:     return S.paper
+            case .destructive: return S.danger
+            case .ghost:       return S.ink2
+            case .secondary:   return S.ink
             }
         }()
         return Button(action: action) {
             Text(label)
-                .font(T.mono(10, .semibold))
-                .tracking(0.4)
+                .font(S.sans(13, .medium))
                 .foregroundColor(fg)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .padding(.horizontal, 12)
+                .frame(minHeight: 32)
                 .background(
                     Group {
                         switch kind {
                         case .primary:
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(LinearGradient(colors: [T.roseHi, T.accent],
-                                                      startPoint: .top, endPoint: .bottom))
+                            RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
+                                .fill(S.ink)
                         case .destructive:
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(T.bad.opacity(0.12))
+                            RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
+                                .fill(S.danger.opacity(0.08))
                         case .ghost:
-                            // No fill — borderless text affordance.
                             Color.clear
                         case .secondary:
-                            RoundedRectangle(cornerRadius: 6)
-                                .fill(T.surface2)
+                            RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
+                                .stroke(S.rule, lineWidth: 1)
                         }
                     }
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke({
-                            switch kind {
-                            case .primary:     return Color.clear
-                            case .destructive: return T.bad.opacity(0.4)
-                            case .ghost:       return Color.clear
-                            case .secondary:   return T.rule
-                            }
-                        }(), lineWidth: 0.5)
                 )
         }
         .buttonStyle(.plain)
@@ -3907,11 +3753,11 @@ struct ModelsManagerView: View {
                 .foregroundColor(T.ink2)
                 .frame(width: 30, height: 28)
                 .background(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .fill(T.surface2)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
                         .stroke(T.rule, lineWidth: 0.5)
                 )
         }
@@ -3921,28 +3767,22 @@ struct ModelsManagerView: View {
 
     @ViewBuilder
     private func statusPill(text: String, color: Color) -> some View {
-        HStack(spacing: 4) {
+        // Studio: state is a colored dot + mono label — no tinted capsule.
+        HStack(spacing: 5) {
             Circle().fill(color).frame(width: 5, height: 5)
             Text(text)
-                .font(T.mono(10, .semibold))
-                .tracking(0.3)
-                .foregroundColor(color)
+                .font(T.mono(10))
+                .tracking(0.2)
+                .foregroundColor(T.studio.ink2)
         }
-        .padding(.horizontal, 8).padding(.vertical, 4)
-        .background(Capsule().fill(color.opacity(0.12)))
-        .overlay(
-            Capsule().stroke(color.opacity(0.16), lineWidth: 0.5)
-        )
     }
 
     @ViewBuilder
     private func categoryGlyph(_ category: DownloadableModel.Category) -> some View {
-        // Unified glyph used by every card across Active / Installed /
-        // Installing / Catalog tabs. Pink-soft tile + brand-accent symbol
-        // — the design language for "this is a model" regardless of
-        // which tab the row lives on. Vision rows swap to the sage
-        // accent so users can scan chat vs. camera at a glance without
-        // breaking the overall rose palette.
+        // Unified glyph used by every card across the Models hub. Studio
+        // language: ink symbol on the neutral whisper fill (same tile as
+        // Home's rows) — role identity comes from the glyph shape itself,
+        // not from hue. One accent per screen is reserved for state.
         let icon: String = {
             switch category {
             case .assistant: return "brain"
@@ -3953,10 +3793,10 @@ struct ModelsManagerView: View {
         }()
         Image(systemName: icon)
             .font(.system(size: 15, weight: .semibold))
-            .foregroundColor(categoryTint(category))
+            .foregroundColor(T.studio.ink)
             .frame(width: 40, height: 40)
-            .background(RoundedRectangle(cornerRadius: 11, style: .continuous)
-                .fill(categoryTintSoft(category)))
+            .background(RoundedRectangle(cornerRadius: StudioRadius.tile + 2, style: .continuous)
+                .fill(T.studio.fillActive))
     }
 
     /// Eyebrow label used above the model title on every card.
@@ -3987,17 +3827,14 @@ struct ModelsManagerView: View {
         }
     }
 
-    /// Thin labelled divider that heads each category group — matches the
-    /// "FEATURED" eyebrow used at the top of Catalog.
+    /// Thin labelled divider that heads each category group — Studio mono
+    /// eyebrow + hairline, neutral ink (hue is reserved for state).
     @ViewBuilder
     private func categorySectionHeader(_ category: DownloadableModel.Category) -> some View {
-        let (title, glyph, tint) = categoryHeaderMeta(category)
+        let (title, _, _) = categoryHeaderMeta(category)
         HStack(spacing: 6) {
-            Image(systemName: glyph)
-                .font(.system(size: 11))
-                .foregroundColor(tint)
-            KCaption(text: title, color: tint)
-            Rectangle().fill(T.rule).frame(height: 1)
+            StudioMonoLabel(text: title, size: 11, tracking: 0.9)
+            Rectangle().fill(T.studio.rule2).frame(height: 1)
         }
     }
 
@@ -4013,22 +3850,21 @@ struct ModelsManagerView: View {
 
     @ViewBuilder
     private func emptyState(icon: String, title: String, subtitle: String) -> some View {
-        modelCardShell(accent: T.accent, prominence: 0.06, padding: 24) {
-            VStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 28, weight: .light))
-                    .foregroundColor(T.ink3)
-                Text(title)
-                    .font(T.sans(14, .semibold))
-                    .foregroundColor(T.ink2)
-                Text(subtitle)
-                    .font(T.sans(12))
-                    .foregroundColor(T.ink3)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 26)
+        let S = T.studio
+        VStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 24, weight: .light))
+                .foregroundColor(S.ink4)
+            Text(title)
+                .font(S.sans(15, .medium))
+                .foregroundColor(S.ink2)
+            Text(subtitle)
+                .font(S.sans(12.5))
+                .foregroundColor(S.ink3)
+                .multilineTextAlignment(.center)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 34)
     }
 }
 
@@ -4156,8 +3992,8 @@ private struct ComboModelDownloadControl: View {
                 .font(T.sans(12, .semibold))
                 .foregroundColor(tint)
                 .padding(.horizontal, 12)
-                .frame(height: 30)
-                .background(Capsule().fill(tint.opacity(0.12)))
+                .frame(minHeight: 30)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(tint.opacity(0.12)))
         }
         .buttonStyle(.plain)
     }
@@ -4185,29 +4021,34 @@ private struct CompletedDownloadRow: View {
     let model: DownloadableModel
 
     @Environment(\.koduTheme) private var T
+    @ObservedObject private var loc = LocalizationService.shared
 
     var body: some View {
-        HStack(spacing: 12) {
+        let S = T.studio
+        return HStack(spacing: 12) {
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(T.good)
-                .frame(width: 42, height: 42)
-                .background(Circle().fill(T.good.opacity(0.12)))
-            VStack(alignment: .leading, spacing: 3) {
+                .frame(width: 34, height: 34)
+                .background(RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
+                    .fill(S.fillActive))
+            VStack(alignment: .leading, spacing: 1) {
                 Text(model.displayName)
-                    .font(T.sans(14, .semibold))
-                    .foregroundColor(T.ink)
-                Text("Ready to use · \(model.sizeLabel)")
-                    .font(T.mono(9.5))
-                    .foregroundColor(T.ink3)
+                    .font(S.sans(14.5, .medium))
+                    .foregroundColor(S.ink)
+                    .lineLimit(1)
+                Text(loc.t("Ready to use") + " · \(model.sizeLabel)")
+                    .font(S.mono(10))
+                    .foregroundColor(S.ink3)
             }
             Spacer()
             Text("100%")
-                .font(T.mono(11, .bold))
+                .font(S.mono(10.5))
                 .foregroundColor(T.good)
         }
         .padding(14)
-        .kGlass(cornerRadius: 18, fallbackFill: T.surface, fallbackStroke: T.rule)
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .stroke(S.rule, lineWidth: 1))
     }
 }
 
@@ -4235,10 +4076,11 @@ private struct InstallingRow: View {
 
     private var T: KoduTheme { theme }
 
-    /// Failed downloads use the bad accent; in-flight use warn.
+    /// Failed downloads use the bad accent; in-flight reads neutral —
+    /// a download is a normal state, not a warning.
     private var accent: Color {
         if case .failed = downloader.state { return T.bad }
-        return T.warn
+        return T.studio.ink2
     }
 
     /// Indeterminate progress when:
@@ -4257,11 +4099,9 @@ private struct InstallingRow: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .kClearGlass(
-            in: RoundedRectangle(cornerRadius: 22, style: .continuous),
-            tint: accent.opacity(0.13),
-            fallbackFill: T.surface,
-            fallbackStroke: accent.opacity(0.26)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(T.studio.rule, lineWidth: 1)
         )
     }
 
@@ -4269,16 +4109,15 @@ private struct InstallingRow: View {
 
     private var header: some View {
         HStack(alignment: .top, spacing: 12) {
-            // Match the unified pink-soft glyph tile used across every
-            // other model card. Accent flips to warn/bad while a
-            // download is in flight (see `accent`) so the row signals
-            // its state without losing the design language.
+            // Neutral whisper tile — same glyph language as the rest of the
+            // Models hub. The progress bar + % readout carry the state;
+            // the tint stays reserved for failures.
             Image(systemName: categoryGlyph)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(accent)
                 .frame(width: 40, height: 40)
-                .background(RoundedRectangle(cornerRadius: 11, style: .continuous)
-                    .fill(accent.opacity(0.12)))
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(T.studio.fillActive))
                 // Iterative variable-color pulses through the glyph while the
                 // download is actively transferring bytes. Doesn't fire on
                 // .enumerating (no bytes yet) or .failed (accent already flips
@@ -4290,15 +4129,15 @@ private struct InstallingRow: View {
                 )
 
             VStack(alignment: .leading, spacing: 3) {
-                KCaption(text: categoryEyebrow, color: T.ink3)
+                StudioMonoLabel(text: categoryEyebrow, size: 10, tracking: 0.8)
                 Text(model.displayName)
-                    .font(T.display(17, .semibold))
-                    .foregroundColor(T.ink)
+                    .font(T.studio.sans(16, .medium))
+                    .foregroundColor(T.studio.ink)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(model.subtitle)
                     .font(T.mono(9.5))
-                    .foregroundColor(T.ink3.opacity(0.82))
+                    .foregroundColor(T.studio.ink3)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
@@ -4307,11 +4146,11 @@ private struct InstallingRow: View {
             if isIndeterminate {
                 Text("…")
                     .font(T.mono(11, .semibold))
-                    .foregroundColor(accent)
+                    .foregroundColor(T.studio.ink3)
             } else {
                 Text("\(Int(downloader.progress * 100))%")
                     .font(T.mono(11, .semibold))
-                    .foregroundColor(accent)
+                    .foregroundColor(T.studio.ink2)
                     .contentTransition(.numericText())
                     .animation(.easeOut(duration: 0.15), value: downloader.progress)
             }
@@ -4388,29 +4227,28 @@ private struct InstallingRow: View {
                 if case .failed = downloader.state {
                     Button(action: { downloader.start(); HapticManager.impact(.medium) }) {
                         Text(loc.t("Retry"))
-                            .font(T.mono(11, .semibold))
-                            .foregroundColor(T.bg)
-                            .padding(.horizontal, 10).padding(.vertical, 6)
-                            .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
+                            .font(T.studio.sans(12.5, .medium))
+                            .foregroundColor(T.studio.paper)
+                            .padding(.horizontal, 12).frame(minHeight: 30)
+                            .background(RoundedRectangle(cornerRadius: StudioRadius.chip, style: .continuous).fill(T.studio.ink))
                     }
                     .buttonStyle(.plain)
                 } else {
                     Button(action: { downloader.cancel(); HapticManager.impact(.light) }) {
                         Text(loc.t("Cancel"))
-                            .font(T.mono(11, .semibold))
-                            .foregroundColor(T.ink2)
-                            .padding(.horizontal, 10).padding(.vertical, 6)
-                            .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
+                            .font(T.studio.sans(12.5, .medium))
+                            .foregroundColor(T.studio.ink)
+                            .padding(.horizontal, 12).frame(minHeight: 30)
+                            .overlay(RoundedRectangle(cornerRadius: StudioRadius.chip, style: .continuous).stroke(T.studio.rule, lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                 }
                 if let docURL = model.docURL, let url = URL(string: docURL) {
                     Button(action: { UIApplication.shared.open(url) }) {
                         Text(loc.t("Open on HuggingFace"))
-                            .font(T.mono(11, .semibold))
-                            .foregroundColor(T.ink2)
-                            .padding(.horizontal, 10).padding(.vertical, 6)
-                            .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
+                            .font(T.studio.sans(12.5))
+                            .foregroundColor(T.studio.ink3)
+                            .padding(.horizontal, 8).frame(minHeight: 30)
                     }
                     .buttonStyle(.plain)
                 }

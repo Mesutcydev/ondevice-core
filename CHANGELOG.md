@@ -5,8 +5,43 @@ and intends to use semantic version tags for source releases.
 
 ## [Unreleased]
 
+### Added
+
+- One-page first-run onboarding (`Views/OnboardingOnePager.swift`), shown
+  after the legal gate: a README-style capability table (MLX, GGUF, Core AI,
+  Core ML, Stable Diffusion plus the product surface), a plain-language
+  privacy note, and a single primary action. Replaces the retired multi-page
+  tour; compiles into the DesignReview harness verbatim.
+
+### Changed
+
+- App-wide design unification to the Studio language: Home rebuilt (Lens /
+  Voice / Mac tiles and the hero mic action removed; editorial rows and
+  hairlines), Models tab chrome restyled (mono eyebrows, neutral storage bar,
+  flat search field, ink-underline role picker, square-cut chips and badges),
+  Mac bridge hero and Voice library flattened off gradient styling, and 108
+  legacy capsule controls swept to the 9 pt square-cut grammar. Vendor
+  gradient monogram tiles render neutral with ink glyphs.
+
+## [1.0.0] - 2026-09-17
+
+### Changed
+
+- Forked OnDevice Core as **OnDevice Max**: the app, share extension, unit-test
+  and UI-test bundle identifiers, App Group, CloudKit container, URL scheme and
+  every internal identifier namespace now use `com.mesutcydev.ondevicemax`. The
+  two products install side by side and share no container, keychain service or
+  Spotlight domain.
+- Aligned the open-source release metadata (CITATION.cff, SBOM) to the 1.0.0
+  marketing version already declared by `project.yml`.
+
 ### Fixed
 
+- `scripts/validate_open_source.sh` compared the two committed SwiftPM lockfiles
+  through the retired `IOSLocalLLM.xcodeproj` / `IOSLocalLLM.xcworkspace` paths,
+  so the hygiene check failed on a missing file before it ever reached the
+  version, secret and action-pinning checks. It now reads the generated
+  `OnDeviceMax.*` paths.
 - Sideload build 110 restores the OnDevice LLM display name and preserves the
   share extension's application-group entitlement during ad-hoc packaging.
 - Imported GGUF assistants now receive their chat template, sampler

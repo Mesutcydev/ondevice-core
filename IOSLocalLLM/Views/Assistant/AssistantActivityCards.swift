@@ -14,12 +14,11 @@ private struct ActivityCardChrome<Content: View>: View {
         content
             .padding(12)
             .frame(maxWidth: 520, alignment: .leading)
-            .glassSurface(.card, cornerRadius: 16)
+            .glassSurface(.card, cornerRadius: 12)
             .overlay {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(T.rule.opacity(0.7), lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(T.rule, lineWidth: 1)
             }
-            .shadow(color: .black.opacity(T.isDark ? 0.14 : 0.05), radius: 10, y: 4)
             .padding(.horizontal, 18)
             .padding(.vertical, 6)
             .accessibilityElement(children: .contain)
@@ -164,7 +163,7 @@ struct AssistantApprovalCard: View {
                         onAllowOnce()
                     }) {
                         Text("Allow once")
-                            .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                            .font(T.mono(13, .semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 11)
                             .foregroundStyle(T.bg)
@@ -179,7 +178,7 @@ struct AssistantApprovalCard: View {
                             onAlwaysAllow()
                         }) {
                             Text("Always allow")
-                                .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                                .font(T.mono(13, .semibold))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 11)
                                 .foregroundStyle(T.ink)
@@ -194,7 +193,7 @@ struct AssistantApprovalCard: View {
                         onDecline()
                     }) {
                         Text("Not now")
-                            .font(.system(size: 13, design: .monospaced))
+                            .font(T.mono(13))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)
                             .foregroundStyle(T.ink3)
@@ -233,7 +232,7 @@ struct AssistantFileApprovalCard: View {
                     onChoose()
                 }) {
                     Text("Choose file")
-                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .font(T.mono(13, .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 11)
                         .foregroundStyle(T.bg)
@@ -247,7 +246,7 @@ struct AssistantFileApprovalCard: View {
                     onDecline()
                 }) {
                     Text("Not now")
-                        .font(.system(size: 13, design: .monospaced))
+                        .font(T.mono(13))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .foregroundStyle(T.ink3)

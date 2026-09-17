@@ -30,7 +30,7 @@ struct WebSettingsView: View {
                 }
                 .padding(.bottom, 32)
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
@@ -180,7 +180,7 @@ struct WebSettingsView: View {
                     .font(T.mono(11, .semibold))
                     .foregroundColor(T.bg)
                     .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(T.ink))
+                    .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
             }
             .buttonStyle(.plain)
             .disabled(apiKeyInput.isEmpty)
@@ -206,7 +206,7 @@ struct WebSettingsView: View {
                     .font(T.mono(11, .semibold))
                     .foregroundColor(T.bg)
                     .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(T.ink))
+                    .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
             }
             .buttonStyle(.plain)
             .disabled(endpointInput.isEmpty)

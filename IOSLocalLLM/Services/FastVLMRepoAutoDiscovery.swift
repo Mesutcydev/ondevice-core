@@ -44,7 +44,7 @@ final class FastVLMRepoAutoDiscovery {
             if await isAccessible(repoID) {
                 if AppSettings.shared.fastVLMRepoID != repoID {
                     AppSettings.shared.fastVLMRepoID = repoID
-                    print("[FastVLMRepoAutoDiscovery] picked \(repoID)")
+                    Diagnostics.shared.debug("picked \(repoID)", category: "fastvlmrepoautodiscovery")
                 }
                 return repoID
             }
@@ -54,7 +54,7 @@ final class FastVLMRepoAutoDiscovery {
         // public hit. If even that fails we surface nil and the UI handles it.
         if let searched = await searchFastVLM() {
             AppSettings.shared.fastVLMRepoID = searched
-            print("[FastVLMRepoAutoDiscovery] discovered via search: \(searched)")
+            Diagnostics.shared.debug("discovered via search: \(searched)", category: "fastvlmrepoautodiscovery")
             return searched
         }
 

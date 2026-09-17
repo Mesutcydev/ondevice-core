@@ -305,7 +305,7 @@ actor BridgeServer {
 
     private func onListenerState(_ state: NWListener.State) {
         if case .failed(let err) = state {
-            print("[BridgeServer] Listener failed: \(err)")
+            Diagnostics.shared.error("Listener failed: \(err)", category: "bridgeserver")
             listener?.cancel()
             listener = nil
         }

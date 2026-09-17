@@ -20,6 +20,7 @@ struct ModelDownloadCenterView: View {
     /// Richer preset that also seeds an initial query (used by the
     /// device-tier "recommended" row).
     @State private var presetSearch: PresetSearch? = nil
+    @State private var pendingDelete: DownloadableModel? = nil
 
     struct PresetSearch: Identifiable {
         let id = UUID()
@@ -69,7 +70,7 @@ struct ModelDownloadCenterView: View {
             .sheet(item: $presetSearch) { p in
                 HFSearchView(initialFilter: p.filter, initialQuery: p.query)
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .onAppear { center.refreshAllStates() }
             // Refresh when app comes back to foreground, in case the user
             // deleted files externally or another tab finished a download.
@@ -80,6 +81,29 @@ struct ModelDownloadCenterView: View {
             .onReceive(NotificationCenter.default.publisher(
                 for: .hfModelDownloadCompleted)) { _ in
                 center.refreshAllStates()
+            }
+            // Deleting a ready model discards gigabytes that can only come
+            // back over the network. `ModelsManagerView` already confirms the
+            // same operation; this screen did not, so the identical action was
+            // guarded in one place and instant in another.
+            .confirmationDialog(
+                pendingDelete.map { "Delete \($0.displayName)?" } ?? "Delete model?",
+                isPresented: Binding(get: { pendingDelete != nil },
+                                     set: { if !$0 { pendingDelete = nil } }),
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    if let m = pendingDelete {
+                        ModelDownloadCenter.shared.handleDeletion(of: m)
+                    }
+                    pendingDelete = nil
+                    HapticManager.impact(.medium)
+                }
+                Button("Cancel", role: .cancel) { pendingDelete = nil }
+            } message: {
+                if let m = pendingDelete {
+                    Text("Frees \(m.sizeLabel). You'd have to download it again to use it.")
+                }
             }
         }
     }
@@ -162,7 +186,7 @@ struct ModelDownloadCenterView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .background(
-                        RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .fill(selected ? categoryTint(cat).opacity(T.isDark ? 0.18 : 0.12) : Color.clear)
                     )
                     .contentShape(Rectangle())
@@ -225,13 +249,14 @@ struct ModelDownloadCenterView: View {
                 }
                 if model.isReady {
                     Button(role: .destructive) {
-                        ModelDownloadCenter.shared.handleDeletion(of: model)
+                        pendingDelete = model
                     } label: {
                         Label("Delete model", systemImage: "trash")
                     }
                 }
             }
     }
+
 
     // MARK: - Category-scoped search
 
@@ -417,6 +442,7 @@ struct ModelDownloadCard: View {
     @ObservedObject private var downloaderObs: DownloadObserver
     @State private var showFixRepoSheet = false
     @State private var isAutoDiscovering = false
+    @State private var showDeleteConfirm = false
     @Environment(\.koduTheme) private var T
 
     init(model: DownloadableModel) {
@@ -471,6 +497,23 @@ struct ModelDownloadCard: View {
         }
         .sheet(isPresented: $showFixRepoSheet) {
             FixRepoSheet(model: model)
+        }
+        // A bare trash glyph in a row is one tap from discarding gigabytes
+        // that only come back over the network.
+        .confirmationDialog(
+            "Delete \(model.displayName)?",
+            isPresented: $showDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                // handleDeletion resets active selections, unregisters custom
+                // entries, and surfaces failures as a toast.
+                ModelDownloadCenter.shared.handleDeletion(of: model)
+                HapticManager.impact(.medium)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Frees \(model.sizeLabel). You'd have to download it again to use it.")
         }
         // Re-probe disk state each time the card becomes visible so models
         // that were downloaded in a previous session show "ready to use"
@@ -619,7 +662,7 @@ struct ModelDownloadCard: View {
                     }
                     .foregroundColor(T.bg)
                     .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(T.ink))
+                    .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
                 }
                 .buttonStyle(.plain)
 
@@ -644,7 +687,7 @@ struct ModelDownloadCard: View {
                             }
                             .foregroundColor(T.good)
                             .padding(.horizontal, 8).padding(.vertical, 5)
-                            .background(RoundedRectangle(cornerRadius: 5).fill(T.good.opacity(0.12)))
+                            .background(RoundedRectangle(cornerRadius: 6).fill(T.good.opacity(0.12)))
                         }
                         .buttonStyle(.plain)
                         .disabled(isAutoDiscovering)
@@ -662,7 +705,7 @@ struct ModelDownloadCard: View {
                         }
                         .foregroundColor(T.accent)
                         .padding(.horizontal, 8).padding(.vertical, 5)
-                        .background(RoundedRectangle(cornerRadius: 5).fill(T.accentSoft))
+                        .background(RoundedRectangle(cornerRadius: 6).fill(T.accentSoft))
                     }
                     .buttonStyle(.plain)
                 }
@@ -694,7 +737,7 @@ struct ModelDownloadCard: View {
                     }
                     .foregroundColor(T.warn)
                     .padding(.horizontal, 9).padding(.vertical, 5)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(T.warn.opacity(0.12)))
+                    .background(RoundedRectangle(cornerRadius: 6).fill(T.warn.opacity(0.12)))
                 }
                 .buttonStyle(.plain)
 
@@ -704,15 +747,16 @@ struct ModelDownloadCard: View {
                 Spacer()
 
                 Button(role: .destructive) {
-                    // handleDeletion resets active selections, unregisters
-                    // custom entries, and surfaces failures as a toast.
-                    ModelDownloadCenter.shared.handleDeletion(of: model)
+                    showDeleteConfirm = true
                 } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 12))
                         .foregroundColor(T.bad.opacity(0.7))
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Delete \(model.displayName)")
             }
 
             Spacer()

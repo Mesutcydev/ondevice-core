@@ -191,9 +191,9 @@ private struct FastVLMSetupProgress: View {
                 .lineLimit(1)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(.white.opacity(0.18)).frame(height: 3)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.white.opacity(0.18)).frame(height: 3)
                     if let f = fraction {
-                        Capsule().fill(T.accent)
+                        RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accent)
                             .frame(width: max(3, geo.size.width * CGFloat(f)), height: 3)
                     }
                 }

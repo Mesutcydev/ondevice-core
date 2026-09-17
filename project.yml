@@ -1,6 +1,6 @@
-name: OnDeviceCoreAIStudio
+name: OnDeviceMax
 options:
-  bundleIdPrefix: com.mesutcydev.ondevicecore
+  bundleIdPrefix: com.mesutcydev.ondevicemax
   deploymentTarget:
     # This is the iOS-27 Core AI edition. The untouched CodeLens reference
     # remains iOS 18+; this copy keeps its MLX/llama stack and adds Core AI.
@@ -144,7 +144,7 @@ targets:
     info:
       path: IOSLocalLLM/Info.plist
       properties:
-        CFBundleDisplayName: OnDevice Core
+        CFBundleDisplayName: OnDevice Max
         # Source of truth for both targets' marketing version. xcodegen
         # writes these into the generated Info.plist files on every run,
         # so hand-edits to those plists get reverted next regen — always
@@ -154,11 +154,11 @@ targets:
         # Standard HTTPS only — answers the ASC export-compliance question
         # automatically so review submission doesn't stall on it.
         ITSAppUsesNonExemptEncryption: false
-        NSCameraUsageDescription: "OnDevice uses the back camera to capture live video of your terminal or code editor for real-time analysis."
-        NSPhotoLibraryUsageDescription: "OnDevice can analyze code from photos in your library."
-        NSMicrophoneUsageDescription: "OnDevice uses the microphone for hold-to-talk dictation in the chat composer. Audio is transcribed on-device and never leaves your phone."
-        NSLocalNetworkUsageDescription: "OnDevice can expose your on-device language model to computers on your local network when you enable the Local API Server."
-        NSSpeechRecognitionUsageDescription: "OnDevice uses on-device speech recognition to convert your voice into text for the chat composer."
+        NSCameraUsageDescription: "OnDevice Max uses the camera so Lens can read text and describe objects, documents, and scenes you choose to capture."
+        NSPhotoLibraryUsageDescription: "OnDevice Max uses photos you select for image understanding and conversations with compatible vision models."
+        NSMicrophoneUsageDescription: "OnDevice Max uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control."
+        NSLocalNetworkUsageDescription: "OnDevice Max can expose your on-device language model to computers on your local network when you enable the Local API Server."
+        NSSpeechRecognitionUsageDescription: "OnDevice Max uses speech recognition to turn your speech into text for voice conversations and dictation."
         UIRequiresFullScreen: true
         UIStatusBarStyle: UIStatusBarStyleDarkContent
         UIViewControllerBasedStatusBarAppearance: false
@@ -175,14 +175,14 @@ targets:
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         CFBundleURLTypes:
-          - CFBundleURLName: com.mesutcydev.ondevicecore.scheme
+          - CFBundleURLName: com.mesutcydev.ondevicemax.scheme
             CFBundleURLSchemes:
-              - ondevice-core
+              - ondevice-max
     settings:
       base:
-        PRODUCT_NAME: OnDeviceCoreAIStudio
+        PRODUCT_NAME: OnDeviceMax
         PRODUCT_MODULE_NAME: IOSLocalLLM
-        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicecore
+        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicemax
         INFOPLIST_FILE: IOSLocalLLM/Info.plist
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLM/IOSLocalLLM.entitlements
         CODE_SIGN_STYLE: Automatic
@@ -392,7 +392,7 @@ targets:
     info:
       path: IOSLocalLLMShareExtension/Info.plist
       properties:
-        CFBundleDisplayName: OnDevice Core
+        CFBundleDisplayName: OnDevice Max
         # Must match the main target's version above — App Store rejects
         # extension targets with mismatched marketing versions.
         CFBundleShortVersionString: "1.0.0"
@@ -409,9 +409,9 @@ targets:
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
     settings:
       base:
-        PRODUCT_NAME: OnDeviceCoreShare
+        PRODUCT_NAME: OnDeviceMaxShare
         PRODUCT_MODULE_NAME: IOSLocalLLMShareExtension
-        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicecore.share
+        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicemax.share
         INFOPLIST_FILE: IOSLocalLLMShareExtension/Info.plist
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements
         CODE_SIGN_STYLE: Automatic
@@ -430,13 +430,13 @@ targets:
       - target: IOSLocalLLM
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicecore.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicemax.tests
         INFOPLIST_FILE: ""   # auto-generate
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1"
         "TARGETED_DEVICE_FAMILY[sdk=macosx*]": "2,6"
         GENERATE_INFOPLIST_FILE: YES
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/OnDeviceCoreAIStudio.app/OnDeviceCoreAIStudio"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/OnDeviceMax.app/OnDeviceMax"
         BUNDLE_LOADER: "$(TEST_HOST)"
         SWIFT_EMIT_LOC_STRINGS: NO
         # Clear the bridging header — tests only test Swift code.
@@ -461,14 +461,14 @@ targets:
       - target: IOSLocalLLM
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicecore.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicemax.uitests
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_EMIT_LOC_STRINGS: NO
 
 schemes:
-  OnDeviceCoreAIStudio:
+  OnDeviceMax:
     build:
       targets:
         IOSLocalLLM: all

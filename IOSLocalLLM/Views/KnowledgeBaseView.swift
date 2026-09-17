@@ -16,11 +16,12 @@ struct KnowledgeBaseView: View {
     @State private var showPaste = false
     @State private var pasteText = ""
     @State private var pasteName = ""
+    @State private var showClearConfirm = false
 
     var body: some View {
         NavigationStack {
             ZStack {
-                LiquidPinkBackdrop()
+                StudioPageBackground()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 18) {
                         if !kb.isAvailable { unavailableCard }
@@ -45,11 +46,28 @@ struct KnowledgeBaseView: View {
                 }
                 if !kb.documents.isEmpty {
                     ToolbarItem(placement: .primaryAction) {
-                        Button(role: .destructive) { kb.clear() } label: {
+                        Button(role: .destructive) { showClearConfirm = true } label: {
                             Image(systemName: "trash")
                         }
+                        .accessibilityLabel("Remove all documents")
                     }
                 }
+            }
+            // These are files the user imported by hand and the app never
+            // uploads anywhere — there is no copy to restore from, so a bare
+            // toolbar trash icon cannot be the whole interaction.
+            .confirmationDialog(
+                "Remove all \(kb.documents.count) documents?",
+                isPresented: $showClearConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Remove all", role: .destructive) {
+                    kb.clear()
+                    HapticManager.impact(.medium)
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("The assistant will stop grounding answers in them. You'd need to import the files again.")
             }
             .fileImporter(isPresented: $showImporter,
                           allowedContentTypes: [.plainText, .text, .sourceCode, .json, .pdf, .data],
@@ -159,7 +177,7 @@ struct KnowledgeBaseView: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(T.accent2)
                 .frame(width: 36, height: 36)
-                .background(RoundedRectangle(cornerRadius: 9).fill(T.accent2Soft))
+                .background(RoundedRectangle(cornerRadius: 10).fill(T.accent2Soft))
             VStack(alignment: .leading, spacing: 3) {
                 Text(doc.name).font(T.sans(14, .semibold)).foregroundColor(T.ink).lineLimit(1)
                 Text("\(doc.chunkCount) chunks · \(Int64(doc.byteCount).formattedBytes)")
@@ -182,7 +200,7 @@ struct KnowledgeBaseView: View {
     private var pasteSheet: some View {
         NavigationStack {
             ZStack {
-                LiquidPinkBackdrop()
+                StudioPageBackground()
                 VStack(spacing: 12) {
                     TextField("Name (e.g. Project notes)", text: $pasteName)
                         .font(T.sans(15)).padding(12)

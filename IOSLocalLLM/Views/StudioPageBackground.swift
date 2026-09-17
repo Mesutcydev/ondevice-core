@@ -1,42 +1,20 @@
 import SwiftUI
 
-// MARK: - LiquidPinkBackdrop
-// Historical name retained for compatibility. This is backdrop content, not a
-// tint inside the glass: restrained detail gives the native material live
-// pixels to sample and makes its clarity/refraction visible in both modes.
+// MARK: - Studio page background
+//
+// The app's single page surface: one flat colour from the theme, nothing else.
+// It was called `LiquidPinkBackdrop` and drew blurred pink blooms; the Studio
+// language replaced those with a flat page and hairlines, but the old name
+// survived across 49 call sites and described something that no longer
+// existed. Renamed so the type says what it does.
 
-struct LiquidPinkBackdrop: View {
+struct StudioPageBackground: View {
     @Environment(\.koduTheme) private var T
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack {
-                T.bg
-
-                Circle()
-                    .fill(T.accent.opacity(T.isDark ? 0.18 : 0.10))
-                    .frame(width: proxy.size.width * 1.05)
-                    .blur(radius: 38)
-                    .offset(x: -proxy.size.width * 0.42, y: -proxy.size.height * 0.26)
-
-                Circle()
-                    .fill(Color(red: 0.42, green: 0.78, blue: 0.72)
-                        .opacity(T.isDark ? 0.13 : 0.12))
-                    .frame(width: proxy.size.width * 0.86)
-                    .blur(radius: 46)
-                    .offset(x: proxy.size.width * 0.42, y: proxy.size.height * 0.04)
-
-                RoundedRectangle(cornerRadius: 64, style: .continuous)
-                    .fill(Color(red: 0.72, green: 0.62, blue: 0.96)
-                        .opacity(T.isDark ? 0.12 : 0.10))
-                    .frame(width: proxy.size.width * 1.15, height: proxy.size.height * 0.34)
-                    .rotationEffect(.degrees(-18))
-                    .blur(radius: 52)
-                    .offset(x: proxy.size.width * 0.18, y: proxy.size.height * 0.39)
-            }
-        }
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
+        T.studio.paper
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
     }
 }
 
@@ -88,7 +66,7 @@ struct LiquidGlassPill<Content: View>: View {
             .padding(.horizontal, 14)
             .padding(.vertical, 7)
             .kClearGlass(
-                in: Capsule(),
+                in: RoundedRectangle(cornerRadius: 10, style: .continuous),
                 tint: active ? T.accentStrong : nil,
                 fallbackFill: active ? T.accentStrong : T.surface,
                 fallbackStroke: active ? Color.clear : T.rule
@@ -135,7 +113,7 @@ struct KActivePinkBadge: View {
     var body: some View {
         HStack(spacing: 3) {
             Text(text)
-                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .font(T.mono(9, .semibold))
                 .tracking(0)
         }
         .foregroundColor(T.ink)

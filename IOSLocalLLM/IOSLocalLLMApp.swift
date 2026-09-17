@@ -5,6 +5,7 @@ import SwiftUI
 @main
 struct IOSLocalLLMApp: App {
     @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var loc = LocalizationService.shared
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @State private var isShowingSplash = true
@@ -36,7 +37,7 @@ struct IOSLocalLLMApp: App {
             // leave their background transparent. Clear Liquid Glass needs
             // real pixels beneath it; this restrained canvas supplies them
             // without turning the UI into a decorative gradient demo.
-            LiquidPinkBackdrop()
+            StudioPageBackground()
             ContentView()
             ToastOverlayView()
             // Mounted above toasts so the burst draws over them, but
@@ -113,6 +114,13 @@ struct IOSLocalLLMApp: App {
             accent: KoduTheme.appAccent))
         .preferredColorScheme(settings.resolvedColorScheme)
         .koduScaledType()
+        // The in-app language picker is independent of the system language, so
+        // SwiftUI's automatic RTL mirroring (which follows the SYSTEM locale)
+        // does not fire when a user on an English phone selects Arabic here.
+        // `effectiveLanguage` resolves `.system` too, so this stays correct
+        // when the device itself is Arabic.
+        .environment(\.layoutDirection,
+                     loc.effectiveLanguage.isRightToLeft ? .rightToLeft : .leftToRight)
     }
 }
 

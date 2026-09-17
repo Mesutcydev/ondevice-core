@@ -30,7 +30,7 @@ struct CodeModeView: View {
                 }
                 .padding(T.pad)
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .safeAreaInset(edge: .bottom) { actionBar }
             .navigationTitle("Code")
             .navigationBarTitleDisplayMode(.inline)
@@ -96,11 +96,11 @@ struct CodeModeView: View {
             }
             HStack(spacing: 6) {
                 Text(controller.selectedTask.hint)
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(T.mono(11))
                     .foregroundStyle(T.ink3)
                 if controller.autoPickedDebug, controller.selectedTask == .debug {
                     Text("· auto-picked")
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(T.mono(11))
                         .foregroundStyle(T.warn)
                 }
             }
@@ -120,10 +120,10 @@ struct CodeModeView: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
             .background(
-                Capsule().fill(selected ? T.accent : T.surface2)
+                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(selected ? T.accent : T.surface2)
             )
             .overlay(
-                Capsule().strokeBorder(selected ? Color.clear : T.rule2, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(selected ? Color.clear : T.rule2, lineWidth: 1)
             )
             .foregroundStyle(selected ? Color.white : T.ink2)
         }
@@ -137,17 +137,17 @@ struct CodeModeView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Text("extracted")
-                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                    .font(T.mono(12, .semibold))
                     .foregroundStyle(T.ink3)
                 if let lang = controller.detectedLanguage {
                     Text(lang.lowercased())
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .font(T.mono(11, .medium))
                         .padding(.horizontal, 7).padding(.vertical, 2)
-                        .background(Capsule().fill(T.accentSoft))
+                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accentSoft))
                         .foregroundStyle(T.accent)
                 }
                 Text("\(controller.lineCount) ln")
-                    .font(.system(size: 11, design: .monospaced))
+                    .font(T.mono(11))
                     .foregroundStyle(T.ink4)
                 Spacer()
                 Button {
@@ -158,7 +158,7 @@ struct CodeModeView: View {
                 } label: {
                     Label(didCopy ? "copied" : "copy",
                           systemImage: didCopy ? "checkmark" : "doc.on.doc")
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .font(T.mono(11, .semibold))
                         .foregroundStyle(didCopy ? T.good : T.ink2)
                 }
                 .buttonStyle(.plain)
@@ -180,7 +180,7 @@ struct CodeModeView: View {
                     controller.runTask(controller.selectedTask)
                 } label: {
                     Label("re-run on edited code", systemImage: "arrow.clockwise")
-                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .font(T.mono(11, .semibold))
                         .foregroundStyle(T.accent)
                 }
                 .buttonStyle(.plain)
@@ -216,7 +216,7 @@ struct CodeModeView: View {
                     }
                     if controller.taskOutput.isEmpty && controller.isReasoning {
                         Text("Thinking…")
-                            .font(.system(size: 13, design: .monospaced))
+                            .font(T.mono(13))
                             .foregroundStyle(T.ink3)
                     } else {
                         MarkdownTextView(markdown: controller.taskOutput)
@@ -320,7 +320,7 @@ struct CodeFramingGuide: View {
                 }
                 .foregroundStyle(.white.opacity(0.85))
                 .padding(.horizontal, 14).padding(.vertical, 8)
-                .background(Capsule().fill(.black.opacity(0.35)))
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.black.opacity(0.35)))
                 .offset(y: h / 2 + 26)
             }
             .frame(width: geo.size.width, height: geo.size.height)

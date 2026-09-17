@@ -63,7 +63,7 @@ struct VoiceSettingsView: View {
                 }
             }
             .toolbarBackground(.hidden, for: .navigationBar)
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .sheet(isPresented: $showEnginePicker) {
                 VoiceModelPickerView()
             }
@@ -271,7 +271,7 @@ struct VoiceSettingsView: View {
     // For users who DO want per-model tuning, this is where they set
     // a slower rate for a deliberate coder model or a pinned engine
     // for a model whose locale they know better than the router
-    // does. Overrides persist under `com.mesutcydev.ondevicecore.voice.profile.
+    // does. Overrides persist under `com.mesutcydev.ondevicemax.voice.profile.
     // <modelId>.<field>` and are applied on top of the built-in
     // profile by `VoiceProfileRegistry`.
     //

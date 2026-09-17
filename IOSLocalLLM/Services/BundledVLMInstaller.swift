@@ -88,11 +88,11 @@ enum BundledVLMInstaller {
         guard let bundleRoot = Bundle.main.resourceURL?
             .appendingPathComponent("BundledVLM")
             .appendingPathComponent(bundleFolderName) else {
-            print("[BundledVLMInstaller] Bundle root not found")
+            Diagnostics.shared.error("Bundle root not found", category: "bundledvlminstaller")
             return false
         }
         guard FileManager.default.fileExists(atPath: bundleRoot.path) else {
-            print("[BundledVLMInstaller] Bundle directory missing at \(bundleRoot.path) — lens tab will need network download of the GGUF pair")
+            Diagnostics.shared.error("Bundle directory missing at \(bundleRoot.path) — lens tab will need network download of the GGUF pair", category: "bundledvlminstaller")
             return false
         }
 
@@ -102,13 +102,13 @@ enum BundledVLMInstaller {
                 at: dest, withIntermediateDirectories: true
             )
         } catch {
-            print("[BundledVLMInstaller] Failed to create HFModels dir: \(error)")
+            Diagnostics.shared.error("Failed to create HFModels dir: \(error)", category: "bundledvlminstaller")
             return false
         }
 
         let fm = FileManager.default
         guard let files = try? fm.contentsOfDirectory(atPath: bundleRoot.path) else {
-            print("[BundledVLMInstaller] Empty bundle directory")
+            Diagnostics.shared.debug("Empty bundle directory", category: "bundledvlminstaller")
             return false
         }
 
@@ -122,13 +122,13 @@ enum BundledVLMInstaller {
                 try fm.copyItem(at: src, to: dst)
                 copiedAny = true
             } catch {
-                print("[BundledVLMInstaller] Copy failed for \(name): \(error)")
+                Diagnostics.shared.error("Copy failed for \(name): \(error)", category: "bundledvlminstaller")
                 return false
             }
         }
 
         if copiedAny {
-            print("[BundledVLMInstaller] Installed bundled SmolVLM2 GGUF (LLM + mmproj) into \(dest.path)")
+            Diagnostics.shared.debug("Installed bundled SmolVLM2 GGUF (LLM + mmproj) into \(dest.path)", category: "bundledvlminstaller")
         }
 
         // One-time cleanup: free disk by deleting the OLD MLX
@@ -150,10 +150,10 @@ enum BundledVLMInstaller {
         guard FileManager.default.fileExists(atPath: oldPath.path) else { return }
         do {
             try FileManager.default.removeItem(at: oldPath)
-            print("[BundledVLMInstaller] Cleaned up old MLX SmolVLM2 cache at \(oldPath.path)")
+            Diagnostics.shared.debug("Cleaned up old MLX SmolVLM2 cache at \(oldPath.path)", category: "bundledvlminstaller")
         } catch {
             // Best effort; don't fail install over a cleanup miss.
-            print("[BundledVLMInstaller] Old MLX cleanup skipped: \(error)")
+            Diagnostics.shared.error("Old MLX cleanup skipped: \(error)", category: "bundledvlminstaller")
         }
     }
 }

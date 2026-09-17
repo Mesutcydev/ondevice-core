@@ -72,6 +72,10 @@ struct CodingAssistantView: View {
     @State private var showImageGen = false
     @State private var showPersonaPicker = false
     @State private var showSnippetPicker = false
+    /// Replaces the five-icon keyboard toolbar — see StudioAddSheet.
+    @State private var showAddSheet = false
+    /// Message IDs whose reasoning rule is expanded in place.
+    @State private var reasoningExpanded: Set<UUID> = []
     @State private var showSettings = false
     @State private var showBenchmark = false
     @State private var showCompare = false
@@ -190,31 +194,12 @@ struct CodingAssistantView: View {
     @State private var lastStreamScrollTime = 0.0
     @Environment(\.accessibilityReduceMotion) private var chatReduceMotion
     @Environment(\.koduTheme) private var T
-
-    // MARK: - Two-route flow
-    //
-    //   .landing — hero "Meet [Model]" + suggestion cards + a collapsed
-    //              "Ask anything…" pill that acts as a button. Always
-    //              the home of the Assistant tab.
-    //   .chat    — conversation thread + real composer. Opened by
-    //              tapping the collapsed pill or any chip. Back chevron
-    //              returns to .landing without losing history.
-    //
-    // On tab-open we always reset to .landing so the user gets a clean
-    // welcome screen each time (matches the reference design). The
-    // active conversation lives in CodingAssistantService.messages and
-    // is one tap away.
-    enum Route: Equatable { case landing, chat }
-    @State private var route: Route = .chat
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     /// The floating tab bar overlays the assistant page instead of living in
-    /// the layout flow, so we need two separate numbers:
-    ///   • reserved height for scroll content so rows don't disappear behind it
-    ///   • a much smaller visual gap so the pinned composer hugs the bar
-    /// Using one large value for both is what created the visible "dead band"
-    /// under the landing pill and chat composer.
+    /// the layout flow, so scroll content reserves height for it to keep rows
+    /// from disappearing behind it.
     private let floatingTabBarReservedHeight: CGFloat = 28
-    private let floatingTabBarVisualGap: CGFloat = 16
     /// A dedicated target after every message and its trailing actions.
     ///
     /// Scrolling to the final message's ID is subtly wrong when that message is
@@ -224,299 +209,255 @@ struct CodingAssistantView: View {
     private let conversationBottomAnchorID = "conversation-bottom-anchor"
 
     var body: some View {
-        // Backdrop is owned by ContentView (LiquidPinkBackdrop for the assistant
+        // Backdrop is owned by ContentView (StudioPageBackground for the assistant
         // tab, Color.black for the camera tab). Painting a full-bleed T.bg here
         // used to leak as a cream-colored vertical strip on the lens tab when
         // SwiftUI kept this subtree resident across a tab switch.
         NavigationStack {
             VStack(spacing: 0) {
-                // Chat-route only — the landing shows the model
-                // identity in its hero block so duplicating the
-                // status bar above the welcome screen would clutter.
-                if route == .chat {
+                // The nav pill carries the model identity — the composer's
+                // duplicate MODEL readout was removed so there is exactly one
+                // model affordance. The status bar only comes back when there
+                // is something to act on — loading, downloading, failed — so a
+                // ready assistant shows nothing but chat.
+                if modelStatusDescriptor.title != "Ready" {
                     modelStatusBar
+                }
 
-                    if showConversationSearch {
-                        conversationSearchBar
+                if showConversationSearch {
+                    conversationSearchBar
+                }
+
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            if filteredMessages.isEmpty {
+                                ChatThreadEmptyState(
+                                    isFiltering: showConversationSearch
+                                        && !conversationFilter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                                    modelName: assistant.activeDisplayName,
+                                    modelStatus: modelStatusDescriptor.title,
+                                    loadFailure: modelLoadFailure,
+                                    failureCanRetry: !hasPermanentModelCapacityFailure,
+                                    canGenerate: assistant.canGenerateSelectedTarget,
+                                    onRetry: {
+                                        Task { await ensureModelReady() }
+                                    },
+                                    onSwitchModel: {
+                                        showModelPicker = true
+                                    },
+                                    onTryAnyway: hasPermanentModelCapacityFailure
+                                        ? { showUnsafeModelLoadConfirmation = true }
+                                        : nil,
+                                    onSuggestion: { suggestion in
+                                        inputText = suggestion
+                                        inputFocused = true
+                                    }
+                                )
+                                // No horizontal padding here — the empty state
+                                // applies the thread's own 20pt inset, so
+                                // adding 16 on top pushed it 36pt in, well out
+                                // of line with every message below it.
+                                .padding(.top, 22)
+                            }
+                            ForEach(filteredMessages) { msg in
+                                VStack(spacing: 0) {
+                                    MessageBubble(message: msg) { imgData in
+                                        analyzeImageWithVLM(imageData: imgData)
+                                    }
+                                        .equatable()
+                                        .contextMenu {
+                                            Button {
+                                                UIPasteboard.general.string = msg.content
+                                                HapticManager.impact(.light)
+                                                ToastCenter.shared.info(loc.t("Copied"))
+                                            } label: {
+                                                Label(loc.t("Copy text"), systemImage: "doc.on.doc")
+                                            }
+                                            if msg.role == .user {
+                                                Button {
+                                                    inputText = msg.content
+                                                    inputFocused = true
+                                                } label: {
+                                                    Label(loc.t("Edit & resend"),
+                                                          systemImage: "pencil.line")
+                                                }
+                                            }
+                                            if msg.role == .assistant && !msg.isStreaming,
+                                               messages.last(where: { $0.role == .assistant })?.id == msg.id {
+                                                Button {
+                                                    regenerateLastResponse()
+                                                    HapticManager.impact(.medium)
+                                                } label: {
+                                                    Label(loc.t("Regenerate"), systemImage: "arrow.clockwise")
+                                                }
+                                            }
+                                        }
+                                    // Four glyphs under the LAST answer, above a
+                                    // 1px divider. Older turns keep copy /
+                                    // regenerate / share on long-press.
+                                    if msg.role == .assistant, !msg.isStreaming,
+                                       !msg.content.isEmpty,
+                                       messages.last(where: { $0.role == .assistant })?.id == msg.id {
+                                        VStack(alignment: .leading, spacing: 12) {
+                                            StudioAnswerActionRow(
+                                                provenance: answerProvenance,
+                                                footnote: answerFootnote(for: msg),
+                                                canRegenerate: assistant.state == .ready,
+                                                onCopy: {
+                                                    UIPasteboard.general.string = msg.content
+                                                    ToastCenter.shared.info(loc.t("Copied"))
+                                                },
+                                                onRegenerate: { regenerateLastResponse() },
+                                                onShare: {
+                                                    sharePayload = AssistantSharePayload(text: msg.content)
+                                                },
+                                                onSpeak: { VoiceService.shared.speak(msg.content) }
+                                            )
+                                            // Follow-up chips that reframe the
+                                            // previous reply (continue / shorter /
+                                            // more formal) stay on the last turn.
+                                            if assistant.state == .ready {
+                                                AssistantQuickActions(
+                                                    disabled: assistant.state != .ready,
+                                                    onAction: { sendQuickAction($0) }
+                                                )
+                                            }
+                                        }
+                                        .padding(.horizontal, 20)
+                                        .padding(.top, 4)
+                                        .padding(.bottom, 8)
+                                    }
+                                }
+                                .id(msg.id)
+                                // Fade + lift in as each bubble crosses the
+                                // viewport edge. Identity phase pins the
+                                // fully-rendered state; the .topLeading and
+                                // .bottomLeading phases interpolate from a
+                                // slight y-offset + reduced opacity so new
+                                // messages "rise into view" instead of just
+                                // appearing. Default `.threshold(.visible(...))`
+                                // is what the user actually sees as the
+                                // animated zone.
+                                .scrollTransition(.animated.threshold(.visible(0.05))) { content, phase in
+                                    content
+                                        .opacity(chatReduceMotion || phase.isIdentity ? 1 : 0)
+                                        .offset(y: chatReduceMotion || phase.isIdentity ? 0 : 8)
+                                        .scaleEffect(chatReduceMotion || phase.isIdentity ? 1 : 0.985,
+                                                     anchor: .topLeading)
+                                }
+                            }
+                            activityCards
+                            // The safe-area inset reserves the composer's
+                            // measured height. This small tail is only visual
+                            // breathing room below the final message.
+                            Color.clear
+                                .frame(height: 12)
+                                .id(conversationBottomAnchorID)
+                        }
+                        .padding(.vertical, 12)
+                    }
+                    .scrollDismissesKeyboard(.interactively)
+                    // Tap empty space in the chat area to dismiss the keyboard
+                    .simultaneousGesture(
+                        TapGesture().onEnded { inputFocused = false }
+                    )
+                    .onAppear { scrollProxy = proxy }
+                    // Coalesce streaming scroll work by elapsed time, independent of token size.
+                    .onChange(of: messages.last?.content.utf8.count) { _, _ in
+                        let now = ProcessInfo.processInfo.systemUptime
+                        guard followsConversation, now - lastStreamScrollTime >= 0.08 else { return }
+                        lastStreamScrollTime = now
+                        var transaction = Transaction()
+                        transaction.disablesAnimations = true
+                        withTransaction(transaction) {
+                            proxy.scrollTo(conversationBottomAnchorID, anchor: .bottom)
+                        }
+                    }
+                    .onScrollPhaseChange { _, phase in
+                        if phase == .interacting {
+                            followsConversation = false
+                            completionScrollTask?.cancel()
+                        } else if phase == .idle {
+                            followsConversation = isNearConversationBottom
+                        }
+                    }
+                    .onChange(of: pendingToolWeb?.id) { _, _ in
+                        guard followsConversation else { return }
+                        withAnimation(.easeOut(duration: 0.12)) {
+                            proxy.scrollTo(conversationBottomAnchorID, anchor: .bottom)
+                        }
+                    }
+                    .onChange(of: pendingToolFile?.id) { _, _ in
+                        guard followsConversation else { return }
+                        withAnimation(.easeOut(duration: 0.12)) {
+                            proxy.scrollTo(conversationBottomAnchorID, anchor: .bottom)
+                        }
+                    }
+                    .onChange(of: runningToolName) { _, _ in
+                        if isNearConversationBottom {
+                            withAnimation(.easeOut(duration: 0.12)) {
+                                proxy.scrollTo(conversationBottomAnchorID, anchor: .bottom)
+                            }
+                        }
+                    }
+                    .onScrollGeometryChange(for: Bool.self) { geometry in
+                        let visibleBottom = geometry.contentOffset.y + geometry.containerSize.height
+                        return visibleBottom >= geometry.contentSize.height - 96
+                    } action: { _, nearBottom in
+                        isNearConversationBottom = nearBottom
+                    }
+                    .onChange(of: inputFocused) { _, focused in
+                        // When focusing, scroll the last message to bottom so it
+                        // doesn't end up behind the composer
+                        if focused, !messages.isEmpty {
+                            isNearConversationBottom = true
+                            followsConversation = true
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                proxy.scrollTo(conversationBottomAnchorID, anchor: .bottom)
+                            }
+                        }
                     }
                 }
-                if route == .landing {
-                    landingContent
-                } else {
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            LazyVStack(alignment: .leading, spacing: 0) {
-                                if filteredMessages.isEmpty {
-                                    ChatThreadEmptyState(
-                                        isFiltering: showConversationSearch
-                                            && !conversationFilter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                                        modelName: assistant.activeDisplayName,
-                                        modelStatus: modelStatusDescriptor.title,
-                                        loadFailure: modelLoadFailure,
-                                        failureCanRetry: !hasPermanentModelCapacityFailure,
-                                        onRetry: {
-                                            Task { await ensureModelReady() }
-                                        },
-                                        onSwitchModel: {
-                                            showModelPicker = true
-                                        },
-                                        onTryAnyway: hasPermanentModelCapacityFailure
-                                            ? { showUnsafeModelLoadConfirmation = true }
-                                            : nil,
-                                        onSuggestion: { suggestion in
-                                            inputText = suggestion
-                                            inputFocused = true
-                                        }
-                                    )
-                                    .padding(.horizontal, 16)
-                                    .padding(.top, 22)
-                                }
-                                ForEach(filteredMessages) { msg in
-                                    VStack(spacing: 0) {
-                                        MessageBubble(message: msg) { imgData in
-                                            analyzeImageWithVLM(imageData: imgData)
-                                        }
-                                            .equatable()
-                                            .contextMenu {
-                                                Button {
-                                                    UIPasteboard.general.string = msg.content
-                                                    HapticManager.impact(.light)
-                                                    ToastCenter.shared.info(loc.t("Copied"))
-                                                } label: {
-                                                    Label(loc.t("Copy text"), systemImage: "doc.on.doc")
-                                                }
-                                                if msg.role == .user {
-                                                    Button {
-                                                        inputText = msg.content
-                                                        inputFocused = true
-                                                    } label: {
-                                                        Label(loc.t("Edit & resend"),
-                                                              systemImage: "pencil.line")
-                                                    }
-                                                }
-                                                if msg.role == .assistant && !msg.isStreaming,
-                                                   messages.last(where: { $0.role == .assistant })?.id == msg.id {
-                                                    Button {
-                                                        regenerateLastResponse()
-                                                        HapticManager.impact(.medium)
-                                                    } label: {
-                                                        Label(loc.t("Regenerate"), systemImage: "arrow.clockwise")
-                                                    }
-                                                }
-                                            }
-                                        // Inline action bar for completed assistant messages
-                                        if msg.role == .assistant && !msg.isStreaming && !msg.content.isEmpty {
-                                            VStack(alignment: .leading, spacing: 6) {
-                                                HStack(spacing: 16) {
-                                                    Button {
-                                                        UIPasteboard.general.string = msg.content
-                                                        HapticManager.impact(.light)
-                                                        ToastCenter.shared.info("Copied")
-                                                    } label: {
-                                                        Image(systemName: "doc.on.doc")
-                                                            .font(.system(size: 12))
-                                                            .foregroundColor(T.ink3)
-                                                    }
-                                                    .buttonStyle(.plain)
-                                                if messages.last(where: { $0.role == .assistant })?.id == msg.id {
-                                                        Button {
-                                                            regenerateLastResponse()
-                                                            HapticManager.impact(.medium)
-                                                        } label: {
-                                                            Image(systemName: "arrow.clockwise")
-                                                                .font(.system(size: 12))
-                                                                .foregroundColor(T.ink3)
-                                                    }
-                                                    .buttonStyle(.plain)
-                                                    .disabled(assistant.state != .ready)
-                                                }
-                                                Button {
-                                                    sharePayload = AssistantSharePayload(text: msg.content)
-                                                    HapticManager.impact(.light)
-                                                } label: {
-                                                    Image(systemName: "square.and.arrow.up")
-                                                        .font(.system(size: 12))
-                                                        .foregroundColor(T.ink3)
-                                                }
-                                                .buttonStyle(.plain)
-                                                .accessibilityLabel("Share response")
-                                                Spacer()
-                                                }
-                                                // Quick-action chips on the LAST assistant message
-                                                // only. Each chip sends a follow-up prompt that
-                                                // reframes the previous reply. Mirrors the
-                                                // "continue / shorter / more formal" actions
-                                                // ChatGPT and Claude surface. Kept off non-final
-                                                // messages because a "continue" tap on an older
-                                                // turn would be confusing — the model would
-                                                // continue from the LATEST reply regardless.
-                                                if messages.last(where: { $0.role == .assistant })?.id == msg.id,
-                                                   assistant.state == .ready {
-                                                    AssistantQuickActions(
-                                                        disabled: assistant.state != .ready,
-                                                        onAction: { sendQuickAction($0) }
-                                                    )
-                                                }
-                                            }
-                                            .padding(.horizontal, 14)
-                                            .padding(.bottom, 8)
-                                        }
-                                    }
-                                    .id(msg.id)
-                                    // Fade + lift in as each bubble crosses the
-                                    // viewport edge. Identity phase pins the
-                                    // fully-rendered state; the .topLeading and
-                                    // .bottomLeading phases interpolate from a
-                                    // slight y-offset + reduced opacity so new
-                                    // messages "rise into view" instead of just
-                                    // appearing. Default `.threshold(.visible(...))`
-                                    // is what the user actually sees as the
-                                    // animated zone.
-                                    .scrollTransition(.animated.threshold(.visible(0.05))) { content, phase in
-                                        content
-                                            .opacity(chatReduceMotion || phase.isIdentity ? 1 : 0)
-                                            .offset(y: chatReduceMotion || phase.isIdentity ? 0 : 8)
-                                            .scaleEffect(chatReduceMotion || phase.isIdentity ? 1 : 0.985,
-                                                         anchor: .topLeading)
-                                    }
-                                }
-                                activityCards
-                                // The safe-area inset reserves the composer's
-                                // measured height. This small tail is only visual
-                                // breathing room below the final message.
-                                Color.clear
-                                    .frame(height: 12)
-                                    .id(conversationBottomAnchorID)
-                            }
-                            .padding(.vertical, 12)
-                        }
-                        .scrollDismissesKeyboard(.interactively)
-                        // Tap empty space in the chat area to dismiss the keyboard
-                        .simultaneousGesture(
-                            TapGesture().onEnded { inputFocused = false }
-                        )
-                        .onAppear { scrollProxy = proxy }
-                        // Coalesce streaming scroll work by elapsed time, independent of token size.
-                        .onChange(of: messages.last?.content.utf8.count) { _, _ in
-                            let now = ProcessInfo.processInfo.systemUptime
-                            guard followsConversation, now - lastStreamScrollTime >= 0.08 else { return }
-                            lastStreamScrollTime = now
-                            var transaction = Transaction()
-                            transaction.disablesAnimations = true
-                            withTransaction(transaction) {
-                                proxy.scrollTo(conversationBottomAnchorID, anchor: .bottom)
-                            }
-                        }
-                        .onScrollPhaseChange { _, phase in
-                            if phase == .interacting {
-                                followsConversation = false
-                                completionScrollTask?.cancel()
-                            } else if phase == .idle {
-                                followsConversation = isNearConversationBottom
-                            }
-                        }
-                        .onChange(of: pendingToolWeb?.id) { _, _ in
-                            guard followsConversation else { return }
-                            withAnimation(.easeOut(duration: 0.12)) {
-                                proxy.scrollTo(conversationBottomAnchorID, anchor: .bottom)
-                            }
-                        }
-                        .onChange(of: pendingToolFile?.id) { _, _ in
-                            guard followsConversation else { return }
-                            withAnimation(.easeOut(duration: 0.12)) {
-                                proxy.scrollTo(conversationBottomAnchorID, anchor: .bottom)
-                            }
-                        }
-                        .onChange(of: runningToolName) { _, _ in
-                            if isNearConversationBottom {
-                                withAnimation(.easeOut(duration: 0.12)) {
-                                    proxy.scrollTo(conversationBottomAnchorID, anchor: .bottom)
+                .overlay(alignment: .bottomTrailing) {
+                    if !isNearConversationBottom, !messages.isEmpty {
+                        Button {
+                            isNearConversationBottom = true
+                            followsConversation = true
+                            if !messages.isEmpty {
+                                withAnimation(AppAnimation.state) {
+                                    scrollProxy?.scrollTo(conversationBottomAnchorID, anchor: .bottom)
                                 }
                             }
+                        } label: {
+                            Image(systemName: "arrow.down")
+                                .font(.system(size: 14, weight: .semibold))
+                                .frame(width: 44, height: 44)
+                                .background(.adaptiveMaterial(reduceTransparency: reduceTransparency,
+                                                              opaque: T.studio.surfaceRaised),
+                                            in: Circle())
+                                .overlay(Circle().stroke(T.rule, lineWidth: 0.5))
                         }
-                        .onScrollGeometryChange(for: Bool.self) { geometry in
-                            let visibleBottom = geometry.contentOffset.y + geometry.containerSize.height
-                            return visibleBottom >= geometry.contentSize.height - 96
-                        } action: { _, nearBottom in
-                            isNearConversationBottom = nearBottom
-                        }
-                        .onChange(of: inputFocused) { _, focused in
-                            // When focusing, scroll the last message to bottom so it
-                            // doesn't end up behind the composer
-                            if focused, !messages.isEmpty {
-                                isNearConversationBottom = true
-                                followsConversation = true
-                                withAnimation(.easeOut(duration: 0.2)) {
-                                    proxy.scrollTo(conversationBottomAnchorID, anchor: .bottom)
-                                }
-                            }
-                        }
-                    }
-                    .overlay(alignment: .bottomTrailing) {
-                        if !isNearConversationBottom, !messages.isEmpty {
-                            Button {
-                                isNearConversationBottom = true
-                                followsConversation = true
-                                if !messages.isEmpty {
-                                    withAnimation(AppAnimation.state) {
-                                        scrollProxy?.scrollTo(conversationBottomAnchorID, anchor: .bottom)
-                                    }
-                                }
-                            } label: {
-                                Image(systemName: "arrow.down")
-                                    .font(.system(size: 14, weight: .semibold))
-                                    .frame(width: 44, height: 44)
-                                    .background(.thinMaterial, in: Circle())
-                                    .overlay(Circle().stroke(T.rule, lineWidth: 0.5))
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Jump to latest message")
-                            .padding(16)
-                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Jump to latest message")
+                        .padding(16)
                     }
                 }
             }
-            .background(LiquidPinkBackdrop())
-            // Pin the composer + toolbar above the keyboard.
+            // Flat paper page. The thread is the surface; the composer card is
+            // the only thing that sits above it, which is what gives the page
+            // its one clear layer boundary.
+            .background(T.studio.paper.ignoresSafeArea())
+            // Pin the composer above the keyboard.
             //
-            // Layout when keyboard is up:
-            //   [ chat content                       ]
-            //   [ text field                         ]
-            //   [ Studio-themed accessory toolbar    ]   ← KeyboardToolbar
-            //   [ system keyboard                    ]
-            //
-            // Layout when keyboard is down:
-            //   [ chat content                       ]
-            //   [ text field                         ]   ← toolbar hidden
-            //   [ small gap + clear floating tab bar ]
+            //   [ chat content        ]
+            //   [ composer card       ]
+            //   [ keyboard / tab bar  ]
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                // Real composer only on the chat route — the landing has
-                // its own fake "Ask anything…" pill that acts as a
-                // button. Showing a real input bar on the landing would
-                // pop the keyboard and defeat the welcome-screen feel.
-                if route == .chat {
-                    if !isGenerating {
-                        inputBar
-                            .padding(.horizontal, 12)
-                            // Once the keyboard is visible the floating tab bar is
-                            // gone, so its full visual gap should disappear too.
-                            .padding(
-                                .bottom,
-                                inputFocused ? AssistantSpacing.xxSmall : floatingTabBarVisualGap
-                            )
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
-                } else {
-                    // Landing route — pinned "Ask anything…" pill.
-                    // Previously placed inside the scroll content with a
-                    // trailing Spacer pushing it up, which left a big
-                    // empty band below it before the floating tab bar.
-                    // Anchoring via safeAreaInset keeps it flush above
-                    // the tab bar regardless of scroll position.
-                    askAnythingPill
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, floatingTabBarVisualGap)
-                }
+                // Stays mounted while generating — the field remains editable
+                // and the metrics row appears above the card instead of the
+                // whole bar swapping out.
+                inputBar
             }
             // Leading chat apps dismiss entry focus when a request starts and
             // retain a dedicated Stop action. Our Stop remains in the top
@@ -537,22 +478,20 @@ struct CodingAssistantView: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // Back chevron — chat route only. Returns to the
-                // landing without clearing the conversation.
-                if route == .chat {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button {
-                            inputFocused = false
-                            KeyboardDismiss.now()
-                            onClose()
-                            HapticManager.impact(.light)
-                        } label: {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(T.ink)
-                        }
-                        .accessibilityLabel("Back")
+                // Back chevron — returns to the Home tab without clearing the
+                // conversation.
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        inputFocused = false
+                        KeyboardDismiss.now()
+                        onClose()
+                        HapticManager.impact(.light)
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(T.ink)
                     }
+                    .accessibilityLabel("Back")
                 }
                 ToolbarItem(placement: .principal) {
                     assistantPickerPill
@@ -604,7 +543,6 @@ struct CodingAssistantView: View {
                     Menu {
                         Button {
                             clearConversation()
-                            if route != .chat { openChat() }
                             HapticManager.impact(.medium)
                         } label: {
                             Label(loc.t("New conversation"), systemImage: "square.and.pencil")
@@ -663,27 +601,25 @@ struct CodingAssistantView: View {
                             Label(loc.t("Diagnose app errors"), systemImage: "stethoscope")
                         }
                         Divider()
-                        if route == .chat {
+                        Button {
+                            showConversationSearch.toggle()
+                            if !showConversationSearch { conversationFilter = "" }
+                            HapticManager.impact(.light)
+                        } label: {
+                            Label(loc.t(showConversationSearch ? "Hide search" : "Search messages"),
+                                  systemImage: showConversationSearch
+                                    ? "magnifyingglass.circle.fill"
+                                    : "magnifyingglass")
+                        }
+                        if messages.contains(where: {
+                            ($0.role == .user || $0.role == .assistant)
+                                && !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                        }) {
                             Button {
-                                showConversationSearch.toggle()
-                                if !showConversationSearch { conversationFilter = "" }
-                                HapticManager.impact(.light)
+                                shareCurrentConversation()
                             } label: {
-                                Label(loc.t(showConversationSearch ? "Hide search" : "Search messages"),
-                                      systemImage: showConversationSearch
-                                        ? "magnifyingglass.circle.fill"
-                                        : "magnifyingglass")
-                            }
-                            if messages.contains(where: {
-                                ($0.role == .user || $0.role == .assistant)
-                                    && !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            }) {
-                                Button {
-                                    shareCurrentConversation()
-                                } label: {
-                                    Label(loc.t("Share conversation"),
-                                          systemImage: "square.and.arrow.up")
-                                }
+                                Label(loc.t("Share conversation"),
+                                      systemImage: "square.and.arrow.up")
                             }
                         }
                         // Web Tool settings
@@ -821,25 +757,6 @@ struct CodingAssistantView: View {
                     onCancel: { showFilePicker = false }
                 )
             }
-            .sheet(item: $pendingWebPermission) { req in
-                WebPermissionSheet(
-                    reason: req.reason,
-                    payload: req.payload,
-                    onAllowOnce: {
-                        Task { await runWithWebTool(payload: req.payload,
-                                                     originalText: req.originalText) }
-                    },
-                    onAlwaysAllow: {
-                        WebToolService.shared.settings.mode = .alwaysAllow
-                        Task { await runWithWebTool(payload: req.payload,
-                                                     originalText: req.originalText) }
-                    },
-                    onCancel: {
-                        // User declined — fall back to offline.
-                        sendOffline(text: req.originalText)
-                    }
-                )
-            }
             .sheet(isPresented: $showToolFilePicker) {
                 FileAttachmentPicker(
                     existing: [],
@@ -881,6 +798,22 @@ struct CodingAssistantView: View {
             }
             .sheet(isPresented: $showPersonaPicker) {
                 PersonaPickerView()
+            }
+            .sheet(isPresented: $showAddSheet) {
+                StudioAddSheet(
+                    thinkingEnabled: thinkingEnabledBinding,
+                    webLookupsAllowed: webLookupsBinding,
+                    temperature: $nextSendTemperature,
+                    topP: $nextSendTopP,
+                    topK: $nextSendTopK,
+                    repetitionPenalty: $nextSendRepetitionPenalty,
+                    samplerDefaults: assistant.effectiveGenerationSettings,
+                    snippetCount: SnippetStore.shared.snippets.count,
+                    onPhoto: { handOffFromAddSheet { showPhotoPicker = true } },
+                    onFile: { handOffFromAddSheet { showFilePicker = true } },
+                    onPaste: { handOffFromAddSheet { pasteFromClipboard() } },
+                    onSnippets: { handOffFromAddSheet { showSnippetPicker = true } }
+                )
             }
             .sheet(isPresented: $showSnippetPicker) {
                 SnippetPickerView { text in
@@ -970,7 +903,6 @@ struct CodingAssistantView: View {
                         generationDuration: 31
                     )
                 ]
-                route = .chat
             }
 #endif
             consumeBridge()
@@ -982,10 +914,9 @@ struct CodingAssistantView: View {
         .onChange(of: bridge.pendingOpenConversationID) { _, _ in consumeOpenConversation() }
         .onChange(of: bridge.pendingCode) { _, _ in consumeBridge() }
         // Text/URL handoff from the share extension. AppBridge sets
-        // `pendingSharedText` and flips `requestedTab` to assistant; we
-        // pull the payload here, prefill the composer, and switch the
-        // assistant into the chat route so the user lands directly on
-        // the message they're about to send.
+        // `pendingSharedText` and flips `requestedTab` to assistant; we pull
+        // the payload here and prefill the composer so the user lands directly
+        // on the message they're about to send.
         .onChange(of: bridge.pendingSharedText) { _, _ in consumeSharedText() }
         .onChange(of: isActive) { _, active in
             if active, !legal.needsAcceptance {
@@ -1071,9 +1002,6 @@ struct CodingAssistantView: View {
             prefill = "Help me with this link (I can't fetch it for you — just react to the URL itself):\n\n\(payload.body)"
         }
 
-        // Make sure we're on the chat route so the composer is mounted —
-        // dropping text into landing-route state would silently lose it.
-        if route != .chat { route = .chat }
         inputText = prefill
 
         // "Ask OnDevice" App Intent path: fire the prompt automatically so a
@@ -1100,7 +1028,6 @@ struct CodingAssistantView: View {
         guard isActive, !legal.needsAcceptance else { return }
         guard bridge.pendingNewChat else { return }
         bridge.pendingNewChat = false
-        if route != .chat { route = .chat }
         clearConversation()
         inputText = ""
         inputFocused = true
@@ -1113,7 +1040,6 @@ struct CodingAssistantView: View {
         guard let id = bridge.pendingOpenConversationID else { return }
         bridge.pendingOpenConversationID = nil
         guard let conv = store.conversations.first(where: { $0.id == id }) else { return }
-        if route != .chat { route = .chat }
         loadConversation(conv)
         HapticManager.impact(.light)
     }
@@ -1290,7 +1216,7 @@ struct CodingAssistantView: View {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(
-                            Capsule()
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
                                 .fill(T.accent.opacity(T.isDark ? 0.18 : 0.10))
                         )
                 } else {
@@ -1393,11 +1319,11 @@ struct CodingAssistantView: View {
                                     .padding(.horizontal, 6)
                                     .padding(.vertical, 2)
                                     .background(
-                                        Capsule()
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
                                             .fill(descriptor.color.opacity(T.isDark ? 0.22 : 0.12))
                                     )
                                     .overlay(
-                                        Capsule()
+                                        RoundedRectangle(cornerRadius: 10, style: .continuous)
                                             .stroke(descriptor.color.opacity(0.25), lineWidth: 0.5)
                                     )
                             }
@@ -1665,32 +1591,68 @@ struct CodingAssistantView: View {
         return first.uppercased() + trimmed.dropFirst()
     }
 
+    /// Nav row identity. Empty thread: a 6pt state dot + the model name + a
+    /// small chevron — not a pill, no background. Once a conversation exists
+    /// it becomes a two-line title with the mode summary underneath.
     private var assistantPickerPill: some View {
-        Button {
+        let S = T.studio
+        return Button {
             showModelPicker = true
             HapticManager.impact(.light)
         } label: {
-            VStack(spacing: 1) {
-                HStack(spacing: 4) {
-                    Text(loc.t("assistant"))
-                        .font(.headline)
-                        .foregroundStyle(T.ink)
-                    Image(systemName: "chevron.down")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(T.ink3)
+            Group {
+                if let title = currentConversationTitle {
+                    VStack(spacing: 1) {
+                        Text(title)
+                            .font(S.sans(14.5, .semibold))
+                            .foregroundStyle(S.ink)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        StudioMonoLabel(text: navModeSummary, size: 11)
+                            .lineLimit(1)
+                    }
+                    .frame(maxWidth: 230)
+                } else {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(assistant.state == .ready ? S.accent : S.ink4)
+                            .frame(width: 6, height: 6)
+                        Text(assistant.activeDisplayName)
+                            .font(S.sans(14, .medium))
+                            .foregroundStyle(S.ink)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(S.ink3)
+                    }
+                    .frame(maxWidth: 230)
                 }
-                Text(assistant.activeDisplayName)
-                    .font(.caption)
-                    .foregroundStyle(T.ink3)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-                    .frame(maxWidth: 210)
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Assistant, \(assistant.activeDisplayName)")
         .accessibilityHint("Shows available assistant models")
+    }
+
+    /// Title of the conversation being viewed, if it has been named yet.
+    private var currentConversationTitle: String? {
+        guard !messages.isEmpty,
+              let id = currentConversationID,
+              let title = store.conversations.first(where: { $0.id == id })?.title,
+              !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return nil }
+        return title
+    }
+
+    /// "qwen3 · thinks first" — the machine facts under the nav title.
+    private var navModeSummary: String {
+        var parts = [assistant.activeDisplayName]
+        if assistant.activeModel.supportsThinking {
+            parts.append(thinkingEnabledBinding.wrappedValue ? "thinks first" : "answers directly")
+        }
+        return parts.joined(separator: " · ")
     }
 
     // MARK: - Bridge status pill
@@ -1727,10 +1689,10 @@ struct CodingAssistantView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
             .background(
-                Capsule().fill(bridgePillColor.opacity(T.isDark ? 0.18 : 0.10))
+                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(bridgePillColor.opacity(T.isDark ? 0.18 : 0.10))
             )
             .overlay(
-                Capsule().stroke(bridgePillColor.opacity(0.35), lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(bridgePillColor.opacity(0.35), lineWidth: 0.5)
             )
         }
         .buttonStyle(.plain)
@@ -1861,774 +1823,109 @@ struct CodingAssistantView: View {
         }
     }
 
-    // MARK: - Model load banner (shown in empty state)
-
-    @ViewBuilder
-    private var modelLoadBanner: some View {
-        switch assistant.state {
-        case .loading(let msg):
-            let progress = Self.percentage(in: msg)
-            let isDownload = msg.lowercased().contains("download")
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 10) {
-                    Image(systemName: isDownload
-                          ? "arrow.down.circle.fill"
-                          : "bolt.fill")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(T.accent)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("\(loc.t(isDownload ? "Downloading" : "Preparing")) \(assistant.activeModel.displayName)")
-                            .font(T.sans(14, .semibold))
-                            .foregroundColor(T.ink)
-                        Text(isDownload
-                             ? loc.t("One-time download — subsequent launches are instant.")
-                             : loc.t("Decoding cached weights into memory."))
-                            .font(T.sans(11))
-                            .foregroundColor(T.ink2)
-                            .lineLimit(2)
-                    }
-                    Spacer(minLength: 4)
-                    if let progress {
-                        Text("\(Int(progress * 100))%")
-                            .font(T.mono(11, .semibold))
-                            .foregroundColor(T.accent)
-                            .contentTransition(.numericText())
-                            .animation(.easeOut(duration: 0.15), value: progress)
-                    }
-                }
-                if let progress {
-                    ProgressView(value: progress)
-                        .tint(T.accent)
-                        .progressViewStyle(.linear)
-                } else {
-                    Capsule()
-                        .fill(T.accent.opacity(0.18))
-                        .frame(height: 4)
-                        .shimmer(isActive: true, duration: 1.2)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .kGlass(cornerRadius: 14, fallbackFill: T.surface)
-            .shimmer(isActive: progress == nil, duration: 1.6)
-            .padding(.horizontal, 16)
-
-        case .failed(let err):
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.system(size: 13))
-                        .foregroundColor(T.bad)
-                    Text(loc.t("Model failed to load"))
-                        .font(T.sans(13, .semibold))
-                        .foregroundColor(T.ink)
-                    Spacer()
-                }
-                Text(err)
-                    .font(T.mono(11))
-                    .foregroundColor(T.ink2)
-                    .lineLimit(2)
-                HStack(spacing: 8) {
-                    Button {
-                        Task { await ensureModelReady() }
-                        HapticManager.impact(.light)
-                    } label: {
-                        Text("Retry")
-                            .font(T.sans(12, .semibold))
-                            .foregroundColor(T.ink)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(T.surface)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                            .stroke(T.glassBorder, lineWidth: 0.5)
-                                    )
-                            )
-                    }
-                    .buttonStyle(.plain)
-
-                    Button {
-                        AppBridge.shared.requestTab(.models)
-                        HapticManager.impact(.light)
-                    } label: {
-                        Text("Switch model")
-                            .font(T.sans(12, .semibold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(T.accent)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(14)
-            .kGlass(cornerRadius: 14, tint: T.bad.opacity(T.isDark ? 0.08 : 0.04))
-            .padding(.horizontal, 16)
-
-        case .unloaded:
-            if !legal.needsAcceptance {
-                HStack(spacing: 12) {
-                    Image(systemName: "arrow.down.circle")
-                        .font(.system(size: 18))
-                        .foregroundColor(T.ink3)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(loc.t("No model loaded"))
-                            .font(T.sans(13, .semibold))
-                            .foregroundColor(T.ink)
-                        Text("\(assistant.activeModel.displayName) · \(loc.t("tap to load or choose another"))")
-                            .font(T.mono(11))
-                            .foregroundColor(T.ink2)
-                            .lineLimit(1)
-                    }
-                    Spacer()
-                    Button {
-                        Task { await ensureModelReady() }
-                        HapticManager.impact(.medium)
-                    } label: {
-                        Text("Load")
-                            .font(T.sans(12, .semibold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(T.accent)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    Button {
-                        showModelPicker = true
-                        HapticManager.impact(.light)
-                    } label: {
-                        Text("Choose")
-                            .font(T.sans(12, .semibold))
-                            .foregroundColor(T.accent)
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 12)
-                .kGlass(cornerRadius: 14, fallbackFill: T.surface)
-                .padding(.horizontal, 16)
-            }
-
-        default:
-            EmptyView()
-        }
-    }
-
-    // MARK: - Landing (new)
-    //
-    // Welcome page shown when the user opens the Assistant tab. Hero
-    // pattern "Meet [Model Name]" + a model-state pill + horizontal
-    // suggestion chips + a collapsed "Ask anything…" pill that acts
-    // as the entry-point button to the chat thread. The chat thread
-    // lives behind `route == .chat`.
-    //
-    // We deliberately do NOT show the model status bar / context bar
-    // here — those are chat-page chrome. The landing's hero block
-    // carries the model identity instead, in a friendlier voice
-    // ("Meet Qwen 2.5 Coder" reads as a welcome; a status pill reads
-    // as a system message).
-
-    private var landingContent: some View {
-        GeometryReader { geo in
-            ScrollView {
-                VStack(spacing: 24) {
-                    Spacer().frame(height: 24)
-                    landingHero
-                    landingStatusPill
-                    landingSuggestionsRow
-                    landingImageGenCard
-                    // Clearance so the last card rests above the pinned pill,
-                    // while the scroll view itself bleeds under it (see
-                    // .ignoresSafeArea below) — the cards refract through the
-                    // pill's clear glass as they scroll, the tab-bar effect.
-                    Color.clear.frame(height: floatingTabBarReservedHeight + 64)
-                }
-                .frame(minHeight: geo.size.height, alignment: .top)
-            }
-            // Let the cards scroll *behind* the "Ask anything…" pill so its
-            // clear glass has live content to refract. Container inset only —
-            // keyboard avoidance is untouched.
-            .ignoresSafeArea(.container, edges: .bottom)
-        }
-        // The "Ask anything…" pill lives in the safeAreaInset block
-        // below the body (route-gated) so it's pinned to the bottom
-        // instead of pushed up by trailing scroll spacers.
-    }
-
-    private var landingHero: some View {
-        VStack(spacing: 10) {
-            KCaption(
-                text: assistant.activeExecutionLocation == .applePrivateCloud
-                    ? "APPLE PRIVATE CLOUD"
-                    : "ON-DEVICE ASSISTANT"
-            )
-
-            Text(assistant.activeDisplayName)
-                .font(T.display(30, .semibold))
-                .tracking(0)
-                .foregroundColor(T.ink)
-                .multilineTextAlignment(.center)
-                .lineLimit(3)
-                .minimumScaleFactor(0.78)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 24)
-
-            Text(
-                assistant.activeExecutionLocation == .applePrivateCloud
-                    ? "Advanced reasoning through Apple Private Cloud Compute. A network connection is required."
-                    : "Runs entirely on your device via \(assistant.activeModel.runtime.label). No servers, no API keys, no telemetry."
-            )
-                .font(T.sans(13.5))
-                .foregroundColor(T.ink2)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-                .padding(.top, 4)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-
-    /// Model-state pill below the hero. Pulses on the leading dot
-    /// while loading or generating so the page feels alive; carries
-    /// the loading percentage when available; collapses to a quiet
-    /// "Ready" / "Failed" / "Tap to start" otherwise.
-    private var landingStatusPill: some View {
-        Group {
-            if assistant.activeExecutionLocation == .applePrivateCloud {
-                ApplePrivateCloudLandingStatusPill(
-                    status: assistant.applePrivateCloudStatus,
-                    generationState: assistant.applePrivateCloudGenerationState,
-                    onRefresh: { Task { await assistant.refreshApplePrivateCloudStatus() } }
-                )
-            } else {
-                LandingStatusPillView(
-                    state: assistant.state,
-                    modelName: assistant.activeDisplayName,
-                    theme: T,
-                    onRepair: { Task { await ensureModelReady() } }
-                )
-            }
-        }
-    }
-
-    /// Curated suggestion chips — each is a tap-to-open shortcut that
-    /// pre-fills the composer with a templated prompt and switches to
-    /// the chat route. Generic (Explain / Identify / Write / Review /
-    /// Translate) so they apply to any persona.
-    private var landingSuggestionsRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                landingChip(
-                    title: "Explain",
-                    subtitle: "a complex topic simply",
-                    systemImage: "lightbulb.fill",
-                    prompt: "Explain in simple terms: "
-                )
-                landingChip(
-                    title: "Identify",
-                    subtitle: "what this code does",
-                    systemImage: "eye.viewfinder",
-                    prompt: "Identify what this code does, line by line:\n\n```\n\n```"
-                )
-                landingChip(
-                    title: "Write",
-                    subtitle: "professionally",
-                    systemImage: "pencil.line",
-                    prompt: "Write a professional version of: "
-                )
-                landingChip(
-                    title: "Review",
-                    subtitle: "for bugs",
-                    systemImage: "shield.checkered",
-                    prompt: "Review this code for bugs and edge cases:\n\n```\n\n```"
-                )
-                landingChip(
-                    title: "Translate",
-                    subtitle: "to any language",
-                    systemImage: "character.bubble",
-                    prompt: "Translate the following:\n\n"
-                )
-            }
-            .padding(.leading, 16)
-            // Trailing inset is short on purpose so the next chip "peeks"
-            // past the screen edge, signalling more content to scroll into.
-            .padding(.trailing, 40)
-        }
-        // Soft right-edge fade reinforces the scroll affordance — without
-        // it the cut-off third chip looks like a layout bug.
-        .overlay(alignment: .trailing) {
-            LinearGradient(
-                colors: [T.bg.opacity(0), T.bg],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-            .frame(width: 36)
-            .allowsHitTesting(false)
-        }
-    }
-
-    /// Prominent, full-width entry to on-device image generation. Sits on the
-    /// landing screen (the launch tab) so the feature is reachable in one tap
-    /// instead of being buried under Models → Images.
-    private var landingImageGenCard: some View {
-        Button {
-            showImageGen = true
-            HapticManager.impact(.medium)
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "wand.and.stars")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(width: 40, height: 40)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(T.roseHi))
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(loc.t("Generate an image"))
-                        .font(T.sans(15, .semibold))
-                        .foregroundColor(T.ink)
-                    Text(loc.t("On-device text-to-image — SDXL Turbo & Stable Diffusion"))
-                        .font(T.mono(10))
-                        .foregroundColor(T.ink3)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(T.ink3)
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .kGlass(
-                cornerRadius: 16,
-                fallbackFill: T.surface,
-                fallbackStroke: T.rule
-            )
-            .padding(.horizontal, 16)
-        }
-        .buttonStyle(KTactileButtonStyle())
-    }
-
-    private func landingChip(title: String, subtitle: String, systemImage: String, prompt: String) -> some View {
-        Button {
-            openChat(prefill: prompt)
-            HapticManager.impact(.light)
-        } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    Image(systemName: systemImage)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(T.accent)
-                        .frame(width: 28, height: 28)
-                        .background(Circle().fill(T.accentSoft))
-                    
-                    Text(loc.t(title))
-                        .font(T.sans(14, .semibold))
-                        .foregroundColor(T.ink)
-                }
-                
-                Text(loc.t(subtitle))
-                    .font(T.mono(10.5))
-                    .foregroundColor(T.ink3)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(height: 32, alignment: .topLeading)
-            }
-            .frame(width: 158, alignment: .leading)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 14)
-            .kGlass(
-                cornerRadius: 14,
-                fallbackFill: T.surface,
-                fallbackStroke: T.rule
-            )
-        }
-        .buttonStyle(KTactileButtonStyle())
-    }
-
-    /// The "Ask anything…" pill at the bottom of the landing. The body
-    /// (plus + text) opens the chat composer; the trailing waveform is a
-    /// SEPARATE tap target that opens hands-free voice mode.
-    ///
-    /// Previously the whole pill was a single Button and the waveform was
-    /// decorative — so tapping the obvious "voice" affordance silently opened
-    /// the text composer instead. Splitting the interaction gives the icon its
-    /// own hit region while keeping the visuals identical.
-    private var askAnythingPill: some View {
-        HStack(spacing: 10) {
-            // Body — opens the chat composer. `.contentShape(Rectangle())`
-            // makes the whole zone (including the trailing Spacer) tappable.
-            Button {
-                openChat()
-                HapticManager.impact(.light)
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(T.ink3)
-                        .frame(width: 30, height: 30)
-                        .background(Circle().fill(T.surface2))
-                        .overlay(Circle().stroke(T.glassBorder, lineWidth: 0.5))
-                    Text(loc.t("Ask anything…"))
-                        .font(T.sans(14))
-                        .foregroundColor(T.ink3)
-                    Spacer(minLength: 0)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            // Trailing waveform — opens voice mode (same destination as the
-            // chat toolbar's "Voice conversation").
-            Button {
-                showVoiceMode = true
-                HapticManager.impact(.light)
-            } label: {
-                Image(systemName: "waveform")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(T.accent)
-                    .frame(width: 30, height: 30)
-                    .background(Circle().fill(T.accentSoft))
-                    .overlay(Circle().stroke(T.accent.opacity(0.40), lineWidth: 0.5))
-                    .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(loc.t("Voice conversation"))
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 8)
-        .kGlass(
-            cornerRadius: 24,
-            fallbackFill: T.surface,
-            fallbackStroke: T.rule
-        )
-    }
-
-    // MARK: - Route transitions
-
-    /// Open the chat route. Optionally pre-fill the composer (used by
-    /// suggestion chips) and focus the field after the transition
-    /// settles so the keyboard appears at the right moment.
-    private func openChat(prefill: String? = nil) {
-        if let prefill {
-            inputText = prefill
-        }
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-            route = .chat
-        }
-        // Focus after the transition so SwiftUI doesn't fight the
-        // keyboard appearing mid-animation.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-            inputFocused = true
-        }
-    }
-
-    /// Return to the landing route without clearing the conversation.
-    /// Use the back chevron on the chat-route toolbar.
-    private func returnToLanding() {
-        inputFocused = false
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-            route = .landing
-        }
-    }
-
-    // MARK: - Empty state (legacy — kept for the chat route fallback)
-
-    private var emptyStateView: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                if assistant.activeExecutionLocation != .applePrivateCloud {
-                    modelLoadBanner
-                }
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        KCaption(text: "local-first ai assistant")
-                    Text("Run open language models on your phone.")
-                    .font(T.display(30, .semibold))
-                    .tracking(0)
-                    .foregroundColor(T.ink)
-                    .lineLimit(nil)
-                    .fixedSize(horizontal: false, vertical: true)
-                    Text(
-                        assistant.activeExecutionLocation == .applePrivateCloud
-                            ? "Advanced reasoning through Apple Private Cloud Compute. A network connection is required."
-                            : "\(assistant.activeModel.displayName) runs entirely on-device via \(assistant.activeModel.runtime.label). No servers. No keys. No telemetry."
-                    )
-                        .font(T.sans(14))
-                        .foregroundColor(T.ink2)
-                        .padding(.top, 8)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(.horizontal, 16)
-
-                // Capability matrix
-                VStack(spacing: 0) {
-                    ForEach(Array(capabilityRows.enumerated()), id: \.offset) { i, row in
-                        if i > 0 { Rectangle().fill(T.rule).frame(height: 1) }
-                        HStack {
-                            KMono(text: row.0, size: 11, color: T.ink3)
-                                .frame(width: 110, alignment: .leading)
-                            KMono(text: row.1, size: 11, color: T.ink)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 9)
-                    }
-                }
-                // Liquid Glass spec table — translucent material catches the
-                // backdrop bloom for the warm-rose ambience.
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .kGlass(cornerRadius: 16, fallbackFill: T.surface)
-                .padding(.horizontal, 16)
-
-                // Suggestion chips
-                VStack(alignment: .leading, spacing: 6) {
-                    KCaption(text: "try")
-                        .padding(.horizontal, 16)
-                    VStack(spacing: 6) {
-                        ForEach(suggestions, id: \.self) { suggestion in
-                            Button {
-                                inputText = suggestion
-                                inputFocused = true
-                                HapticManager.impact(.light)
-                            } label: {
-                                HStack(spacing: 8) {
-                                    Text("›")
-                                        .font(T.mono(13, .semibold))
-                                        .foregroundColor(T.accent)
-                                    Text(suggestion)
-                                        .font(T.sans(13))
-                                        .foregroundColor(T.ink)
-                                        .multilineTextAlignment(.leading)
-                                    Spacer()
-                                    Image(systemName: "arrow.up.left")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(T.ink3)
-                                }
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 12)
-                                // Liquid Glass row — translucent material with
-                                // a hairline highlight; rose-soft hover via
-                                // accentSofter would go here once we model
-                                // press-state.
-                                .kGlass(cornerRadius: 14, fallbackFill: T.surface)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                }
-
-                Spacer(minLength: floatingTabBarReservedHeight + 16)
-            }
-            .padding(.vertical, 8)
-        }
-    }
-
-    /// Computed so the "model" row reflects whatever the user actually has
-    /// loaded (Qwen2.5-Coder, Llama 3.2, DeepSeek, etc.) instead of being
-    /// pinned to a single name.
-    private var capabilityRows: [(String, String)] {
-        [
-            ("runtime",   "MLX · Metal · ANE"),
-            ("model",     assistant.activeDisplayName),
-            ("streaming", "token-by-token"),
-            ("storage",   "sandboxed · on-device"),
-        ]
-    }
-
-    private var suggestions: [String] {
-        switch personaStore.active.id {
-        case "default":
-            return [
-                loc.t("Review this Swift code for bugs and memory leaks"),
-                loc.t("Write a rate limiter in Python with Redis"),
-                loc.t("Explain the difference between async/await and callbacks"),
-                loc.t("Refactor this function to be more testable"),
-                loc.t("What security issues does this SQL query have?"),
-            ]
-        case "code-reviewer":
-            return [
-                "Review this function for edge cases and bugs",
-                "Find code smells in this class",
-                "Check this diff for regressions",
-            ]
-        case "sql-expert":
-            return [
-                "Optimize this SQL query",
-                "Design a schema for a user-auth system",
-                "Explain this JOIN and suggest improvements",
-            ]
-        case "security":
-            return [
-                "Audit this authentication code",
-                "Check this input validation for injection flaws",
-                "Review this API endpoint for security issues",
-            ]
-        case "tutor":
-            return [
-                "Explain recursion with a simple example",
-                "What's the difference between a stack and a queue?",
-                "Help me understand async/await",
-            ]
-        case "refactor":
-            return [
-                "Refactor this function to reduce complexity",
-                "Extract reusable components from this file",
-                "Apply the single responsibility principle here",
-            ]
-        case "explain":
-            return [
-                "Walk me through what this function does",
-                "Explain this algorithm step by step",
-                "What does this design pattern accomplish?",
-            ]
-        default:
-            return [
-                "What can you help me with?",
-                "Tell me about \(personaStore.active.name)",
-            ]
-        }
-    }
-
     // MARK: - Input bar
 
-    /// Slim composer — just the text field. All actions live in the
-    /// `KeyboardToolbar` mounted below this view via `safeAreaInset`.
+    /// The composer card. Attachments, recents, mode readouts and the
+    /// generating rule all live inside it; the old keyboard toolbar's actions
+    /// moved to the Add sheet.
     private var inputBar: some View {
-        VStack(spacing: 0) {
-            // Attached-photo chips — sits ABOVE the file chips so the
-            // composer reads top-to-bottom as "image, files, text" the
-            // same way a chat message renders. Tap × to drop individual
-            // photos before sending. Supports multiple images (Feature #11).
-            if !pendingImageThumbnails.isEmpty || pendingImageThumbnail != nil {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(Array(pendingImageThumbnails.enumerated()), id: \.offset) { idx, att in
-                            if let ui = UIImage(data: att.data) {
-                                ZStack(alignment: .topTrailing) {
-                                    Image(uiImage: ui)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: 48, height: 48)
-                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                                .stroke(T.rule, lineWidth: 0.5)
-                                        )
-                                    Button {
-                                        pendingImageThumbnails.remove(at: idx)
-                                        if pendingImageThumbnails.isEmpty {
-                                            pendingImageThumbnail = nil
-                                        }
-                                        HapticManager.impact(.light)
-                                    } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(T.ink)
-                                            .background(Circle().fill(T.bg))
-                                    }
-                                    .buttonStyle(.plain)
-                                    .offset(x: 5, y: -5)
-                                }
-                            }
-                        }
-                        // Single-image backward compat chip
-                        if let pendingImg = pendingImageThumbnail,
-                           pendingImageThumbnails.isEmpty,
-                           let ui = UIImage(data: pendingImg) {
-                            ZStack(alignment: .topTrailing) {
-                                Image(uiImage: ui)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 56, height: 56)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                            .stroke(T.rule, lineWidth: 0.5)
-                                    )
-                                Button {
-                                    pendingImageThumbnail = nil
-                                    HapticManager.impact(.light)
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 16))
-                                        .foregroundColor(T.ink)
-                                        .background(Circle().fill(T.bg))
-                                }
-                                .buttonStyle(.plain)
-                                .offset(x: 6, y: -6)
-                            }
-                        }
-                        if !pendingImageThumbnails.isEmpty || pendingImageThumbnail != nil {
-                            KMono(text: "\(pendingImageThumbnails.count + (pendingImageThumbnail != nil && pendingImageThumbnails.isEmpty ? 1 : 0)) image\(pendingImageThumbnails.count > 1 ? "s" : "") attached",
-                                  size: 10, color: T.ink3)
-                                .fixedSize(horizontal: true, vertical: false)
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                }
-                .padding(.top, 8)
-            }
-            // Attached-file chips — horizontal scroll above the field.
-            if !pendingAttachments.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(pendingAttachments) { att in
-                            FileAttachmentChip(attachment: att) {
-                                pendingAttachments.removeAll { $0.id == att.id }
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.top, 8)
+        StudioComposer(
+            text: $inputText,
+            isFocused: $inputFocused,
+            images: $pendingImageThumbnails,
+            legacyImage: $pendingImageThumbnail,
+            files: $pendingAttachments,
+            thinkingEnabled: thinkingEnabledBinding,
+            supportsThinking: assistant.activeModel.supportsThinking,
+            isGenerating: isGenerating,
+            isPreparingImageContext: isPreparingImageContext,
+            canGenerate: assistant.canGenerateSelectedTarget,
+            canSend: canSendMessage,
+            tokensPerSecond: liveTokensPerSecond,
+            tokenBudget: assistant.estimatedInputTokens > 0
+                ? (used: assistant.estimatedInputTokens,
+                   max: max(1, assistant.selectedContextWindowTokens))
+                : nil,
+            // Read, not observed: thermal churn must not invalidate this view.
+            thermalWarning: DeviceSafetyMonitor.shared.statusLabel,
+            placeholder: messages.isEmpty ? loc.t("Ask anything") : loc.t("Reply"),
+            onAdd: { showAddSheet = true },
+            onPhoto: { showPhotoPicker = true },
+            onSnippet: { showSnippetPicker = true },
+            onToggleThinking: {
+                thinkingEnabledBinding.wrappedValue.toggle()
+                HapticManager.selection()
+            },
+            onSend: sendMessage,
+            onStop: stopGeneration,
+            onChooseModel: {
+                if canLoadSelectedModel {
+                    Task { await assistant.load() }
+                } else {
+                    showModelPicker = true
                 }
             }
-            AssistantComposer(
-                text: $inputText,
-                isFocused: $inputFocused,
-                canSend: canSendMessage,
-                isGenerating: isGenerating,
-                hasCustomSampling: samplerOverrideActive,
-                onAdd: { showSnippetPicker = true },
-                onPhoto: { showPhotoPicker = true },
-                onFile: { showFilePicker = true },
-                onSampling: { showSamplerControls = true },
-                onSend: sendMessage,
-                onStop: stopGeneration
-            )
-        }
-        .kClearGlass(
-            in: RoundedRectangle(cornerRadius: AssistantRadius.composer, style: .continuous),
-            fallbackFill: T.surface,
-            fallbackStroke: T.rule2
         )
-        // Clear glass alone lets the scroll view's final answer remain legible
-        // underneath the field and toolbar. Use the page color as a nearly
-        // opaque optical backing so the composer is still glass-edged, but is
-        // also a real visual boundary when it is pinned above the keyboard.
-        .background(
-            T.bg.opacity(inputFocused ? 0.99 : 0.96),
-            in: RoundedRectangle(cornerRadius: AssistantRadius.composer, style: .continuous)
+    }
+
+    /// Reasoning toggle — honours a per-model profile when one exists, so the
+    /// readout and the model's saved settings never disagree.
+    private var thinkingEnabledBinding: Binding<Bool> {
+        Binding(
+            get: {
+                AssistantModelSettingsStore.shared
+                    .settings(for: assistant.activeModel.repoID)?.thinkingEnabled
+                    ?? AppSettings.shared.assistantThinking
+            },
+            set: { newValue in
+                let model = assistant.activeModel
+                if var override = AssistantModelSettingsStore.shared.settings(for: model.repoID) {
+                    override.thinkingEnabled = newValue
+                    AssistantModelSettingsStore.shared.save(
+                        override, for: model.repoID, supportsThinking: model.supportsThinking
+                    )
+                } else {
+                    AppSettings.shared.assistantThinking = newValue
+                }
+            }
         )
-        .overlay(alignment: .top) {
-            Capsule()
-                .fill(Color.white.opacity(T.isDark ? 0.12 : 0.42))
-                .frame(height: AppStroke.hairline)
-                .padding(.horizontal, AssistantSpacing.medium)
-                .allowsHitTesting(false)
+    }
+
+    /// "Allow web lookups" — on means the tool asks before every search.
+    private var webLookupsBinding: Binding<Bool> {
+        Binding(
+            get: { WebToolService.shared.settings.mode != .off },
+            set: { WebToolService.shared.settings.mode = $0 ? .askEveryTime : .off }
+        )
+    }
+
+    /// Web-use provenance under the last answer: what left the device and how
+    /// much came back. `nil` keeps the provenance line hidden entirely.
+    private var answerProvenance: String? {
+        let pages = lastWebCitations.count
+        guard pages > 0 else { return nil }
+        return "searched once · \(pages) page\(pages == 1 ? "" : "s") · nothing stored"
+    }
+
+    /// Mono footnote right-aligned in the answer action row: model · time or
+    /// model · duration once generation finishes.
+    private func answerFootnote(for msg: ChatMessage) -> String {
+        let model = assistant.activeDisplayName
+        if msg.isStreaming {
+            if msg.content.isEmpty { return model }
+            return "\(model) · writing"
         }
-        .clipShape(RoundedRectangle(cornerRadius: AssistantRadius.composer, style: .continuous))
-        .shadow(color: Color.black.opacity(T.isDark ? 0.16 : 0.08), radius: 12, y: 5)
-        .contentShape(RoundedRectangle(cornerRadius: AssistantRadius.composer, style: .continuous))
-        .zIndex(20)
-        .animation(.easeOut(duration: 0.18), value: inputFocused)
+        if let duration = msg.generationDuration, duration > 0 {
+            return "\(model) · \(formattedDuration(duration))"
+        }
+        return msg.timestamp.formatted(date: .omitted, time: .shortened)
+    }
+
+    /// Throughput of the reply currently being written, when the runtime has
+    /// reported one. `nil` keeps the generating rule's metric slot empty
+    /// rather than showing a made-up zero.
+    private var liveTokensPerSecond: Double? {
+        messages.last(where: { $0.role == .assistant })?.generationTokensPerSecond
     }
 
     private func shareCurrentConversation() {
@@ -2660,11 +1957,37 @@ struct CodingAssistantView: View {
                 symbol: AssistantActivity.symbol(forTool: name)
             )
         }
+        // Web consent — asked in the thread, not in a sheet, so the question
+        // sits where the answer will. Both the model-initiated tool call and
+        // the pre-send check use the same card.
+        if let req = pendingWebPermission {
+            StudioWebPermissionCard(
+                query: webPermissionQueryText(req.payload),
+                reason: req.reason,
+                onAllowOnce: {
+                    pendingWebPermission = nil
+                    Task { await runWithWebTool(payload: req.payload,
+                                                originalText: req.originalText) }
+                },
+                onAlwaysAllow: {
+                    WebToolService.shared.settings.mode = .alwaysAllow
+                    pendingWebPermission = nil
+                    Task { await runWithWebTool(payload: req.payload,
+                                                originalText: req.originalText) }
+                },
+                onDeny: {
+                    let text = req.originalText
+                    pendingWebPermission = nil
+                    // Declined — answer offline instead of dropping the turn.
+                    sendOffline(text: text)
+                }
+            )
+            .padding(.horizontal, 20)
+            .padding(.vertical, 6)
+        }
         if let req = pendingToolWeb {
-            AssistantApprovalCard(
-                toolName: "web_search",
-                reason: "The assistant wants to search the web to answer your question. Chat history and attachments stay on this device.",
-                detail: webApprovalDetail(req.payload),
+            StudioWebPermissionCard(
+                query: webPermissionQueryText(req.payload),
                 onAllowOnce: {
                     pendingToolWeb = nil
                     Task { await runToolWebAndFollowUp(query: req.query, payload: req.payload, depth: req.depth) }
@@ -2674,11 +1997,13 @@ struct CodingAssistantView: View {
                     pendingToolWeb = nil
                     Task { await runToolWebAndFollowUp(query: req.query, payload: req.payload, depth: req.depth) }
                 },
-                onDecline: {
+                onDeny: {
                     pendingToolWeb = nil
                     declineToolWebAndFollowUp(depth: req.depth)
                 }
             )
+            .padding(.horizontal, 20)
+            .padding(.vertical, 6)
         }
         if let req = pendingToolFile {
             AssistantFileApprovalCard(
@@ -2752,6 +2077,14 @@ struct CodingAssistantView: View {
         }
     }
 
+    /// Exactly what would leave the device, quoted back to the user.
+    private func webPermissionQueryText(_ payload: QueryOrURL) -> String {
+        switch payload {
+        case .query(let q): return q
+        case .url(let u): return u.absoluteString
+        }
+    }
+
     private var isGenerating: Bool {
         if isPreparingImageContext || documentSearchID != nil { return true }
         if pendingToolWeb != nil || pendingToolFile != nil || runningToolName != nil {
@@ -2809,7 +2142,15 @@ struct CodingAssistantView: View {
         }
     }
 
-    /// Pastes clipboard text into the composer (called from KeyboardToolbar).
+    /// Closes the Add sheet, then runs the follow-up on the next beat.
+    /// Presenting a second sheet while the first is still animating out is
+    /// silently dropped by SwiftUI.
+    private func handOffFromAddSheet(_ next: @escaping () -> Void) {
+        showAddSheet = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: next)
+    }
+
+    /// Pastes clipboard text into the composer (Add sheet → Paste clipboard).
     private func pasteFromClipboard() {
         if let text = UIPasteboard.general.string, !text.isEmpty {
             inputText = text
@@ -2938,7 +2279,6 @@ struct CodingAssistantView: View {
     /// the selected chat model. This prevents a heavyweight selection such as
     /// Bonsai 27B from being loaded merely to inspect a small diagnostics log.
     private func diagnoseAppErrors() {
-        if route != .chat { route = .chat }
         inputFocused = false
         let instructions = "You are analyzing diagnostics from OnDevice, an on-device iOS AI app that runs local models (MLX / Core ML). Identify the most likely root cause(s), ranked, and give concrete prioritized fixes or user actions. Be concise and specific. If nothing looks wrong, say the device looks healthy. Do not invent log lines that are not present."
         let displayText = loc.t("Diagnose my app's recent errors and suggest fixes.")
@@ -4447,72 +3787,6 @@ struct CodingAssistantView: View {
     }
 }
 
-private struct ApplePrivateCloudLandingStatusPill: View {
-    let status: ApplePCCStatus
-    let generationState: ApplePCCGenerationState
-    let onRefresh: () -> Void
-
-    @Environment(\.koduTheme) private var T
-
-    var body: some View {
-        Button(action: onRefresh) {
-            HStack(spacing: 8) {
-                if generationState == .generating {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(T.accent)
-                } else {
-                    Image(systemName: symbol)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(color)
-                }
-                Text(label)
-                    .font(T.sans(12, .semibold))
-                    .foregroundStyle(T.ink2)
-                Text("cloud")
-                    .font(T.mono(9, .semibold))
-                    .foregroundStyle(T.ink3)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 8)
-            .kGlass(cornerRadius: 16, fallbackFill: T.surface)
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint("Refreshes Apple Private Cloud availability")
-    }
-
-    private var label: String {
-        if generationState == .generating { return "Generating" }
-        if case .failed = generationState { return "Request failed" }
-        switch status {
-        case .ready: return "Available"
-        case .approachingLimit: return "Nearing daily limit"
-        case .limitReached: return "Daily limit reached"
-        case .offline: return "Offline"
-        default: return "Unavailable"
-        }
-    }
-
-    private var symbol: String {
-        switch status {
-        case .ready: return "checkmark.circle.fill"
-        case .approachingLimit: return "exclamationmark.circle.fill"
-        case .limitReached: return "hourglass.circle.fill"
-        case .offline: return "wifi.slash"
-        default: return "info.circle.fill"
-        }
-    }
-
-    private var color: Color {
-        switch status {
-        case .ready: return T.good
-        case .approachingLimit: return T.warn
-        case .limitReached: return T.bad
-        default: return T.ink3
-        }
-    }
-}
-
 // MARK: - ConversationPickerView
 
 private struct ChatThreadEmptyState: View {
@@ -4521,6 +3795,11 @@ private struct ChatThreadEmptyState: View {
     let modelStatus: String
     let loadFailure: String?
     let failureCanRetry: Bool
+    /// False when nothing can answer yet — no model downloaded, or one is
+    /// still loading. The starters are hidden in that case: offering five
+    /// prompts that cannot be sent is a dead end, and on a fresh install
+    /// (no language model ships bundled) it is the *first* thing a user sees.
+    let canGenerate: Bool
     let onRetry: () -> Void
     let onSwitchModel: () -> Void
     let onTryAnyway: (() -> Void)?
@@ -4528,200 +3807,173 @@ private struct ChatThreadEmptyState: View {
 
     @Environment(\.koduTheme) private var T
 
-    private let suggestions = [
-        "Explain this code step by step",
-        "Review a file for bugs",
-        "Help me plan an implementation",
+    /// The five openings the removed landing screen used to carry. Labels read
+    /// as plain English; the prompts are what actually reach the model — the
+    /// two differ, which is why this is a pair and not a bare string.
+    private let starters: [StudioStarter] = [
+        StudioStarter("Explain something simply",
+                      prompt: "Explain in simple terms: "),
+        StudioStarter("Identify what this code does",
+                      prompt: "Identify what this code does, line by line:\n\n```\n\n```"),
+        StudioStarter("Write it professionally",
+                      prompt: "Write a professional version of: "),
+        StudioStarter("Review code for bugs",
+                      prompt: "Review this code for bugs and edge cases:\n\n```\n\n```"),
+        StudioStarter("Translate something",
+                      prompt: "Translate the following:\n\n"),
     ]
 
+    /// One body for all three states. Welcome, no-search-results and
+    /// model-failure used to render in two different design languages from
+    /// this same view, so hitting a load error made the app look like a
+    /// different product.
     var body: some View {
-        VStack(spacing: AssistantSpacing.medium) {
-            Image(systemName: emptyStateSymbol)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(loadFailure == nil ? T.accent : T.bad)
-                .frame(width: 48, height: 48)
-                .kClearGlass(in: Circle(),
-                             tint: loadFailure == nil ? T.accentSoft : T.bad.opacity(0.12),
-                             fallbackFill: T.surface2, fallbackStroke: T.rule2)
-                .shadow(color: T.accent.opacity(0.10), radius: 10, y: 4)
+        let S = T.studio
+        return VStack(alignment: .leading, spacing: 0) {
+            Spacer(minLength: 28)
 
-            VStack(spacing: AppSpacing.small) {
-                Text(emptyStateTitle)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(T.ink)
-                    .multilineTextAlignment(.center)
-                Text(emptyStateSubtitle)
-                    .font(.callout)
-                    .foregroundStyle(T.ink2)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            StudioMonoLabel(text: eyebrow, size: 11, tracking: 0.9)
+                .padding(.bottom, 10)
 
-            if !isFiltering, let loadFailure {
-                VStack(spacing: AppSpacing.medium) {
-                    Text(loadFailure)
-                        .font(.callout)
-                        .foregroundStyle(T.ink2)
-                        .multilineTextAlignment(.center)
-                        .fixedSize(horizontal: false, vertical: true)
+            Text(title)
+                .font(S.sans(32, .semibold))
+                .tracking(-0.8)
+                .foregroundStyle(S.ink)
+                .multilineTextAlignment(.leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
 
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: AssistantSpacing.xxSmall) {
-                            recoveryButtons
-                        }
-                        VStack(spacing: AssistantSpacing.xxSmall) {
-                            recoveryButtons
-                        }
-                    }
-                }
-                .frame(maxWidth: 440)
-                .padding(AssistantSpacing.medium)
-                .kGlass(
-                    cornerRadius: 18,
-                    tint: T.bad.opacity(T.isDark ? 0.10 : 0.05),
-                    fallbackFill: T.surface2,
-                    fallbackStroke: T.bad.opacity(0.25)
-                )
+            Text(subtitle)
+                .font(S.sans(15.5))
+                .lineSpacing(5)
+                .foregroundStyle(S.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 6)
+                .padding(.bottom, 22)
+
+            if let loadFailure, !isFiltering {
+                recoveryBlock(loadFailure)
+            } else if !isFiltering, !canGenerate {
+                // Nothing can answer yet — lead with getting a model rather
+                // than with prompts that would land in a blocked composer.
+                setUpBlock
             } else if !isFiltering {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 148), spacing: AssistantSpacing.xxSmall)],
-                          spacing: AssistantSpacing.xxSmall) {
-                    suggestionButtons
-                }
-                .frame(maxWidth: 440)
+                StudioStarterList(starters: starters) { onSuggestion($0.prompt) }
             }
         }
-        .padding(.horizontal, AssistantSpacing.small)
-        .padding(.vertical, AssistantSpacing.large)
-        .containerRelativeFrame(.vertical, alignment: .center) { length, _ in
-            max(320, length * 0.72)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .containerRelativeFrame(.vertical, alignment: .bottom) { length, _ in
+            max(320, length * 0.62)
         }
-        .frame(maxWidth: .infinity, alignment: .center)
         .accessibilityElement(children: .contain)
     }
 
-    private var emptyStateSymbol: String {
-        if isFiltering { return "magnifyingglass" }
-        if loadFailure != nil { return "exclamationmark.triangle.fill" }
-        return "sparkles"
+    /// Cold start. A fresh install ships no language model, so this is the
+    /// real first screen of the app — it needs to state the one thing that
+    /// has to happen next, not imply the assistant is already usable.
+    @ViewBuilder private var setUpBlock: some View {
+        let S = T.studio
+        VStack(alignment: .leading, spacing: 0) {
+            StudioHairline(color: S.rule2)
+
+            Text(isPreparing
+                 ? "The model is getting ready. This only happens once."
+                 : "Models are a few gigabytes and download once. After that the assistant works offline, in airplane mode, with no account.")
+                .font(S.sans(14))
+                .lineSpacing(4)
+                .foregroundStyle(S.ink3)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, 14)
+
+            if !isPreparing {
+                StudioPrimaryButton(title: "Choose a model", action: onSwitchModel)
+            }
+        }
     }
 
-    private var emptyStateTitle: String {
-        if isFiltering { return "No matching messages" }
-        if loadFailure != nil { return "Choose a model that fits" }
-        return "What can I help you build?"
+    /// A model is downloading or loading — the user has already chosen, so
+    /// the screen should wait with them rather than ask again.
+    private var isPreparing: Bool {
+        let s = modelStatus.lowercased()
+        return s.contains("load") || s.contains("download") || s.contains("prepar")
     }
 
-    private var emptyStateSubtitle: String {
+    /// Failure recovery in the same language as everything else: the one
+    /// filled action, then quieter alternatives. No glass card, no tinted
+    /// panel — the copy carries the severity.
+    private func recoveryBlock(_ failure: String) -> some View {
+        let S = T.studio
+        return VStack(alignment: .leading, spacing: 0) {
+            StudioHairline(color: S.rule2)
+
+            Text(failure)
+                .font(S.sans(14))
+                .lineSpacing(4)
+                .foregroundStyle(S.ink3)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, 14)
+
+            StudioPrimaryButton(title: "Choose a model", action: onSwitchModel)
+
+            HStack(spacing: StudioSpacing.s) {
+                if failureCanRetry {
+                    StudioOutlineButton(title: "Retry", action: onRetry)
+                }
+                if let onTryAnyway {
+                    Button {
+                        HapticManager.impact(.light)
+                        onTryAnyway()
+                    } label: {
+                        Text("Try anyway")
+                            .font(S.sans(14.5, .medium))
+                            .foregroundStyle(S.danger)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.top, StudioSpacing.s)
+        }
+    }
+
+    // MARK: - Copy
+
+    /// Mono eyebrow. Doubles as the model identity readout the landing screen
+    /// used to own — `modelName`/`modelStatus` were passed in and then never
+    /// rendered anywhere.
+    private var eyebrow: String {
+        if isFiltering { return "no matches" }
+        if loadFailure != nil { return "model unavailable" }
+        let name = modelName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return "on-device" }
+        if !canGenerate { return isPreparing ? "\(name) · \(modelStatus)" : "no model yet" }
+        return modelStatus == "Ready" ? "on-device · \(name)" : "\(name) · \(modelStatus)"
+    }
+
+    private var title: String {
+        if isFiltering { return "No matching\nmessages" }
+        if loadFailure != nil { return "Choose a model\nthat fits" }
+        if !canGenerate { return isPreparing ? "Getting the\nmodel ready" : "Pick a model\nto begin" }
+        return "What can I\nhelp with?"
+    }
+
+    private var subtitle: String {
         if isFiltering {
-            return "Try another word or close search to return to the conversation."
+            return "Try another word, or close search to return to the conversation."
         }
         if loadFailure != nil {
             return failureCanRetry
                 ? "The selected on-device model could not start."
                 : "\(modelName) exceeds this device's app memory limit."
         }
-        if modelStatus == "Ready" {
-            return "Private, on-device assistance with \(modelName)."
+        if !canGenerate {
+            return isPreparing
+                ? "You can leave this screen — it keeps going in the background."
+                : "Nothing runs on this iPhone until you download one. You choose which."
         }
-        if modelStatus.lowercased().contains("fail") || modelStatus.lowercased().contains("unavailable") {
-            return "The on-device model needs attention before you can start."
-        }
-        return "Your on-device model is getting ready."
-    }
-
-    @ViewBuilder
-    private var recoveryButtons: some View {
-        if failureCanRetry {
-            recoveryButton(
-                title: "Retry",
-                symbol: "arrow.clockwise",
-                foreground: T.ink,
-                background: T.surface,
-                action: onRetry
-            )
-        }
-        recoveryButton(
-            title: "Choose model",
-            symbol: "square.stack.3d.up.fill",
-            foreground: .white,
-            background: T.accent,
-            action: onSwitchModel
-        )
-        if let onTryAnyway {
-            recoveryButton(
-                title: "Try anyway",
-                symbol: "flask.fill",
-                foreground: T.bad,
-                background: T.bad.opacity(0.12),
-                action: onTryAnyway
-            )
-        }
-    }
-
-    private func recoveryButton(
-        title: String,
-        symbol: String,
-        foreground: Color,
-        background: Color,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button {
-            action()
-            HapticManager.impact(.light)
-        } label: {
-            Label(title, systemImage: symbol)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(foreground)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .frame(maxWidth: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(background)
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    private var suggestionButtons: some View {
-        ForEach(suggestions, id: \.self) { suggestion in
-            Button {
-                onSuggestion(suggestion)
-                HapticManager.impact(.light)
-            } label: {
-                HStack(spacing: AssistantSpacing.xxSmall) {
-                    Image(systemName: symbol(for: suggestion))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(T.accent)
-                        .frame(width: 22)
-                    Text(shortLabel(for: suggestion))
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(T.ink)
-                        .lineLimit(2)
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, AssistantSpacing.xSmall)
-                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-                .kClearGlass(in: RoundedRectangle(cornerRadius: AssistantRadius.small),
-                             interactive: true, fallbackFill: T.surface,
-                             fallbackStroke: T.rule2)
-            }
-            .buttonStyle(AssistantSuggestionButtonStyle())
-            .accessibilityHint("Inserts this prompt so you can edit it")
-        }
-    }
-
-    private func shortLabel(for suggestion: String) -> String {
-        if suggestion.hasPrefix("Explain") { return "Explain code" }
-        if suggestion.hasPrefix("Review") { return "Review a file" }
-        return "Plan a feature"
-    }
-
-    private func symbol(for suggestion: String) -> String {
-        if suggestion.hasPrefix("Explain") { return "chevron.left.forwardslash.chevron.right" }
-        if suggestion.hasPrefix("Review") { return "doc.text.magnifyingglass" }
-        return "list.bullet.clipboard"
+        return "Everything is generated on this iPhone. Works in airplane mode."
     }
 }
 
@@ -4814,17 +4066,6 @@ private struct UnsafeModelLoadConfirmationSheet: View {
     }
 }
 
-private struct AssistantSuggestionButtonStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
-            .opacity(configuration.isPressed ? 0.82 : 1)
-            .animation(reduceMotion ? nil : AppAnimation.quick, value: configuration.isPressed)
-    }
-}
-
 struct ConversationPickerView: View {
     @ObservedObject var store: ConversationStore
     let onSelect: (StoredConversation) -> Void
@@ -4907,7 +4148,7 @@ struct ConversationPickerView: View {
             .searchable(text: $searchText,
                         placement: .navigationBarDrawer(displayMode: .always),
                         prompt: "search conversations…")
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .navigationTitle("history")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
@@ -5059,158 +4300,166 @@ struct MessageBubble: View, Equatable {
     private func toolResultChip(_ tr: (name: String, result: String)) -> some View {
         AssistantToolResultCard(name: tr.name, result: tr.result)
             .frame(maxWidth: 520, alignment: .leading)
-            .padding(.horizontal, 18)
+            .padding(.horizontal, 20)
             .padding(.vertical, 6)
     }
 
-    // User turn — right-aligned neutral bubble.
+    // User turn — right-aligned block with a 2px ink spine. A block, not a
+    // bubble: fill + spine, asymmetric radius, no glass, no shadow.
     private var userBubble: some View {
-        HStack(alignment: .bottom, spacing: 0) {
-            Spacer(minLength: 48)
-            VStack(alignment: .leading, spacing: 8) {
+        let S = T.studio
+        return HStack(alignment: .top, spacing: 0) {
+            Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 10) {
                 if message.imageThumbnails.count > 1 {
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             ForEach(Array(message.imageThumbnails.enumerated()), id: \.offset) { _, att in
-                                imageCard(data: att.data, isCarousel: true)
+                                imageTile(data: att.data) { onAnalyzeImage?(att.data) }
                             }
                         }
                     }
                 } else if let imgData = message.imageThumbnailData {
-                    imageCard(data: imgData, isCarousel: false)
+                    imageTile(data: imgData) { onAnalyzeImage?(imgData) }
                 }
                 if !message.content.isEmpty {
                     Text(message.content)
-                        .font(T.conversationBody)
-                        .foregroundColor(T.ink)
-                        .lineSpacing(4)
+                        .font(T.sans(16))
+                        .foregroundColor(S.ink)
+                        .lineSpacing(5)
                         .textSelection(.enabled)
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 15)
             .padding(.vertical, 12)
-            .kClearGlass(
-                in: UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 14,
-                                           bottomTrailingRadius: 5, topTrailingRadius: 14,
-                                           style: .continuous),
-                fallbackFill: T.surface2
+            .background(S.userTurnFill)
+            .overlay(alignment: .trailing) {
+                // The 2px ink spine — a block with an edge, not a stroke.
+                Rectangle()
+                    .fill(S.ink)
+                    .frame(width: 2)
+            }
+            .clipShape(
+                UnevenRoundedRectangle(topLeadingRadius: StudioRadius.action,
+                                       bottomLeadingRadius: StudioRadius.spine,
+                                       bottomTrailingRadius: StudioRadius.spine,
+                                       topTrailingRadius: StudioRadius.action,
+                                       style: .continuous)
             )
+            // 82% of the thread measure, right-aligned. The thread itself is
+            // ~350pt on a 390pt phone at the shared 20pt inset.
+            .frame(maxWidth: 288, alignment: .trailing)
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
-        .padding(.horizontal, 18)
+        // 20pt is the thread's single inset — assistant prose, the action row
+        // and the empty state all use it. User turns used to sit at 18, which
+        // put every question 2pt out of line with every answer.
+        .padding(.horizontal, 20)
         .padding(.vertical, 6)
     }
 
-    // Assistant turn — left-aligned white bubble + on-device meta footer.
+    /// 46pt square photo tile inside a user turn, with the same tap-to-analyze
+    /// affordance the old carousel card had.
+    private func imageTile(data: Data, onAnalyze: (() -> Void)? = nil) -> some View {
+        let S = T.studio
+        return Group {
+            if let ui = UIImage(data: data) {
+                Image(uiImage: ui)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Rectangle().fill(S.fillActive)
+            }
+        }
+        .frame(width: 46, height: 46)
+        .clipShape(RoundedRectangle(cornerRadius: StudioRadius.tile, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: StudioRadius.tile, style: .continuous)
+                .stroke(S.ink.opacity(0.08), lineWidth: 1)
+        )
+        .overlay(alignment: .bottomTrailing) {
+            if let onAnalyze {
+                Button {
+                    HapticManager.impact(.medium)
+                    onAnalyze()
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "eye.fill")
+                            .font(.system(size: 9, weight: .semibold))
+                        Text("Analyze")
+                            .font(S.mono(9, .medium))
+                    }
+                    .foregroundColor(S.ink)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(S.paper.opacity(0.9), in: RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .stroke(S.ink.opacity(0.10), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .padding(5)
+            }
+        }
+        .accessibilityLabel("Attached image")
+    }
+
+    // Assistant turn — full-measure prose. No bubble, no glass, no avatar:
+    // the answer reads as a document on the page. Only state that is not
+    // obvious (Apple Private Cloud, interrupted, token limit) keeps a compact
+    // mono line; a normal finished answer is bare prose.
     private var assistantBubble: some View {
-        HStack(alignment: .bottom, spacing: 0) {
-            VStack(alignment: .leading, spacing: 6) {
-                VStack(alignment: .leading, spacing: 8) {
-                    // .equatable() wires AssistantMarkdownView's `==` into
-                    // SwiftUI diffing so parseBlocks only re-runs when this
-                    // bubble's own content / streaming state changes.
-                    AssistantMarkdownView(content: message.content, isStreaming: message.isStreaming)
-                        .equatable()
-                    if message.isStreaming && message.content.isEmpty {
-                        HStack(spacing: 10) {
-                            StreamingDots(color: T.ink3)
-                            Capsule()
-                                .fill(T.surface2)
-                                .frame(height: 6)
-                                .frame(maxWidth: 120)
-                                .shimmer(isActive: true, duration: 1.2)
-                        }
-                        .padding(.leading, 2)
+        let S = T.studio
+        return VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 8) {
+                // .equatable() wires AssistantMarkdownView's `==` into
+                // SwiftUI diffing so parseBlocks only re-runs when this
+                // bubble's own content / streaming state changes.
+                AssistantMarkdownView(content: message.content, isStreaming: message.isStreaming)
+                    .equatable()
+                if message.isStreaming && message.content.isEmpty {
+                    HStack(spacing: 8) {
+                        StudioMonoLabel(text: "writing", size: 11, tracking: 0.8)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 13)
-                .kClearGlass(
-                    in: UnevenRoundedRectangle(topLeadingRadius: 14, bottomLeadingRadius: 5,
-                                               bottomTrailingRadius: 14, topTrailingRadius: 14,
-                                               style: .continuous),
-                    fallbackFill: T.surface
-                )
-
-                if let sources = message.documentSources, !sources.isEmpty {
-                    DocumentSourcesButton(sources: sources)
-                }
-
-                // On-device meta footer (replaces the old speaker divider).
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        if message.isStreaming {
-                            Circle()
-                                .fill(T.accent)
-                                .frame(width: 6, height: 6)
-                                .opacity(0.85)
-                        } else {
-                            Image(systemName: assistantMetaIcon)
-                                .font(.system(size: 10, weight: .semibold))
-                        }
-                        Text(assistantMeta)
-                            .font(T.sans(11.5, .medium))
-                            .lineLimit(2)
-                    }
-                    .foregroundColor(T.ink3)
-
-                    if message.generationTokensPerSecond != nil
-                        || message.generationDuration != nil
-                        || message.hitTokenLimit == true {
-                        HStack(spacing: 10) {
-                            if let rate = message.generationTokensPerSecond, rate > 0 {
-                                generationMetric(
-                                    icon: "speedometer",
-                                    text: String(format: "%.1f tok/s", rate)
-                                )
-                            }
-                            if let duration = message.generationDuration {
-                                generationMetric(
-                                    icon: "clock",
-                                    text: formattedDuration(duration)
-                                )
-                            }
-                            if message.hitTokenLimit == true {
-                                generationMetric(
-                                    icon: "text.append",
-                                    text: "cut off at limit"
-                                )
-                            }
-                        }
-                    }
-                }
-                .padding(.leading, 4)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            Spacer(minLength: 12)
+
+            if let sources = message.documentSources, !sources.isEmpty {
+                DocumentSourcesButton(sources: sources)
+            }
+
+            // Quiet mono line only when the state is not obvious from the
+            // prose or the action row's footnote.
+            if assistantStateFootnote != nil {
+                HStack(spacing: 6) {
+                    Image(systemName: assistantMetaIcon)
+                        .font(.system(size: 10, weight: .semibold))
+                    Text(assistantStateFootnote!)
+                        .font(S.mono(11))
+                        .tracking(0.4)
+                }
+                .foregroundColor(S.ink3)
+                .accessibilityElement(children: .combine)
+            }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 8)
     }
 
-    private var assistantMeta: String {
-        let time = message.timestamp.formatted(date: .omitted, time: .shortened)
-        if message.generationExecutionLocation == .applePrivateCloud {
-            if message.isStreaming { return "Apple Private Cloud · generating…" }
-            if message.wasInterrupted { return "Apple Private Cloud · stopped · \(time)" }
-            return "Apple Private Cloud · \(time)"
+    /// Mono state line shown under prose only when it carries information
+    /// the answer itself does not: Apple Private Cloud execution, a stopped
+    /// turn, or a token-limit cut-off.
+    private var assistantStateFootnote: String? {
+        if message.generationExecutionLocation == .applePrivateCloud && !message.isStreaming {
+            return message.wasInterrupted
+                ? "apple private cloud · stopped"
+                : "apple private cloud"
         }
-        let model: String = {
-            guard let id = message.generationModelID else {
-                return CodingAssistantService.shared.activeModel.displayName
-            }
-            return AssistantModelCatalog.selection(forStoredID: id)?.displayName
-                ?? id.components(separatedBy: "/").last
-                ?? id
-        }()
-        if message.isStreaming {
-            if AssistantActivity.isOpenReasoning(message.content) {
-                return "On-device · \(model) · thinking…"
-            }
-            return "On-device · \(model) · generating…"
-        }
-        if message.wasInterrupted { return "On-device · \(model) · stopped · \(time)" }
-        return "On-device · \(model) · \(time)"
+        if message.wasInterrupted { return "stopped" }
+        if message.hitTokenLimit == true { return "cut off at token limit" }
+        return nil
     }
 
     private var assistantMetaIcon: String {
@@ -5290,7 +4539,7 @@ struct MessageBubble: View, Equatable {
                             .stroke(T.glassBorder, lineWidth: 0.5)
                     )
                 }
-                .buttonStyle(KTactileButtonStyle())
+                .buttonStyle(StudioPressStyle())
                 .padding(8)
             }
         }
@@ -5358,9 +4607,9 @@ private struct AssistantToolResultCard: View {
             }
         }
         .padding(12)
-        .glassSurface(.card, cornerRadius: 16)
+        .glassSurface(.card, cornerRadius: StudioRadius.action)
         .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous)
                 .stroke(T.rule.opacity(0.7), lineWidth: 0.5)
         }
         .shadow(color: .black.opacity(T.isDark ? 0.14 : 0.05), radius: 10, y: 4)
@@ -5378,121 +4627,6 @@ private struct AssistantToolResultCard: View {
         if lower.contains("vision") || lower.contains("image") { return "eye" }
         if lower.contains("memory") { return "brain.head.profile" }
         return "wrench.and.screwdriver"
-    }
-}
-
-// MARK: - SamplerControlsRow
-//
-// Inline disclosure on the composer that exposes temperature + top-p
-// for the NEXT send only. Bindings are optionals — `nil` means "fall
-// back to AppSettings default in CodingAssistantService.generate()" so
-// power users can opt INTO sampling overrides without permanently
-// mutating their saved defaults. Two affordances per slider:
-//   • "set"   — flip nil → current default so the slider starts in a
-//               sensible spot the user can drag from
-//   • "reset" — flip back to nil and let defaults win again
-// Without these, an "override" slider that always carries a value
-// would silently change behaviour the moment the row was first opened.
-
-struct SamplerControlsRow: View {
-    @Binding var temperature: Double?
-    @Binding var topP: Double?
-    @Environment(\.koduTheme) private var T
-
-    private let tempDefault: Double = 0.7
-    private let topPDefault: Double = 0.95
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            sliderRow(
-                label: "temp",
-                value: $temperature,
-                fallback: tempDefault,
-                range: 0.0...1.5,
-                step: 0.05,
-                format: "%.2f"
-            )
-            sliderRow(
-                label: "top-p",
-                value: $topP,
-                fallback: topPDefault,
-                range: 0.5...1.0,
-                step: 0.01,
-                format: "%.2f"
-            )
-        }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(T.surface2.opacity(0.85))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(T.rule.opacity(0.6), lineWidth: 0.5)
-        )
-    }
-
-    @ViewBuilder
-    private func sliderRow(
-        label: String,
-        value: Binding<Double?>,
-        fallback: Double,
-        range: ClosedRange<Double>,
-        step: Double,
-        format: String
-    ) -> some View {
-        HStack(spacing: 10) {
-            KMono(text: label, size: 10, weight: .semibold, color: T.ink2)
-                .frame(width: 36, alignment: .leading)
-            if let v = value.wrappedValue {
-                // Custom binding maps the optional storage to a non-
-                // optional Double for the Slider, while keeping nil
-                // semantics outside the row. Avoiding `Binding($value)`
-                // gymnastics: the `set:` here writes the user's drag
-                // back into the optional directly.
-                Slider(
-                    value: Binding(
-                        get: { v },
-                        set: { value.wrappedValue = $0 }
-                    ),
-                    in: range,
-                    step: step
-                )
-                .tint(T.accent)
-                Text(String(format: format, v))
-                    .font(T.mono(10, .semibold))
-                    .foregroundColor(T.ink)
-                    .frame(width: 36, alignment: .trailing)
-                    .contentTransition(.numericText())
-                    .animation(.linear(duration: 0.1), value: v)
-                Button {
-                    value.wrappedValue = nil
-                    HapticManager.selection()
-                } label: {
-                    Image(systemName: "arrow.uturn.backward")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(T.ink3)
-                        .frame(width: 22, height: 22)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Reset \(label) to default")
-            } else {
-                Button {
-                    value.wrappedValue = fallback
-                    HapticManager.selection()
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus.circle")
-                            .font(.system(size: 10, weight: .semibold))
-                        Text("override (default \(String(format: format, fallback)))")
-                            .font(T.mono(10))
-                    }
-                    .foregroundColor(T.ink3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-            }
-        }
     }
 }
 
@@ -5550,7 +4684,7 @@ struct AssistantQuickActions: View {
                         .foregroundColor(T.ink2)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
-                        .kClearGlass(in: Capsule(), interactive: true,
+                        .kClearGlass(in: RoundedRectangle(cornerRadius: 10, style: .continuous), interactive: true,
                                      fallbackFill: T.surface2, fallbackStroke: T.rule)
                     }
                     .buttonStyle(.plain)
@@ -5567,72 +4701,29 @@ struct AssistantQuickActions: View {
     }
 }
 
-// MARK: - FocusBreatheHalo
-//
-// Soft rose glow that breathes behind the chat input while focused. The
-// stroked border above it stays crisp at full opacity; this layer is
-// the ambient "active" signal. When `active` is false, the halo opacity
-// is zero and the animation isn't running — no perf cost while idle.
-
-private struct FocusBreatheHalo: View {
-    let active: Bool
-    @Environment(\.koduTheme) private var T
-    @State private var phase = false
-
-    var body: some View {
-        RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .strokeBorder(T.accent.opacity(active ? (phase ? 0.22 : 0.10) : 0),
-                          lineWidth: 4)
-            .blur(radius: 6)
-            .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true),
-                       value: phase)
-            .onAppear { phase = true }
-            .allowsHitTesting(false)
-    }
-}
-
-// MARK: - StreamingDots
-//
-// Three-dot pulse while an assistant reply is streaming but the first
-// token hasn't arrived yet. Lives in its own subview so SwiftUI doesn't
-// reinstall the repeat-forever animation on every MessageBubble re-
-// render — the previous inline implementation passed three `.animation`
-// modifiers with no animated property, producing zero motion.
-
-private struct StreamingDots: View {
-    let color: Color
-    var dotSize: CGFloat = 5
-    var spacing: CGFloat = 4
-
-    @State private var animating = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        HStack(spacing: spacing) {
-            ForEach(0..<3, id: \.self) { i in
-                Circle()
-                    .fill(color.opacity(0.85))
-                    .frame(width: dotSize, height: dotSize)
-                    .scaleEffect(reduceMotion || animating ? 1.0 : 0.55)
-                    .opacity(reduceMotion || animating ? 1.0 : 0.4)
-                    .animation(
-                        reduceMotion ? nil : .easeInOut(duration: 0.45)
-                            .repeatForever(autoreverses: true)
-                            .delay(Double(i) * 0.15),
-                        value: animating
-                    )
-            }
-        }
-        .onAppear { animating = true }
-    }
-}
-
 // MARK: - AssistantMarkdownView
 
 struct AssistantMarkdownView: View, Equatable {
     let content: String
     let isStreaming: Bool
     @Environment(\.koduTheme) private var T
+
+    /// Reasoning-rule timing for "thought 4s". The start is stamped when a
+    /// live think block first appears; the duration is frozen the moment the
+    /// closing tag arrives so the label can't keep growing afterwards.
+    @State private var reasoningStartedAt: Date?
+    @State private var reasoningSeconds: Int?
+
+    private func noteReasoningStart() {
+        if reasoningStartedAt == nil && reasoningSeconds == nil {
+            reasoningStartedAt = Date()
+        }
+    }
+
+    private func freezeReasoningSeconds() {
+        guard reasoningSeconds == nil, let started = reasoningStartedAt else { return }
+        reasoningSeconds = max(1, Int(Date().timeIntervalSince(started).rounded()))
+    }
 
     /// SwiftUI uses this to skip re-rendering when content + streaming state
     /// haven't changed. Without it, every parent re-render re-parses the
@@ -5659,7 +4750,11 @@ struct AssistantMarkdownView: View, Equatable {
                             // Keep the same reading size during and after streaming.
                             .font(T.conversationBody)
                             .foregroundColor(T.ink)
-                            .lineSpacing(4)
+                            // ~1.5× the 17pt body — the same rhythm the user
+                            // turn uses. Answers are the longest text in the
+                            // app and used to be set TIGHTER than the
+                            // questions above them.
+                            .lineSpacing(5)
                             .fixedSize(horizontal: false, vertical: true)
                             .textSelection(.enabled)
                     case .code(let lang, let code):
@@ -5669,7 +4764,7 @@ struct AssistantMarkdownView: View, Equatable {
                             CodeBlock(language: lang, code: code)
                         }
                     case .thinking(let t, let isOpen):
-                        ThinkingBlock(content: t, isOpen: isOpen)
+                        ThinkingBlock(content: t, isOpen: isOpen, seconds: reasoningSeconds)
                     case .math(let latex):
                         MathBlock(latex: latex)
                     }
@@ -5705,6 +4800,7 @@ struct AssistantMarkdownView: View, Equatable {
             // while the fixed character ceiling avoids the unbounded
             // CoreText/Futhark layout churn that motivated the old placeholder.
             ThinkingBlock(content: liveReasoningTail(c), isOpen: true)
+                .onAppear { noteReasoningStart() }
         } else if c.hasPrefix("<think>") {
             if let closeRange = c.range(of: "</think>") {
                 // Reasoning phase complete — show collapsed think block +
@@ -5714,7 +4810,8 @@ struct AssistantMarkdownView: View, Equatable {
                 let afterThink = String(c[closeRange.upperBound...])
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 VStack(alignment: .leading, spacing: 8) {
-                    ThinkingBlock(content: thinkContent, isOpen: false)
+                    ThinkingBlock(content: thinkContent, isOpen: false, seconds: reasoningSeconds)
+                        .onAppear { freezeReasoningSeconds() }
                     if !afterThink.isEmpty {
                         Text(afterThink)
                             .font(T.conversationBody)
@@ -5728,6 +4825,7 @@ struct AssistantMarkdownView: View, Equatable {
                 // Still inside <think> — stream a bounded live reasoning tail.
                 let reasoning = String(c.dropFirst(7))
                 ThinkingBlock(content: liveReasoningTail(reasoning), isOpen: true)
+                    .onAppear { noteReasoningStart() }
             }
         } else {
             // No think block — plain streaming text.
@@ -5785,14 +4883,16 @@ struct CodeBlock: View {
     @State private var copied = false
     @Environment(\.koduTheme) private var T
 
+    private var S: StudioTokens { T.studio }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header: lang label + copy
             HStack {
                 Text((language.isEmpty ? "code" : language).lowercased())
-                    .font(T.mono(9, .regular))
-                    .tracking(0.4)
-                    .foregroundColor(T.ink2)
+                    .font(T.studio.mono(11, .medium))
+                    .tracking(0.8)
+                    .foregroundStyle(S.ink3)
                 Spacer()
                 Button {
                     UIPasteboard.general.string = code
@@ -5806,32 +4906,36 @@ struct CodeBlock: View {
                 } label: {
                     HStack(spacing: 3) {
                         Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                            .font(.system(size: 9))
-                        Text(copied ? "copied" : "copy")
-                            .font(T.mono(9))
+                            .font(.system(size: 10))
+                        Text((copied ? "copied" : "copy").uppercased())
+                            .font(T.studio.mono(11, .medium))
+                            .tracking(0.8)
                     }
-                    .foregroundColor(copied ? T.good : T.ink2)
+                    .foregroundStyle(copied ? S.accent : S.ink3)
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(T.surface2)
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            .padding(.bottom, 4)
             .overlay(alignment: .bottom) {
-                Rectangle().fill(T.rule).frame(height: 1)
+                Rectangle()
+                    .fill(S.codeInk.opacity(0.14))
+                    .frame(height: 1)
+                    .accessibilityHidden(true)
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
                 Text(code)
-                    .font(T.mono(11))
-                    .foregroundColor(T.ink)
-                    .padding(12)
+                    .font(T.studio.mono(12.5))
+                    .foregroundStyle(S.codeInk)
+                    .lineSpacing(7)
                     .textSelection(.enabled)
+                    .padding(14)
             }
         }
-        .background(T.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
+        .background(S.codeBg, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -5885,7 +4989,10 @@ struct MathBlock: View {
                 .buttonStyle(.plain)
             }
             Text(latex)
-                .font(.system(size: 14, weight: .regular, design: .serif).italic())
+                // Serif italic is deliberate for maths. Anchored to a text
+                // style rather than a fixed 14pt so it still scales — the
+                // theme helpers only offer sans and mono.
+                .font(.system(.subheadline, design: .serif).italic())
                 .foregroundColor(T.ink)
                 .lineSpacing(2)
                 .textSelection(.enabled)
@@ -5914,9 +5021,15 @@ struct MathBlock: View {
 struct ThinkingBlock: View {
     let content: String
     let isOpen: Bool
+    /// Reasoning duration in seconds — shown as `thought 4s` once the phase
+    /// completed in this session. Nil for reopened conversations, which have
+    /// no timing to show.
+    var seconds: Int? = nil
 
     @State private var expanded = false
     @Environment(\.koduTheme) private var T
+
+    private var S: StudioTokens { T.studio }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -5925,41 +5038,45 @@ struct ThinkingBlock: View {
                 guard !isOpen else { return }
                 withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() }
             } label: {
-                HStack(spacing: 6) {
+                // Reasoning summary is a flat rule, not a card: mono uppercase
+                // label, flexible hairline, show/hide affordance at the end.
+                HStack(spacing: 10) {
                     if isOpen {
-                        // Pulsing dot while the model is still reasoning
                         Circle()
-                            .fill(T.accent)
-                            .frame(width: 5, height: 5)
+                            .fill(S.accent)
+                            .frame(width: 6, height: 6)
                             .opacity(0.9)
                     } else {
-                        Image(systemName: expanded ? "chevron.down" : "chevron.right")
-                            .font(.system(size: 8, weight: .semibold))
-                            .foregroundColor(T.ink3)
+                        Text(seconds.map { "thought \($0)s" } ?? "thought")
+                            .font(T.studio.mono(11.5, .medium))
+                            .tracking(0.8)
+                            .foregroundStyle(S.ink2)
                     }
-                    Text(isOpen ? "reasoning…" : "reasoning")
-                        .font(T.mono(10, .semibold))
-                        .foregroundColor(isOpen ? T.accent : T.ink3)
                     if !isOpen {
-                        Text("· \(wordCount) words")
-                            .font(T.mono(9))
-                            .foregroundColor(T.ink3)
+                        Rectangle()
+                            .fill(S.rule2)
+                            .frame(height: 1)
+                            .accessibilityHidden(true)
                     }
                     Spacer()
                     if !isOpen {
                         Text(expanded ? "hide" : "show")
-                            .font(T.mono(9))
-                            .foregroundColor(T.ink3)
+                            .font(T.studio.mono(11, .medium))
+                            .tracking(0.8)
+                            .foregroundStyle(S.ink3)
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 6)
+                .padding(.vertical, 4)
             }
             .buttonStyle(.plain)
             .disabled(isOpen)
 
             if (expanded && !isOpen) || (isOpen && !content.isEmpty) {
-                Rectangle().fill(T.rule).frame(height: 1)
+                Rectangle()
+                    .fill(S.rule2)
+                    .frame(height: 1)
+                    .padding(.vertical, 6)
+                    .accessibilityHidden(true)
                 if isOpen {
                     reasoningText
                         .textSelection(.disabled)
@@ -5969,21 +5086,15 @@ struct ThinkingBlock: View {
                 }
             }
         }
-        .background(T.surface2.opacity(0.85))
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(T.glassBorder, lineWidth: 0.5)
-        )
     }
 
     private var reasoningText: some View {
         Text(content)
-            .font(T.mono(11))
-            .foregroundColor(T.ink3)
-            .lineSpacing(2)
+            .font(T.studio.sans(14))
+            .foregroundStyle(S.ink2)
+            .lineSpacing(5)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(8)
+            .padding(.bottom, 8)
             .transition(.opacity.combined(with: .move(edge: .top)))
     }
 
@@ -5992,238 +5103,22 @@ struct ThinkingBlock: View {
 
 // MARK: - Bucketed throttle helper
 
+func formattedDuration(_ duration: TimeInterval) -> String {
+    if duration < 10 {
+        return String(format: "%.1fs", duration)
+    }
+    if duration < 60 {
+        return "\(Int(duration.rounded()))s"
+    }
+    let totalSeconds = Int(duration.rounded())
+    return "\(totalSeconds / 60)m \(totalSeconds % 60)s"
+}
+
 extension Int {
     /// Returns the integer rounded down to the nearest multiple of `step`.
     /// Used to throttle SwiftUI redraws on rapidly-changing values like the
     /// streaming chat token count — only buckets-of-24 changes fire `onChange`.
     func bucketed(by step: Int) -> Int { (self / step) * step }
-}
-
-// MARK: - LandingStatusPillView
-//
-// Polished model-state indicator shown under the "Meet [Model]" hero
-// on the Assistant landing. Reads `CodingAssistantService.State` and
-// renders:
-//
-//   • Pulsing concentric dot — leading glyph that "pings" outward
-//     when loading or generating. Stays static (no ring) when ready
-//     so the landing feels calm once the model is warm.
-//   • Label — "Tap to start" / "Preparing 47%" / "Ready" / "Failed".
-//     We strip the model display name from `.loading` messages
-//     because the hero already shows it.
-//   • Thin progress arc — appears as a subtle bar under the pill
-//     when a numeric percentage is in the loading message. Gives
-//     the eye something to track while weights are decoding.
-//
-// Lives as a dedicated View so the @State for the pulse animation
-// is scoped here, not on the parent CodingAssistantView (which
-// already has plenty of state of its own).
-
-private struct LandingStatusPillView: View {
-    let state: CodingAssistantService.ServiceState
-    let modelName: String
-    let theme: KoduTheme
-    /// Invoked by the Repair/Retry button shown only in the `.failed` state.
-    var onRepair: (() -> Void)? = nil
-
-    @State private var pulseOn = false
-
-    var body: some View {
-        let (label, badge, color, percent) = unpack()
-        let isActive = isActiveState
-
-        VStack(spacing: 6) {
-            HStack(spacing: 8) {
-                pulseDot(color: color, active: isActive)
-                Text(label)
-                    .font(theme.mono(10.5, .semibold))
-                    .tracking(0.5)
-                    .foregroundColor(color)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                if let badge {
-                    Text(badge)
-                        .font(theme.mono(8.5, .semibold))
-                        .foregroundColor(color)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(
-                            Capsule()
-                                .fill(color.opacity(theme.isDark ? 0.22 : 0.12))
-                        )
-                        .overlay(
-                            Capsule()
-                                .stroke(color.opacity(0.25), lineWidth: 0.5)
-                        )
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 7)
-            .kGlassCapsule(tint: color.opacity(theme.isDark ? 0.20 : 0.12))
-
-            // Thin progress arc — only visible when we have a numeric
-            // percent. 1.5pt tall, slightly inset, accent-colored.
-            if let percent {
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(color.opacity(0.15))
-                        .frame(height: 2)
-                    GeometryReader { geo in
-                        Capsule()
-                            .fill(color)
-                            .frame(width: max(8, geo.size.width * CGFloat(percent / 100)),
-                                   height: 2)
-                            .animation(.easeOut(duration: 0.4), value: percent)
-                    }
-                    .frame(height: 2)
-                }
-                .frame(width: 140)
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-
-            // Failed loads strand the user on the landing with no action — give
-            // them a one-tap recovery. The reload self-heals an incomplete
-            // install: a tokenizer-less staged dir is now rejected, so load()
-            // falls back to the repo-id config and HubApi re-fetches the
-            // missing files (e.g. tokenizer.json).
-            if case .failed = state, let onRepair {
-                Button {
-                    HapticManager.impact(.light)
-                    onRepair()
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 10, weight: .semibold))
-                        Text("Repair & retry")
-                            .font(theme.mono(10.5, .semibold))
-                            .tracking(0.3)
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
-                    .background(Capsule().fill(theme.accent))
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 2)
-            }
-        }
-        .animation(.easeOut(duration: 0.25), value: label)
-        .onAppear { startPulse(active: isActive) }
-        .onChange(of: isActive) { _, nowActive in
-            startPulse(active: nowActive)
-        }
-    }
-
-    // MARK: - Pulse dot
-
-    @ViewBuilder
-    private func pulseDot(color: Color, active: Bool) -> some View {
-        ZStack {
-            // Outer "ping" ring — only animates while active.
-            if active {
-                Circle()
-                    .stroke(color, lineWidth: 1.2)
-                    .frame(width: 9, height: 9)
-                    .scaleEffect(pulseOn ? 2.4 : 1.0)
-                    .opacity(pulseOn ? 0 : 0.65)
-            }
-            // Solid core.
-            Circle()
-                .fill(color)
-                .frame(width: 7, height: 7)
-        }
-        .frame(width: 16, height: 16)
-    }
-
-    private func startPulse(active: Bool) {
-        guard active else {
-            pulseOn = false
-            return
-        }
-        // Reset then drive a 1.4s outward "ping" on repeat.
-        pulseOn = false
-        withAnimation(.easeOut(duration: 1.4).repeatForever(autoreverses: false)) {
-            pulseOn = true
-        }
-    }
-
-    // MARK: - State → label/color/percent
-
-    /// True when the model is actively doing something — used to gate
-    /// the pulse animation. Generating + loading both pulse; ready /
-    /// failed / unloaded stay still.
-    private var isActiveState: Bool {
-        switch state {
-        case .loading, .generating: return true
-        default:                    return false
-        }
-    }
-
-    /// Maps the assistant state to display values:
-    ///   • label — short, human-readable, with the model name stripped
-    ///     out of loading messages so we don't dup it under the hero.
-    ///   • color — semantic; matches Kodu palette.
-    ///   • percent — 0..100 numeric percent when extractable from a
-    ///     `Preparing 47%` / `Downloading 12%` style message. nil when
-    ///     not present, which hides the progress arc.
-    private func unpack() -> (String, String?, Color, Double?) {
-        switch state {
-        case .unloaded:
-            return ("Tap to start", nil, theme.ink3, nil)
-
-        case .loading(let raw):
-            // Strip "[Model Name]" so the pill stays compact.
-            let stripped = raw
-                .replacingOccurrences(of: " \(modelName)", with: "")
-                .replacingOccurrences(of: modelName, with: "")
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-            let percent = parsePercent(from: stripped)
-            let title = compactTitle(from: stripped)
-            // Use rose accent for "Preparing" (cache warmup), warn
-            // amber for "Downloading" (network).
-            let isDownloading = stripped.lowercased().hasPrefix("downloading")
-            let color = isDownloading ? theme.warn : theme.accent
-            let badge = percent.map { "\(Int($0))%" }
-            return (title.isEmpty ? (isDownloading ? "Downloading" : "Preparing") : title,
-                    badge, color, percent)
-
-        case .ready:
-            return ("Ready", nil, theme.good, nil)
-
-        case .generating:
-            return ("Generating", nil, theme.accent, nil)
-
-        case .failed:
-            return ("Failed to load", nil, theme.bad, nil)
-        }
-    }
-
-    /// Extracts a numeric percent from "Preparing 47%" / "Downloading 12%".
-    /// Returns nil when the message has no `<digits>%` pattern (e.g.
-    /// the opening "Preparing X…" tick before HubApi reports a rate).
-    private func parsePercent(from msg: String) -> Double? {
-        guard let pctIdx = msg.firstIndex(of: "%") else { return nil }
-        let pre = msg[..<pctIdx]
-        // Walk backwards to find the digits.
-        var digits = ""
-        for c in pre.reversed() {
-            if c.isNumber {
-                digits = String(c) + digits
-            } else if !digits.isEmpty {
-                break
-            }
-        }
-        return Double(digits)
-    }
-
-    private func compactTitle(from msg: String) -> String {
-        let trimmed = msg
-            .replacingOccurrences(of: #"\s+\d+%$"#, with: "", options: .regularExpression)
-            .replacingOccurrences(of: "…", with: "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let first = trimmed.first else { return "" }
-        return first.uppercased() + trimmed.dropFirst()
-    }
 }
 
 

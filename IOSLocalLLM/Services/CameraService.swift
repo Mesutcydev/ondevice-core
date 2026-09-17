@@ -33,7 +33,7 @@ final class CameraService: NSObject, ObservableObject {
     private var videoDevice: AVCaptureDevice?
 
     // Frame management
-    private let processingQueue = DispatchQueue(label: "com.mesutcydev.ondevicecore.camera", qos: .userInteractive)
+    private let processingQueue = DispatchQueue(label: "com.mesutcydev.ondevicemax.camera", qos: .userInteractive)
     private var frameIndex: Int = 0
     // Was a plain Bool. Promoted to a lock so the read-then-flip inside
     // captureOutput is one atomic critical section — the serial-queue

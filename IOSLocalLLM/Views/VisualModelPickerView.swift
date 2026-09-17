@@ -103,7 +103,7 @@ struct VisualModelPickerView: View {
                 // @Published, so SwiftUI rebuilds the affected rows on its
                 // own when a download completes; no manual id-bump needed.
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
@@ -275,8 +275,8 @@ struct VisualModelPickerView: View {
         .foregroundColor(T.accent)
         .padding(.horizontal, 6)
         .padding(.vertical, 2.5)
-        .background(Capsule().fill(T.accent.opacity(0.10)))
-        .overlay(Capsule().stroke(T.accent.opacity(0.32), lineWidth: 0.5))
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accent.opacity(0.10)))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.accent.opacity(0.32), lineWidth: 0.5))
         .fixedSize(horizontal: true, vertical: false)
     }
 
@@ -292,10 +292,10 @@ struct VisualModelPickerView: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 2.5)
             .background(
-                Capsule().fill(T.ink2.opacity(0.10))
+                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.ink2.opacity(0.10))
             )
             .overlay(
-                Capsule().stroke(T.ink2.opacity(0.28), lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.ink2.opacity(0.28), lineWidth: 0.5)
             )
             .fixedSize(horizontal: true, vertical: false)
     }
@@ -320,8 +320,8 @@ struct VisualModelPickerView: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 2.5)
-        .background(Capsule().fill(color.opacity(0.10)))
-        .overlay(Capsule().stroke(color.opacity(0.32), lineWidth: 0.5))
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(color.opacity(0.10)))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(color.opacity(0.32), lineWidth: 0.5))
         .fixedSize(horizontal: true, vertical: false)
     }
 

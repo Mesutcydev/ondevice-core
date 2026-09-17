@@ -1,70 +1,53 @@
 import SwiftUI
 
-// MARK: - Centralized Liquid Glass renderer
+// MARK: - Centralized surface renderer (Studio)
+//
+// Historical names (`glassSurface`, `kGlass`, `kClearGlass`) are retained for
+// source compatibility, but the Studio design language replaced every glass
+// material with flat fills and 1px hairlines: no blur, no refraction, no
+// shadow. The renderer below is the single surface primitive the whole app
+// still routes through, so the reskin is performed here once.
 
+/// Three roles, because three are used. This carried nine — `hero`,
+/// `listRow`, `icon`, `badge`, `toolbarButton` and `tabBar` had zero call
+/// sites, and two of the dead ones were the last `999` pill radii in the
+/// codebase.
 enum GlassRole {
-    case hero, card, listRow, button, capsule, icon, badge, toolbarButton, tabBar
+    case card, button, capsule
 
+    /// Default radius, used only when a caller does not supply its own.
+    /// `kGlass` and the shape-based helpers always do, so in practice this
+    /// applies to bare `glassSurface(.card)`.
     var radius: CGFloat {
         switch self {
-        case .hero: 24
-        case .card, .listRow: 18
-        case .button: 16
-        case .capsule, .badge: 999
-        case .icon, .toolbarButton: 14
-        case .tabBar: 30
+        case .card: StudioRadius.panel
+        case .button: StudioRadius.action
+        case .capsule: StudioRadius.chip
         }
     }
 
+    /// Interactive surfaces get a resting fill; static ones stay transparent
+    /// and are defined by their hairline alone.
     var interactive: Bool {
         switch self {
-        case .button, .capsule, .icon, .badge, .toolbarButton, .tabBar: true
-        default: false
+        case .button, .capsule: true
+        case .card: false
         }
     }
-
-    var materialOpacity: Double {
-        switch self {
-        case .hero, .card, .listRow: 0.30
-        case .button: 0.34
-        case .capsule, .icon, .badge, .toolbarButton, .tabBar: 0.52
-        }
-    }
-}
-
-@available(iOS 26.0, *)
-private func nativeGlass(for role: GlassRole) -> Glass {
-    var glass: Glass = .clear
-    if role.interactive { glass = glass.interactive() }
-    return glass
 }
 
 private struct GlassSurfaceModifier: ViewModifier {
     let role: GlassRole
     let cornerRadius: CGFloat?
 
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.koduTheme) private var T
 
-    @ViewBuilder
     func body(content: Content) -> some View {
         let radius = cornerRadius ?? role.radius
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
-
-        if #available(iOS 26.0, *), !reduceTransparency {
-            // Geometry-lock the optical layer so iOS 27 cannot use the glass'
-            // ideal bounds to expand a flexible row or button. Only this
-            // background is translucent; foreground content stays fully opaque.
-            content.background {
-                GeometryReader { geometry in
-                    Color.clear
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                        .glassEffect(nativeGlass(for: role), in: .rect(cornerRadius: radius))
-                        .opacity(role.materialOpacity)
-                }
-            }
-        } else {
-            content.background(.ultraThinMaterial, in: shape)
-        }
+        content
+            .background(role.interactive ? T.studio.fillActive : T.surface, in: shape)
+            .overlay(shape.stroke(T.studio.rule, lineWidth: 1))
     }
 }
 
@@ -77,14 +60,30 @@ extension View {
     }
 }
 
+// MARK: - Accessible material
+
+extension ShapeStyle where Self == AnyShapeStyle {
+    /// A blurred material, or an opaque fill when the user has Reduce
+    /// Transparency enabled — blur over moving content is precisely what that
+    /// setting exists to remove.
+    ///
+    /// Works as both a `background` and a shape `fill`, which is why this is a
+    /// `ShapeStyle` rather than a `ViewModifier`. Read the flag at the call
+    /// site with `@Environment(\.accessibilityReduceTransparency)`.
+    static func adaptiveMaterial(reduceTransparency: Bool,
+                                 opaque: Color) -> AnyShapeStyle {
+        reduceTransparency ? AnyShapeStyle(opaque) : AnyShapeStyle(.ultraThinMaterial)
+    }
+}
+
 // MARK: - Compatibility helpers
-// Existing call sites route into the renderer above. Parameters retained here
-// preserve source compatibility, but color is never injected into the glass.
+// Existing call sites route into the renderer above. Fill/stroke hints that
+// callers already provide become the flat surface; without hints the renderer
+// falls back to the studio fill/hairline pair.
 
 extension View {
-    /// Apple Liquid Glass on iOS 26+. Pre-26 renders
-    /// an ultra-thin material with the same light-catching silhouette. This is
-    /// the single surface primitive the whole theme routes through.
+    /// Flat chip/button surface. (Historical name — this was Liquid Glass;
+    /// the Studio language renders a flat fill plus a 1px hairline.)
     @ViewBuilder
     func kClearGlass<S: InsettableShape>(
         in shape: S,
@@ -95,18 +94,16 @@ extension View {
     ) -> some View {
         modifier(ShapeGlassSurfaceModifier(
             shape: shape,
-            role: interactive ? .button : .capsule
+            role: interactive ? .button : .capsule,
+            fill: fallbackFill,
+            stroke: fallbackStroke
         ))
     }
 
-    /// Applies a Liquid Glass material on iOS 26+, with a graceful fallback
-    /// to a flat fill + stroke for older OSes so the layout stays identical.
-    ///
-    /// `tint` colors the glass pill subtly — pass `T.accent.opacity(0.18)`
-    /// for an "active" state.
+    /// Flat card surface with a hairline. (Historical name.)
     @ViewBuilder
     func kGlass(
-        cornerRadius: CGFloat = 10,
+        cornerRadius: CGFloat = StudioRadius.tile,
         tint: Color? = nil,
         fallbackFill: Color = .clear,
         fallbackStroke: Color = .clear
@@ -114,7 +111,7 @@ extension View {
         glassSurface(.card, cornerRadius: cornerRadius)
     }
 
-    /// Capsule variant of `kGlass`. Same fallback story.
+    /// Capsule variant of `kGlass` — kept for call-site compatibility.
     @ViewBuilder
     func kGlassCapsule(
         tint: Color? = nil,
@@ -122,8 +119,10 @@ extension View {
         fallbackStroke: Color = .clear
     ) -> some View {
         modifier(ShapeGlassSurfaceModifier(
-            shape: Capsule(),
-            role: .capsule
+            shape: RoundedRectangle(cornerRadius: StudioRadius.chip, style: .continuous),
+            role: .capsule,
+            fill: fallbackFill,
+            stroke: fallbackStroke
         ))
     }
 }
@@ -131,23 +130,19 @@ extension View {
 private struct ShapeGlassSurfaceModifier<S: InsettableShape>: ViewModifier {
     let shape: S
     let role: GlassRole
+    let fill: Color
+    let stroke: Color
 
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.koduTheme) private var T
 
-    @ViewBuilder
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *), !reduceTransparency {
-            content.background {
-                GeometryReader { geometry in
-                    Color.clear
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                        .glassEffect(nativeGlass(for: role), in: shape)
-                        .opacity(role.materialOpacity)
-                }
-            }
-        } else {
-            content.background(.ultraThinMaterial, in: shape)
-        }
+        let resolvedFill: Color = fill != .clear
+            ? fill
+            : (role.interactive ? T.studio.fillActive : .clear)
+        let resolvedStroke: Color = stroke != .clear ? stroke : T.studio.rule
+        content
+            .background(resolvedFill, in: shape)
+            .overlay(shape.stroke(resolvedStroke, lineWidth: 1))
     }
 }
 

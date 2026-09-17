@@ -44,8 +44,8 @@ struct VoiceRouteControl: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(
-            Capsule().fill(T.surface)
-                .overlay(Capsule().stroke(T.rule, lineWidth: 0.5))
+            RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.surface)
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.rule, lineWidth: 0.5))
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Audio output: \(sessionManager.route.displayName)")

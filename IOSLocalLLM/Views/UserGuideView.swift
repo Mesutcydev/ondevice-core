@@ -164,7 +164,7 @@ struct UserGuideView: View {
             }
             .padding(.bottom, 40)
         }
-        .background(LiquidPinkBackdrop())
+        .background(StudioPageBackground())
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
     }

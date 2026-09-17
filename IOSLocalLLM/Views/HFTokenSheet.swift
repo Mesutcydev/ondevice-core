@@ -61,7 +61,7 @@ struct HFTokenSheet: View {
                 }
                 .padding(.bottom, 32)
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
@@ -189,8 +189,8 @@ struct HFTokenSheet: View {
                         .foregroundColor(T.accent)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Capsule().fill(T.accentSoft))
-                        .overlay(Capsule().stroke(T.accent.opacity(0.4), lineWidth: 0.5))
+                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accentSoft))
+                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.accent.opacity(0.4), lineWidth: 0.5))
                     }
                     .buttonStyle(.plain)
                     .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || testing)
@@ -211,8 +211,8 @@ struct HFTokenSheet: View {
                                 .foregroundColor(T.bad)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
-                                .background(Capsule().fill(T.bad.opacity(0.10)))
-                                .overlay(Capsule().stroke(T.bad.opacity(0.30), lineWidth: 0.5))
+                                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.bad.opacity(0.10)))
+                                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.bad.opacity(0.30), lineWidth: 0.5))
                         }
                         .buttonStyle(.plain)
                     }

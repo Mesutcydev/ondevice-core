@@ -159,11 +159,13 @@ Generate the Xcode project and install CocoaPods:
 ```bash
 xcodegen generate
 pod install
-open IOSLocalLLM.xcworkspace
+open OnDeviceMax.xcworkspace
 ```
 
-Select the `IOSLocalLLM` scheme and an iOS Simulator. For a physical device,
-change the bundle identifiers and select your own development team in Xcode.
+Select the `OnDeviceMax` scheme. For a physical device, select your own
+development team in Xcode; this fork already uses its own `com.mesutcydev.ondevicemax`
+identifiers, App Group, CloudKit container and URL scheme, so it installs
+alongside OnDevice Core rather than replacing it.
 See [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md) and
 [fork configuration](Docs/FORK_CONFIGURATION.md) for every identifier,
 capability, and optional model step.

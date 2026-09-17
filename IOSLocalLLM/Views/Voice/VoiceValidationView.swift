@@ -80,7 +80,7 @@ struct VoiceValidationView: View {
                     }
                     if !report.isEmpty {
                         Text(report)
-                            .font(.system(size: 10, design: .monospaced))
+                            .font(T.mono(10))
                             .textSelection(.enabled)
                         ShareLink(item: report) {
                             Label("Share report", systemImage: "square.and.arrow.up")
@@ -90,7 +90,7 @@ struct VoiceValidationView: View {
 
                 Section("Physical checklist") {
                     Text(Self.checklist)
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(T.mono(11))
                         .textSelection(.enabled)
                 }
             }

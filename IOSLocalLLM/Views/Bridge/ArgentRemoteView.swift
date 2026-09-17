@@ -27,7 +27,7 @@ struct ArgentRemoteView: View {
     @State private var devices: [DeviceRow] = []
     @State private var selectedUDID: String = ""
 
-    @State private var customBundleID: String = "com.mesutcydev.ondevicecore.IOSLocalLLM"
+    @State private var customBundleID: String = "com.mesutcydev.ondevicemax.IOSLocalLLM"
     @State private var customURL: String     = ""
     @State private var customFlow: String    = ""
     @State private var customText: String    = ""
@@ -74,7 +74,7 @@ struct ArgentRemoteView: View {
             .padding(.top, 12)
             .padding(.bottom, 24)
         }
-        .background(LiquidPinkBackdrop())
+        .background(StudioPageBackground())
         .navigationTitle("Argent Remote")
         .navigationBarTitleDisplayMode(.inline)
         .task { await initialLoad() }

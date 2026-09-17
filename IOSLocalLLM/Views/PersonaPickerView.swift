@@ -23,7 +23,7 @@ struct PersonaPickerView: View {
                 }
                 .padding(.bottom, 32)
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
@@ -142,7 +142,7 @@ struct PersonaPickerView: View {
             }
             .foregroundColor(T.bg)
             .padding(.horizontal, 16)
-            .frame(height: 44)
+            .frame(minHeight: 44)
             .frame(maxWidth: .infinity)
             .background(RoundedRectangle(cornerRadius: 8).fill(T.ink))
         }
@@ -193,7 +193,7 @@ struct PersonaEditorView: View {
                 }
                 .padding(.bottom, 24)
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .navigationTitle(isNew ? "new persona" : "edit persona")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)

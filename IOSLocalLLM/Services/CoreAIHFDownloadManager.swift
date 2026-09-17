@@ -1,6 +1,20 @@
 import Foundation
 import CryptoKit
 
+// MARK: - Download User-Agent
+//
+// Both the background manager and the foreground transfer identify themselves
+// to Hugging Face. The version used to be hard-coded here and went stale the
+// moment `project.yml` bumped the marketing version, so every request
+// announced a version the shipped build did not have. Read it from the bundle
+// instead — one source of truth, matching `SystemSnapshot.appVersion()`.
+enum CoreAIDownloadUserAgent {
+    static let value: String = {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        return "OnDeviceMax/\(version) (iOS; Core AI pack download)"
+    }()
+}
+
 /// Foreground-only Hugging Face pack downloader for Core AI.
 ///
 /// Sideloaded builds often stall forever on `URLSessionConfiguration.background`
@@ -399,7 +413,7 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
             request.timeoutInterval = 30
             request.setValue("application/json", forHTTPHeaderField: "Accept")
             request.setValue(
-                "OnDeviceCoreAIStudio/3.2.6 (iOS; Core AI pack download)",
+                CoreAIDownloadUserAgent.value,
                 forHTTPHeaderField: "User-Agent"
             )
             HFTokenStore.authorize(&request)
@@ -659,7 +673,7 @@ final class CoreAIForegroundTransfer: NSObject, URLSessionDownloadDelegate, @unc
         var request = URLRequest(url: url)
         request.timeoutInterval = 60
         request.setValue(
-            "OnDeviceCoreAIStudio/3.2.6 (iOS; Core AI pack download)",
+            CoreAIDownloadUserAgent.value,
             forHTTPHeaderField: "User-Agent"
         )
         if let host = url.host?.lowercased(),

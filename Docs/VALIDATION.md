@@ -18,8 +18,8 @@ Automated, repeatable checks currently include:
 | Repository hygiene | `./scripts/validate_open_source.sh` | Linux or macOS |
 | VoiceAgentOrb package | `swift test --package-path Packages/VoiceAgentOrb` | macOS CI |
 | XcodeGen consistency | `xcodegen generate` followed by a clean diff | macOS |
-| App workspace build | `xcodebuild build -workspace IOSLocalLLM.xcworkspace -scheme IOSLocalLLM -destination 'platform=iOS Simulator,name=iPhone 17'` | iPhone 17 simulator, iOS 27 |
-| App unit and UI tests | `xcodebuild test -workspace IOSLocalLLM.xcworkspace -scheme IOSLocalLLM -destination 'platform=iOS Simulator,name=iPhone 17'` | iPhone 17 simulator, iOS 27 |
+| App workspace build | `xcodebuild build -workspace OnDeviceMax.xcworkspace -scheme OnDeviceMax -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO` | iOS 27 device destination (see note below) |
+| App unit and UI tests | `xcodebuild test -workspace OnDeviceMax.xcworkspace -scheme OnDeviceMax -destination 'platform=iOS Simulator,name=iPhone 17'` | iPhone 17 simulator, iOS 27 |
 
 On 29 July 2026, the open-source workspace built successfully and the
 first-launch legal flow, onboarding, Home, Assistant, and Models screens were
@@ -27,6 +27,16 @@ manually exercised on the simulator. Assistant model preparation is
 intentionally skipped on simulator builds because the simulated GPU cannot
 provide valid MLX inference evidence; the real inference path remains a
 physical-device validation requirement.
+
+**Simulator builds cannot compile this edition.** The vendored `CoreAIShared`
+package imports the iOS-27 `CoreAI` module, which is present in the iPhoneOS SDK
+but absent from the iPhoneSimulator SDK, so a simulator destination fails with
+"Unable to resolve module dependency: 'CoreAI'" before any app source is
+compiled. Use the device destination shown above (`generic/platform=iOS` with
+signing disabled) for compile verification, and a physical device for runtime
+validation. Simulator UI testing still requires an iOS 27 simulator runtime
+whose SDK provides that module, or the Core AI runtime must be excluded from
+that build.
 
 Do not pass `CODE_SIGNING_ALLOWED=NO` to the test command. Simulator tests are
 ad-hoc signed without a paid developer account, and the Keychain-backed

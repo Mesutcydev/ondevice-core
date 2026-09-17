@@ -11,7 +11,7 @@ final class AppBridge: ObservableObject {
     static let shared = AppBridge()
 
     /// App Group identifier — must match the share extension.
-    static let appGroupID = "group.com.mesutcydev.ondevicecore.shared"
+    static let appGroupID = "group.com.mesutcydev.ondevicemax.shared"
 
     // Set by AnalysisPanelView; consumed once by CodingAssistantView
     @Published var pendingCode: PendingCode? = nil
@@ -132,7 +132,7 @@ final class AppBridge: ObservableObject {
 
     // MARK: - Share-extension inbound
 
-    /// Handles `ondevice-core://share?...` URLs from the share extension.
+    /// Handles `ondevice-max://share?...` URLs from the share extension.
     /// Supports four payload shapes:
     ///   • `file=<jpg>`     — staged image, routes to camera/lens tab
     ///   • `textfile=<txt>` — long text staged to a file, routes to assistant
@@ -141,7 +141,7 @@ final class AppBridge: ObservableObject {
     /// The text/URL paths land in `pendingSharedText` and switch to the
     /// assistant tab so CodingAssistantView can prefill the composer.
     func handleIncomingURL(_ url: URL) {
-        guard url.scheme == "ondevice-core", url.host == "share" else { return }
+        guard url.scheme == "ondevice-max", url.host == "share" else { return }
         guard let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let items = comps.queryItems
         else { return }
@@ -168,7 +168,7 @@ final class AppBridge: ObservableObject {
         }
     }
 
-    /// `ondevice-core://share?file=…` is a PUBLIC custom URL scheme — any app or web
+    /// `ondevice-max://share?file=…` is a PUBLIC custom URL scheme — any app or web
     /// page can invoke it. The filename must be a single safe path component so
     /// a value like "../../Documents/conversations.json" can't escape the
     /// staging dir and give an out-of-app caller arbitrary read/delete in our

@@ -7,6 +7,7 @@ struct CodePanelView: View {
     let language: String
     @State private var copyFeedback = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.koduTheme) private var T
 
     var body: some View {
         NavigationStack {
@@ -15,7 +16,9 @@ struct CodePanelView: View {
                     SyntaxHighlightedText(code: code, language: language)
                         .padding()
                 }
-                .background(Color(red: 0.06, green: 0.06, blue: 0.09))
+                // The app already has a code-surface token; this was its own
+                // near-identical literal.
+                .background(T.studio.codeBg)
 
                 Button {
                     UIPasteboard.general.string = code
@@ -29,10 +32,13 @@ struct CodePanelView: View {
                         copyFeedback ? "Copied!" : "Copy",
                         systemImage: copyFeedback ? "checkmark.circle.fill" : "doc.on.doc"
                     )
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(.white)
+                    .font(T.sans(13, .semibold))
+                    .foregroundColor(T.studio.paper)
                     .padding(.horizontal, 14).padding(.vertical, 8)
-                    .background(Capsule().fill(copyFeedback ? Color.green : Color.blue))
+                    .background(
+                        RoundedRectangle(cornerRadius: StudioRadius.tile, style: .continuous)
+                            .fill(copyFeedback ? T.good : T.studio.ink)
+                    )
                 }
                 .padding()
             }
@@ -53,9 +59,11 @@ struct SyntaxHighlightedText: View {
     let code: String
     let language: String
 
+    @Environment(\.koduTheme) private var T
+
     var body: some View {
         Text(highlighted)
-            .font(.system(size: 13, design: .monospaced))
+            .font(T.mono(13))
             .frame(maxWidth: .infinity, alignment: .leading)
             .textSelection(.enabled)
     }

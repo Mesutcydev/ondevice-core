@@ -70,7 +70,7 @@ final class DownloadLiveActivityManager {
             activities[repoID] = activity
             return true
         } catch {
-            print("[LiveActivity] start failed: \(error)")
+            Diagnostics.shared.error("start failed: \(error)", category: "liveactivity")
             return false
         }
     }

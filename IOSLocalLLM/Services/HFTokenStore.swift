@@ -8,7 +8,7 @@ import Combine
 // Used to authenticate downloads of gated repos (google/gemma-3-*,
 // meta-llama/*, mistralai/Ministral-*, etc.).
 //
-// Storage: Generic password under service "com.mesutcydev.ondevicecore.huggingface".
+// Storage: Generic password under service "com.mesutcydev.ondevicemax.huggingface".
 // Accessibility is `AfterFirstUnlockThisDeviceOnly` — survives reboots
 // but never leaves the device or syncs via iCloud Keychain. Encryption
 // is iOS Data Protection, tied to the user's passcode.
@@ -50,7 +50,7 @@ final class HFTokenStore: ObservableObject {
     //
     // Keep these stable — renaming would orphan tokens stored under
     // the old service name and force users to re-enter.
-    private let service = "com.mesutcydev.ondevicecore.huggingface"
+    private let service = "com.mesutcydev.ondevicemax.huggingface"
     private let account = "default-token"
 
     private init() {
@@ -249,7 +249,7 @@ final class HFTokenStore: ObservableObject {
 
         let query: [String: Any] = [
             kSecClass as String:       kSecClassGenericPassword,
-            kSecAttrService as String: "com.mesutcydev.ondevicecore.huggingface",
+            kSecAttrService as String: "com.mesutcydev.ondevicemax.huggingface",
             kSecAttrAccount as String: "default-token",
             kSecReturnData as String:  true,
             kSecMatchLimit as String:  kSecMatchLimitOne,

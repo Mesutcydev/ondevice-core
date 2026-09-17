@@ -2457,7 +2457,7 @@ final class LocalAPIManager: ObservableObject {
 
     private let server = LocalAPIServer()
     private let pathMonitor = NWPathMonitor()
-    private let pathQueue = DispatchQueue(label: "com.mesutcydev.ondevicecore.local-api-network")
+    private let pathQueue = DispatchQueue(label: "com.mesutcydev.ondevicemax.local-api-network")
 
     private var startEpoch: UInt64 = 0
 

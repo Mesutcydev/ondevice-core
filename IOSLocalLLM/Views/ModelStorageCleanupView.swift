@@ -8,6 +8,7 @@ import SwiftUI
 struct ModelStorageCleanupView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.koduTheme) private var T
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     @ObservedObject private var center = ModelDownloadCenter.shared
     @State private var items: [ModelStorageCleanupItem] = []
@@ -28,7 +29,7 @@ struct ModelStorageCleanupView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                LiquidPinkBackdrop()
+                StudioPageBackground()
                 ScrollView {
                     LazyVStack(spacing: 14) {
                         ModelStorageCleanupHeader(
@@ -86,7 +87,8 @@ struct ModelStorageCleanupView: View {
                 )
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
-                .background(.ultraThinMaterial)
+                .background(.adaptiveMaterial(reduceTransparency: reduceTransparency,
+                                              opaque: T.studio.surfaceRaised))
             }
             .confirmationDialog(
                 "Remove unselected models?",
@@ -373,7 +375,7 @@ private struct ModelStorageCleanupActionBar: View {
             .foregroundStyle(.white)
             .padding(.horizontal, 16)
             .frame(maxWidth: .infinity, minHeight: 50)
-            .background(enabled ? Color.accentColor : Color.secondary, in: Capsule())
+            .background(enabled ? Color.accentColor : Color.secondary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(!enabled)

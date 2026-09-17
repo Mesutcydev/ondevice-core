@@ -200,7 +200,7 @@ final class LocalModelImportService: ObservableObject {
             try fm.moveItem(at: tmp, to: dest)
         } catch {
             try? fm.removeItem(at: tmp)
-            print("[LocalImport] normalizeModelLayout failed: \(error)")
+            Diagnostics.shared.error("normalizeModelLayout failed: \(error)", category: "localimport")
         }
     }
 

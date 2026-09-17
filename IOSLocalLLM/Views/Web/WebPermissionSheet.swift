@@ -27,7 +27,7 @@ struct WebPermissionSheet: View {
             }
             .padding(20)
         }
-        .background(LiquidPinkBackdrop())
+        .background(StudioPageBackground())
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(false)

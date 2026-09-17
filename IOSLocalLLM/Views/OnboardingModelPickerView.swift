@@ -175,7 +175,7 @@ struct OnboardingModelPickerView: View {
             .padding(.horizontal, 16)
             .padding(.top, 8)
         }
-        .background(LiquidPinkBackdrop())
+        .background(StudioPageBackground())
         .overlay {
             // The gate is a blocking setup state, so it gets a full-screen
             // scrim + solid panel rather than a gradient bottom bar. The old
@@ -527,8 +527,8 @@ struct OnboardingModelPickerView: View {
                     }
                     .foregroundColor(T.bad)
                     .padding(.horizontal, 12).padding(.vertical, 7)
-                    .background(Capsule().fill(T.bad.opacity(0.10)))
-                    .overlay(Capsule().stroke(T.bad.opacity(0.4), lineWidth: 0.5))
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.bad.opacity(0.10)))
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.bad.opacity(0.4), lineWidth: 0.5))
                 }
                 .buttonStyle(.plain)
             }
@@ -587,8 +587,8 @@ struct OnboardingModelPickerView: View {
                 }
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(T.rule).frame(height: 3)
-                        Capsule()
+                        RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.rule).frame(height: 3)
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
                             .fill(settled ? T.good : (failed ? T.bad : T.accent))
                             .frame(width: max(0, min(1, progress)) * geo.size.width, height: 3)
                     }

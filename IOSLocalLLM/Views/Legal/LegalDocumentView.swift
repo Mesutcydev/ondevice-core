@@ -65,10 +65,10 @@ struct LegalDocumentView: View {
                     actionBar
                         .padding(.horizontal, 18)
                         .padding(.vertical, 12)
-                        .kClearGlass(in: Rectangle(), fallbackFill: T.surface)
+                        .background(T.surface)
                 }
             }
-            .background(LiquidPinkBackdrop())
+            .background(StudioPageBackground())
             .navigationTitle(title.lowercased())
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.hidden, for: .navigationBar)
@@ -109,12 +109,12 @@ struct LegalDocumentView: View {
                     confirm()
                     dismiss()
                 } label: {
-                    Text(scrolledToEnd ? "i have read this" : "scroll to the end to continue")
-                        .font(T.mono(13, .semibold))
+                    Text(scrolledToEnd ? "I have read this" : "Scroll to the end to continue")
+                        .font(T.sans(15.5, .medium))
                         .foregroundColor(scrolledToEnd ? T.bg : T.ink3)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(RoundedRectangle(cornerRadius: 8)
+                        .background(RoundedRectangle(cornerRadius: 10)
                             .fill(scrolledToEnd ? T.ink : T.surface2))
                 }
                 .buttonStyle(.plain)
@@ -124,12 +124,12 @@ struct LegalDocumentView: View {
                 Button(role: .destructive) {
                     secondary.run()
                 } label: {
-                    Text(secondary.label.lowercased())
-                        .font(T.mono(13, .semibold))
+                    Text(secondary.label)
+                        .font(T.sans(15.5, .medium))
                         .foregroundColor(T.bad)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(T.bad.opacity(0.10)))
+                        .background(RoundedRectangle(cornerRadius: 10).fill(T.bad.opacity(0.10)))
                 }
                 .buttonStyle(.plain)
             }
@@ -138,12 +138,12 @@ struct LegalDocumentView: View {
                     HapticManager.impact(.medium)
                     primary.run()
                 } label: {
-                    Text(primary.label.lowercased())
-                        .font(T.mono(13, .semibold))
+                    Text(primary.label)
+                        .font(T.sans(15.5, .medium))
                         .foregroundColor(T.bg)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(T.ink))
+                        .background(RoundedRectangle(cornerRadius: 10).fill(T.ink))
                 }
                 .buttonStyle(.plain)
             }

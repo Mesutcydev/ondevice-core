@@ -23,7 +23,7 @@ import Foundation
 //
 // User overrides (rate / pitch / engine / chunking strategy) are
 // applied ON TOP of the base profile, keyed under
-// `com.mesutcydev.ondevicecore.voice.profile.<modelId>.<field>` in UserDefaults.
+// `com.mesutcydev.ondevicemax.voice.profile.<modelId>.<field>` in UserDefaults.
 // They beat built-in defaults but never replace the structural
 // fields (`usesReasoningTokens`, `reasoningTokenPattern`,
 // `dominantLanguages`) — those are model-architecture facts, not
@@ -195,7 +195,7 @@ enum VoiceProfileRegistry {
     // it." UserDefaults.standard.double(forKey:) returns 0.0 for
     // missing keys, which would silently zero out the rate.
 
-    private static let overridePrefix = "com.mesutcydev.ondevicecore.voice.profile."
+    private static let overridePrefix = "com.mesutcydev.ondevicemax.voice.profile."
 
     /// Set or clear the user's rate override for `modelId`. `nil`
     /// removes the override (reverting to the profile default).

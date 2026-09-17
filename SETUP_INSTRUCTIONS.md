@@ -61,7 +61,7 @@ These outputs are generated files and must not be committed.
 ```bash
 xcodegen generate
 pod install
-open IOSLocalLLM.xcworkspace
+open OnDeviceMax.xcworkspace
 ```
 
 Open the workspace, not the `.xcodeproj`, so the ONNX Runtime pods are
@@ -75,8 +75,14 @@ a missing package in the current lockfile.
 
 ## Run in Simulator
 
-Select the `IOSLocalLLM` scheme and an iOS 18 or newer Simulator. Simulator builds
+Select the `OnDeviceMax` scheme and an iOS 27 Simulator. Simulator builds
 do not require a paid Apple Developer Program membership.
+
+The vendored `CoreAIShared` package imports the iOS-27 `CoreAI` module, which
+ships in the iPhoneOS SDK but not in the iPhoneSimulator SDK. A Simulator
+destination therefore fails to resolve that import; use a device destination
+(`generic/platform=iOS`) for compile verification. See
+`Docs/MAX_RELEASE_AUDIT.md`.
 
 The source-only build starts without bundled AI weights. Features that depend
 on a model become available after the user downloads a compatible model from
@@ -137,8 +143,8 @@ Run app unit tests from Xcode or with a Simulator destination:
 
 ```bash
 xcodebuild test \
-  -workspace IOSLocalLLM.xcworkspace \
-  -scheme IOSLocalLLM \
+  -workspace OnDeviceMax.xcworkspace \
+  -scheme OnDeviceMax \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 ```
 
