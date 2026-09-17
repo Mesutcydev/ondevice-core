@@ -127,7 +127,7 @@ final class HFSearchService: ObservableObject {
         guard let url = URL(string: urlString) else { return nil }
 
         var request = URLRequest(url: url)
-        request.setValue("ios-local-llm/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
+        request.setValue("ondevice-core/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 20
         HFTokenStore.authorize(&request)
@@ -182,7 +182,7 @@ final class HFSearchService: ObservableObject {
         let urlString = "https://huggingface.co/api/models/\(repoID)"
         guard let url = URL(string: urlString) else { return nil }
         var request = URLRequest(url: url)
-        request.setValue("ios-local-llm/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
+        request.setValue("ondevice-core/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         HFTokenStore.authorize(&request)
         do {

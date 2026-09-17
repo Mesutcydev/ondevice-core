@@ -1204,7 +1204,7 @@ private struct SettingsAboutSection: View {
     @ObservedObject private var loc = LocalizationService.shared
 
     private static let websiteURL = URL(string: "https://ondevice.fun")!
-    private static let sourceURL = URL(string: "https://github.com/Mesutcydev/ios-local-llm")!
+    private static let sourceURL = URL(string: "https://github.com/Mesutcydev/ondevice-core")!
 
     private var version: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"

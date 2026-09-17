@@ -5,11 +5,11 @@ submodules that provide their own `AGENTS.md`.
 
 ## Project identity
 
-- Repository: **iOS Local LLM**
-- App/product names found in source: **IOSLocalLLM** and **iOS Local LLM**
+- Repository: **OnDevice Core** (legacy name: iOS Local LLM)
+- App/product names found in source: **OnDeviceCoreAIStudio** / **OnDevice Core** (legacy: IOSLocalLLM)
 - Purpose: a local-first Swift/SwiftUI AI workbench for iPhone and Apple
   silicon Macs
-- Repository: <https://github.com/Mesutcydev/ios-local-llm>
+- Repository: <https://github.com/Mesutcydev/ondevice-core>
 - License: MIT for original project code and documentation; third-party code,
   assets, and downloaded models keep their own licenses
 

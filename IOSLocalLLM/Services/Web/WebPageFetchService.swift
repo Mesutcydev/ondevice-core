@@ -27,7 +27,7 @@ public actor WebPageFetchService {
         cfg.timeoutIntervalForRequest = 15
         cfg.timeoutIntervalForResource = 20
         cfg.httpAdditionalHeaders = [
-            "User-Agent": "ios-local-llm/1.0 (Web Tool; +on-device)",
+            "User-Agent": "ondevice-core/1.0 (Web Tool; +on-device)",
             "Accept": "text/html, text/plain, application/json, text/markdown, application/xhtml+xml"
         ]
         cfg.httpMaximumConnectionsPerHost = 2

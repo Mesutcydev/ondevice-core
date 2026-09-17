@@ -102,7 +102,7 @@ coding remains a supported task and an explicitly selectable persona.
   model descriptions distinguish optional cloud and connected features.
 - Settings → About presents the app, its version, MIT source-code license,
   model-license distinction, `https://ondevice.fun`, and
-  `https://github.com/Mesutcydev/ios-local-llm`. Settings search includes the
+  `https://github.com/Mesutcydev/ondevice-core`. Settings search includes the
   website, GitHub, and open-source keywords. The existing related-product card
   remains, with wrapping text in place of clipped badges.
 - The new welcome, starter labels and prompts, studio tagline, and source-link

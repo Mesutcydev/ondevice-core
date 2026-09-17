@@ -4,8 +4,8 @@
 authenticated local API. Built in SwiftUI with MLX, llama.cpp, whisper.cpp, and
 Core ML. No account. No telemetry. No cloud inference by default.
 
-[![Validate](https://github.com/Mesutcydev/ios-local-llm/actions/workflows/validate.yml/badge.svg)](https://github.com/Mesutcydev/ios-local-llm/actions/workflows/validate.yml)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Mesutcydev/ios-local-llm/badge)](https://scorecard.dev/viewer/?uri=github.com/Mesutcydev/ios-local-llm)
+[![Validate](https://github.com/Mesutcydev/ondevice-core/actions/workflows/validate.yml/badge.svg)](https://github.com/Mesutcydev/ondevice-core/actions/workflows/validate.yml)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Mesutcydev/ondevice-core/badge)](https://scorecard.dev/viewer/?uri=github.com/Mesutcydev/ondevice-core)
 [![License: MIT](https://img.shields.io/badge/original%20code-MIT-2ea44f.svg)](LICENSE)
 [![Swift](https://img.shields.io/badge/Swift-5.10-F05138.svg)](https://www.swift.org/)
 [![Platform](https://img.shields.io/badge/platform-iOS%2018%2B%20%7C%20Mac%20Catalyst-blue.svg)](SETUP_INSTRUCTIONS.md)
@@ -26,8 +26,9 @@ agent channel.
 | [**OnDevice Local API Server**](https://mesutcydev.github.io/ios-local-llm/ondevice.html) | Beta | Dedicated local API surface for agents and LAN clients — [project page](https://mesutcydev.github.io/ios-local-llm/ondevice.html) |
 | **OnDevice CoreAI Local API Server** | Beta | CoreAI-backed local API server variant |
 
-Repository slug remains `ios-local-llm` for stable links. Product name is
-**OnDevice LLM**. Site: [mesutcydev.github.io/ios-local-llm](https://mesutcydev.github.io/ios-local-llm/).
+Public repository: [Mesutcydev/ondevice-core](https://github.com/Mesutcydev/ondevice-core).
+Product name is **OnDevice LLM**. The website retains the legacy
+`ios-local-llm` slug: [mesutcydev.github.io/ios-local-llm](https://mesutcydev.github.io/ios-local-llm/).
 
 The app was previously distributed through the App Store. This repository is
 now the canonical source distribution. Sideload builds may appear under
@@ -134,8 +135,8 @@ identifier.
 Clone the repository and its native dependencies:
 
 ```bash
-git clone --recurse-submodules https://github.com/Mesutcydev/ios-local-llm.git
-cd ios-local-llm
+git clone --recurse-submodules https://github.com/Mesutcydev/ondevice-core.git
+cd ondevice-core
 ```
 
 Install project tools if needed:

@@ -69,7 +69,7 @@ final class FastVLMRepoAutoDiscovery {
         else { return false }
         var request = URLRequest(url: url)
         request.timeoutInterval = 10
-        request.setValue("ios-local-llm/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
+        request.setValue("ondevice-core/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         do {
             let (_, response) = try await URLSession.shared.data(for: request)
@@ -93,7 +93,7 @@ final class FastVLMRepoAutoDiscovery {
         guard let url = comps.url else { return nil }
         var request = URLRequest(url: url)
         request.timeoutInterval = 15
-        request.setValue("ios-local-llm/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
+        request.setValue("ondevice-core/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         do {
             let (data, response) = try await URLSession.shared.data(for: request)

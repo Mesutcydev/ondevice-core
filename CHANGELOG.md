@@ -72,6 +72,16 @@ and intends to use semantic version tags for source releases.
   its tests (Sendable conformances, NSLock use in async contexts, deprecated
   `asData(noCopy:)` calls).
 
+### Changed
+
+- Repository identity references updated to `Mesutcydev/ondevice-core`
+  (README badges and clone commands, AGENTS.md identity block,
+  codemeta.json, CITATION.cff, llms.txt, SETUP_INSTRUCTIONS, docs links,
+  in-app source/support links, HTTP User-Agent strings, and the altstore
+  subscription URL). Release-channel references (altstore asset/release
+  URLs, the 3.2.6 SBOM, the source-release workflow) intentionally still
+  point at `ios-local-llm`, where those releases and assets live.
+
 ### Fixed
 
 - Edge0 A/B acceptance comparators compared the time-delta metrics

@@ -9,8 +9,8 @@
     "OnDevice LAS"
   ],
   "description": "OnDevice LLM — a local-first Swift and SwiftUI AI workbench for running language, vision, speech, and image-generation models on iPhone and Apple silicon Macs, with authenticated OpenAI-, Anthropic-, Ollama-, and agent-compatible local interfaces.",
-  "codeRepository": "https://github.com/Mesutcydev/ios-local-llm",
-  "issueTracker": "https://github.com/Mesutcydev/ios-local-llm/issues",
+  "codeRepository": "https://github.com/Mesutcydev/ondevice-core",
+  "issueTracker": "https://github.com/Mesutcydev/ondevice-core/issues",
   "url": "https://mesutcydev.github.io/ios-local-llm/",
   "license": "https://spdx.org/licenses/MIT.html",
   "author": {

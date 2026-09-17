@@ -18,9 +18,9 @@ enum LegalDocuments {
     static let currentVersion = 4
 
     // MARK: - Public URLs
-    static let privacyPolicyURL = "https://github.com/Mesutcydev/ios-local-llm/blob/main/PRIVACY_POLICY.md"
-    static let eulaURL          = "https://github.com/Mesutcydev/ios-local-llm/blob/main/LICENSE"
-    static let supportURL       = "https://github.com/Mesutcydev/ios-local-llm/issues"
+    static let privacyPolicyURL = "https://github.com/Mesutcydev/ondevice-core/blob/main/PRIVACY_POLICY.md"
+    static let eulaURL          = "https://github.com/Mesutcydev/ondevice-core/blob/main/LICENSE"
+    static let supportURL       = "https://github.com/Mesutcydev/ondevice-core/issues"
 
     // MARK: - Privacy Policy
 

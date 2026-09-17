@@ -58,7 +58,7 @@ mkdir -p "$output_dir"
 output_abs="$(cd "$output_dir" && pwd)/$(basename "$output_path")"
 [[ ! -e "$output_abs" ]] || die "output already exists: $output_abs (remove it intentionally, then retry)"
 
-work_dir="$(mktemp -d "${TMPDIR:-/tmp}/ios-local-llm-adhoc-ipa.XXXXXX")"
+work_dir="$(mktemp -d "${TMPDIR:-/tmp}/ondevice-core-adhoc-ipa.XXXXXX")"
 cleanup() { rm -rf "$work_dir"; }
 trap cleanup EXIT
 

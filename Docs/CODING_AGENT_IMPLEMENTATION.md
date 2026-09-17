@@ -9,7 +9,7 @@ and verify the result.
 
 Send your coding agent this URL:
 
-<https://github.com/Mesutcydev/ios-local-llm/blob/main/Docs/CODING_AGENT_IMPLEMENTATION.md>
+<https://github.com/Mesutcydev/ondevice-core/blob/main/Docs/CODING_AGENT_IMPLEMENTATION.md>
 
 Then add one sentence:
 
@@ -37,7 +37,7 @@ Target devices: [for example: iPhone 15 and newer]
 Success criteria: [specific user-visible and testable outcome]
 
 Use iOS Local LLM as the reference implementation:
-https://github.com/Mesutcydev/ios-local-llm
+https://github.com/Mesutcydev/ondevice-core
 
 Read these files before editing:
 1. Docs/REUSABLE_COMPONENTS.md

@@ -6,7 +6,7 @@ authors:
   - family-names: "Yagci"
     given-names: "Mesut"
     website: "https://mesut.uk"
-repository-code: "https://github.com/Mesutcydev/ios-local-llm"
+repository-code: "https://github.com/Mesutcydev/ondevice-core"
 url: "https://mesutcydev.github.io/ios-local-llm/"
 license: MIT
 version: 1.0.0

@@ -22,8 +22,8 @@ brew install cmake xcodegen cocoapods
 The llama.cpp and whisper.cpp sources are Git submodules:
 
 ```bash
-git clone --recurse-submodules https://github.com/Mesutcydev/ios-local-llm.git
-cd ios-local-llm
+git clone --recurse-submodules https://github.com/Mesutcydev/ondevice-core.git
+cd ondevice-core
 ```
 
 If the repository was cloned without submodules:

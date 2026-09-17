@@ -10,7 +10,7 @@ belong in Git.
 After this change is merged into `main`, add this URL in AltStore Classic:
 
 ```text
-https://raw.githubusercontent.com/Mesutcydev/ios-local-llm/main/altstore/source.json
+https://raw.githubusercontent.com/Mesutcydev/ondevice-core/main/altstore/source.json
 ```
 
 The source currently lists:

@@ -33,7 +33,7 @@ app_name="$(basename "$app_path")"
 profile="$app_path/embedded.mobileprovision"
 [[ -f "$profile" ]] || die "embedded.mobileprovision is missing; refusing to create an unsigned IPA"
 
-work_dir="$(mktemp -d "${TMPDIR:-/tmp}/ios-local-llm-ipa.XXXXXX")"
+work_dir="$(mktemp -d "${TMPDIR:-/tmp}/ondevice-core-ipa.XXXXXX")"
 cleanup() { rm -rf "$work_dir"; }
 trap cleanup EXIT
 

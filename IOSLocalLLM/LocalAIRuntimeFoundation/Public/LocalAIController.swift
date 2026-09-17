@@ -318,7 +318,7 @@ public final class LocalAIController {
             throw RuntimeError.underlying("Invalid repo id: \(repoID)")
         }
         var request = URLRequest(url: url)
-        request.setValue("ios-local-llm/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
+        request.setValue("ondevice-core/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         HFTokenStore.authorize(&request)
 

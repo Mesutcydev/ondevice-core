@@ -7,7 +7,7 @@
 
 Product name: OnDevice LLM
 Product line: OnDevice
-Repository: https://github.com/Mesutcydev/ios-local-llm
+Repository: https://github.com/Mesutcydev/ondevice-core
 Website: https://mesutcydev.github.io/ios-local-llm/
 License: MIT for original project code and documentation
 Swift module and Xcode scheme: IOSLocalLLM
@@ -20,18 +20,18 @@ Swift module and Xcode scheme: IOSLocalLLM
 
 ## Primary documentation
 
-- [Project overview](https://github.com/Mesutcydev/ios-local-llm/blob/main/README.md)
-- [Coding-agent instructions](https://github.com/Mesutcydev/ios-local-llm/blob/main/AGENTS.md)
-- [Architecture](https://github.com/Mesutcydev/ios-local-llm/blob/main/ARCHITECTURE.md)
-- [Reusable component catalog](https://github.com/Mesutcydev/ios-local-llm/blob/main/Docs/REUSABLE_COMPONENTS.md)
-- [Coding-agent implementation handoff](https://github.com/Mesutcydev/ios-local-llm/blob/main/Docs/CODING_AGENT_IMPLEMENTATION.md)
-- [Local runtime foundation notes](https://github.com/Mesutcydev/ios-local-llm/blob/main/IOSLocalLLM/LocalAIRuntimeFoundation/README.md)
-- [Development setup](https://github.com/Mesutcydev/ios-local-llm/blob/main/SETUP_INSTRUCTIONS.md)
-- [Agent and local API integration](https://github.com/Mesutcydev/ios-local-llm/blob/main/Docs/AGENT_INTEGRATION.md)
-- [Contributing](https://github.com/Mesutcydev/ios-local-llm/blob/main/CONTRIBUTING.md)
-- [Security policy](https://github.com/Mesutcydev/ios-local-llm/blob/main/SECURITY.md)
-- [Third-party notices](https://github.com/Mesutcydev/ios-local-llm/blob/main/THIRD_PARTY_NOTICES.md)
-- [Structured metadata](https://github.com/Mesutcydev/ios-local-llm/blob/main/codemeta.json)
+- [Project overview](https://github.com/Mesutcydev/ondevice-core/blob/main/README.md)
+- [Coding-agent instructions](https://github.com/Mesutcydev/ondevice-core/blob/main/AGENTS.md)
+- [Architecture](https://github.com/Mesutcydev/ondevice-core/blob/main/ARCHITECTURE.md)
+- [Reusable component catalog](https://github.com/Mesutcydev/ondevice-core/blob/main/Docs/REUSABLE_COMPONENTS.md)
+- [Coding-agent implementation handoff](https://github.com/Mesutcydev/ondevice-core/blob/main/Docs/CODING_AGENT_IMPLEMENTATION.md)
+- [Local runtime foundation notes](https://github.com/Mesutcydev/ondevice-core/blob/main/IOSLocalLLM/LocalAIRuntimeFoundation/README.md)
+- [Development setup](https://github.com/Mesutcydev/ondevice-core/blob/main/SETUP_INSTRUCTIONS.md)
+- [Agent and local API integration](https://github.com/Mesutcydev/ondevice-core/blob/main/Docs/AGENT_INTEGRATION.md)
+- [Contributing](https://github.com/Mesutcydev/ondevice-core/blob/main/CONTRIBUTING.md)
+- [Security policy](https://github.com/Mesutcydev/ondevice-core/blob/main/SECURITY.md)
+- [Third-party notices](https://github.com/Mesutcydev/ondevice-core/blob/main/THIRD_PARTY_NOTICES.md)
+- [Structured metadata](https://github.com/Mesutcydev/ondevice-core/blob/main/codemeta.json)
 
 ## Capabilities
 

@@ -122,7 +122,7 @@ struct BridgePairingView: View {
 
     private var macBridgeIntegrationCard: some View {
         Button {
-            if let url = URL(string: "https://github.com/Mesutcydev/ios-local-llm/blob/main/Docs/AGENT_INTEGRATION.md") {
+            if let url = URL(string: "https://github.com/Mesutcydev/ondevice-core/blob/main/Docs/AGENT_INTEGRATION.md") {
                 UIApplication.shared.open(url)
             }
             HapticManager.impact(.light)
