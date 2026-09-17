@@ -1,5 +1,38 @@
 # OnDevice Core AI Studio — Release Audit 1.0.0
 
+## Build 53 — 2026-09-17 (session-reuse probe dispatch fix)
+
+Build 52's device validation showed stage 11 ("Session reuse parity")
+failing in 0.01s with "probe unavailable": the 35B engine's probe method
+returned a non-optional result while the `RuntimeParityProbing`
+requirement is optional, so existential calls could resolve to the
+protocol-extension nil default instead of the implementation.
+
+- The engine method now matches the requirement exactly (it is the
+  conformance witness — no ambiguity).
+- Breadcrumbs name every nil site (service guard, backend family cases,
+  engine return), so a recurrence reports its link.
+- Two new tests pin the real dispatch chain
+  (`ManagedRuntimeEngine` → `Edge0RuntimeBackend` guard); sim **18/18**.
+
+| Check | Result |
+| --- | --- |
+| Version metadata | Consistent: 1.0.0 (**53**) in `project.yml` (app + extension) |
+| Focused Edge0 tests (simulator) | **Executed**: 18 passed / 0 failures (decision + session-reuse incl. the two dispatch tests), exit 0 (`build/simcompat-dispatch.log`) |
+| IPA packaging | **Packaged** — 55 independent artifact checks passed; ZIP member paths identical to build 52 |
+
+Artifact: `build/releases/OnDeviceCoreAIStudio-sideload-entitled-1.0.0-53.ipa`
+(`...-latest.ipa` identical)
+
+- Version **1.0.0 (53)**; the share extension also uses build **53**.
+- Size: **53,229,450 bytes**.
+- SHA-256: `45c8baa07ce9d9522d54601ae5c3fdf460dab5124b061a123cb85ba84f80536e`.
+- **55 independent artifact checks passed** (`verification-1.0.0-53/`). ZIP
+  member paths exactly match build 52; entitlements match builds 43–52
+  exactly (PCC, increased memory, extended virtual addressing,
+  CloudKit/iCloud, shared App Group). Bundle IDs and minimum iOS 27.0
+  unchanged.
+
 ## Build 52 — 2026-09-17 (session-state reuse / prompt cache)
 
 The chat-latency fix: every turn previously re-prefilled the entire
