@@ -1,5 +1,38 @@
 # OnDevice Core AI Studio — Release Audit 1.0.0
 
+## Build 54 — 2026-09-17 (prompt-cache snapshot boundary fix)
+
+Build 53's device validation showed stage 11 running but "reuse NOT
+APPLIED · reused 0 tok · prefilled 52" with byte-identical answers: the
+snapshot was taken at the very end of the prompt, and the template's
+generation tail (assistant header + thinking cue) is replaced by the
+answer on the next turn — a prompt's end never prefix-matches again.
+
+- The snapshot is now taken at the **last `<|im_start|>`** (the boundary
+  that re-renders identically every turn) by splitting the prefill there;
+  two prefill calls over one state are numerically identical to one call.
+- Each turn re-anchors the snapshot at the new stable boundary, so the
+  reused prefix grows with the conversation.
+- Probe diagnostics report turn-1/turn-2 prompt lengths.
+
+| Check | Result |
+| --- | --- |
+| Version metadata | Consistent: 1.0.0 (**54**) in `project.yml` (app + extension) |
+| Focused Edge0 tests (simulator) | **Executed**: 20 passed / 0 failures (incl. two new stable-boundary tests), exit 0 (`build/simcompat-boundary.log`) |
+| IPA packaging | **Packaged** — 55 independent artifact checks passed; ZIP member paths identical to build 53 |
+
+Artifact: `build/releases/OnDeviceCoreAIStudio-sideload-entitled-1.0.0-54.ipa`
+(`...-latest.ipa` identical)
+
+- Version **1.0.0 (54)**; the share extension also uses build **54**.
+- Size: **53,231,591 bytes**.
+- SHA-256: `23c42d68bff60a8af679faceb96b2f77a6b82d71e1b29c58d73def43086052c2`.
+- **55 independent artifact checks passed** (`verification-1.0.0-54/`). ZIP
+  member paths exactly match build 53; entitlements match builds 43–53
+  exactly (PCC, increased memory, extended virtual addressing,
+  CloudKit/iCloud, shared App Group). Bundle IDs and minimum iOS 27.0
+  unchanged.
+
 ## Build 53 — 2026-09-17 (session-reuse probe dispatch fix)
 
 Build 52's device validation showed stage 11 ("Session reuse parity")
