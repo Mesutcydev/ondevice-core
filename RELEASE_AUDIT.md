@@ -1,5 +1,38 @@
 # OnDevice Core AI Studio — Release Audit 1.0.0
 
+## Build 49 — 2026-09-17 (expert-reads A/B runner)
+
+Follow-up to build 48, adding the last untested device lever as a first-class
+diagnostic:
+
+- **`35B Expert reads A/B (4 vs 6)`** kind: read concurrency is load-captured
+  (the store's read semaphore is fixed at engine load), so the runner
+  reloads the engine on every arm transition (4→6→6→4) and exports a
+  requested/effective reads pair; a requested-6 trial whose store says
+  otherwise is labeled SETUP-BLOCKED. Frozen acceptance rule: prefill
+  ≥ +3% with decode ≥ −3%.
+- Rows and the summary export carry reads requested/effective; the
+  Diagnostics row shows the arm; two new decision tests pin the plan, the
+  population gate, and the acceptance rule.
+
+| Check | Result |
+| --- | --- |
+| Version metadata | Consistent: 1.0.0 (**49**) in `project.yml` (app + extension) |
+| Focused Edge0 tests (simulator) | **Executed**: 11 passed / 0 failures (8 decision + 3 advise), exit 0 (`build/simcompat-reads.log`) |
+| IPA packaging | **Packaged** — 52 independent artifact checks passed; ZIP member paths identical to build 48 |
+
+Artifact: `build/releases/OnDeviceCoreAIStudio-sideload-entitled-1.0.0-49.ipa`
+(`...-latest.ipa` identical)
+
+- Version **1.0.0 (49)**; the share extension also uses build **49**.
+- Size: **53,209,144 bytes**.
+- SHA-256: `436b3e5d78c18826cdbb4cb136b3ac5d61f0319159ce2bfdd60ad5d19ee677d3`.
+- **52 independent artifact checks passed** (`verification-1.0.0-49/`). ZIP
+  member paths exactly match build 48; the llama and whisper framework
+  binaries are byte-identical; entitlements match builds 43–48 exactly
+  (PCC, increased memory, extended virtual addressing, CloudKit/iCloud,
+  shared App Group). Bundle IDs and minimum iOS 27.0 unchanged.
+
 ## Build 48 — 2026-09-17 (readahead fix + A/B diagnostic)
 
 Follow-up to build 47 after the first device A/B session surfaced the 5M
