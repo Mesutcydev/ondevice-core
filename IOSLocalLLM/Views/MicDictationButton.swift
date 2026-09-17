@@ -74,7 +74,7 @@ struct MicDictationButton: View {
                 .font(.system(size: 14))
                 .foregroundColor(T.ink2)
                 .frame(width: 36, height: 36)
-                .kGlass(cornerRadius: 6, fallbackFill: T.surface)
+                .kGlass(cornerRadius: StudioRadius.small, fallbackFill: T.surface)
         }
     }
 

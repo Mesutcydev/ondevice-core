@@ -111,7 +111,7 @@ struct BridgePairingView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .kGlass(cornerRadius: 16, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface)
     }
 
     // MARK: - Mac bridge integration guide
@@ -166,7 +166,7 @@ struct BridgePairingView: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .kGlass(cornerRadius: 14, fallbackFill: T.surface)
+            .kGlass(cornerRadius: StudioRadius.action, fallbackFill: T.surface)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Open Mac bridge integration guide")
@@ -208,7 +208,7 @@ struct BridgePairingView: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity)
-            .kGlass(cornerRadius: 14, fallbackFill: T.surface)
+            .kGlass(cornerRadius: StudioRadius.action, fallbackFill: T.surface)
         }
         .buttonStyle(.plain)
     }
@@ -268,7 +268,7 @@ struct BridgePairingView: View {
             Spacer()
         }
         .padding(12)
-        .kGlass(cornerRadius: 10, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
     }
 
     private var statusColor: Color {
@@ -315,7 +315,7 @@ struct BridgePairingView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(16)
-        .kGlass(cornerRadius: 14, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.action, fallbackFill: T.surface)
     }
 
     // ── Idle: prompt to scan ──────────────────────────────────────────────
@@ -478,7 +478,7 @@ struct BridgePairingView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .kGlass(cornerRadius: 14, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.action, fallbackFill: T.surface)
     }
 }
 
@@ -515,7 +515,7 @@ private struct LocalAPIServerCard: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .kGlass(cornerRadius: 16, fallbackFill: theme.surface)
+        .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: theme.surface)
         .onAppear {
             portText = String(settings.localAPIPort)
             manager.refreshAddresses()

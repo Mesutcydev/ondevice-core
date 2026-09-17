@@ -168,7 +168,7 @@ struct ToastBanner: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(T.surface.opacity(0.96))
         )
-        .kGlass(cornerRadius: 10, fallbackFill: T.surface, fallbackStroke: T.rule)
+        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface, fallbackStroke: T.rule)
         .shadow(color: .black.opacity(0.10), radius: 14, y: 4)
         .overlay(alignment: .leading) {
             Rectangle()

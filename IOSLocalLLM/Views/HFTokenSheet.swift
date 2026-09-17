@@ -87,7 +87,7 @@ struct HFTokenSheet: View {
         VStack(alignment: .leading, spacing: 6) {
             KCaption(text: "API · HUGGING FACE")
             Text("Access Token")
-                .font(T.display(26, .semibold))
+                .font(T.sans(26, .semibold))
                 .tracking(-0.5)
                 .foregroundColor(T.ink)
             Text("Paste a personal access token to download gated models like Gemma source weights, Llama 3, and Ministral. Generate one at huggingface.co/settings/tokens (read access is enough).")

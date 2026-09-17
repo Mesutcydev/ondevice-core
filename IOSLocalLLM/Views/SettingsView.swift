@@ -40,18 +40,21 @@ struct SettingsView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
-                    // Page header
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(loc.t("Preferences").uppercased())
-                            .font(T.sans(13, .semibold)).tracking(0.7)
-                            .foregroundColor(T.accent)
+                    // Page header — Studio masthead grammar: mono eyebrow,
+                    // 32pt sans semibold, ink hierarchy. The old accent
+                    // eyebrow + display-bold title read as a different
+                    // product from the Home tab it sits next to.
+                    VStack(alignment: .leading, spacing: 6) {
+                        StudioMonoLabel(text: loc.t("Preferences"), size: 11, tracking: 0.9)
                         Text(loc.t("Settings"))
-                            .font(T.display(32, .bold)).foregroundColor(T.ink)
+                            .font(T.studio.sans(32, .semibold))
+                            .tracking(-0.8)
+                            .foregroundStyle(T.studio.ink)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
-                    .padding(.bottom, 12)
+                    .padding(.bottom, 16)
 
                     // Privacy hero (design screen 06) — leads Settings with the
                     // on-device, no-account promise.
@@ -65,7 +68,7 @@ struct SettingsView: View {
                     // overwhelmed first-time users. Each row navigates to a
                     // focused sub-screen that still hosts the original
                     // KSection bodies — same content, less noise.
-                    VStack(spacing: 8) {
+                    VStack(spacing: 0) {
                         ForEach(SettingsCategory.allCases) { cat in
                             NavigationLink {
                                 categoryDestination(cat)
@@ -75,7 +78,7 @@ struct SettingsView: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, 16)
 
                     imageStudioBanner
                         .padding(.horizontal, 16)
@@ -191,55 +194,72 @@ struct SettingsView: View {
         }
     }
 
-    // Privacy hero — quiet card with the on-device promise.
+    // Privacy hero — the one raised card on the page, same object grammar as
+    // the Home hero: surfaceRaised fill, hairline boundary, lock glyph in a
+    // fillActive tile. The on-device promise stated once, quietly.
     private var privacyHero: some View {
-        HStack(spacing: 13) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(T.surface2)
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(T.rule, lineWidth: 1))
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 20, weight: .semibold)).foregroundColor(T.ink)
-            }
-            .frame(width: 46, height: 46)
+        let S = T.studio
+        return HStack(spacing: StudioSpacing.m) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(S.ink)
+                .frame(width: 34, height: 34)
+                .background(S.fillActive,
+                            in: RoundedRectangle(cornerRadius: StudioRadius.glyph,
+                                                 style: .continuous))
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(loc.t("On-device & private"))
-                    .font(T.sans(17, .bold)).foregroundColor(T.ink)
+                    .font(S.sans(17, .semibold))
+                    .foregroundStyle(S.ink)
                 Text(loc.t("No account. Your data never leaves this iPhone."))
-                    .font(T.sans(13)).foregroundColor(T.ink2)
+                    .font(S.sans(13))
+                    .foregroundStyle(S.ink2)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
-        .padding(16)
-        .kGlass(cornerRadius: 22, fallbackFill: T.surface, fallbackStroke: T.rule)
+        .padding(StudioSpacing.l)
+        .background(
+            S.surfaceRaised,
+            in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+                .strokeBorder(S.strokeRest, lineWidth: 1)
+        )
     }
 
     private func categoryRow(_ cat: SettingsCategory) -> some View {
-        HStack(spacing: 13) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accentSoft)
+        let S = T.studio
+        return VStack(spacing: 0) {
+            HStack(spacing: StudioSpacing.m) {
                 Image(systemName: cat.icon)
-                    .font(.system(size: 17, weight: .regular))
-                    .foregroundColor(T.accent)
+                    .font(.system(size: 14))
+                    .foregroundStyle(S.ink)
+                    .frame(width: 34, height: 34)
+                    .background(S.fillActive,
+                                in: RoundedRectangle(cornerRadius: StudioRadius.glyph,
+                                                     style: .continuous))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(cat.title.capitalized)
+                        .font(S.sans(15, .medium))
+                        .foregroundStyle(S.ink)
+                    Text(cat.subtitle)
+                        .font(S.sans(13))
+                        .foregroundStyle(S.ink3)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: StudioSpacing.s)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 12))
+                    .foregroundStyle(S.chevron)
             }
-            .frame(width: 38, height: 38)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(cat.title.capitalized)
-                    .font(T.sans(16, .semibold)).foregroundColor(T.ink)
-                Text(cat.subtitle)
-                    .font(T.sans(12)).foregroundColor(T.ink3).lineLimit(1)
-            }
-            Spacer(minLength: 8)
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(T.ink4)
+            .padding(.vertical, 12)
+            StudioHairline(color: S.rule2)
         }
-        .padding(.horizontal, 15)
-        .padding(.vertical, 13)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .kGlass(cornerRadius: 18, fallbackFill: T.surface, fallbackStroke: T.rule)
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder
@@ -1517,7 +1537,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         KCaption(text: "also by mesut")
                         Text("OnDevice: AI Image Studio")
-                            .font(T.sans(18, .bold))
+                            .font(T.sans(18, .semibold))
                             .foregroundColor(T.ink)
                             .lineLimit(1)
                             .minimumScaleFactor(0.82)
@@ -1567,7 +1587,14 @@ struct SettingsView: View {
             }
             .padding(15)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .kGlass(cornerRadius: 20, fallbackFill: T.surface, fallbackStroke: T.rule)
+            .background(
+                T.studio.surfaceRaised,
+                in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+                    .strokeBorder(T.studio.strokeRest, lineWidth: 1)
+            )
         }
         .buttonStyle(StudioPressStyle())
         .accessibilityLabel("Open the OnDevice AI Image Studio preview website. App Store release coming soon.")
@@ -1584,8 +1611,10 @@ struct SettingsView: View {
         .foregroundColor(T.ink2)
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.surface2))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.rule, lineWidth: 0.5))
+        .overlay(
+            RoundedRectangle(cornerRadius: StudioRadius.spine, style: .continuous)
+                .stroke(T.rule, lineWidth: 1)
+        )
     }
 
     private var appVersionLabel: String {

@@ -171,7 +171,7 @@ struct VisualModelPickerView: View {
             .padding(12)
         }
         .buttonStyle(.plain)
-        .kGlass(cornerRadius: 8, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
         .padding(.horizontal, 16)
         .padding(.top, 8)
     }
@@ -392,7 +392,7 @@ struct VisualModelPickerView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .kGlass(cornerRadius: 8, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
         .padding(.horizontal, 16)
         .padding(.top, 8)
     }
@@ -564,7 +564,7 @@ struct VisualModelPickerView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .kGlass(cornerRadius: 8, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
         .padding(.horizontal, 16)
         .padding(.top, 12)
     }

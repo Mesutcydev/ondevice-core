@@ -231,7 +231,7 @@ struct OnboardingModelPickerView: View {
             VStack(spacing: 6) {
                 KCaption(text: "STEP · MODEL PICK")
                 Text("Choose your models")
-                    .font(T.display(26, .semibold))
+                    .font(T.sans(26, .semibold))
                     .tracking(-0.5)
                     .foregroundColor(T.ink)
                 Text("Pick one assistant and one vision model. Both run entirely on your device — no servers, no API keys.")
@@ -280,7 +280,7 @@ struct OnboardingModelPickerView: View {
                 Rectangle().fill(T.rule).frame(height: 1)
             }
             Text(title)
-                .font(T.display(18, .semibold))
+                .font(T.sans(18, .semibold))
                 .foregroundColor(T.ink)
             Text(subtitle)
                 .font(T.sans(11))
@@ -351,7 +351,7 @@ struct OnboardingModelPickerView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(title)
-                            .font(T.display(15, .semibold))
+                            .font(T.sans(15, .semibold))
                             .tracking(-0.2)
                             .foregroundColor(T.ink)
                             .lineLimit(1)
@@ -375,7 +375,7 @@ struct OnboardingModelPickerView: View {
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .kGlass(cornerRadius: 16,
+            .kGlass(cornerRadius: StudioRadius.panel,
                     tint: selected ? T.accentSoft : nil,
                     fallbackFill: selected ? T.accentSoft : T.surface)
             .overlay(
@@ -504,7 +504,7 @@ struct OnboardingModelPickerView: View {
         VStack(spacing: 14) {
             VStack(spacing: 6) {
                 Text("Setting up your models")
-                    .font(T.display(17, .semibold))
+                    .font(T.sans(17, .semibold))
                     .foregroundColor(T.ink)
                 Text("Downloading your picks so everything runs on-device. One-time setup — it works offline afterwards. The camera already works from the built-in model; you can Skip and your picks keep downloading in the background (track them in the Models tab).")
                     .font(T.sans(11))
@@ -597,7 +597,7 @@ struct OnboardingModelPickerView: View {
             }
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
-        .kGlass(cornerRadius: 10, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
     }
 
     private func retryDownloads() {

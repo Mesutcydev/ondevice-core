@@ -1154,7 +1154,7 @@ struct ModelsManagerView: View {
                     ForEach(future) { entry in voiceCatalogRow(entry) }
                 } label: {
                     Label("Future Runtime Integrations", systemImage: "shippingbox")
-                        .font(T.display(16, .semibold))
+                        .font(T.sans(16, .semibold))
                         .foregroundStyle(T.ink2)
                 }
             }
@@ -1170,7 +1170,7 @@ struct ModelsManagerView: View {
                         categoryGlyph(.voice)
                         VStack(alignment: .leading, spacing: 5) {
                             KCaption(text: entry.task == .textToSpeech ? "TEXT TO SPEECH" : "SPEECH RECOGNITION", color: T.ink3)
-                            Text(entry.name).font(T.display(18, .semibold)).foregroundColor(T.ink)
+                            Text(entry.name).font(T.sans(18, .semibold)).foregroundColor(T.ink)
                             Text(entry.summary).font(T.mono(9)).foregroundColor(T.ink3)
                                 .fixedSize(horizontal: false, vertical: true)
                             statusPill(text: entry.statusLabel, color: entry.isDownloadEnabled ? T.good : T.warn)
@@ -2262,7 +2262,7 @@ struct ModelsManagerView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         KCaption(text: title, color: T.ink3)
                         Text(modelName)
-                            .font(T.display(19, .semibold))
+                            .font(T.sans(19, .semibold))
                             .foregroundColor(T.ink)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)
@@ -2638,7 +2638,7 @@ struct ModelsManagerView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 KCaption(text: categoryEyebrow(roleCategory), color: T.ink3)
                                 Text(model.displayName)
-                                    .font(T.display(18, .semibold))
+                                    .font(T.sans(18, .semibold))
                                     .foregroundColor(T.ink)
                                     .lineLimit(2)
                                     .fixedSize(horizontal: false, vertical: true)
@@ -2883,7 +2883,7 @@ struct ModelsManagerView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         KCaption(text: "Text to image", color: T.accent)
                         Text("Generate images on-device")
-                            .font(T.display(18, .semibold))
+                            .font(T.sans(18, .semibold))
                             .foregroundColor(T.ink)
                         Text("SD / SDXL diffusion via MLX. FLUX is too large for iOS memory.")
                             .font(T.mono(9))
@@ -2907,7 +2907,7 @@ struct ModelsManagerView: View {
                     Image(systemName: "sparkles")
                     Text(loc.t("Open generator"))
                 }
-                .font(T.display(16, .semibold))
+                .font(T.sans(16, .semibold))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
@@ -2931,7 +2931,7 @@ struct ModelsManagerView: View {
                 VStack(alignment: .leading, spacing: 5) {
                     HStack(spacing: 6) {
                         Text(m.displayName)
-                            .font(T.display(17, .semibold))
+                            .font(T.sans(17, .semibold))
                             .foregroundColor(T.ink)
                         if installed {
                             Text("INSTALLED")
@@ -3119,7 +3119,7 @@ struct ModelsManagerView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
                         Text(group.displayName)
-                            .font(T.display(18, .semibold))
+                            .font(T.sans(18, .semibold))
                             .foregroundColor(T.ink)
                         if group.anyGated {
                             Image(systemName: "lock.fill")
@@ -3176,7 +3176,7 @@ struct ModelsManagerView: View {
                     KCaption(text: categoryEyebrow(roleCategory), color: T.ink3)
                     HStack(alignment: .top, spacing: 6) {
                         Text(model.displayName)
-                            .font(T.display(18, .semibold))
+                            .font(T.sans(18, .semibold))
                             .foregroundColor(T.ink)
                             .lineLimit(2)
                             .fixedSize(horizontal: false, vertical: true)

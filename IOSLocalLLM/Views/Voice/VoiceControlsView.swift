@@ -31,7 +31,7 @@ struct VoiceControlsView: View {
             }
             .foregroundColor(T.ink2)
             .padding(.horizontal, 10).padding(.vertical, 8)
-            .kGlass(cornerRadius: 6, fallbackFill: T.surface)
+            .kGlass(cornerRadius: StudioRadius.small, fallbackFill: T.surface)
         }
         .buttonStyle(.plain)
     }

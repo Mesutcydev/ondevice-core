@@ -182,7 +182,7 @@ struct AssistantApprovalCard: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 11)
                                 .foregroundStyle(T.ink)
-                                .kGlass(cornerRadius: 8, fallbackFill: T.surface)
+                                .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Always allow \(AssistantActivity.displayName(forTool: toolName))")

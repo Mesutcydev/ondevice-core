@@ -115,7 +115,7 @@ struct KaraokeTranscriptView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
-        .kGlass(cornerRadius: 16, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface)
         .onAppear {
             rebuildPrepared(text: text)
         }
@@ -289,7 +289,7 @@ struct VoiceUserTranscriptBubble: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .kGlass(cornerRadius: 16, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface)
         .frame(maxWidth: .infinity, alignment: .trailing)
         .accessibilityLabel("You said: \(text)")
     }

@@ -116,7 +116,7 @@ struct LensPromptPresetSheet: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .kGlass(cornerRadius: 8, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
         .padding(.horizontal, 16)
         .padding(.top, 12)
     }

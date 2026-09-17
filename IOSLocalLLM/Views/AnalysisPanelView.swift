@@ -116,7 +116,7 @@ struct AnalysisPanelView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
                         Text("analysis")
-                            .font(T.display(17, .semibold))
+                            .font(T.sans(17, .semibold))
                             .tracking(-0.4)
                             .foregroundColor(T.ink)
                         if result.isStreaming {
@@ -216,7 +216,7 @@ struct AnalysisPanelView: View {
                         }
                         .foregroundColor(T.ink2)
                         .padding(.horizontal, 10).padding(.vertical, 8)
-                        .kGlass(cornerRadius: 6, fallbackFill: T.surface)
+                        .kGlass(cornerRadius: StudioRadius.small, fallbackFill: T.surface)
                     }
                     .buttonStyle(.plain)
 
@@ -312,7 +312,7 @@ struct AnalysisPanelView: View {
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding()
-                            .kGlass(cornerRadius: 8, fallbackFill: T.surface)
+                            .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
 
                             // Q&A exchanges
                             ForEach(result.questionAnswers) { qa in
@@ -382,7 +382,7 @@ struct AnalysisPanelView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .kGlass(cornerRadius: 8, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
     }
 
     // MARK: - Ask Question bar
@@ -699,13 +699,13 @@ struct MarkdownTextView: View {
     private func renderLine(_ line: String) -> some View {
         if line.hasPrefix("# ") {
             Text(String(line.dropFirst(2)))
-                .font(T.display(20, .semibold))
+                .font(T.sans(20, .semibold))
                 .tracking(-0.5)
                 .foregroundColor(T.ink)
                 .padding(.top, 8)
         } else if line.hasPrefix("## ") {
             Text(String(line.dropFirst(3)))
-                .font(T.display(16, .semibold))
+                .font(T.sans(16, .semibold))
                 .foregroundColor(T.ink)
                 .padding(.top, 6)
         } else if line.hasPrefix("### ") {

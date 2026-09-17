@@ -42,7 +42,7 @@ struct UnsupportedDeviceView: View {
 
                     VStack(spacing: 10) {
                         Text("Device Not Supported")
-                            .font(T.display(22, .semibold))
+                            .font(T.sans(22, .semibold))
                             .foregroundColor(T.ink)
                         Text("OnDevice runs large AI models entirely on-device. Inference needs at least 8 GB of physical RAM to load without thermal throttling or Jetsam kills.")
                             .font(T.sans(13))
@@ -102,7 +102,7 @@ struct UnsupportedDeviceView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .kGlass(cornerRadius: 14, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.action, fallbackFill: T.surface)
         .padding(.horizontal, 24)
     }
 }

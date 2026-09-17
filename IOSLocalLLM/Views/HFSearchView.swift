@@ -214,7 +214,7 @@ struct HFSearchView: View {
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .kGlass(cornerRadius: 18, fallbackFill: T.surface, fallbackStroke: T.glassBorder)
+                .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface, fallbackStroke: T.glassBorder)
                 .padding(.horizontal, 16)
 
                 infoBox
@@ -247,7 +247,7 @@ struct HFSearchView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
-        .kGlass(cornerRadius: 18, fallbackFill: T.surface, fallbackStroke: T.glassBorder)
+        .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface, fallbackStroke: T.glassBorder)
     }
 
     // MARK: - Debounced search
@@ -305,7 +305,7 @@ struct HFSearchRow: View {
                 VStack(alignment: .leading, spacing: 3) {
                     KModelName(
                         model.modelName,
-                        font: T.display(16, .semibold),
+                        font: T.sans(16, .semibold),
                         color: T.ink
                     )
                     Text(model.author)
@@ -389,7 +389,7 @@ struct HFSearchRow: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .kGlass(cornerRadius: 22, fallbackFill: T.surface, fallbackStroke: T.glassBorder)
+        .kGlass(cornerRadius: StudioRadius.sheet, fallbackFill: T.surface, fallbackStroke: T.glassBorder)
         .task {
             if !didFetchSize {
                 didFetchSize = true
@@ -634,6 +634,6 @@ struct SearchRowSkeleton: View {
                 .shimmer(duration: 1.4)
         }
         .padding(16)
-        .kGlass(cornerRadius: 22, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.sheet, fallbackFill: T.surface)
     }
 }

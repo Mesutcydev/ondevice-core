@@ -31,21 +31,23 @@ struct KMono: View {
 
 /// Uppercase mono label used as a small caption above values.
 /// e.g. `TOK/SEC`, `TOKENS`, `SESSION`
+///
+/// Studio grammar: the section eyebrow is mono, small, letter-spaced, and
+/// NEUTRAL — the same `StudioMonoLabel` recipe as Home/Assistant. It used to
+/// be sans-bold in `ink3`; the weight carried the emphasis instead of the
+/// tracking, which read louder and rounder than every other screen's marker.
 struct KCaption: View {
     let text: String
     var color: Color? = nil
     @Environment(\.koduTheme) private var T
 
     var body: some View {
-        // Eyebrows: sans, bold, uppercase. Neutral ink by default — the
-        // uppercase weight + tracking already give them their role, so they
-        // don't need to be accent-colored. Callers pass `color:` for the rare
-        // intentional accent eyebrow. (Desaturating these app-wide is a big part
-        // of the professional, ChatGPT-like restraint.)
+        // Neutral ink by default — colour is reserved for state; callers pass
+        // `color:` for the rare intentional accent eyebrow.
         Text(text.uppercased())
-            .font(T.sans(11, .bold))
+            .font(T.mono(11, .medium))
             .foregroundColor(color ?? T.ink3)
-            .tracking(0)
+            .tracking(0.9)
     }
 }
 
@@ -83,11 +85,15 @@ struct KStatusBadge: View {
 // MARK: - Icon button (32×32 square)
 
 /// Square 32×32 icon button — used in nav bars, toolbars, composers.
+/// Studio grammar: no fill at rest, glyph in `ink3`, hairline optional. The
+/// old `kClearGlass(... interactive:)` fill made every nav glyph read as a
+/// pressed chip; the Studio language draws glyphs bare and reserves fills
+/// for genuinely active states.
 struct KIconButton<Icon: View>: View {
     @ViewBuilder var icon: () -> Icon
     var action: () -> Void = {}
-    var size: CGFloat = 32
-    var radius: CGFloat = 6
+    var size: CGFloat = 44
+    var radius: CGFloat = StudioRadius.glyph
 
     @Environment(\.koduTheme) private var T
 
@@ -95,12 +101,6 @@ struct KIconButton<Icon: View>: View {
         Button(action: action) {
             icon()
                 .frame(width: size, height: size)
-                .kClearGlass(
-                    in: RoundedRectangle(cornerRadius: radius, style: .continuous),
-                    interactive: true,
-                    fallbackFill: T.surface,
-                    fallbackStroke: T.rule
-                )
         }
         .buttonStyle(StudioPressStyle())
     }
@@ -108,7 +108,9 @@ struct KIconButton<Icon: View>: View {
 
 // MARK: - Primary / Secondary buttons
 
-/// Primary action button — solid ink fill, white text.
+/// Primary action button — solid ink fill, paper text. Studio grammar: this
+/// is the one filled action on a screen, so it matches `StudioPrimaryButton`
+/// (height 44, radius 14, sans 15/medium) instead of the old 50pt/10pt slab.
 struct KPrimaryButton: View {
     let label: String
     var systemImage: String? = nil
@@ -131,14 +133,14 @@ struct KPrimaryButton: View {
                 if let trailing {
                     Text(trailing)
                         .font(T.mono(10))
-                        .foregroundColor(T.ink3)
+                        .foregroundColor(T.bg.opacity(0.65))
                 }
             }
             .foregroundColor(T.bg)
             .padding(.horizontal, 14)
-            .frame(height: 50)
+            .frame(minHeight: 44)
             .frame(maxWidth: .infinity)
-            .background(T.ink, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .background(T.ink, in: RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous))
             .opacity(disabled ? 0.45 : 1)
         }
         .buttonStyle(StudioPressStyle())
@@ -146,7 +148,8 @@ struct KPrimaryButton: View {
     }
 }
 
-/// Secondary action — surface fill with a 1px rule border.
+/// Secondary action — Studio outline button: a hairline border, never a fill.
+/// `destructive` keeps the bad-tinted glyph/label pairing.
 struct KSecondaryButton: View {
     let label: String
     var systemImage: String? = nil
@@ -165,7 +168,7 @@ struct KSecondaryButton: View {
                         .foregroundColor(destructive ? T.bad : T.ink)
                 }
                 Text(label)
-                    .font(T.sans(13))
+                    .font(T.sans(14, .medium))
                     .foregroundColor(destructive ? T.bad : T.ink)
                 Spacer(minLength: 0)
                 if let trailing {
@@ -177,11 +180,9 @@ struct KSecondaryButton: View {
             .padding(.horizontal, 14)
             .frame(minHeight: 44)
             .frame(maxWidth: .infinity)
-            .kClearGlass(
-                in: RoundedRectangle(cornerRadius: 10, style: .continuous),
-                interactive: true,
-                fallbackFill: T.surface,
-                fallbackStroke: T.rule
+            .overlay(
+                RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous)
+                    .stroke(destructive ? T.bad.opacity(0.35) : T.ink.opacity(0.14), lineWidth: 1)
             )
         }
         .buttonStyle(StudioPressStyle())
@@ -189,8 +190,10 @@ struct KSecondaryButton: View {
 }
 
 // MARK: - Section
-// A grouped settings/info block: small mono caption + a hairline rule
-// extending to the right, then a bordered surface container.
+// A grouped settings/info block: mono eyebrow + a hairline rule extending to
+// the right, then a raised panel — the same `surfaceRaised` object grammar
+// as the composer card and the Home hero, so management screens and chat
+// share one definition of "a thing that sits on the page".
 
 struct KSection<Content: View>: View {
     let title: String
@@ -210,11 +213,13 @@ struct KSection<Content: View>: View {
             VStack(spacing: 0) {
                 content()
             }
-            .kClearGlass(
-                in: RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous),
-                tint: tinted ? T.accentSofter : nil,
-                fallbackFill: T.surface,
-                fallbackStroke: T.rule
+            .background(
+                T.studio.surfaceRaised,
+                in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+                    .strokeBorder(T.studio.strokeRest, lineWidth: 1)
             )
         }
         .padding(.horizontal, 16)
@@ -284,13 +289,15 @@ struct KCollapsibleSection<Content: View>: View {
                 }
             }
             .buttonStyle(.plain)
-            .kClearGlass(
-                in: RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous),
-                tint: tinted ? T.accentSofter : nil,
-                fallbackFill: T.surface,
-                fallbackStroke: T.rule
+            .background(
+                T.studio.surfaceRaised,
+                in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
             )
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+                    .strokeBorder(T.studio.strokeRest, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous))
         }
         .padding(.horizontal, 16)
         .padding(.top, 20)
@@ -334,7 +341,7 @@ struct KRow<Trailing: View>: View {
 }
 
 // MARK: - Spec table
-// `[(key, value)]` rendered as a bordered card with mono key / mono value rows.
+// `[(key, value)]` rendered as a raised panel with mono key / mono value rows.
 
 struct KSpecTable: View {
     let rows: [(String, String)]
@@ -356,63 +363,28 @@ struct KSpecTable: View {
                 .padding(.vertical, 8)
             }
         }
-        .kClearGlass(
-            in: RoundedRectangle(cornerRadius: 8),
-            fallbackFill: T.surface,
-            fallbackStroke: T.rule
+        .background(
+            T.studio.surfaceRaised,
+            in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+                .strokeBorder(T.studio.strokeRest, lineWidth: 1)
         )
     }
 }
 
-// MARK: - Telemetry strip
-// Small bordered strip with stacked CAPTION / value pairs.
-
-struct KTelemetryItem: Identifiable {
-    let id = UUID()
-    let caption: String
-    let value: String
-    var color: Color? = nil
-    var align: HorizontalAlignment = .leading
-}
-
-struct KTelemetryStrip: View {
-    let items: [KTelemetryItem]
-
-    @Environment(\.koduTheme) private var T
-
-    var body: some View {
-        HStack(spacing: 12) {
-            ForEach(items) { item in
-                VStack(alignment: item.align, spacing: 1) {
-                    KCaption(text: item.caption)
-                    Text(item.value)
-                        .font(T.mono(13, .semibold))
-                        .foregroundColor(item.color ?? T.ink)
-                }
-                .frame(maxWidth: .infinity, alignment: alignment(item.align))
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .kClearGlass(
-            in: RoundedRectangle(cornerRadius: 6),
-            fallbackFill: T.surface,
-            fallbackStroke: T.rule
-        )
-    }
-
-    private func alignment(_ h: HorizontalAlignment) -> Alignment {
-        switch h {
-        case .leading: return .leading
-        case .trailing: return .trailing
-        default: return .center
-        }
-    }
-}
+// MARK: - Telemetry strip — removed
+//
+// `KTelemetryStrip`/`KTelemetryItem` were deleted with zero call sites
+// (verified by grep across app + tests + packages). The mono caption /
+// value pairing they expressed is now served by `StudioMonoLabel` inside
+// KSection rows.
 
 // MARK: - Tag / chip
 
-/// Small bordered tag — `qwen3`, `mlx`, `code`, etc.
+/// Small hairline-bordered tag — `qwen3`, `mlx`, `code`, etc. Studio grammar:
+/// outline only, no fill, mono 10.
 struct KTag: View {
     let text: String
     var size: CGFloat = 10
@@ -424,10 +396,9 @@ struct KTag: View {
             .foregroundColor(T.ink2)
             .padding(.horizontal, 7)
             .padding(.vertical, 2)
-            .kClearGlass(
-                in: RoundedRectangle(cornerRadius: 4),
-                fallbackFill: T.surface,
-                fallbackStroke: T.rule
+            .overlay(
+                RoundedRectangle(cornerRadius: StudioRadius.spine, style: .continuous)
+                    .stroke(T.rule, lineWidth: 1)
             )
     }
 }
@@ -507,20 +478,21 @@ struct KFlowLayout: Layout {
     }
 }
 
-/// ACTIVE pill — accent text on accentSoft fill.
+/// ACTIVE pill — accent text on accentSoft fill. (The `tint:` wiring now
+/// actually reaches the renderer; it was silently dropped before.)
 struct KActivePill: View {
     let text: String
     @Environment(\.koduTheme) private var T
     var body: some View {
         Text(text.uppercased())
             .font(T.mono(9, .semibold))
-            .tracking(0)
+            .tracking(0.4)
             .foregroundColor(T.accent)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 1)
-            .kClearGlass(
-                in: RoundedRectangle(cornerRadius: 3),
-                tint: T.accentSoft
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(
+                T.accentSofter,
+                in: RoundedRectangle(cornerRadius: StudioRadius.spine, style: .continuous)
             )
     }
 }
@@ -635,42 +607,20 @@ struct KDisclosureRows<Content: View>: View {
     }
 }
 
-// MARK: - Wordmark (kodu/IOSLocalLLM monogram)
-
-struct KWordmark: View {
-    var name: String = "OnDevice Max"
-    var monogram: String = "k"
-    /// Asset name of an image logo; when set it replaces the letter monogram.
-    var logoAsset: String? = nil
-    @Environment(\.koduTheme) private var T
-
-    var body: some View {
-        HStack(spacing: 8) {
-            if let logoAsset {
-                Image(logoAsset)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 26, height: 26)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-            } else {
-                Text(monogram)
-                    .font(T.mono(14, .semibold))
-                    .foregroundColor(T.bg)
-                    .frame(width: 26, height: 26)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
-            }
-            Text(name)
-                .font(T.display(17, .semibold))
-                .tracking(0)
-                .foregroundColor(T.ink)
-        }
-    }
-}
+// MARK: - Wordmark — removed
+//
+// `KWordmark` was deleted with zero call sites (verified by grep across
+// app + tests + packages). Identity lives in the Home masthead and the
+// app icon.
 
 // MARK: - Page title
 
 /// Large display title used at the top of full screens.
 /// e.g. "Models", "Settings"
+///
+/// Studio grammar: sans semibold with slight negative tracking, matching the
+/// Home masthead and the Models header — not the old display-bold face that
+/// made management screens read as a different product.
 struct KPageTitle: View {
     let title: String
     var size: CGFloat = 30
@@ -678,14 +628,18 @@ struct KPageTitle: View {
 
     var body: some View {
         Text(title)
-            .font(T.display(size, .semibold))
-            .tracking(0)
+            .font(T.sans(size, .semibold))
+            .tracking(-0.8)
             .foregroundColor(T.ink)
             .lineLimit(1)
     }
 }
 
 // MARK: - Toggle
+//
+// Studio square-cut switch: 48×29, the same geometry as
+// `StudioSquareToggle`, so Settings rows and Studio rows flip the same
+// object. The old 32×18 pill was the last remaining micro-switch dialect.
 
 struct KToggle: View {
     @Binding var isOn: Bool
@@ -693,17 +647,18 @@ struct KToggle: View {
 
     var body: some View {
         Button {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) { isOn.toggle() }
+            withAnimation(.easeOut(duration: 0.18)) { isOn.toggle() }
+            HapticManager.impact(.light)
         } label: {
-            ZStack(alignment: isOn ? .trailing : .leading) {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(isOn ? T.accent : T.ink4.opacity(0.5))
-                    .frame(width: 32, height: 18)
-                Circle()
-                    .fill(T.surface)
-                    .frame(width: 14, height: 14)
-                    .padding(.horizontal, 2)
-            }
+            RoundedRectangle(cornerRadius: StudioRadius.tile, style: .continuous)
+                .fill(isOn ? T.accent : T.ink.opacity(0.13))
+                .frame(width: 48, height: 29)
+                .overlay(alignment: isOn ? .trailing : .leading) {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(.white)
+                        .frame(width: 23, height: 23)
+                        .padding(.horizontal, 3)
+                }
         }
         .buttonStyle(.plain)
         // This is a custom switch, not a SwiftUI Toggle — without these traits
@@ -715,28 +670,11 @@ struct KToggle: View {
     }
 }
 
-// MARK: - Active row marker (2px left accent stripe)
-
-/// Wrap any row to give it the "active model" 2px accent stripe on the left.
-struct KActiveRowMarker<Content: View>: View {
-    let isActive: Bool
-    @ViewBuilder var content: () -> Content
-
-    @Environment(\.koduTheme) private var T
-
-    var body: some View {
-        ZStack(alignment: .leading) {
-            content()
-                .background(isActive ? T.accentSofter : Color.clear)
-            if isActive {
-                Rectangle()
-                    .fill(T.accent)
-                    .frame(width: 2)
-                    .frame(maxHeight: .infinity)
-            }
-        }
-    }
-}
+// MARK: - Active row marker — removed
+//
+// `KActiveRowMarker` was deleted with zero call sites (verified by grep).
+// The active-selection signal is the ink hairline + `fillActive` treatment
+// shared with the Studio selected states.
 
 // MARK: - KModelName
 //
@@ -764,7 +702,7 @@ struct KActiveRowMarker<Content: View>: View {
 //
 // Usage:
 //   KModelName("ggml-org/SmolVLM2-500M-Video-Instruct-GGUF",
-//              font: T.display(17, .semibold), color: T.ink)
+//              font: T.sans(17, .semibold), color: T.ink)
 //   KModelName(model.displayName, font: T.mono(13, .semibold))
 //
 // For surfaces where vertical wrap is unsafe (toolbar pills, debug

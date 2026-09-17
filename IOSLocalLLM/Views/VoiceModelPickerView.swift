@@ -94,7 +94,7 @@ struct VoiceModelPickerView: View {
             }
         }
         .padding(12)
-        .kGlass(cornerRadius: 10, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
         .padding(.horizontal, 16)
     }
 
@@ -286,7 +286,7 @@ struct VoiceModelPickerView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .kGlass(cornerRadius: 8, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
         .padding(.horizontal, 16)
         .padding(.top, 12)
     }
@@ -302,7 +302,7 @@ struct VoiceCatalogDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text(entry.name).font(T.display(28, .bold)).foregroundColor(T.ink)
+                    Text(entry.name).font(T.sans(28, .semibold)).foregroundColor(T.ink)
                     Text(entry.summary).font(T.sans(15)).foregroundColor(T.ink2)
                     LabeledContent("Task", value: entry.task == .textToSpeech ? "Text to Speech" : "Speech Recognition")
                     LabeledContent("Support", value: entry.statusLabel)

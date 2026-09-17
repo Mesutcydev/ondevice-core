@@ -82,7 +82,7 @@ struct KeyboardToolbar: View {
                     }
                     .foregroundColor(T.ink2)
                     .padding(.horizontal, 9).padding(.vertical, 6)
-                    .kGlass(cornerRadius: 6, fallbackFill: T.surface2)
+                    .kGlass(cornerRadius: StudioRadius.small, fallbackFill: T.surface2)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Hide keyboard")
@@ -149,7 +149,7 @@ struct KeyboardToolbar: View {
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(T.ink2)
                 .frame(width: 34, height: 34)
-                .kGlass(cornerRadius: 6, fallbackFill: T.surface2)
+                .kGlass(cornerRadius: StudioRadius.small, fallbackFill: T.surface2)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)

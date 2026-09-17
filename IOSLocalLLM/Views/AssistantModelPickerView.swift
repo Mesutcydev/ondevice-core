@@ -318,7 +318,7 @@ struct AssistantModelPickerView: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .kGlass(cornerRadius: 22, fallbackFill: T.surface)
+            .kGlass(cornerRadius: StudioRadius.sheet, fallbackFill: T.surface)
         }
     }
 
@@ -441,7 +441,7 @@ struct AssistantModelPickerView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack(alignment: .center, spacing: 6) {
                             KModelName(model.displayName,
-                                       font: T.display(17, .semibold),
+                                       font: T.sans(17, .semibold),
                                        color: T.ink)
                             if model.id == assistant.activeModel.id,
                                assistant.state == .ready {
@@ -473,7 +473,7 @@ struct AssistantModelPickerView: View {
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .kGlass(cornerRadius: 22, fallbackFill: T.surface)
+                .kGlass(cornerRadius: StudioRadius.sheet, fallbackFill: T.surface)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -554,7 +554,7 @@ struct AssistantModelPickerView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             HStack(alignment: .center, spacing: 6) {
                                 KModelName(model.displayName,
-                                           font: T.display(17, .semibold),
+                                           font: T.sans(17, .semibold),
                                            color: T.ink)
                                 if model.id == assistant.activeModel.id,
                                    assistant.state == .ready {
@@ -615,7 +615,7 @@ struct AssistantModelPickerView: View {
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .kGlass(cornerRadius: 22, fallbackFill: T.surface)
+                .kGlass(cornerRadius: StudioRadius.sheet, fallbackFill: T.surface)
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
                         .stroke(isSelected ? T.accent.opacity(0.35) : Color.clear,
@@ -911,7 +911,7 @@ private struct ApplePrivateCloudPickerSection: View {
                             HStack(spacing: 6) {
                                 KModelName(
                                     ApplePrivateCloud.displayName,
-                                    font: T.display(17, .semibold),
+                                    font: T.sans(17, .semibold),
                                     color: T.ink
                                 )
                                 if isActive { KActivePill(text: "active") }
@@ -942,7 +942,7 @@ private struct ApplePrivateCloudPickerSection: View {
                     }
                     .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .kGlass(cornerRadius: 22, fallbackFill: T.surface)
+                    .kGlass(cornerRadius: StudioRadius.sheet, fallbackFill: T.surface)
                     .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 }
                 .buttonStyle(.plain)
@@ -1060,7 +1060,7 @@ private struct ApplePrivateCloudPrivacyDisclosureView: View {
                         .foregroundStyle(T.accent)
 
                     Text("Use Apple Private Cloud")
-                        .font(T.display(28, .semibold))
+                        .font(T.sans(28, .semibold))
                         .foregroundStyle(T.ink)
 
                     Text(

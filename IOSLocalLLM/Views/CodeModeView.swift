@@ -224,7 +224,7 @@ struct CodeModeView: View {
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .kGlass(cornerRadius: 14, fallbackFill: T.surface)
+                .kGlass(cornerRadius: StudioRadius.action, fallbackFill: T.surface)
             }
         }
     }
@@ -236,7 +236,7 @@ struct CodeModeView: View {
             Spacer()
         }
         .padding(12)
-        .kGlass(cornerRadius: 12, fallbackFill: T.surface2)
+        .kGlass(cornerRadius: StudioRadius.action, fallbackFill: T.surface2)
     }
 
     // MARK: - Bottom action bar

@@ -75,7 +75,7 @@ struct CoreAIModelsSectionView: View {
             }
         }
         .padding(16)
-        .kGlass(cornerRadius: 22, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.sheet, fallbackFill: T.surface)
         .confirmationDialog(
             "Remove this Core AI pack?",
             isPresented: Binding(

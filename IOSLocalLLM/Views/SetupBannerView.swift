@@ -69,7 +69,7 @@ struct SetupBannerView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .kGlass(cornerRadius: 8)
+            .kGlass(cornerRadius: StudioRadius.tile)
             .environment(\.colorScheme, .dark)
             .contentShape(Rectangle())
             .onTapGesture {

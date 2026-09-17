@@ -195,7 +195,7 @@ struct ModelDownloadCenterView: View {
             }
         }
         .padding(5)
-        .kGlass(cornerRadius: 15, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface)
         .padding(.horizontal, 16)
         .padding(.top, 18)
     }
@@ -426,7 +426,7 @@ struct ModelDownloadCenterView: View {
                 }
             }
             .padding(14)
-            .kGlass(cornerRadius: 8, fallbackFill: T.surface)
+            .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
         }
         .padding(.horizontal, 16)
         .padding(.top, 18)

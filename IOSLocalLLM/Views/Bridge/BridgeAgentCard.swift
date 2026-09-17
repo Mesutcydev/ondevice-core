@@ -47,7 +47,7 @@ struct BridgeAgentCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
-        .kGlass(cornerRadius: 14, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.action, fallbackFill: T.surface)
     }
 
     private var header: some View {

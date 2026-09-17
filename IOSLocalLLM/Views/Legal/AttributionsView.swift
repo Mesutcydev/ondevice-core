@@ -77,7 +77,7 @@ struct AttributionsView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .kGlass(cornerRadius: 8, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
         .padding(.horizontal, 16)
         .padding(.top, 14)
     }
@@ -100,7 +100,7 @@ struct AttributionsView: View {
                         body: "Qwen models permit commercial use with attribution under the Tongyi Qianwen License. Review the license before any commercial redistribution.")
             }
             .padding(14)
-            .kGlass(cornerRadius: 8, fallbackFill: T.surface)
+            .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
         }
         .padding(.horizontal, 16)
         .padding(.top, 18)

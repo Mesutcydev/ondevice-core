@@ -1377,7 +1377,7 @@ struct CodingAssistantView: View {
                 }
                 .foregroundColor(color)
                 .padding(.horizontal, 6).padding(.vertical, 3)
-                .kGlass(cornerRadius: 4,
+                .kGlass(cornerRadius: StudioRadius.spine,
                         tint: color.opacity(0.4),
                         fallbackFill: color.opacity(0.12),
                         fallbackStroke: color.opacity(0.4))
@@ -1438,7 +1438,7 @@ struct CodingAssistantView: View {
                     }
                     .foregroundColor(T.warn)
                     .padding(.horizontal, 7).padding(.vertical, 3)
-                    .kGlass(cornerRadius: 4,
+                    .kGlass(cornerRadius: StudioRadius.spine,
                             tint: T.warn.opacity(0.3),
                             fallbackFill: T.warn.opacity(0.12),
                             fallbackStroke: T.warn.opacity(0.3))
@@ -1472,7 +1472,7 @@ struct CodingAssistantView: View {
                 }
                 .foregroundColor(T.accent)
                 .padding(.horizontal, 5).padding(.vertical, 3)
-                .kGlass(cornerRadius: 4,
+                .kGlass(cornerRadius: StudioRadius.spine,
                         tint: T.accent.opacity(0.3),
                         fallbackFill: T.accentSoft,
                         fallbackStroke: .clear)

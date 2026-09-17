@@ -108,7 +108,7 @@ struct KnowledgeBaseView: View {
             .disabled(!kb.isAvailable)
         }
         .padding(14)
-        .kGlass(cornerRadius: 16, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface)
     }
 
     private var addStrip: some View {
@@ -126,7 +126,7 @@ struct KnowledgeBaseView: View {
         Button(action: { action(); HapticManager.impact(.light) }) {
             HStack(spacing: 6) {
                 Image(systemName: icon)
-                Text(label).font(T.display(15, .semibold))
+                Text(label).font(T.sans(15, .semibold))
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
@@ -192,7 +192,7 @@ struct KnowledgeBaseView: View {
             .buttonStyle(.plain)
         }
         .padding(12)
-        .kGlass(cornerRadius: 14, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.action, fallbackFill: T.surface)
     }
 
     // MARK: - Paste sheet

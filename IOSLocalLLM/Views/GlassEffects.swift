@@ -96,7 +96,8 @@ extension View {
             shape: shape,
             role: interactive ? .button : .capsule,
             fill: fallbackFill,
-            stroke: fallbackStroke
+            stroke: fallbackStroke,
+            tint: tint
         ))
     }
 
@@ -108,7 +109,13 @@ extension View {
         fallbackFill: Color = .clear,
         fallbackStroke: Color = .clear
     ) -> some View {
-        glassSurface(.card, cornerRadius: cornerRadius)
+        modifier(ShapeGlassSurfaceModifier(
+            shape: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous),
+            role: .card,
+            fill: fallbackFill,
+            stroke: fallbackStroke,
+            tint: tint
+        ))
     }
 
     /// Capsule variant of `kGlass` — kept for call-site compatibility.
@@ -122,7 +129,8 @@ extension View {
             shape: RoundedRectangle(cornerRadius: StudioRadius.chip, style: .continuous),
             role: .capsule,
             fill: fallbackFill,
-            stroke: fallbackStroke
+            stroke: fallbackStroke,
+            tint: tint
         ))
     }
 }
@@ -132,13 +140,20 @@ private struct ShapeGlassSurfaceModifier<S: InsettableShape>: ViewModifier {
     let role: GlassRole
     let fill: Color
     let stroke: Color
+    /// Surface tint. This used to be accepted and silently dropped — the
+    /// renderer's fill resolution never read it, so every tinted surface
+    /// (`KActivePill`, `KSection(tinted:)`, `LiquidGlassPill(active:)`)
+    /// rendered untinted. Tint now composites OVER the role's resting fill
+    /// so interactive roles keep their base tone beneath the tint.
+    let tint: Color?
 
     @Environment(\.koduTheme) private var T
 
     func body(content: Content) -> some View {
-        let resolvedFill: Color = fill != .clear
+        let restingFill: Color = fill != .clear
             ? fill
             : (role.interactive ? T.studio.fillActive : .clear)
+        let resolvedFill: Color = tint ?? restingFill
         let resolvedStroke: Color = stroke != .clear ? stroke : T.studio.rule
         content
             .background(resolvedFill, in: shape)

@@ -1,15 +1,26 @@
 import SwiftUI
 
 // MARK: - VoiceLibraryView
-// The Voice tab — design screen 04 ("Voice · Browse & pick speech models")
-// from the local LLM foundation handoff, rebuilt in KoduTheme.
+// The Voice tab, in the Studio grammar.
 //
-// This replaces the bare conversation orb as the Voice tab's landing surface:
-// it's a browsable library of the on-device speech voices for the active
-// engine, with an "active voice" hero, locale filters, per-voice preview, and
-// a "Clone your voice" row that surfaces the feature as Coming soon (it has no
-// on-device backend yet). The live voice conversation is NOT removed — it's one
-// tap away via the "Start a conversation" button.
+// One page surface (paper), blocks in the order the questions get asked —
+// the same structure as Home:
+//
+//   1. Masthead — mono eyebrow + 32pt title
+//   2. Active voice — raised hero with mono facts, the one filled Play
+//      button, and the equalizer as a live instrument
+//   3. Talk — the primary action of the tab (start a conversation)
+//   4. Engine + Library — hairline rows like Home's Continue section
+//
+// The prior version read as a different product: accent eyebrow, bold
+// display title, tinted glass hero card, filled accent chips, pink
+// equalizer. Voice is a *utility* tab — the Studio language (ink
+// hierarchy, mono facts, hairline separation, one filled action) is what
+// "the speech part of the same app" should look like.
+//
+// The live voice conversation is NOT removed — it is the tab's primary
+// action. Engine switching, per-voice preview, locale filters, search,
+// and the Clone-your-voice coming-soon row are all preserved.
 struct VoiceLibraryView: View {
     /// True only while the Voice tab is the selected tab. Threaded in from
     /// ContentView (`selectedTab == .voice`) because iOS 18 `TabView` does NOT
@@ -70,23 +81,25 @@ struct VoiceLibraryView: View {
         voices.filter { v in
             (query.isEmpty || v.name.localizedCaseInsensitiveContains(query)
                 || (v.description ?? "").localizedCaseInsensitiveContains(query))
-            && matches(v)
+                && matches(v)
         }
     }
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                header
-                if let c = current { activeHero(c) }
-                enginePicker
-                conversationCTA
-                chips
-                library
+            VStack(alignment: .leading, spacing: 0) {
+                masthead
+                if let c = current {
+                    activeHero(c).padding(.top, 22)
+                }
+                talkSection.padding(.top, 26)
+                engineRow.padding(.top, 22)
+                filterRow.padding(.top, 26)
+                library.padding(.top, 8)
             }
-            .padding(.horizontal, 18)
-            .padding(.top, 8)
-            .padding(.bottom, 28)
+            .padding(.horizontal, StudioSpacing.xl)
+            .padding(.top, 12)
+            .padding(.bottom, 40)
         }
         .background(StudioPageBackground())
         .scrollIndicators(.hidden)
@@ -111,282 +124,415 @@ struct VoiceLibraryView: View {
         }
     }
 
-    // MARK: Header
+    // MARK: - 1 · Masthead
 
-    private var header: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(loc.t("On-device speech").uppercased())
-                    .font(T.sans(13, .semibold)).tracking(0.7)
-                    .foregroundColor(T.accent)
-                Text(loc.t("Voices"))
-                    .font(T.display(32, .bold)).foregroundColor(T.ink)
-            }
-            Spacer()
+    private var masthead: some View {
+        let S = T.studio
+        return VStack(alignment: .leading, spacing: 6) {
+            StudioMonoLabel(text: loc.t("on-device speech"), size: 11, tracking: 0.9)
+            Text(loc.t("Voices"))
+                .font(S.sans(32, .semibold))
+                .tracking(-0.8)
+                .foregroundStyle(S.ink)
         }
-        .padding(.top, 6)
-
-        // (Search is provided inline below via the field in `chips`.)
     }
 
-    // MARK: Active-voice hero
+    // MARK: - 2 · Active hero
+    //
+    // The voice you're using, stated as a fact block: mono eyebrow, the name
+    // as the headline, the engine + locale as mono facts between hairlines.
+    // The Play button is the one filled control. The equalizer is the
+    // instrument's live meter — monochrome ink at rest, energised into the
+    // accent only while a preview is actually playing.
 
     private func activeHero(_ v: VoiceOption) -> some View {
-        VStack(spacing: 14) {
-            HStack(spacing: 13) {
+        let S = T.studio
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: StudioSpacing.m) {
                 // Same identity tile as the rows, scaled up — so the voice you
                 // are using looks like the one you picked out of the list.
-                VStack(spacing: 2) {
+                VStack(spacing: 1) {
                     Text(monogram(for: v))
-                        .font(T.mono(20, .semibold))
-                        .foregroundColor(T.bg)
+                        .font(S.mono(18, .semibold))
+                        .foregroundStyle(S.ink)
                     Text(regionCode(v.locale))
-                        .font(T.mono(9, .medium))
-                        .tracking(0.5)
-                        .foregroundColor(T.bg.opacity(0.75))
+                        .font(S.mono(8, .medium))
+                        .tracking(0.4)
+                        .foregroundStyle(S.ink3)
                 }
-                .frame(width: 52, height: 52)
-                .background(
-                    T.accentStrong,
-                    in: RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous)
-                )
+                .frame(width: 46, height: 46)
+                .background(S.fillActive,
+                            in: RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous))
                 .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(loc.t("NOW USING"))
-                        .font(T.sans(11, .bold)).tracking(0.6).foregroundColor(T.accentStrong)
-                    Text(v.name).font(T.display(20, .bold)).foregroundColor(T.ink).lineLimit(1)
-                    Text(voiceSubtitle(v)).font(T.sans(13)).foregroundColor(T.ink2).lineLimit(1)
+                VStack(alignment: .leading, spacing: 3) {
+                    StudioMonoLabel(text: loc.t("now using"), size: 11, tracking: 0.9)
+                    Text(v.name)
+                        .font(S.sans(21, .semibold))
+                        .tracking(-0.3)
+                        .foregroundStyle(S.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
-                Spacer(minLength: 6)
-
-                Button(action: { preview(v) }) {
-                    ZStack {
-                        Circle().fill(T.ink)
-                        Image(systemName: voice.isPlaying ? "stop.fill" : "play.fill")
-                            .font(.system(size: 16, weight: .bold)).foregroundColor(T.bg)
-                            .offset(x: voice.isPlaying ? 0 : 1)
-                    }
-                    .frame(width: 46, height: 46)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(loc.t("Preview voice"))
+                Spacer(minLength: StudioSpacing.s)
             }
 
-            // Always-on animated equalizer (design 04 hero) — calmer when idle,
-            // more energetic while a preview is playing.
             EqualizerBars(playing: voice.isPlaying, active: isActive && tabVisible)
-                .frame(minHeight: 30)
-        }
-        .padding(16)
-        .kClearGlass(
-            in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous),
-            tint: T.accent.opacity(0.08),
-            fallbackFill: T.surface,
-            fallbackStroke: T.rule
-        )
-    }
+                .padding(.top, 14)
+                .accessibilityHidden(true)
 
-    // MARK: Conversation entry (keeps the live orb reachable)
+            StudioHairline(color: S.rule2).padding(.top, 14)
 
-    private var conversationCTA: some View {
-        Button(action: { HapticManager.impact(.medium); showConversation = true }) {
-            HStack(spacing: 11) {
-                Image(systemName: "mic.fill").font(.system(size: 16, weight: .semibold))
-                Text(loc.t("Start a voice conversation")).font(T.sans(15, .semibold))
-                Spacer()
-                Image(systemName: "arrow.right").font(.system(size: 14, weight: .semibold))
+            HStack(spacing: 0) {
+                metric(loc.t("engine"), voice.currentEngineKind.displayName)
+                metric(loc.t("locale"), localeLabel(v.locale))
+                Spacer(minLength: 0)
+                previewButton
             }
-            .foregroundColor(T.accentStrong)
-            .padding(.horizontal, 16).padding(.vertical, 14)
-            .kClearGlass(
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous),
-                tint: T.accentStrong.opacity(0.72),
-                interactive: true,
-                fallbackFill: T.accentStrong,
-                fallbackStroke: T.accent.opacity(0.35)
-            )
+            .padding(.vertical, 13)
         }
-        .buttonStyle(.plain)
+        .padding(StudioSpacing.l)
+        // The same raised-card treatment as the Home hero and the composer:
+        // the one object on this page the user acts on.
+        .background(
+            S.surfaceRaised,
+            in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+                .strokeBorder(S.strokeRest, lineWidth: 1)
+        )
+        .shadow(color: S.shadowAmbient, radius: 16, y: 5)
+        .shadow(color: S.shadowKey, radius: 2, y: 1)
+        .accessibilityElement(children: .contain)
     }
 
-    // MARK: Voice engine selector
+    /// Mono label-over-value stack — the Home device-strip metric grammar.
+    private func metric(_ label: String, _ value: String) -> some View {
+        let S = T.studio
+        return VStack(alignment: .leading, spacing: 3) {
+            StudioMonoLabel(text: label, size: 9, tracking: 1.0)
+            Text(value)
+                .font(S.mono(13, .medium))
+                .foregroundStyle(S.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .padding(.trailing, 20)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
+    }
+
+    private var previewButton: some View {
+        let S = T.studio
+        return Button {
+            if let c = current { preview(c) }
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: voice.isPlaying ? "stop.fill" : "play.fill")
+                    .font(.system(size: 11, weight: .bold))
+                Text(voice.isPlaying ? loc.t("Stop") : loc.t("Preview"))
+                    .font(S.sans(13, .medium))
+            }
+            .foregroundStyle(S.paper)
+            .padding(.horizontal, 16)
+            .frame(minHeight: 34)
+            .background(S.ink, in: RoundedRectangle(cornerRadius: StudioRadius.glyph,
+                                                    style: .continuous))
+        }
+        .buttonStyle(StudioPressStyle())
+        .accessibilityLabel(voice.isPlaying ? loc.t("Stop preview") : loc.t("Preview voice"))
+    }
+
+    // MARK: - 3 · Talk
+    //
+    // The tab's primary action, in Home's create-row grammar: glyph tile,
+    // title + subtitle, one filled button.
+
+    private var talkSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sectionHeader(loc.t("talk"))
+            HStack(spacing: StudioSpacing.m) {
+                glyphTile("waveform")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(loc.t("Start a voice conversation"))
+                        .font(T.studio.sans(15, .medium))
+                        .foregroundStyle(T.studio.ink)
+                    Text(loc.t("Hands-free · listens and answers on device"))
+                        .font(T.studio.sans(13))
+                        .foregroundStyle(T.studio.ink3)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: StudioSpacing.s)
+                StudioPrimaryButton(title: loc.t("Start"), action: startConversation)
+                    .frame(width: 104)
+            }
+            .padding(.vertical, 12)
+            StudioHairline(color: T.studio.rule2)
+        }
+    }
+
+    private func startConversation() {
+        HapticManager.impact(.medium)
+        showConversation = true
+    }
+
+    // MARK: Engine row
 
     // Lets the user switch the speech engine (Apple System / KittenTTS /
     // Kokoro) — the library below shows that engine's voices. Opens the
     // existing one-tap engine picker.
-    private var enginePicker: some View {
-        Button(action: { HapticManager.impact(.light); showEnginePicker = true }) {
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accentSoft)
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 16, weight: .semibold)).foregroundColor(T.accent)
+    private var engineRow: some View {
+        Button {
+            HapticManager.impact(.light)
+            showEnginePicker = true
+        } label: {
+            VStack(spacing: 0) {
+                HStack(spacing: StudioSpacing.m) {
+                    glyphTile("slider.horizontal.3")
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(loc.t("Voice engine"))
+                            .font(T.studio.sans(15, .medium))
+                            .foregroundStyle(T.studio.ink)
+                        StudioMonoLabel(text: voice.currentEngineKind.displayName,
+                                        size: 11, tracking: 0.4)
+                    }
+                    Spacer(minLength: StudioSpacing.s)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12))
+                        .foregroundStyle(T.studio.chevron)
                 }
-                .frame(width: 38, height: 38)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(loc.t("Voice engine").uppercased())
-                        .font(T.sans(11, .bold)).tracking(0.4).foregroundColor(T.ink3)
-                    Text(voice.currentEngineKind.displayName)
-                        .font(T.sans(15, .semibold)).foregroundColor(T.ink)
-                }
-                Spacer(minLength: 6)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold)).foregroundColor(T.ink4)
+                .padding(.vertical, 12)
+                StudioHairline(color: T.studio.rule2)
             }
-            .padding(14)
-            .kClearGlass(
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous),
-                interactive: true,
-                fallbackFill: T.surface,
-                fallbackStroke: T.rule
-            )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: Filter chips + search
+    // MARK: - Filter row + search
+    //
+    // Studio chip grammar: hairline outline at rest, ink fill + paper text
+    // when selected. The search field is a hairline-bounded field, not a card.
 
-    private var chips: some View {
-        VStack(spacing: 11) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(Filter.allCases) { f in
-                        let on = filter == f
-                        Button(action: { HapticManager.impact(.light); filter = f }) {
-                            Text(loc.t(f.label))
-                                .font(T.sans(13, on ? .semibold : .medium))
-                                .foregroundColor(on ? .white : T.ink2)
-                                .padding(.horizontal, 15).padding(.vertical, 7)
-                                .kClearGlass(
-                                    in: RoundedRectangle(cornerRadius: 10, style: .continuous),
-                                    tint: on ? T.accent.opacity(0.72) : nil,
-                                    interactive: true,
-                                    fallbackFill: on ? T.accent : T.surface,
-                                    fallbackStroke: T.rule
-                                )
-                        }
-                        .buttonStyle(.plain)
+    private var filterRow: some View {
+        let S = T.studio
+        return VStack(alignment: .leading, spacing: 0) {
+            sectionHeader(loc.t("library"))
+            HStack(spacing: 6) {
+                ForEach(Filter.allCases) { f in
+                    let on = filter == f
+                    Button {
+                        HapticManager.impact(.light)
+                        withAnimation(.easeOut(duration: 0.15)) { filter = f }
+                    } label: {
+                        Text(loc.t(f.label))
+                            .font(S.sans(13, on ? .medium : .regular))
+                            .foregroundStyle(on ? S.paper : S.ink3)
+                            .padding(.horizontal, 13)
+                            .frame(minHeight: 32)
+                            .background(
+                                on ? S.ink : .clear,
+                                in: RoundedRectangle(cornerRadius: StudioRadius.chip,
+                                                      style: .continuous)
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: StudioRadius.chip,
+                                                  style: .continuous)
+                                    .strokeBorder(on ? S.ink : S.ink.opacity(0.14), lineWidth: 1)
+                            )
                     }
+                    .buttonStyle(StudioPressStyle())
+                    .accessibilityAddTraits(on ? .isSelected : [])
                 }
-                .padding(.horizontal, 2)
+                Spacer(minLength: 0)
             }
+            .padding(.bottom, StudioSpacing.m)
+
             HStack(spacing: 9) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 15, weight: .regular)).foregroundColor(T.ink3)
+                    .font(.system(size: 14))
+                    .foregroundStyle(S.ink3)
                 TextField(loc.t("Search voices"), text: $query)
-                    .font(T.sans(15)).foregroundColor(T.ink).tint(T.accent)
+                    .font(S.sans(15))
+                    .foregroundStyle(S.ink)
+                    .tint(S.accent)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
                 if !query.isEmpty {
-                    Button(action: { query = "" }) {
-                        Image(systemName: "xmark.circle.fill").foregroundColor(T.ink4)
-                    }.buttonStyle(.plain)
+                    Button {
+                        query = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(S.ink4)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(loc.t("Clear search"))
                 }
             }
-            .padding(.horizontal, 14).padding(.vertical, 11)
-            .kClearGlass(
-                in: RoundedRectangle(cornerRadius: 16, style: .continuous),
-                fallbackFill: T.surface,
-                fallbackStroke: T.rule
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+            .overlay(
+                RoundedRectangle(cornerRadius: StudioRadius.chip, style: .continuous)
+                    .strokeBorder(S.ink.opacity(0.14), lineWidth: 1)
             )
         }
     }
 
-    // MARK: Library list
+    // MARK: - Library list
 
     private var library: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            Text(loc.t("Library").uppercased())
-                .font(T.sans(13, .semibold)).tracking(0.3).foregroundColor(T.ink2)
-                .padding(.leading, 4).padding(.top, 4)
-
-            LazyVStack(spacing: 0) {
-                if filter == .cloned {
-                    clonedEmptyRow
-                } else if filtered.isEmpty {
-                    Text(loc.t("No voices match."))
-                        .font(T.sans(14)).foregroundColor(T.ink3)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(15)
-                } else {
-                    ForEach(filtered, id: \.id) { v in
-                        voiceRow(v, isLast: false)
-                    }
+        VStack(alignment: .leading, spacing: 0) {
+            if filter == .cloned {
+                clonedEmptyRow
+            } else if filtered.isEmpty {
+                emptyLibraryRow
+            } else {
+                ForEach(filtered, id: \.id) { v in
+                    voiceRow(v, isCurrent: v.id == current?.id)
                 }
-                cloneRow   // always the last row
             }
-            .kClearGlass(
-                in: RoundedRectangle(cornerRadius: 20, style: .continuous),
-                fallbackFill: T.surface,
-                fallbackStroke: T.rule
-            )
+            cloneRow   // always the last row
         }
     }
 
-    private func voiceRow(_ v: VoiceOption, isLast: Bool) -> some View {
-        let isCurrent = v.id == current?.id
-        return Button(action: { preview(v) }) {
-            HStack(spacing: 12) {
-                voiceThumbnail(v, isCurrent: isCurrent)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(v.name).font(T.sans(15, .semibold)).foregroundColor(T.ink).lineLimit(1)
-                    Text(voiceSubtitle(v)).font(T.sans(12)).foregroundColor(T.ink3).lineLimit(1)
+    private func voiceRow(_ v: VoiceOption, isCurrent: Bool) -> some View {
+        let S = T.studio
+        return Button {
+            preview(v)
+        } label: {
+            VStack(spacing: 0) {
+                HStack(spacing: StudioSpacing.m) {
+                    voiceThumbnail(v, isCurrent: isCurrent)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(v.name)
+                            .font(S.sans(15, isCurrent ? .medium : .regular))
+                            .foregroundStyle(S.ink)
+                            .lineLimit(1)
+                        Text(voiceSubtitle(v))
+                            .font(S.sans(13))
+                            .foregroundStyle(S.ink3)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 6)
+                    if isCurrent {
+                        StudioMonoLabel(text: loc.t("in use"), size: 10, tracking: 0.5,
+                                        color: S.ink2)
+                    }
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(S.ink4)
+                        .frame(width: 24, height: 24)
+                        .accessibilityHidden(true)
                 }
-                Spacer(minLength: 6)
-                ZStack {
-                    Circle().fill(isCurrent ? T.accent : T.accentSoft).frame(width: 36, height: 36)
-                    Image(systemName: isCurrent ? "checkmark" : "play.fill")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(isCurrent ? .white : T.accent)
-                        .offset(x: isCurrent ? 0 : 1)
-                }
+                .padding(.vertical, 12)
+                StudioHairline(color: S.rule2)
             }
-            .padding(.horizontal, 15).padding(.vertical, 11)
             .contentShape(Rectangle())
-            .overlay(alignment: .bottom) {
-                Rectangle().fill(T.rule).frame(height: 0.5).padding(.leading, 59)
-            }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(v.name), \(voiceSubtitle(v))")
+        .accessibilityHint(loc.t("Preview voice"))
     }
 
     // "Clone your voice" — Coming soon (big feature, no on-device backend yet)
     private var cloneRow: some View {
-        Button(action: { HapticManager.impact(.light); showCloneSoon = true }) {
-            HStack(spacing: 12) {
-                ZStack {
-                    Circle().strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-                        .foregroundColor(T.accent)
-                    Image(systemName: "mic.fill").font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(T.accent)
+        let S = T.studio
+        return Button {
+            HapticManager.impact(.light)
+            showCloneSoon = true
+        } label: {
+            VStack(spacing: 0) {
+                HStack(spacing: StudioSpacing.m) {
+                    Image(systemName: "mic.badge.plus")
+                        .font(.system(size: 14))
+                        .foregroundStyle(S.ink2)
+                        .frame(width: 34, height: 34)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: StudioRadius.glyph,
+                                              style: .continuous)
+                                .strokeBorder(S.rule2, lineWidth: 1)
+                        )
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(loc.t("Clone your voice"))
+                            .font(S.sans(15, .medium))
+                            .foregroundStyle(S.ink)
+                        Text(loc.t("Record 30s · trained on-device"))
+                            .font(S.sans(13))
+                            .foregroundStyle(S.ink3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 6)
+                    StudioMonoLabel(text: loc.t("soon"), size: 10, tracking: 0.5)
                 }
-                .frame(width: 38, height: 38)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(loc.t("Clone your voice"))
-                        .font(T.sans(15, .semibold)).foregroundColor(T.accent)
-                    Text(loc.t("Record 30s · trained on-device"))
-                        .font(T.sans(12)).foregroundColor(T.ink3)
-                }
-                Spacer(minLength: 6)
-                Text(loc.t("Coming soon"))
-                    .font(T.sans(11, .bold)).foregroundColor(T.ink3)
-                    .padding(.horizontal, 9).padding(.vertical, 4)
-                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.surface3))
+                .padding(.vertical, 12)
+                StudioHairline(color: S.rule2)
             }
-            .padding(.horizontal, 15).padding(.vertical, 13)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
 
-    private var clonedEmptyRow: some View {
-        VStack(spacing: 6) {
-            Text(loc.t("No cloned voices yet"))
-                .font(T.sans(15, .semibold)).foregroundColor(T.ink)
-            Text(loc.t("Clone your voice to add one — coming soon."))
-                .font(T.sans(13)).foregroundColor(T.ink3).multilineTextAlignment(.center)
+    private var emptyLibraryRow: some View {
+        let S = T.studio
+        return VStack(spacing: 0) {
+            HStack(spacing: StudioSpacing.m) {
+                glyphTile("waveform.slash")
+                Text(loc.t("No voices match."))
+                    .font(S.sans(15))
+                    .foregroundStyle(S.ink2)
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 13)
+            StudioHairline(color: S.rule2)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 18).padding(.horizontal, 15)
+    }
+
+    private var clonedEmptyRow: some View {
+        let S = T.studio
+        return VStack(spacing: 0) {
+            HStack(spacing: StudioSpacing.m) {
+                glyphTile("mic.badge.plus")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(loc.t("No cloned voices yet"))
+                        .font(S.sans(15))
+                        .foregroundStyle(S.ink2)
+                    Text(loc.t("Clone your voice to add one — coming soon."))
+                        .font(S.sans(13))
+                        .foregroundStyle(S.ink3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 13)
+            StudioHairline(color: S.rule2)
+        }
+    }
+
+    // MARK: Reusable bits
+
+    /// Mono eyebrow above a hairline — the section marker used throughout.
+    private func sectionHeader(_ title: String) -> some View {
+        let S = T.studio
+        return VStack(alignment: .leading, spacing: StudioSpacing.s) {
+            StudioMonoLabel(text: title, size: 11, tracking: 0.9)
+            StudioHairline(color: S.rule2)
+        }
+        .padding(.bottom, 2)
+    }
+
+    private func glyphTile(_ symbol: String) -> some View {
+        Image(systemName: symbol)
+            .font(.system(size: 14))
+            .foregroundStyle(T.studio.ink)
+            .frame(width: 34, height: 34)
+            .background(T.studio.fillActive,
+                        in: RoundedRectangle(cornerRadius: StudioRadius.glyph,
+                                             style: .continuous))
+            .accessibilityHidden(true)
     }
 
     // MARK: Helpers
@@ -410,25 +556,26 @@ struct VoiceLibraryView: View {
 
     /// Identity tile for a voice row.
     ///
-    /// This used to be a bare `Circle().fill(fillActive)` with nothing inside —
-    /// an empty grey disc beside every name, which made the whole library read
-    /// as unloaded placeholder art. A voice has no artwork to show, so the tile
-    /// carries what it does have: its initial, plus the region code underneath
-    /// so two voices sharing a letter stay distinguishable.
+    /// A voice has no artwork to show, so the tile carries what it does have:
+    /// its initial, plus the region code underneath so two voices sharing a
+    /// letter stay distinguishable. The selected voice reads as ink + a
+    /// hairline emphasis rather than an accent fill; unselected tiles sit on
+    /// the quiet `fillActive` like every other glyph in the app.
     private func voiceThumbnail(_ v: VoiceOption, isCurrent: Bool) -> some View {
+        let S = T.studio
         let shape = RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
         return VStack(spacing: 1) {
             Text(monogram(for: v))
-                .font(T.mono(14, .semibold))
-                .foregroundColor(isCurrent ? T.bg : T.studio.ink)
+                .font(S.mono(14, .semibold))
+                .foregroundStyle(S.ink)
             Text(regionCode(v.locale))
-                .font(T.mono(7, .medium))
+                .font(S.mono(7, .medium))
                 .tracking(0.4)
-                .foregroundColor(isCurrent ? T.bg.opacity(0.75) : T.ink3)
+                .foregroundStyle(S.ink3)
         }
-        .frame(width: 38, height: 38)
-        .background(isCurrent ? T.accentStrong : T.studio.fillActive, in: shape)
-        .overlay(shape.strokeBorder(isCurrent ? .clear : T.rule, lineWidth: 1))
+        .frame(width: 34, height: 34)
+        .background(isCurrent ? S.ink.opacity(0.16) : S.fillActive, in: shape)
+        .overlay(shape.strokeBorder(isCurrent ? S.ink.opacity(0.3) : .clear, lineWidth: 1))
         // The name and locale are already announced by the row's title and
         // subtitle; repeating them here would make VoiceOver read each row
         // twice.
@@ -463,28 +610,15 @@ struct VoiceLibraryView: View {
             ?? Locale.current.localizedString(forLanguageCode: String(code.prefix(2)))
             ?? code
     }
-
-    // Stable per-voice avatar gradient (hash the id so colours are consistent).
-    private func avatarColors(for v: VoiceOption) -> [Color] {
-        let palettes: [[Color]] = [
-            [Color(red: 1, green: 0.70, blue: 0.42), Color(red: 1, green: 0.42, blue: 0.21)],
-            [Color(red: 0.42, green: 0.66, blue: 1), Color(red: 0.24, green: 0.36, blue: 1)],
-            [Color(red: 0.36, green: 0.88, blue: 0.75), Color(red: 0.06, green: 0.64, blue: 0.50)],
-            [Color(red: 0.72, green: 0.61, blue: 1), Color(red: 0.43, green: 0.29, blue: 0.84)],
-            [T.roseHi, T.accentStrong]
-        ]
-        // Stable, crash-safe index (abs(Int.min) would trap).
-        let idx = ((v.id.hashValue % palettes.count) + palettes.count) % palettes.count
-        return palettes[idx]
-    }
 }
 
 // MARK: - EqualizerBars
-// Always-on animated equalizer for the "now using" hero (design 04). Uses
-// TimelineView so it animates continuously while the Voice tab is on screen
-// (SwiftUI pauses the timeline when the tab is hidden, so there's no
-// background cost). Bars cycle through pink shades like the handoff and run
-// calmer when idle, more energetic while a preview is playing.
+// The hero's live meter. Monochrome ink bars at rest (Studio grammar: colour
+// is reserved for state, and playback IS the state — the bars energise into
+// the accent while a preview plays rather than cycling pink permanently).
+// Uses TimelineView so it animates continuously while the Voice tab is on
+// screen (SwiftUI pauses the timeline when the tab is hidden, so there's no
+// background cost).
 private struct EqualizerBars: View {
     var playing: Bool = false
     /// False when the Voice tab is offscreen — freezes the animation. iOS 18
@@ -493,7 +627,7 @@ private struct EqualizerBars: View {
     var active: Bool = true
     @Environment(\.koduTheme) private var T
     var body: some View {
-        let shades = [T.accent, T.roseHi, T.accent.opacity(0.6)]
+        let S = T.studio
         let speed = playing ? 6.0 : 3.2
         let floor = playing ? 0.22 : 0.30
         let amp   = playing ? 0.78 : 0.55
@@ -508,9 +642,9 @@ private struct EqualizerBars: View {
                 ForEach(0..<13, id: \.self) { i in
                     let phase = Double(i) * 0.55
                     let h = active ? floor + amp * (0.5 + 0.5 * sin(t * speed + phase)) : 0.5
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(shades[i % shades.count])
-                        .frame(height: CGFloat(30 * h))
+                    RoundedRectangle(cornerRadius: 2, style: .continuous)
+                        .fill(playing ? S.accent : S.ink.opacity(0.55))
+                        .frame(width: 3, height: CGFloat(30 * h))
                 }
             }
             .frame(maxWidth: .infinity)

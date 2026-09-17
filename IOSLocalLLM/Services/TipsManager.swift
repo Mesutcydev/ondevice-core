@@ -89,7 +89,7 @@ struct TipBubble: View {
                     .accessibilityLabel("Dismiss tip")
                 }
                 .padding(10)
-                .kGlass(cornerRadius: 8, fallbackFill: T.surface)
+                .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
 
                 if arrow == .bottom { arrowShape }
             }

@@ -89,7 +89,7 @@ struct ImageGenerationView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
                         Text(m.displayName)
-                            .font(T.display(16, .semibold))
+                            .font(T.sans(16, .semibold))
                             .foregroundColor(T.ink)
                         if installed {
                             Text("installed")
@@ -143,7 +143,7 @@ struct ImageGenerationView: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .fill(Color.clear)
                 .aspectRatio(1, contentMode: .fit)
-                .kGlass(cornerRadius: 20, fallbackFill: T.surface)
+                .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface)
 
             if let img = svc.image {
                 Image(uiImage: img)
@@ -254,7 +254,7 @@ struct ImageGenerationView: View {
             }
         }
         .padding(14)
-        .kGlass(cornerRadius: 16, fallbackFill: T.surface.opacity(0.6))
+        .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface.opacity(0.6))
     }
 
     // MARK: - Generate
@@ -281,7 +281,7 @@ struct ImageGenerationView: View {
                         HapticManager.impact(.medium)
                     } label: {
                         Text("Stop")
-                            .font(T.display(16, .semibold))
+                            .font(T.sans(16, .semibold))
                             .foregroundColor(T.bad)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -301,7 +301,7 @@ struct ImageGenerationView: View {
                             Image(systemName: "sparkles")
                             Text(svc.isInstalled(model) ? "Generate" : "Download & Generate")
                         }
-                        .font(T.display(16, .semibold))
+                        .font(T.sans(16, .semibold))
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)

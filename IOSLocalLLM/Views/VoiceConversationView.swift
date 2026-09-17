@@ -660,7 +660,7 @@ struct VoiceConversationView: View {
         }
         .padding()
         .frame(maxWidth: .infinity)
-        .kGlass(cornerRadius: 14, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.action, fallbackFill: T.surface)
     }
 
     // MARK: - Control dock

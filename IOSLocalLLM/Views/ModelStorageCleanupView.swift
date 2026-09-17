@@ -213,7 +213,7 @@ private struct ModelStorageCleanupHeader: View {
         VStack(alignment: .leading, spacing: 10) {
             KCaption(text: "KEEP WHAT YOU USE", color: T.accent)
             Text("Models are stored separately from the app")
-                .font(T.display(24, .semibold))
+                .font(T.sans(24, .semibold))
                 .foregroundColor(T.ink)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Select the models you want to keep. Required and currently active models start selected; everything else can be removed in one step.")
@@ -229,7 +229,7 @@ private struct ModelStorageCleanupHeader: View {
             .foregroundColor(T.ink3)
         }
         .padding(16)
-        .kGlass(cornerRadius: 20, fallbackFill: T.surface, fallbackStroke: T.rule)
+        .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface, fallbackStroke: T.rule)
     }
 }
 
@@ -303,7 +303,7 @@ private struct ModelStorageCleanupRow: View {
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .kGlass(cornerRadius: 18, fallbackFill: T.surface, fallbackStroke: T.rule)
+            .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface, fallbackStroke: T.rule)
         }
         .buttonStyle(.plain)
         .disabled(item.isRequired)
@@ -351,7 +351,7 @@ private struct ModelPartialDownloadCleanupRow: View {
                     .foregroundColor(isSelected ? T.warn : T.ink3)
             }
             .padding(14)
-            .kGlass(cornerRadius: 18, fallbackFill: T.surface, fallbackStroke: T.rule)
+            .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface, fallbackStroke: T.rule)
         }
         .buttonStyle(.plain)
     }

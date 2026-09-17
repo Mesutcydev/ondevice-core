@@ -137,7 +137,7 @@ struct VisualModelComparisonView: View {
                         KMono(text: "pick an image to compare", size: 11, color: T.ink3)
                     }
                 }
-                .kGlass(cornerRadius: 8, fallbackFill: T.surface)
+                .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
             }
             // Snapshot main-actor state (image, theme) into locals so
             // the PhotosPicker label closure — which Swift 6 treats as
@@ -174,7 +174,7 @@ struct VisualModelComparisonView: View {
                 .foregroundColor(T.ink)
                 .lineLimit(2...4)
                 .padding(8)
-                .kGlass(cornerRadius: 6, fallbackFill: T.surface2)
+                .kGlass(cornerRadius: StudioRadius.small, fallbackFill: T.surface2)
         }
     }
 
@@ -193,7 +193,7 @@ struct VisualModelComparisonView: View {
         }
         .tint(T.accent)
         .padding(10)
-        .kGlass(cornerRadius: 8, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
     }
 
     // MARK: - Voting
@@ -229,7 +229,7 @@ struct VisualModelComparisonView: View {
             }
         }
         .padding(12)
-        .kGlass(cornerRadius: 8, fallbackFill: T.surface)
+        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
     }
 
     @ViewBuilder
@@ -352,7 +352,7 @@ struct VisualModelComparisonView: View {
             }
             .padding(.horizontal, 8).padding(.vertical, 5)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .kGlass(cornerRadius: 6, fallbackFill: T.surface2)
+            .kGlass(cornerRadius: StudioRadius.small, fallbackFill: T.surface2)
         }
     }
 
