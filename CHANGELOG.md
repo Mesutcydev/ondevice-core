@@ -7,6 +7,14 @@ and intends to use semantic version tags for source releases.
 
 ### Added
 
+- 35B readahead A/B runner (Phase 5M promotion path): a counterbalanced
+  "35B Readahead A/B (off vs hints)" diagnostic kind with the correct
+  lifecycle for a load-time knob — the engine is unloaded and reloaded on
+  every arm transition (off→on→on→off), and the engine exports the
+  load-captured `readaheadEffective` state so a requested-on trial without
+  a reload is labeled SETUP-BLOCKED instead of silently comparing
+  off-vs-off. Acceptance rule (frozen): decode ≥ +5% with prefill and TTFT
+  ≥ −5%.
 - Edge0 expert loaders resolve per-layer tensor locations and row geometry
   once at model load (upstream PR #7 pattern); per-expert loads are now pure
   advise → pread → wrap with byte-identical ranges.
@@ -32,6 +40,20 @@ and intends to use semantic version tags for source releases.
 
 ### Fixed
 
+- 35B speed-diagnostic verdicts: completed knob A/Bs (eval-window,
+  microbatch, prerouter, compute) exported "FINAL — completed 4/4" with no
+  DECISION section — the decision stage gated on Exact/Bounded mode
+  populations before the kind-specific blocks, but every knob kind runs a
+  staged-only plan, so the gate dead-ended every completed run. The gate is
+  now per-kind (mode-pair kinds still require their mode populations); knob
+  kinds also label drift per arm group instead of never labeling it.
+  Confirmed against the four build-47 device exports from 2026-09-17, whose
+  medians (recomputed) were: w4 prefill +4.5% (keep w1), g4 −15.6%
+  (confirms the promoted default), advisory-on decode −6.8% (keep OFF),
+  batched readback −3.6% (below the frozen 5% bar, matches the recorded
+  rejection). New `Edge0SpeedABDecisionTests` pin the gate routing, the
+  readahead kind plan, the acceptance rule, and the requested/effective
+  metric pair.
 - Fixed an out-of-bounds stack write in the 5M readahead path: the
   `F_RDADVISE` `radvisory` struct fill wrote 4 bytes past the 16-byte
   struct (it treated `ra_count` as an `off_t` and filled a nonexistent

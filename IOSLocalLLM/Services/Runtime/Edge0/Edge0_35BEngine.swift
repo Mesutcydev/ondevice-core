@@ -100,6 +100,12 @@ struct Edge0_35BGenerationMetrics: Sendable, Equatable {
     /// (1 = batched readback; only the staged·microbatch prefill uses it).
     var routerReadbackRequested = 0
     var routerReadbackEffective = 0
+    /// Phase 5M candidate: requested (preference read at generation time) vs
+    /// effective (engine-load-captured) kernel readahead. A mismatch means
+    /// the arm's engine was not reloaded after the preference changed —
+    /// requested alone is not evidence the loaders issue hints.
+    var readaheadRequested = false
+    var readaheadEffective = false
 
     var prefillBytesPerPromptToken: UInt64 {
         prefillPool.bytesPerToken(promptTokens)
@@ -231,6 +237,10 @@ final class Edge0_35BEngine: @unchecked Sendable {
     /// True while a generation owns the engine.
     var isGenerationInFlight: Bool { generationID != nil }
 
+    /// Phase 5M: value the expert loaders froze at load time. Authoritative
+    /// "effective" half of the readahead requested/effective pair.
+    private(set) var readaheadHintsEnabled = false
+
     /// Configured expert-read concurrency actually handed to the store.
     var configuredReadConcurrency: Int {
         engineConfiguration?.maxConcurrentReads ?? 0
@@ -276,13 +286,17 @@ final class Edge0_35BEngine: @unchecked Sendable {
             shardNames: index.shardNames,
             maxConcurrentReads: engineConfiguration.maxConcurrentReads
         )
+        // Captured once per load: the readahead A/B runner switches arms by
+        // RELOADING the engine (the loaders freeze this flag), and
+        // generation metrics report it back as `readaheadEffective`.
+        let readaheadEnabled = Edge0EnginePreferences.edge0_35BReadaheadHints
         do {
             let loaders = try (0..<configuration.numHiddenLayers).map { layer in
                 try Edge0_35BExpertLoader(
                     index: index,
                     stores: stores,
                     layer: layer,
-                    readaheadHints: Edge0EnginePreferences.edge0_35BReadaheadHints
+                    readaheadHints: readaheadEnabled
                 )
             }
             let pool = Edge0ExpertPool<Edge0_35BExpertWeights>(
@@ -314,6 +328,7 @@ final class Edge0_35BEngine: @unchecked Sendable {
 
             self.configuration = configuration
             self.engineConfiguration = engineConfiguration
+            self.readaheadHintsEnabled = readaheadEnabled
             self.installSummary = enrichedSummary
             self.eosTokenIDs = requestedEOS
             self.loraModuleCount = summary.loraModuleCount
@@ -742,7 +757,10 @@ final class Edge0_35BEngine: @unchecked Sendable {
                 Edge0EnginePreferences.edge0_35BRouterReadbackMode,
             routerReadbackEffective:
                 effectiveMode == .staged && microbatchEffective > 1
-                    ? Edge0EnginePreferences.edge0_35BRouterReadbackMode : 0
+                    ? Edge0EnginePreferences.edge0_35BRouterReadbackMode : 0,
+            readaheadRequested:
+                Edge0EnginePreferences.edge0_35BReadaheadHints,
+            readaheadEffective: readaheadHintsEnabled
         )
         // Atomic compare-and-clear: a cancel() that already handed ownership
         // to a newer generation must not have it stolen by this completion.

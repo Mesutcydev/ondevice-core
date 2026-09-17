@@ -299,6 +299,31 @@ Byte ranges and array shapes are unchanged by construction (the plans only
 hoist resolution), so the hoist is exactness-inert; the Phase 5M readahead
 hint path rides on the same descriptors.
 
+### 7.1 Follow-up pass (same day, after the first device A/B exports)
+
+The four build-47 device A/B exports (eval-window, microbatch, prerouter,
+compute; each "FINAL — completed 4/4") contained **no DECISION section**.
+Root cause: `Edge0SpeedABRunner.computeDecision()` gated on
+Exact/Bounded mode populations *before* the kind-specific blocks, but every
+knob kind runs a staged-only plan, so the gate dead-ended every completed
+knob run with an empty verdict (and drift was never labeled for them).
+Landed fixes:
+
+| Item | Where |
+| --- | --- |
+| Per-kind population gate (mode-pair kinds still require their mode populations; knob kinds route to their own verdicts) | `Edge0DiagnosticPlan.populationGate(kind:exactCount:boundedCount:stagedCount:)` |
+| Per-arm drift labeling for knob kinds (first→last prefill change *within* an arm group) | `Edge0SpeedABRunner.knobArmGroups(_:)` + the drift rule in `computeDecision()` |
+| The missing counterbalanced readahead A/B runner (the §5N open gap): reload-per-arm lifecycle, `readaheadRequested`/`readaheadEffective` proof pair (SETUP-BLOCKED when requested-on runs without a reload), frozen acceptance rule (decode ≥ +5%, prefill/TTFT ≥ −5%) | `Edge0DiagnosticKind.readaheadAB`, the reload block in `performRun()`, the decision block in `computeDecision()`, `Edge0DiagnosticPlan.readaheadAcceptance` |
+| Engine exports the load-captured readahead state (`mode.readaheadEffective`, available at load time before any generation) | `Edge0_35BEngine.readaheadHintsEnabled`, `Edge0RuntimeBackend.metrics35B()` |
+| Tests | `Edge0SpeedABDecisionTests` (6 cases: gate routing, mode-pair gates still bind, readahead plan, acceptance rule, metric pair, load-capture freeze) — executed 6/6 on the simulator |
+
+Recomputed verdicts from the four build-47 exports (the runs were valid;
+only the printing was broken): w4 prefill +4.5% / decode +0.9% → keep w1
+(matches the Phase 5G closeout); g4 prefill −15.6% → reconfirms the promoted
+g4 default; advisory-on decode −6.8% → keep advisory OFF (matches the Phase
+5J expectation); batched readback −3.6% → below the frozen ≥5% bar, matches
+the recorded Phase 5K rejection.
+
 ## 8. NAX verification procedure (device)
 
 1. **Gate expectation.** Run the Edge0 Device Validation runner on the

@@ -507,12 +507,18 @@ summary, and are captured/restored by `Edge0DiagnosticPreferences.Snapshot`
 (readahead was previously absent from the snapshot, so a diagnostic run could
 leak it into the next engine load).
 
-Open gap: a counterbalanced automated `readaheadAB` runner kind was **not**
-added. Unlike the eval-window/microbatch/advisory/readback knobs, readahead
-is captured once per engine load, so a correct counterbalanced runner would
-have to reload the model per arm — a different lifecycle from
-`measuredRun`. Manual off/on Device Validation runs are supported by the new
-toggle.
+Open gap — CLOSED (2026-09-17 follow-up pass): the counterbalanced
+automated `readaheadAB` runner kind now exists ("35B Readahead A/B (off vs
+hints)" in the Diagnostics picker). Unlike the eval-window/microbatch/
+advisory/readback knobs, readahead is captured once per engine load, so the
+runner reloads the model at every arm transition (plan off→on→on→off; both
+trials of an arm share one reload). Arm effectiveness is proven by the
+engine-exported `readaheadRequested`/`readaheadEffective` pair: a
+requested-on trial whose engine state says OFF is labeled SETUP-BLOCKED
+instead of silently comparing off-vs-off. Acceptance rule (frozen):
+decode ≥ +5% with prefill and TTFT ≥ −5%. The same pass fixed the
+build-47 decision-stage regression that dead-ended every completed knob
+A/B export with an empty DECISION section (see the perf scan §7.1).
 
 ### Candidates examined and NOT implemented
 

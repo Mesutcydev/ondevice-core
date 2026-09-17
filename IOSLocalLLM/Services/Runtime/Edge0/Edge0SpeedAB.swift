@@ -191,6 +191,11 @@ final class Edge0SpeedABRunner: ObservableObject {
         var advisoryFallbackReason = ""
         var routerReadbackRequested = 0
         var routerReadbackEffective = 0
+        /// Phase 5M: requested (generation-time preference) vs effective
+        /// (engine-load-captured) readahead state for this run. A mismatch
+        /// means the engine was not reloaded after the preference changed.
+        var readaheadRequested = false
+        var readaheadEffective = false
         var routerHash = ""
         var uniqueExpertTotal = 0
         var moeInvocations = 0
@@ -319,6 +324,13 @@ final class Edge0SpeedABRunner: ObservableObject {
         Edge0EnginePreferences.edge0_35BExecutionMode = .exact
         // Profiling is diagnostic-only; scored A/B trials run unprofiled.
         Edge0EnginePreferences.componentProfilingEnabled = kind == .exactDrift
+        // Phase 5M: readahead is frozen at engine load, so the readahead A/B
+        // starts from the OFF arm (counterbalanced plan: off→on→on→off) and
+        // reloads the engine on every arm CHANGE. All other kinds leave the
+        // preference untouched here (the run scope captures and restores it).
+        if kind == .readaheadAB {
+            Edge0EnginePreferences.edge0_35BReadaheadHints = false
+        }
 
         status = "Loading Edge0-35B (512 MiB pool)…"
         if service.isModelLoaded {
@@ -331,14 +343,19 @@ final class Edge0SpeedABRunner: ObservableObject {
             status = "Edge0-35B did not load."
             return
         }
+        var previousReadaheadArm: Bool? = kind == .readaheadAB ? false : nil
         if let metrics = await service.edge0RuntimeMetrics() {
             let slots = metrics["pool.capacitySlots"] ?? "unavailable"
             let bytes = metrics["pool.capacityBytes"] ?? "unavailable"
             let reads = metrics["reads.configured"] ?? "unavailable"
+            let readahead = metrics["mode.readaheadEffective"] ?? "unavailable"
             status = "Loaded in \(String(format: "%.2f", loadedSeconds))s"
                 + " · pool \(slots) slots/\(bytes) B · reads configured \(reads)"
             if let slotsValue = Int(slots), slotsValue != Self.expectedSlots {
                 status += " · WARNING: expected \(Self.expectedSlots) slots"
+            }
+            if kind == .readaheadAB {
+                status += " · readahead \(readahead)"
             }
         }
 
@@ -411,6 +428,34 @@ final class Edge0SpeedABRunner: ObservableObject {
                 blockedReason = "resource snapshot unavailable"
                 break
             }
+            let readaheadOverride: Bool? = kind == .readaheadAB
+                ? [false, true, true, false][min(index, 3)] : nil
+            // Phase 5M reload-per-arm: readahead is captured at engine load,
+            // so an arm change REQUIRES unloading and reloading the model
+            // before the trial. (The warm-up ran under the initial OFF arm.)
+            // Reuse the same reload for both trials of an arm — only the
+            // arm TRANSITION reloads, not every trial.
+            if kind == .readaheadAB,
+               let readaheadOverride,
+               readaheadOverride != previousReadaheadArm {
+                phase = .recovery
+                status = "Reloading Edge0-35B for readahead "
+                    + "\(readaheadOverride ? "ON" : "OFF") arm…"
+                await service.unloadAndWaitForCleanup()
+                Edge0EnginePreferences.edge0_35BReadaheadHints = readaheadOverride
+                let reloadStarted = ContinuousClock.now
+                await service.switchTo(preset, persistAsDefault: false)
+                let reloadSeconds = reloadStarted.duration(to: .now).seconds
+                guard service.isModelLoaded else {
+                    failedReason = "engine reload failed for the readahead "
+                        + "\(readaheadOverride ? "ON" : "OFF") arm"
+                    status = "Stopped: \(failedReason ?? "reload failed")"
+                    break
+                }
+                previousReadaheadArm = readaheadOverride
+                status = "Reloaded in \(String(format: "%.2f", reloadSeconds))s"
+                    + " · readahead arm \(readaheadOverride ? "ON" : "OFF")"
+            }
             let windowOverride: Int? = kind == .evalWindowAB
                 ? [1, 4, 4, 1][min(index, 3)] : nil
             let microbatchOverride: Int? = kind == .microbatchAB
@@ -428,6 +473,8 @@ final class Edge0SpeedABRunner: ObservableObject {
                 planLabel = "Staged advisory-\((advisoryOverride ?? false) ? "on" : "off")"
             } else if kind == .computeAB {
                 planLabel = "Staged readback-\((readbackOverride ?? 0) == 1 ? "batched" : "per-token")"
+            } else if kind == .readaheadAB {
+                planLabel = "Staged readahead-\((readaheadOverride ?? false) ? "on" : "off")"
             } else {
                 planLabel = Self.label(for: mode)
             }
@@ -439,7 +486,8 @@ final class Edge0SpeedABRunner: ObservableObject {
                 evalWindow: windowOverride,
                 microbatch: microbatchOverride,
                 advisory: advisoryOverride,
-                readback: readbackOverride
+                readback: readbackOverride,
+                readahead: readaheadOverride
             )
             run.idleSecondsBefore = idle.seconds
             run.recoveryReason = idle.reason
@@ -552,7 +600,8 @@ final class Edge0SpeedABRunner: ObservableObject {
         evalWindow: Int? = nil,
         microbatch: Int? = nil,
         advisory: Bool? = nil,
-        readback: Int? = nil
+        readback: Int? = nil,
+        readahead: Bool? = nil
     ) async -> RunResult {
         Edge0EnginePreferences.edge0_35BExecutionMode = mode
         if let evalWindow {
@@ -566,6 +615,12 @@ final class Edge0SpeedABRunner: ObservableObject {
         }
         if let readback {
             Edge0EnginePreferences.edge0_35BRouterReadbackMode = readback
+        }
+        // Phase 5M: stamped before generation so the requested half of the
+        // pair reflects the arm; the engine's load-captured state supplies
+        // the effective half.
+        if let readahead {
+            Edge0EnginePreferences.edge0_35BReadaheadHints = readahead
         }
         var result = RunResult(label: label, mode: mode, scored: scored)
         result.footprintBefore = MemoryAdvisor.physFootprint
@@ -662,6 +717,10 @@ final class Edge0SpeedABRunner: ObservableObject {
                 Int(metrics["mode.routerReadbackRequested"] ?? "") ?? 0
             result.routerReadbackEffective =
                 Int(metrics["mode.routerReadbackEffective"] ?? "") ?? 0
+            result.readaheadRequested =
+                metrics["mode.readaheadRequested"] == "true"
+            result.readaheadEffective =
+                metrics["mode.readaheadEffective"] == "true"
             result.decodeMode = metrics["mode.decode"] ?? ""
             result.modeFallback = metrics["mode.fallback"] ?? ""
             result.poolSlots = Int(metrics["pool.capacitySlots"] ?? "") ?? 0
@@ -792,6 +851,42 @@ final class Edge0SpeedABRunner: ObservableObject {
 
     // MARK: Decision
 
+    /// Arm groups for drift detection in knob kinds: the per-kind arm
+    /// classifier (w1/w4, g1/g4, advisory off/on, readback, readahead
+    /// off/on). Order preserves trial order so first→last change is
+    /// meaningful within an arm.
+    private func knobArmGroups(_ scored: [RunResult]) -> [[RunResult]] {
+        switch kind {
+        case .evalWindowAB:
+            return [
+                scored.filter { $0.evalWindowEffective <= 1 },
+                scored.filter { $0.evalWindowEffective >= 2 },
+            ]
+        case .microbatchAB:
+            return [
+                scored.filter { $0.microbatchEffective <= 1 },
+                scored.filter { $0.microbatchEffective >= 2 },
+            ]
+        case .prerouterAB:
+            return [
+                scored.filter { !$0.advisoryRequested },
+                scored.filter { $0.advisoryRequested },
+            ]
+        case .computeAB:
+            return [
+                scored.filter { $0.routerReadbackRequested == 0 },
+                scored.filter { $0.routerReadbackRequested == 1 },
+            ]
+        case .readaheadAB:
+            return [
+                scored.filter { !$0.readaheadRequested },
+                scored.filter { $0.readaheadRequested },
+            ]
+        default:
+            return []
+        }
+    }
+
     private var excludedTrials: [RunResult] {
         results.filter { $0.scored && $0.error != nil }
     }
@@ -820,7 +915,27 @@ final class Edge0SpeedABRunner: ObservableObject {
             return
         }
 
-        guard exact.count >= 2, bounded.count >= 2 else {
+        // Population gate. Mode-pair kinds (.ab: exact vs bounded,
+        // .prefillAB: bounded vs staged) need their mode populations.
+        // Preference-only knob kinds run staged-only plans; their verdicts
+        // come from their own arm labels and they gate themselves per arm
+        // inside the decision blocks below — a mode-pair gate would
+        // dead-end every completed knob run with an empty decision, which
+        // is exactly what build 47's device exports showed (four
+        // "FINAL — completed 4/4" sessions on 2026-09-17, none with a
+        // DECISION section). exactDrift has no decision at all (its output
+        // is the drift diagnosis) and intentionally fails this gate.
+        let knobKinds: Set<Edge0DiagnosticKind> = [
+            .evalWindowAB, .microbatchAB, .prerouterAB, .computeAB,
+            .readaheadAB,
+        ]
+        let staged = scored.filter { $0.mode == .staged }
+        guard Edge0DiagnosticPlan.populationGate(
+            kind: kind,
+            exactCount: exact.count,
+            boundedCount: bounded.count,
+            stagedCount: staged.count
+        ) else {
             decision = ""
             return
         }
@@ -830,8 +945,26 @@ final class Edge0SpeedABRunner: ObservableObject {
         let boundedDecode = bounded.map(\.decodeTokensPerSecond)
         let exactDrift = Edge0BenchmarkStatistics.firstToLastChange(exactPrefill)
         let boundedDrift = Edge0BenchmarkStatistics.firstToLastChange(boundedPrefill)
-        driftDetected = exactDrift > Self.driftThreshold
-            || boundedDrift > Self.driftThreshold
+        let stagedDrift = Edge0BenchmarkStatistics.firstToLastChange(
+            staged.map(\.prefillSeconds)
+        )
+        // Drift rule. Mode kinds: first→last prefill change per mode group.
+        // Knob kinds: one mode, preference arms — first→last prefill change
+        // WITHIN an arm group, so a session that slows overall cannot be
+        // read as an arm effect and cannot silently pass either.
+        if knobKinds.contains(kind) {
+            driftDetected = knobArmGroups(scored).contains { arm in
+                Edge0BenchmarkStatistics.firstToLastChange(
+                    arm.map(\.prefillSeconds)
+                ) > Self.driftThreshold
+            }
+        } else if kind == .prefillAB {
+            driftDetected = boundedDrift > Self.driftThreshold
+                || stagedDrift > Self.driftThreshold
+        } else {
+            driftDetected = exactDrift > Self.driftThreshold
+                || boundedDrift > Self.driftThreshold
+        }
         sessionLabel = driftDetected
             ? "PERFORMANCE DRIFT PRESENT — MODE COMPARISON INCONCLUSIVE"
             : "Stable session"
@@ -849,19 +982,23 @@ final class Edge0SpeedABRunner: ObservableObject {
             : 0
         let sustained = scored.allSatisfy(\.sustainedEvidence)
 
-        var lines = [
-            sessionLabel,
-            String(
-                format: "Exact: prefill median %.1fs (%@) · decode median %.2f tok/s (%@)",
-                exactPrefillMedian, Self.list(exactPrefill),
-                exactDecodeMedian, Self.list(exactDecode)
-            ),
-            String(
-                format: "Bounded: prefill median %.1fs (%@) · decode median %.2f tok/s (%@) · %+.1f%% vs Exact",
-                boundedPrefillMedian, Self.list(boundedPrefill),
-                boundedDecodeMedian, Self.list(boundedDecode), decodeDelta
-            ),
-        ]
+        var lines = [sessionLabel]
+        if kind == .ab {
+            lines.append(
+                String(
+                    format: "Exact: prefill median %.1fs (%@) · decode median %.2f tok/s (%@)",
+                    exactPrefillMedian, Self.list(exactPrefill),
+                    exactDecodeMedian, Self.list(exactDecode)
+                )
+            )
+            lines.append(
+                String(
+                    format: "Bounded: prefill median %.1fs (%@) · decode median %.2f tok/s (%@) · %+.1f%% vs Exact",
+                    boundedPrefillMedian, Self.list(boundedPrefill),
+                    boundedDecodeMedian, Self.list(boundedDecode), decodeDelta
+                )
+            )
+        }
         if kind == .microbatchAB {
             let group1 = scored.filter { $0.microbatchEffective <= 1 }
             let group4 = scored.filter { $0.microbatchEffective >= 2 }
@@ -1125,6 +1262,79 @@ final class Edge0SpeedABRunner: ObservableObject {
             return
         }
 
+        if kind == .readaheadAB {
+            let off = scored.filter { !$0.readaheadRequested }
+            let requestedOn = scored.filter { $0.readaheadRequested }
+            // Effective half comes from the engine's load-captured state:
+            // requested-on without effective-on means the arm's engine was
+            // not reloaded after the preference changed — the number one
+            // way this A/B would silently compare off-vs-off.
+            let blocked = requestedOn.filter { !$0.readaheadEffective }
+            let on = requestedOn.filter { $0.readaheadEffective }
+            if !blocked.isEmpty {
+                decision = [
+                    "SETUP-BLOCKED — not a performance result.",
+                    "Requested readahead ON in \(blocked.count) trial(s); the "
+                    + "engine's load-captured state says hints were NOT "
+                    + "active in them (arm requires an engine RELOAD after "
+                    + "the preference change).",
+                    "requested→effective: " + scored.map {
+                        "\($0.readaheadRequested ? "on" : "off")→"
+                            + "\($0.readaheadEffective ? "on" : "off")"
+                    }.joined(separator: ", "),
+                    "Fix the reload lifecycle, then rerun; do not compare timings.",
+                ].joined(separator: "\n")
+                return
+            }
+            guard off.count >= 2, on.count >= 2 else {
+                decision = "Insufficient readahead off/on trials for a decision."
+                return
+            }
+            func rmed(_ values: [Double]) -> Double {
+                Edge0BenchmarkStatistics.median(values) ?? 0
+            }
+            let offPrefill = rmed(off.map(\.prefillSeconds))
+            let onPrefill = rmed(on.map(\.prefillSeconds))
+            let offTTFT = rmed(off.map(\.ttftSeconds))
+            let onTTFT = rmed(on.map(\.ttftSeconds))
+            let offDecode = rmed(off.map(\.decodeTokensPerSecond))
+            let onDecode = rmed(on.map(\.decodeTokensPerSecond))
+            let prefillDelta = offPrefill > 0
+                ? (onPrefill - offPrefill) / offPrefill * 100 : 0
+            let ttftDelta = offTTFT > 0
+                ? (onTTFT - offTTFT) / offTTFT * 100 : 0
+            let decodeDelta = offDecode > 0
+                ? (onDecode - offDecode) / offDecode * 100 : 0
+            let seqOff = off.filter { $0.sequenceMatch == true }.count
+            let seqOn = on.filter { $0.sequenceMatch == true }.count
+            let accepted = Edge0DiagnosticPlan.readaheadAcceptance(
+                prefillDeltaPercent: prefillDelta,
+                ttftDeltaPercent: ttftDelta,
+                decodeDeltaPercent: decodeDelta
+            )
+            let lines = [
+                "35B Readahead A/B (off = production, on = F_RDADVISE hints)",
+                String(
+                    format: "off prefill median %.2fs · TTFT %.2fs · decode %.2f tok/s",
+                    offPrefill, offTTFT, offDecode
+                ),
+                String(
+                    format: "on  prefill median %.2fs (%+.1f%%) · TTFT %.2fs (%+.1f%%) · decode %.2f tok/s (%+.1f%%)",
+                    onPrefill, prefillDelta, onTTFT, ttftDelta,
+                    onDecode, decodeDelta
+                ),
+                "arm effectiveness: all requested-on trials load-captured ON",
+                "token-sequence parity: off \(seqOff)/\(off.count) · on \(seqOn)/\(on.count)",
+                driftDetected
+                    ? "drift present — treat the comparison as inconclusive"
+                    : (accepted
+                        ? "candidate meets the readahead acceptance rule (decode +5%, prefill/TTFT ≥ −5%); confirm on device before promotion"
+                        : "candidate does not meet the readahead acceptance rule; keep hints OFF"),
+            ]
+            decision = lines.joined(separator: "\n")
+            return
+        }
+
         if kind == .prefillAB {
             let boundedPrefill = bounded.map(\.prefillSeconds)
             let stagedPrefill = scored
@@ -1339,6 +1549,7 @@ final class Edge0SpeedABRunner: ObservableObject {
                 + " · eval window requested \(run.evalWindowRequested)/effective \(run.evalWindowEffective)"
                 + " · microbatch requested \(run.microbatchRequested)/effective \(run.microbatchEffective)"
                 + " · router readback requested \(run.routerReadbackRequested)/effective \(run.routerReadbackEffective)"
+                + " · readahead requested \(run.readaheadRequested ? "on" : "off")/effective \(run.readaheadEffective ? "on" : "off")"
                 + " · routed groups \(run.routedGroups)"
                 + " · peak active leases \(run.peakActiveLeases)"
                 + " · handoff inFlight \(run.handoffInFlightBefore)→\(run.handoffInFlightAfter)"

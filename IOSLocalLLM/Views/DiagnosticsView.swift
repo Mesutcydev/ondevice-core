@@ -339,6 +339,9 @@ struct DiagnosticsView: View {
                                 + (edge0SpeedAB.kind == .computeAB
                                     ? " · readback \(run.routerReadbackEffective == 1 ? "batched" : "per-token")"
                                     : "")
+                                + (edge0SpeedAB.kind == .readaheadAB
+                                    ? " · readahead \(run.readaheadEffective ? "on" : "off")"
+                                    : "")
                                 + (run.sustainedEvidence ? "" : " · sustained evidence insufficient")
                                 + (run.sequenceMatch == false ? " · OUTPUT DIFFERS" : "")
                             )

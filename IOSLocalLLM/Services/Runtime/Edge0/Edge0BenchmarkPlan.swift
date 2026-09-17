@@ -15,6 +15,7 @@ enum Edge0DiagnosticKind: String, CaseIterable, Identifiable, Sendable {
     case microbatchAB = "Staged microbatch A/B (g1 vs g4)"
     case prerouterAB = "35B Prerouter A/B (off vs advisory)"
     case computeAB = "35B Compute A/B (production vs candidate)"
+    case readaheadAB = "35B Readahead A/B (off vs hints)"
     case exactDrift = "Exact drift (early vs late)"
 
     var id: String { rawValue }
@@ -36,6 +37,8 @@ enum Edge0DiagnosticKind: String, CaseIterable, Identifiable, Sendable {
         case .prerouterAB:
             return [.staged, .staged, .staged, .staged]
         case .computeAB:
+            return [.staged, .staged, .staged, .staged]
+        case .readaheadAB:
             return [.staged, .staged, .staged, .staged]
         case .exactDrift:
             return [.exact, .exact, .exact]
@@ -154,6 +157,53 @@ struct Edge0DiagnosticPlan: Sendable {
             return "IN PROGRESS — NO FINAL PERFORMANCE DECISION"
         }
         return "FINAL — \(terminal.rawValue)"
+    }
+
+    /// Population gate for the runner's decision stage: which kinds require
+    /// which execution-mode populations before a verdict can be assembled.
+    ///
+    /// The preference-only knob kinds (staged-only plans) never gate on the
+    /// Exact/Bounded mode pairs: their verdicts come from their own arm
+    /// labels, and a gate on mode populations would dead-end every completed
+    /// run with an empty decision — exactly what build 47's device exports
+    /// showed (four "FINAL — completed 4/4" sessions on 2026-09-17, none
+    /// with a DECISION section). They gate themselves per arm inside their
+    /// decision blocks. `exactDrift` has no mode decision at all (its output
+    /// is the drift diagnosis), so it intentionally fails this gate and
+    /// leaves the decision empty.
+    static func populationGate(
+        kind: Edge0DiagnosticKind,
+        exactCount: Int,
+        boundedCount: Int,
+        stagedCount: Int
+    ) -> Bool {
+        switch kind {
+        case .ab:
+            return exactCount >= 2 && boundedCount >= 2
+        case .prefillAB:
+            return boundedCount >= 2 && stagedCount >= 2
+        case .exactDrift:
+            return false
+        default:
+            return true
+        }
+    }
+
+    /// Frozen acceptance rule for the Phase 5M readahead A/B. Readahead
+    /// (`F_RDADVISE` over expert slices just before their preads) targets
+    /// the read-bound decode path — 270 MiB of expert bytes per decoded
+    /// token at the flash wall — so the primary metric is decode throughput:
+    /// at least +5%, with prefill and TTFT not degrading by more than 5%.
+    /// Sequence parity and arm effectiveness are separate gates in the
+    /// runner.
+    static func readaheadAcceptance(
+        prefillDeltaPercent: Double,
+        ttftDeltaPercent: Double,
+        decodeDeltaPercent: Double
+    ) -> Bool {
+        decodeDeltaPercent >= 5
+            && prefillDeltaPercent >= -5
+            && ttftDeltaPercent >= -5
     }
 
     /// Recovery status text with remaining time and the next trial.

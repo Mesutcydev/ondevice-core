@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0009E59F92E42F389594684A /* libPods-IOSLocalLLMTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 6C4C4E4C34DAF2DBA02BEC38 /* libPods-IOSLocalLLMTests.a */; };
 		00156F9689D9F4061B37D168 /* LensFramePreparer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F96B0156083049D0DB98672C /* LensFramePreparer.swift */; };
 		002FBAC42F99C8ADC9452861 /* Edge0BenchmarkPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDB2F0EB31A639998297525C /* Edge0BenchmarkPlan.swift */; };
 		00A22B4389CB0C5329E8113C /* VoiceLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C3A1B8BE5F9A0D4ADE5B23C /* VoiceLibraryView.swift */; };
@@ -148,6 +147,7 @@
 		52B1CBBB9B6E66D8387166AD /* ReasoningStripperTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43D9E1418F3B1D32640C57E4 /* ReasoningStripperTests.swift */; };
 		53A26F8CBE4DC1CA807BFA85 /* MLXRandom in Frameworks */ = {isa = PBXBuildFile; productRef = CCA4DB9A4BB35CDE4326FCB9 /* MLXRandom */; };
 		53D9427C28B22D8A9E191CD4 /* Edge0CatalogIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 593238E6465B0E688E1CE4A4 /* Edge0CatalogIntegrationTests.swift */; };
+		540FEA41FD95D68E1BD98666 /* libPods-IOSLocalLLMTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = D6F383312F0855BE45E5CABD /* libPods-IOSLocalLLMTests.a */; };
 		54C77879C2BCF0300607C270 /* FastVLMConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FAAE7C3A515884A53EEC0C2 /* FastVLMConfig.swift */; };
 		559845483788FE8AF9E60EB7 /* VoiceValidationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF0BB794EE76DA2EFED04900 /* VoiceValidationView.swift */; };
 		55C5C222A00CA450877A5314 /* ApplePrivateCloudTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C641DCA9DB56BFDA26C346 /* ApplePrivateCloudTests.swift */; };
@@ -165,6 +165,7 @@
 		5CEF5550FBBD312DD8749463 /* Edge0MoEParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC4383D92B6C7D1ECDECCB36 /* Edge0MoEParityTests.swift */; };
 		5D08923DFBB935DBEAC32090 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CA66B30B0E88B23E75496EB /* HomeView.swift */; };
 		5DA79536C82143F3435AE2CD /* DeviceTierAdvisor.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC6E68B9E7BD1D2B4713C301 /* DeviceTierAdvisor.swift */; };
+		5DAEFDB70187BE392E3A222F /* Edge0SpeedABDecisionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 242F0E28863B0CD29A0AB4C7 /* Edge0SpeedABDecisionTests.swift */; };
 		5E8BF5ED1A67BDD8413632A1 /* Edge0QuantizedResidentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A55116C9B5F160C0CDA43A5 /* Edge0QuantizedResidentTests.swift */; };
 		5EC5B6C00FB878C8CF7B54EE /* SemanticChunker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A53073408ED616E7A39AAD6 /* SemanticChunker.swift */; };
 		5FDCFD2A8D1C84C8BDD49E6C /* Int64FormattedBytesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74F483797FF1B7EF7950504E /* Int64FormattedBytesTests.swift */; };
@@ -180,6 +181,7 @@
 		6719B0A570B12B86A8FD828C /* VAE.swift in Sources */ = {isa = PBXBuildFile; fileRef = B40E13D6945CC215E520A195 /* VAE.swift */; };
 		6794912050495FC4A6308A72 /* merges.txt in Resources */ = {isa = PBXBuildFile; fileRef = A51D05C375B9697F04D155EF /* merges.txt */; };
 		681A2F76B4436C135EDF757D /* DEREncoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61FCCD951C3A189A6535D35F /* DEREncoder.swift */; };
+		684E6AB3DF72DED161D95711 /* libPods-IOSLocalLLM.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0CBFB502BA669BC793CA1C6D /* libPods-IOSLocalLLM.a */; };
 		68D1FA003F69696FB9C4BAB2 /* IOSLocalLLMAppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6AF3DF816EE0F54DE8BBB5E /* IOSLocalLLMAppIntents.swift */; };
 		693062DF6A4E88F9F4E1BC9A /* tokenizer.json in Resources */ = {isa = PBXBuildFile; fileRef = D9D21104B522A1810CD4EA6E /* tokenizer.json */; };
 		6953FB3D35D4D486A8F6458B /* BridgeServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B93F45B39266D1DD65AC6B0C /* BridgeServer.swift */; };
@@ -308,7 +310,6 @@
 		ACC175D41BFB021A9A6B62DC /* AssistantChatComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84DC90878DCA0AC1747CFE43 /* AssistantChatComponents.swift */; };
 		AD12412212D17032A0A64D2C /* AnalysisService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F6E06E4E46A65113EB57B8 /* AnalysisService.swift */; };
 		ADB2CE7EFC932C708F726334 /* DiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 937DBEDC68BAE45216531A72 /* DiagnosticsView.swift */; };
-		ADFD640192B83527F45D77BC /* libPods-IOSLocalLLM.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 77E32296FDBB09D2C078DAE9 /* libPods-IOSLocalLLM.a */; };
 		AE759290E84E2BDA3906E261 /* Edge0ModelArtifactsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0F2D027A6AF014CC6968C3B /* Edge0ModelArtifactsTests.swift */; };
 		AEE7F71797036FD0064FD7ED /* CoreAIZooCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D851A56FB1AF9F1F712CA595 /* CoreAIZooCatalogTests.swift */; };
 		AF0735A32DCE13E90D2EE9F8 /* Image.swift in Sources */ = {isa = PBXBuildFile; fileRef = 478245C32323440A9E91E902 /* Image.swift */; };
@@ -431,6 +432,7 @@
 		EFE1D7C08A11769E114C2040 /* VoiceSettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D5070C89E5105BA7737F932 /* VoiceSettingsStore.swift */; };
 		F0969CAFB6E22717159D021B /* WebSourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 274F7DDC6851C0BC1A426EB4 /* WebSourcesView.swift */; };
 		F0BFD8137D3CA541A300EE28 /* Edge0MetalEnvironmentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89B6061533D3A4E9A0BFDA6C /* Edge0MetalEnvironmentTests.swift */; };
+		F145E1B825AAC1E9B5D5ABC9 /* Edge0TensorStoreAdviseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 327714D3A2A90D27C311F28B /* Edge0TensorStoreAdviseTests.swift */; };
 		F1655CEC2FA7309ED29FF935 /* LensPromptPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2368C64060C51DEE5052212A /* LensPromptPreset.swift */; };
 		F20FC29B45B92AA7F3ADBB6C /* RuntimeEngineFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09C6E0FF446B52E12A668169 /* RuntimeEngineFactory.swift */; };
 		F37B0FC93566B9BD0928ABC5 /* GlassEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 359A1751F53DCD4F15F06A0A /* GlassEffects.swift */; };
@@ -525,6 +527,7 @@
 		03DC2D96ED76657DD0C9CE89 /* MemoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryStore.swift; sourceTree = "<group>"; };
 		0483E6E237640E2DB47E9191 /* CodingAssistantService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodingAssistantService.swift; sourceTree = "<group>"; };
 		0547029F108839E80C30C64F /* MLXGenerationGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXGenerationGate.swift; sourceTree = "<group>"; };
+		05C27E7D54B3927C868AC2BF /* Pods-IOSLocalLLM.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLM.debug.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLM/Pods-IOSLocalLLM.debug.xcconfig"; sourceTree = "<group>"; };
 		05E9AD74506FAB3BDBED9CC0 /* AnalysisPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisPanelView.swift; sourceTree = "<group>"; };
 		076994E73215D788DBDCF935 /* Edge0DeviceValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0DeviceValidation.swift; sourceTree = "<group>"; };
 		0848C7E6226FB83994515DAF /* SnippetPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetPickerView.swift; sourceTree = "<group>"; };
@@ -536,7 +539,9 @@
 		09E2D41EA1731D699F99EC09 /* HubApiDownloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubApiDownloader.swift; sourceTree = "<group>"; };
 		0A89167DF5B2A686099B681D /* LegalAcceptanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalAcceptanceView.swift; sourceTree = "<group>"; };
 		0B5B7AFDE4C7FA416916F5AB /* CodePanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodePanelView.swift; sourceTree = "<group>"; };
+		0B90FAF494E807758A90E8CD /* Pods-IOSLocalLLMTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLMTests.debug.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLMTests/Pods-IOSLocalLLMTests.debug.xcconfig"; sourceTree = "<group>"; };
 		0C1BC71DCE93890C10352CA1 /* SystemStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemStatusView.swift; sourceTree = "<group>"; };
+		0CBFB502BA669BC793CA1C6D /* libPods-IOSLocalLLM.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-IOSLocalLLM.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		0DCC570FCFFFEA0DAF1E9FE0 /* VoicePresentationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePresentationModels.swift; sourceTree = "<group>"; };
 		0DFAA11D151861873A90B3A1 /* Edge0EnginePreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0EnginePreferences.swift; sourceTree = "<group>"; };
 		0FB66593DBFA397ECB6B5FF9 /* GGUFGenerationProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GGUFGenerationProfileTests.swift; sourceTree = "<group>"; };
@@ -544,7 +549,6 @@
 		10245298B8F42B524FD4E2E2 /* VoiceAgentOrb */ = {isa = PBXFileReference; lastKnownFileType = folder; name = VoiceAgentOrb; path = Packages/VoiceAgentOrb; sourceTree = SOURCE_ROOT; };
 		109770D4737ECFE9874A1FC4 /* KoduTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KoduTheme.swift; sourceTree = "<group>"; };
 		11F016B14F50C184E24588DA /* Edge0Router.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0Router.swift; sourceTree = "<group>"; };
-		1211F0C2673441447098A78A /* Pods-IOSLocalLLM.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLM.release.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLM/Pods-IOSLocalLLM.release.xcconfig"; sourceTree = "<group>"; };
 		17E2625811229B57B011D97D /* VoiceSessionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSessionState.swift; sourceTree = "<group>"; };
 		17E393B84BE0B84AB19375A0 /* Edge0_35BModelParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0_35BModelParityTests.swift; sourceTree = "<group>"; };
 		17EF6A0C7BD02C6305854C10 /* ApplePrivateCloudPromptBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePrivateCloudPromptBuilder.swift; sourceTree = "<group>"; };
@@ -573,6 +577,7 @@
 		239768C5F132EDF7185944A2 /* VLMCapabilities.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VLMCapabilities.swift; sourceTree = "<group>"; };
 		23C641DCA9DB56BFDA26C346 /* ApplePrivateCloudTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePrivateCloudTests.swift; sourceTree = "<group>"; };
 		240B9C6B64C0A17932762FF5 /* BridgePairingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgePairingStore.swift; sourceTree = "<group>"; };
+		242F0E28863B0CD29A0AB4C7 /* Edge0SpeedABDecisionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0SpeedABDecisionTests.swift; sourceTree = "<group>"; };
 		25755E0455FD7C95DB10D591 /* Edge0ResidentTensorPlanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0ResidentTensorPlanTests.swift; sourceTree = "<group>"; };
 		26BE1CA94ADD5F54BD5E9A6A /* PlumDuskSplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlumDuskSplashView.swift; sourceTree = "<group>"; };
 		2701A5C8C04F1CD3DBC114C9 /* RuntimeError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeError.swift; sourceTree = "<group>"; };
@@ -606,6 +611,7 @@
 		3015B83FEF6747F94E5C1B1D /* LICENSE */ = {isa = PBXFileReference; path = LICENSE; sourceTree = "<group>"; };
 		3149E752FBDEF2C618CA8360 /* Edge0_35BConfigurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0_35BConfigurationTests.swift; sourceTree = "<group>"; };
 		31685F462376E5DAF25383C6 /* HFHubMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HFHubMetadata.swift; sourceTree = "<group>"; };
+		327714D3A2A90D27C311F28B /* Edge0TensorStoreAdviseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0TensorStoreAdviseTests.swift; sourceTree = "<group>"; };
 		328B82F22F679A64374D5D78 /* AudioVisualClockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioVisualClockTests.swift; sourceTree = "<group>"; };
 		33A9C3C487F902B79B9CC5E4 /* AssistantActivityCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantActivityCards.swift; sourceTree = "<group>"; };
 		33D86E19DCDC3E90CA2BF373 /* VoiceSoakHarnessTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSoakHarnessTests.swift; sourceTree = "<group>"; };
@@ -655,7 +661,6 @@
 		4C38B91FA4F2D08A151D102B /* LocalAIFoundationConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalAIFoundationConfig.swift; sourceTree = "<group>"; };
 		4C55DE8ECBF380FE8C28B759 /* ReviewPromptService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewPromptService.swift; sourceTree = "<group>"; };
 		4CA66B30B0E88B23E75496EB /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
-		4D24EECD98EDDEECC0293DA4 /* Pods-IOSLocalLLM.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLM.debug.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLM/Pods-IOSLocalLLM.debug.xcconfig"; sourceTree = "<group>"; };
 		4EAF6E869F155102227C94FF /* WipeAllDataService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WipeAllDataService.swift; sourceTree = "<group>"; };
 		4FB94640D622F4AEB814AC5F /* LegalAcceptanceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegalAcceptanceManager.swift; sourceTree = "<group>"; };
 		50C87E152E9F346743296842 /* ModelPrefetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelPrefetcher.swift; sourceTree = "<group>"; };
@@ -669,6 +674,7 @@
 		545577C1DA16FF7806563C44 /* MLXVisionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXVisionService.swift; sourceTree = "<group>"; };
 		545D31AD1F0F4A8D8DBDB128 /* LensVoiceNarrator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensVoiceNarrator.swift; sourceTree = "<group>"; };
 		565452F2FB05F5448F86537D /* Edge0ExpertLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0ExpertLayoutTests.swift; sourceTree = "<group>"; };
+		56B0C30251F38556393EEB11 /* Pods-IOSLocalLLM.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLM.release.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLM/Pods-IOSLocalLLM.release.xcconfig"; sourceTree = "<group>"; };
 		572CD38E15F3301E89784DDB /* RuntimeEngineFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeEngineFactoryTests.swift; sourceTree = "<group>"; };
 		574A977791A44878D884C92E /* FastVLMModelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastVLMModelState.swift; sourceTree = "<group>"; };
 		576E583EA31E379D658E1F68 /* Pods-IOSLocalLLMTests.release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Pods-IOSLocalLLMTests.release.xcconfig"; sourceTree = "<group>"; };
@@ -683,7 +689,6 @@
 		5BE839AD0C2C0B87C77A39A5 /* ModelStorageCleanupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelStorageCleanupView.swift; sourceTree = "<group>"; };
 		5C8379A008682E1CCF9C6DF9 /* VoiceCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceCatalogTests.swift; sourceTree = "<group>"; };
 		5CA06F286C48CDB053871A2C /* PersonaPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonaPickerView.swift; sourceTree = "<group>"; };
-		5CCD0B0B8F8595D271605685 /* Pods-IOSLocalLLMTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLMTests.release.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLMTests/Pods-IOSLocalLLMTests.release.xcconfig"; sourceTree = "<group>"; };
 		5CCF86D244141968A4F14ECC /* Edge0ExpertLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0ExpertLayout.swift; sourceTree = "<group>"; };
 		5E546B3CCBD48C0E3AC36095 /* Edge0_35BModelConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0_35BModelConfiguration.swift; sourceTree = "<group>"; };
 		604B87700C3A8EE9BC824127 /* Edge0MemoryBudget+App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Edge0MemoryBudget+App.swift"; sourceTree = "<group>"; };
@@ -711,7 +716,6 @@
 		6A53073408ED616E7A39AAD6 /* SemanticChunker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SemanticChunker.swift; sourceTree = "<group>"; };
 		6B010A2FB48DCE782C15DD4C /* Edge0SamplerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0SamplerTests.swift; sourceTree = "<group>"; };
 		6C0B35D5B73E82272012CC88 /* VisualModelInstallStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualModelInstallStatus.swift; sourceTree = "<group>"; };
-		6C4C4E4C34DAF2DBA02BEC38 /* libPods-IOSLocalLLMTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-IOSLocalLLMTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		6C9A27F17078EF58156E304A /* Edge0Sampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0Sampler.swift; sourceTree = "<group>"; };
 		6D0DCAC51A026C0E2545AFEF /* WebPageFetchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebPageFetchService.swift; sourceTree = "<group>"; };
 		6D5D316828C7532474CE5E58 /* QualityEvalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QualityEvalView.swift; sourceTree = "<group>"; };
@@ -736,7 +740,6 @@
 		766C5D0CEA45A38F89B4EBDD /* VoiceModelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceModelState.swift; sourceTree = "<group>"; };
 		772ADEC224FE2CAF30B53285 /* DeviceTierAdvisorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceTierAdvisorTests.swift; sourceTree = "<group>"; };
 		7743E82EFAEE3552F7B6086E /* ModelArenaStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelArenaStore.swift; sourceTree = "<group>"; };
-		77E32296FDBB09D2C078DAE9 /* libPods-IOSLocalLLM.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-IOSLocalLLM.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7899845F882C87E15D7D32ED /* FastVLMGenerationResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastVLMGenerationResult.swift; sourceTree = "<group>"; };
 		78ADB11B5B67562CF004F00E /* InstalledModelRegistryValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledModelRegistryValidationTests.swift; sourceTree = "<group>"; };
 		78F4AAAFAD1BC451FB42BE56 /* LocalModelFileValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelFileValidator.swift; sourceTree = "<group>"; };
@@ -844,6 +847,7 @@
 		AEB69DCB6182EEB0EDD9F596 /* CodingAssistantRuntimeBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodingAssistantRuntimeBackend.swift; sourceTree = "<group>"; };
 		B21230C96DCAA54F27F6E666 /* CoreAIZooCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAIZooCatalog.swift; sourceTree = "<group>"; };
 		B234A61C9C08F5B93CA7D0A9 /* ApplePrivateCloudRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplePrivateCloudRuntime.swift; sourceTree = "<group>"; };
+		B2E6881DE8B3866012EB97BB /* Pods-IOSLocalLLMTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLMTests.release.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLMTests/Pods-IOSLocalLLMTests.release.xcconfig"; sourceTree = "<group>"; };
 		B2ECD6E82E5B3316116DCF71 /* TurnEndpointer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurnEndpointer.swift; sourceTree = "<group>"; };
 		B3082F01E5BBA4FF4E2224C2 /* BridgeIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeIdentity.swift; sourceTree = "<group>"; };
 		B3FD10342EBF634794760295 /* Diagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Diagnostics.swift; sourceTree = "<group>"; };
@@ -907,6 +911,7 @@
 		D675BA8F78DC6C496C9D562F /* VoiceModelBundleValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceModelBundleValidator.swift; sourceTree = "<group>"; };
 		D6AD7DC4751D2B3F78CE9E8F /* LensVoiceNarratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LensVoiceNarratorTests.swift; sourceTree = "<group>"; };
 		D6C331983A0564A3470C1886 /* VoiceProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceProfile.swift; sourceTree = "<group>"; };
+		D6F383312F0855BE45E5CABD /* libPods-IOSLocalLLMTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-IOSLocalLLMTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D760C5A8689B7D50E05C3059 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		D851A56FB1AF9F1F712CA595 /* CoreAIZooCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAIZooCatalogTests.swift; sourceTree = "<group>"; };
 		D9D21104B522A1810CD4EA6E /* tokenizer.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = tokenizer.json; sourceTree = "<group>"; };
@@ -936,7 +941,6 @@
 		EB736EDD4F7CB0109562BAC2 /* AppBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBridge.swift; sourceTree = "<group>"; };
 		EC4383D92B6C7D1ECDECCB36 /* Edge0MoEParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0MoEParityTests.swift; sourceTree = "<group>"; };
 		ECAA78E23ADACE3D49B74BA1 /* Edge0ExpertLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0ExpertLoaderTests.swift; sourceTree = "<group>"; };
-		ECC639686E0636D9220669B3 /* Pods-IOSLocalLLMTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLMTests.debug.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLMTests/Pods-IOSLocalLLMTests.debug.xcconfig"; sourceTree = "<group>"; };
 		ECCB222960D5B1EAB2D77DAA /* AudioMeterAtomics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioMeterAtomics.swift; sourceTree = "<group>"; };
 		EDB2F0EB31A639998297525C /* Edge0BenchmarkPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0BenchmarkPlan.swift; sourceTree = "<group>"; };
 		EECE1D22679BD4D1BAFD20E2 /* Persona.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Persona.swift; sourceTree = "<group>"; };
@@ -975,6 +979,14 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		08A4E26AD693127931753824 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				540FEA41FD95D68E1BD98666 /* libPods-IOSLocalLLMTests.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		7C8616C9E9619D52DC5CEB4F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -991,15 +1003,7 @@
 				E7683AA358C3E82B7638754E /* CoreAILM in Frameworks */,
 				DAFAE21A5C6A449239928D94 /* llama.xcframework in Frameworks */,
 				770479EFD3E793A1A4E0E639 /* whisper.xcframework in Frameworks */,
-				ADFD640192B83527F45D77BC /* libPods-IOSLocalLLM.a in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		CE27CCE86648AC33C463C9C7 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				0009E59F92E42F389594684A /* libPods-IOSLocalLLMTests.a in Frameworks */,
+				684E6AB3DF72DED161D95711 /* libPods-IOSLocalLLM.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1314,10 +1318,10 @@
 			isa = PBXGroup;
 			children = (
 				D36F0ACAFDB6F6B144BA3ED3 /* Target Support Files */,
-				4D24EECD98EDDEECC0293DA4 /* Pods-IOSLocalLLM.debug.xcconfig */,
-				1211F0C2673441447098A78A /* Pods-IOSLocalLLM.release.xcconfig */,
-				ECC639686E0636D9220669B3 /* Pods-IOSLocalLLMTests.debug.xcconfig */,
-				5CCD0B0B8F8595D271605685 /* Pods-IOSLocalLLMTests.release.xcconfig */,
+				05C27E7D54B3927C868AC2BF /* Pods-IOSLocalLLM.debug.xcconfig */,
+				56B0C30251F38556393EEB11 /* Pods-IOSLocalLLM.release.xcconfig */,
+				0B90FAF494E807758A90E8CD /* Pods-IOSLocalLLMTests.debug.xcconfig */,
+				B2E6881DE8B3866012EB97BB /* Pods-IOSLocalLLMTests.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -1506,8 +1510,8 @@
 			children = (
 				7F5CA191AD5C919ABEE27CC0 /* llama.xcframework */,
 				F75B077CF3F424BC84FCBF44 /* whisper.xcframework */,
-				77E32296FDBB09D2C078DAE9 /* libPods-IOSLocalLLM.a */,
-				6C4C4E4C34DAF2DBA02BEC38 /* libPods-IOSLocalLLMTests.a */,
+				0CBFB502BA669BC793CA1C6D /* libPods-IOSLocalLLM.a */,
+				D6F383312F0855BE45E5CABD /* libPods-IOSLocalLLMTests.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -1674,7 +1678,9 @@
 				BCBB7D240F6D1B4EBEB87525 /* Edge0RuntimeBackendTests.swift */,
 				1FD2DF185458A75A1A99EE24 /* Edge0SafetensorsTests.swift */,
 				6B010A2FB48DCE782C15DD4C /* Edge0SamplerTests.swift */,
+				242F0E28863B0CD29A0AB4C7 /* Edge0SpeedABDecisionTests.swift */,
 				098773AE50E8851F7143A7DD /* Edge0SpeedABRunnerCleanupTests.swift */,
+				327714D3A2A90D27C311F28B /* Edge0TensorStoreAdviseTests.swift */,
 				8372F442F60E0B3F80BB9339 /* Edge0TensorStoreTests.swift */,
 				6E9BA1274542A06B941DCBFA /* Edge0TestSupport.swift */,
 				8EB3CC9DBBDF7342FEDA56A1 /* Edge0TokenizerParityTests.swift */,
@@ -1871,9 +1877,9 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = E2E667B697BAA0215B065398 /* Build configuration list for PBXNativeTarget "IOSLocalLLMTests" */;
 			buildPhases = (
-				41C38D01F3B664CD5FDAF398 /* [CP] Check Pods Manifest.lock */,
+				08D281BB2775E3143D826552 /* [CP] Check Pods Manifest.lock */,
 				5086925AF961BFB817407E5C /* Sources */,
-				CE27CCE86648AC33C463C9C7 /* Frameworks */,
+				08A4E26AD693127931753824 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -1905,7 +1911,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A40F3286CAA41E6F3DF7E3D9 /* Build configuration list for PBXNativeTarget "IOSLocalLLM" */;
 			buildPhases = (
-				F8D5B344F53DFB6FF62B416A /* [CP] Check Pods Manifest.lock */,
+				B7EF41954B754A3C72C476F8 /* [CP] Check Pods Manifest.lock */,
 				6F53D401657030F5692B5A6A /* Sources */,
 				0FA54D77000D609B254D9D27 /* Copy bundled VLM (SmolVLM2 GGUF) */,
 				28EE27BB77F32257FDFB6EE6 /* Copy bundled voice models (Silero VAD) */,
@@ -2025,6 +2031,28 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		08D281BB2775E3143D826552 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-IOSLocalLLMTests-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
 		0FA54D77000D609B254D9D27 /* Copy bundled VLM (SmolVLM2 GGUF) */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -2063,28 +2091,6 @@
 			shellPath = /bin/sh;
 			shellScript = "set -e\nSRC=\"${SRCROOT}/IOSLocalLLM/Resources/BundledVoiceModels\"\nDEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/BundledVoiceModels\"\nif [ ! -d \"$SRC\" ]; then\n  echo \"warning: BundledVoiceModels source not found at $SRC — Voice mode will require a runtime download from Models → Catalog.\"\n  exit 0\nfi\nmkdir -p \"$DEST\"\n# Only Silero (the ~0.9 MB listening VAD) ships in the app now.\n# KittenTTS (~62 MB) and Kokoro (~312 MB) were UNBUNDLED to shrink\n# the IPA — they download on demand via ModelDownloadCenter when the\n# user picks a neural voice. Apple System Voice remains the\n# zero-download default, so voice works out of the box without them.\n# Remove any stale copies a previous (fully-bundled) build left in\n# DEST so incremental archives don't keep shipping them.\nrm -rf \"$DEST/KittenTTS\" \"$DEST/Kokoro\"\nrsync -a --delete \"$SRC/Silero/\" \"$DEST/Silero/\"\necho \"Copied bundled Silero VAD to $DEST/Silero\"\n";
 		};
-		41C38D01F3B664CD5FDAF398 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-IOSLocalLLMTests-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
 		7467111469C8C5A4C76D4D2A /* Compile and bundle FastVLM Core ML encoder */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -2104,7 +2110,7 @@
 			shellPath = /bin/sh;
 			shellScript = "set -e\nSRC=\"${SRCROOT}/IOSLocalLLM/Models/FastVLM-0.5B-fp16/fastvithd.mlpackage\"\nDEST_DIR=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\nDEST_PACKAGE=\"${DEST_DIR}/fastvithd.mlpackage\"\nDEST_COMPILED=\"${DEST_DIR}/fastvithd.mlmodelc\"\nif [ ! -d \"$SRC\" ]; then\n  echo \"warning: fastvithd.mlpackage not found at $SRC — FastVLM lens path will be unavailable on this build.\"\n  exit 0\nfi\n# Prefer shipping the pre-compiled .mlmodelc so the first\n# camera tap doesn't pay the ~2-3 s on-device compile cost.\n# coremlcompiler is the Xcode-bundled tool that runs the\n# same compile step Xcode's build system uses for sources.\nCOREMLC=\"$(xcrun --find coremlcompiler 2>/dev/null || true)\"\nif [ -n \"$COREMLC\" ] && [ -x \"$COREMLC\" ]; then\n  rm -rf \"$DEST_COMPILED\"\n  \"$COREMLC\" compile \"$SRC\" \"$DEST_DIR\" >/dev/null\n  # coremlcompiler writes <name>.mlmodelc into the dest dir,\n  # so DEST_COMPILED is now populated. Drop the raw\n  # mlpackage so we don't ship both.\n  rm -rf \"$DEST_PACKAGE\"\n  echo \"Compiled FastVLM encoder to $DEST_COMPILED\"\nelse\n  # Fallback: ship the raw mlpackage. FastVLMCoreMLStub\n  # handles runtime compilation via MLModel.compileModel,\n  # which costs a few seconds on first launch but is\n  # functionally equivalent.\n  rsync -a --delete \"$SRC/\" \"$DEST_PACKAGE/\"\n  echo \"Copied raw FastVLM encoder mlpackage to $DEST_PACKAGE (no coremlcompiler available — will compile at runtime)\"\nfi\n";
 		};
-		F8D5B344F53DFB6FF62B416A /* [CP] Check Pods Manifest.lock */ = {
+		B7EF41954B754A3C72C476F8 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -2170,7 +2176,9 @@
 				09DBE14E7A5CBA8CF7845F8D /* Edge0RuntimeBackendTests.swift in Sources */,
 				74AA0D5C6C499C7200B236C3 /* Edge0SafetensorsTests.swift in Sources */,
 				EF329E2BD679EFFF736DAAEC /* Edge0SamplerTests.swift in Sources */,
+				5DAEFDB70187BE392E3A222F /* Edge0SpeedABDecisionTests.swift in Sources */,
 				5C4EC51956907D984186979B /* Edge0SpeedABRunnerCleanupTests.swift in Sources */,
+				F145E1B825AAC1E9B5D5ABC9 /* Edge0TensorStoreAdviseTests.swift in Sources */,
 				8FABF70CB7E324855EA349F3 /* Edge0TensorStoreTests.swift in Sources */,
 				6FF70B67B5AB2675E12447E0 /* Edge0TestSupport.swift in Sources */,
 				D36498A728FF5CFEA3F43F02 /* Edge0TokenizerParityTests.swift in Sources */,
@@ -2610,7 +2618,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 47;
+				CURRENT_PROJECT_VERSION = 48;
 				INFOPLIST_FILE = IOSLocalLLMShareExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -2630,7 +2638,7 @@
 		};
 		4FFC0A2497B6DFCED9D89870 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 1211F0C2673441447098A78A /* Pods-IOSLocalLLM.release.xcconfig */;
+			baseConfigurationReference = 56B0C30251F38556393EEB11 /* Pods-IOSLocalLLM.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
@@ -2639,7 +2647,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "IOSLocalLLM/IOSLocalLLM-Catalyst.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 47;
+				CURRENT_PROJECT_VERSION = 48;
 				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
 				ENABLE_TESTABILITY = YES;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -2682,7 +2690,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 47;
+				CURRENT_PROJECT_VERSION = 48;
 				INFOPLIST_FILE = IOSLocalLLMShareExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -2702,7 +2710,7 @@
 		};
 		7C03D8E78B320E01541721EA /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 4D24EECD98EDDEECC0293DA4 /* Pods-IOSLocalLLM.debug.xcconfig */;
+			baseConfigurationReference = 05C27E7D54B3927C868AC2BF /* Pods-IOSLocalLLM.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
@@ -2711,7 +2719,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "IOSLocalLLM/IOSLocalLLM-Catalyst.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 47;
+				CURRENT_PROJECT_VERSION = 48;
 				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
 				ENABLE_TESTABILITY = YES;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -2751,7 +2759,7 @@
 		};
 		A66190529E6677E0A2BA100B /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = ECC639686E0636D9220669B3 /* Pods-IOSLocalLLMTests.debug.xcconfig */;
+			baseConfigurationReference = 0B90FAF494E807758A90E8CD /* Pods-IOSLocalLLMTests.debug.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -2803,7 +2811,7 @@
 		};
 		E8F503737FB7B602ED4B6EC9 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 5CCD0B0B8F8595D271605685 /* Pods-IOSLocalLLMTests.release.xcconfig */;
+			baseConfigurationReference = B2E6881DE8B3866012EB97BB /* Pods-IOSLocalLLMTests.release.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;

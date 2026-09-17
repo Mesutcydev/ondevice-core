@@ -417,6 +417,11 @@ final class Edge0RuntimeBackend: RuntimeEngineBackend, RuntimeParityProbing {
         metrics["lora.modules"] = "\(engine.loraModuleCount)"
         metrics["eos.ids"] = engine.eosTokenIDs.map(String.init).joined(separator: ",")
         metrics["runtime.readConcurrency"] = "\(engine.configuredReadConcurrency)"
+        // Phase 5M: the load-captured readahead state, available as soon as
+        // the engine is loaded (before any generation ran). The requested
+        // half is only meaningful per generation and is exported there.
+        metrics["mode.readaheadEffective"] = engine.readaheadHintsEnabled
+            ? "true" : "false"
         if let reads = engine.readStatistics() {
             metrics["reads.configured"] = "\(reads.configuredMaxConcurrentReads)"
             metrics["reads.peak"] = "\(reads.peakConcurrentReads)"
@@ -602,6 +607,10 @@ final class Edge0RuntimeBackend: RuntimeEngineBackend, RuntimeParityProbing {
                 "\(generation.routerReadbackRequested)"
             metrics["mode.routerReadbackEffective"] =
                 "\(generation.routerReadbackEffective)"
+            metrics["mode.readaheadRequested"] = generation.readaheadRequested
+                ? "true" : "false"
+            metrics["mode.readaheadEffective"] = generation.readaheadEffective
+                ? "true" : "false"
             metrics["advisory.fallbackReasons"] =
                 generation.advisory.fallbackReasons
                     .sorted { $0.key < $1.key }
