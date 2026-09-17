@@ -72,6 +72,19 @@ and intends to use semantic version tags for source releases.
   its tests (Sendable conformances, NSLock use in async contexts, deprecated
   `asData(noCopy:)` calls).
 
+### Fixed
+
+- Edge0 A/B acceptance comparators compared the time-delta metrics
+  (prefill/TTFT) as if positive meant faster — a latent sign inversion
+  that would have accepted a slower prefill. Both rules are now
+  time-delta correct (`readaheadAcceptance`: prefill/TTFT at most 5%
+  slower; `readsAcceptance`: prefill at least 3% faster), with the
+  conventions documented and pinned by tests. The device verdicts
+  (readahead and reads rejected) are unchanged.
+- The device-validation export labeled a 35B run "requested exact"
+  whenever staged was selected; the label now reports the actual
+  selection (the engine counters were always correct).
+
 ### Notes
 
 - Phase 5M bounded expert readahead is implemented but off by default — the
