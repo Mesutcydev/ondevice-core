@@ -1,5 +1,75 @@
 # OnDevice Core AI Studio — Release Audit 1.0.0
 
+## Build 56 — 2026-09-18 (Apple Private Cloud entitlement gate — crash fix)
+
+Reported from the sideloaded build 55 on the iPhone 17 Pro Max (iOS 27.2):
+*"app crashes when apple cloud models are used"*. Root-caused, reproduced, and
+fixed; nothing about the local runtimes changed.
+
+**Root cause.** `com.apple.developer.private-cloud-compute` is
+provisioning-managed, and a sideloaded, re-signed IPA does not carry it.
+`PrivateCloudComputeLanguageModel` **traps with a fatalError** in that process
+instead of throwing —
+
+```
+FoundationModels/PrivateCloudComputeLanguageModel.swift:963:
+Fatal error: Process is missing required entitlement:
+com.apple.developer.private-cloud-compute
+```
+
+— while `availability` still reports the model as usable. The app's
+precondition ("status can send") therefore passed and the trap landed on the
+first generation attempt. Reproduced on the iOS 27 simulator against the app's
+own facade: `currentStatus()` → **`.ready`**, `contextSize()` → **32768**, then
+SIGTRAP on `stream(...)` (`build/pcc-repro-sim.log`,
+`OnDeviceCoreAIStudio-2026-09-18-185447.ips`). The framework's own answer cannot
+be the gate.
+
+**Fix.** `EntitlementsProbe` (`IOSLocalLLM/Services/EntitlementsProbe.swift`)
+answers one question — may this process use PCC? — from two sources, because the
+signature alone is not the whole contract: the executable's own `CS_ENTITLEMENTS`
+blob must carry the key (read-only, no private API, unreadable ⇒ not entitled),
+**and** when the bundle also ships a provisioning profile, that profile must
+grant the capability (a re-signer can keep the blob while signing with a profile
+that does not grant it, and the system refuses the capability with the same fatal
+message). Every PCC entry point —
+status refresh, selection, generation, cancellation, "Show Options" — now
+requires `ApplePrivateCloud.isProvisionedForCurrentBuild` before touching the
+model; the runtime's handle is `nil` without it; refusals are
+`.entitlementUnavailable` / `ApplePCCError.notProvisioned` with a breadcrumb and
+a concrete message. UI: the picker row reads "Not enabled for this build" with
+the reason, "Set as default" is disabled, choosing it explains instead of
+crashing, and a stale persisted PCC default is repaired to the device-tier
+model so new conversations are never stranded. An entitled install keeps the
+previous behavior exactly.
+
+| Check | Result |
+| --- | --- |
+| Version metadata | Consistent: 1.0.0 (**56**) in `project.yml` (app + extension) |
+| Crash reproduced pre-fix (simulator) | **Reproduced** — SIGTRAP in `FoundationModels` with Apple's own "missing required entitlement" message; `currentStatus()` = `.ready`, `contextSize()` = 32768 on the same run (`build/pcc-repro-sim.log`) |
+| PCC suites post-fix (simulator) | **Executed**: 38 passed / 0 failures / 0 aborts — `PCCEntitlementTests` 16 + `ApplePrivateCloudTests` 22 (`build/pcc-fix-sim3.log`) |
+| Non-Edge0 unit suites (simulator) | **Executed**: 608 tests, 1 skipped, **3 failures** — all three pre-existing and outside this change (`ModelStoragePathsTests.testSandboxRelativePathStripsContainerPrefix`, `InstalledModelRegistryValidationTests.test_incompleteMlxDirectoryIsNotReady`, `ModelCategoryInferenceTests.test_installedRegistryModelIsReconciledIntoModelsTabSource`); pure-logic registry/path cases from the build-55 work, classified by inspection — a measured pre-fix baseline was attempted and the run was killed, so this is not a measured comparison (`build/pcc-nonedge-sim-tests.log`) |
+| Aggregate sim run scope | The full `IOSLocalLLMTests` run still aborts in `Edge0GatheredQMMTests` (MLX array allocation without the documented `requireSimulatorMLXSupport()` guard) — pre-existing, unrelated to build 56 |
+| Release archive + packaging | **Packaged**: all 8 stages green, final entitlements verified in the signed binary (`build/pcc-build56-ipa2.log` → `build.log`) |
+| Independent artifact verification | **65/65 checks passed** (`build/releases/verification-1.0.0-56/`) |
+
+| Artifact | Bytes | SHA-256 |
+| --- | --- | --- |
+| `OnDeviceCoreAIStudio-sideload-entitled-1.0.0-56.ipa` | 53,255,919 | `994d2737fdb650b2683ff85cecf449108f417d305bf770f63b339ea5ada4287b` |
+| `OnDeviceCoreAIStudio-sideload-entitled-latest.ipa` | 53,255,919 | byte-identical |
+
+Bundle paths are identical to build 55 (`addedPaths: []`, `removedPaths: []`), the
+`llama`/`whisper` framework binaries are byte-identical, and the app + extension
+entitlements match builds 43–55 exactly.
+
+Superseded: an earlier build-56 packaging run taken before the provisioning-profile
+half of the gate was added (`faa545a6149e52547248efab2ee2c92ae2474afdae84daac34a561bb47344a6c`,
+`build/pcc-build56-ipa.log`). The artifact above is the one to install.
+
+**Not verified:** PCC end-to-end on an entitled install — no profile that grants
+`com.apple.developer.private-cloud-compute` is available in this environment, so
+the app reports that state instead of guessing (see `Docs/PCC_INTEGRATION.md` §3a/§5).
+
 ## Build 55 — 2026-09-18 (pool-budget accounting + wide-microbatch A/B kinds)
 
 A decode audit of the build-54 device numbers (decode 8.30 tok/s at a 78%
