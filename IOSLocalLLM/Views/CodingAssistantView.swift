@@ -1169,7 +1169,13 @@ struct CodingAssistantView: View {
                 return
             }
             Task {
-                await assistant.selectApplePrivateCloud(persistAsDefault: false)
+                // A build without the PCC entitlement refuses the switch. The
+                // conversation then opens on the local default rather than on a
+                // cloud slot that can only refuse.
+                if await assistant.selectApplePrivateCloud(persistAsDefault: false) { return }
+                let fallback = AssistantModelCatalog.currentSelection()
+                guard fallback.id != assistant.activeSelectionID else { return }
+                await assistant.switchTo(fallback, persistAsDefault: false)
             }
             return
         }
@@ -1192,7 +1198,13 @@ struct CodingAssistantView: View {
                 return
             }
             Task {
-                await assistant.selectApplePrivateCloud(persistAsDefault: false)
+                // Refusal (unentitled build) falls through to the local default
+                // below; `selectApplePrivateCloud` also repairs the persisted
+                // default so the next launch starts on a runnable model.
+                if await assistant.selectApplePrivateCloud(persistAsDefault: false) { return }
+                let fallback = AssistantModelCatalog.currentSelection()
+                guard fallback.id != assistant.activeSelectionID else { return }
+                await assistant.switchTo(fallback, persistAsDefault: false)
             }
             return
         }

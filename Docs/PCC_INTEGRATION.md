@@ -2,7 +2,9 @@
 
 Status: **Runtime, dispatch, cancellation, context budgeting, picker/privacy
 UX, quota state, reasoning selection, conversation restoration, and per-message
-attribution are implemented.** Physical-device validation remains.
+attribution are implemented. The build-entitlement gate (see §3a) is implemented
+and verified on the simulator; physical-device validation of an entitled install
+remains.**
 
 PCC is presented as **"Apple Private Cloud"** — an *optional advanced reasoning
 model*. It does **not** replace MLX, GGUF, downloaded HF models, local vision,
@@ -84,7 +86,7 @@ Both paths are verified to type-check clean (zero warnings):
 
 ## 3. Entitlement
 
-PCC requires `com.apple.developer.private-cloud-compute = true`. The Developer
+PCC requires `com.apple.developer.private-cloud-compute`. The Developer
 account already has access to it.
 
 `IOSLocalLLM/IOSLocalLLM-PCC.entitlements` contains the capability and is selected
@@ -93,12 +95,75 @@ their existing entitlement files. Automatic signing still needs to produce an
 iOS 27 provisioning profile carrying the capability during physical-device
 validation.
 
+### 3a. The entitlement is a runtime requirement, not a build detail
+
+The entitlement is **provisioning-managed**: an app that carries it only installs
+on a device whose signing profile grants it. A sideloaded, re-signed IPA (the
+track this project ships) is normally re-signed *without* it.
+
+That combination used to crash the app, because
+`PrivateCloudComputeLanguageModel` **traps with a fatalError** instead of
+throwing when the process lacks the entitlement — while `availability` still
+reports the model as usable:
+
+```
+FoundationModels/PrivateCloudComputeLanguageModel.swift:963:
+Fatal error: Process is missing required entitlement:
+com.apple.developer.private-cloud-compute
+```
+
+Reproduced on the iOS 27 simulator against this app's own facade
+(`build/pcc-repro-sim.log`, crash report `OnDeviceCoreAIStudio-2026-09-18-185447.ips`):
+`currentStatus()` answered **`.ready`**, `contextSize()` answered **32768**, and
+the SIGTRAP fired on the first generation attempt. The framework's own answer
+therefore cannot be used as the gate — nothing may touch the PCC model, not even
+to read `availability`, until the process is known to carry the entitlement.
+
+The gate is `EntitlementsProbe` (`IOSLocalLLM/Services/EntitlementsProbe.swift`),
+and it is deliberately **two-part**, because the signature alone is not the whole
+contract:
+
+1. the running executable's own code signature must carry
+   `com.apple.developer.private-cloud-compute` (read from the `CS_ENTITLEMENTS`
+   blob — read-only, no private API, any failure means "not entitled");
+2. when the bundle also ships a provisioning profile, that profile must *grant*
+   the capability. A re-signer can keep an app's entitlement blob while signing
+   with a profile that does not grant it, and the system then refuses the
+   capability at runtime with the same fatal message. Installations with no
+   profile (plain ad-hoc sideloads) have no profile contract, so the signature is
+   the whole story there.
+
+`EntitlementsProbe.isGranted(signatureEntitled:hasEmbeddedProfile:profileEntitled:)`
+is the pure rule behind that, tested for every combination.
+
+Consequences in the app:
+
+- `ApplePrivateCloud.isProvisionedForCurrentBuild` is the build gate, distinct
+  from `isSupportedOnCurrentOS` (SDK + OS) and `isCompiledIn` (FM_PCC).
+- `ApplePrivateCloudRuntime`'s model handle is **`nil`** unless the entitlement
+  is present, and every method refuses (`.entitlementUnavailable`,
+  `ApplePCCError.notProvisioned`) without reaching FoundationModels.
+- The picker shows the row with "Not enabled for this build" and an explanation
+  instead of a status read from the framework; choosing it raises a toast naming
+  the entitlement, and "Set as default" is disabled.
+- `CodingAssistantService.selectApplePrivateCloud` refuses the switch and
+  repairs a stale persisted PCC default back to the device-tier model, so a
+  build without the entitlement never strands new conversations on a model that
+  can only refuse.
+- Status refresh, generation, cancellation and "Show Options" all check the gate
+  first; refusal is breadcrumbed (`pcc generation refused · missing Private
+  Cloud Compute entitlement`).
+
+A build signed for a profile that grants the entitlement behaves exactly as
+before: the probe returns true and the path is unchanged.
+
 ---
 
 ## 4. What's implemented this session
 
 | File | Gate | Purpose |
 |---|---|---|
+| `IOSLocalLLM/Services/EntitlementsProbe.swift` | always compiled | Reads this binary's own code signature for `com.apple.developer.private-cloud-compute`. The gate that keeps an unentitled process away from a framework that traps. |
 | `IOSLocalLLM/Models/ApplePrivateCloudTypes.swift` | always compiled | `ModelExecutionLocation`, `ApplePCCStatus`, `ApplePCCReasoningLevel`, `ApplePrivateCloud` identity, `ApplePCCRequest`, `ApplePCCError`. No FoundationModels import. |
 | `IOSLocalLLM/Models/ApplePrivateCloudPromptBuilder.swift` | always compiled | Separates system instructions from ordered dialog, preserves hidden grounding, and omits empty streaming placeholders. |
 | `IOSLocalLLM/Services/ApplePrivateCloudRuntime.swift` | facade always / actor `#if FM_PCC` | `actor ApplePrivateCloudRuntime` (availability, quota→status, `contextSize`, session, **delta** streaming, per-request cancellation, error mapping). `ApplePrivateCloud.{currentStatus,contextSize,stream,answer,cancel,showLimitIncreaseOptions}` facade — returns `.unsupportedOS` / throws cleanly on GA. |
@@ -123,6 +188,10 @@ Design choices honoring the brief:
 ## 5. Remaining validation
 
 - Confirm automatic signing creates a profile containing the PCC entitlement.
+- **PCC can only be exercised end-to-end on an install whose signing profile
+  grants `com.apple.developer.private-cloud-compute`.** On any other install the
+  app now reports "Not enabled for this build" and never reaches the framework —
+  that state is verified (simulator, build 56); the entitled state is not.
 - Exercise ready, approaching-limit, limit-reached, offline, cancellation, and
   model-switch paths on a physical iOS 27 device.
 - Verify the system-provided quota-increase UI.

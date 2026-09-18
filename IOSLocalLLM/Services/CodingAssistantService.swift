@@ -2998,6 +2998,14 @@ final class CodingAssistantService: ObservableObject {
     // MARK: - Apple Private Cloud generation
 
     func refreshApplePrivateCloudStatus() async {
+        // Never touch PCC without the entitlement: the framework traps with a
+        // fatalError in an unentitled process (see EntitlementsProbe), so the
+        // status must be derived from the probe, not from `availability`.
+        guard ApplePrivateCloud.isProvisionedForCurrentBuild else {
+            applePrivateCloudStatus = .entitlementUnavailable
+            applePrivateCloudContextSize = nil
+            return
+        }
         guard ApplePrivateCloud.isSupportedOnCurrentOS else {
             applePrivateCloudStatus = .unsupportedOS
             applePrivateCloudContextSize = nil
@@ -3016,6 +3024,20 @@ final class CodingAssistantService: ObservableObject {
     func selectApplePrivateCloud(
         persistAsDefault: Bool = true
     ) async -> Bool {
+        // An unentitled build can never run PCC — the framework traps instead
+        // of throwing, so this is a hard refusal, never a fallback attempt.
+        guard ApplePrivateCloud.isProvisionedForCurrentBuild else {
+            Diagnostics.shared.breadcrumb(
+                "pcc select refused · missing Private Cloud Compute entitlement",
+                category: "assistant"
+            )
+            repairStaleApplePrivateCloudDefault()
+            ToastCenter.shared.error(
+                "Apple Private Cloud unavailable",
+                detail: ApplePCCError.notProvisioned.localizedDescription
+            )
+            return false
+        }
         guard ApplePrivateCloud.isSupportedOnCurrentOS else {
             ToastCenter.shared.error(
                 "Apple Private Cloud unavailable",
@@ -3048,6 +3070,20 @@ final class CodingAssistantService: ObservableObject {
         return true
     }
 
+    /// A persisted PCC default is unrunnable in a build without the
+    /// entitlement. Leaving it in place would make every new conversation and
+    /// every cold launch retry a model that cannot start, so it is repaired to
+    /// the device-tier default instead of silently kept.
+    private func repairStaleApplePrivateCloudDefault() {
+        guard AppSettings.shared.assistantModelID == ApplePrivateCloud.modelID else { return }
+        AppSettings.shared.assistantModelID = DeviceTierAdvisor.recommendedModelID
+        AppSettings.shared.hasPickedAssistantModel = true
+        Diagnostics.shared.breadcrumb(
+            "pcc default repaired · assistantModelID=\(DeviceTierAdvisor.recommendedModelID)",
+            category: "assistant"
+        )
+    }
+
     private func generateWithApplePrivateCloud(
         messages: [ChatMessage],
         maxTokensOverride: Int?,
@@ -3059,6 +3095,22 @@ final class CodingAssistantService: ObservableObject {
         onError: (@Sendable (String) -> Void)? = nil
     ) {
         let settings = AppSettings.shared
+        // Hard entitlement gate, before consent, before any task is created:
+        // driving a PCC session in an unentitled process traps inside
+        // FoundationModels and cannot be caught.
+        guard ApplePrivateCloud.isProvisionedForCurrentBuild else {
+            Diagnostics.shared.breadcrumb(
+                "pcc generation refused · missing Private Cloud Compute entitlement",
+                category: "assistant"
+            )
+            ToastCenter.shared.error(
+                "Apple Private Cloud unavailable",
+                detail: ApplePCCError.notProvisioned.localizedDescription
+            )
+            onError?(ApplePCCError.notProvisioned.localizedDescription)
+            onComplete(0)
+            return
+        }
         guard settings.hasCurrentApplePCCPrivacyConsent else {
             ToastCenter.shared.error(
                 "Review privacy before using Apple Private Cloud",
@@ -3224,6 +3276,8 @@ final class CodingAssistantService: ObservableObject {
             return .offline
         case .unsupportedOS:
             return ApplePrivateCloud.unavailableError
+        case .entitlementUnavailable:
+            return .notProvisioned
         case .unsupportedDevice:
             return .unavailable("This device isn't eligible for Apple Private Cloud.")
         case .appleIntelligenceUnavailable:

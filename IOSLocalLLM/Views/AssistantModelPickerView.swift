@@ -984,7 +984,10 @@ private struct ApplePrivateCloudPickerSection: View {
                         .foregroundStyle(isDefault ? T.accent : T.ink2)
                     }
                     .buttonStyle(.plain)
-                    .disabled(isDefault || isActivating)
+                    // Never let a build that cannot run PCC write it into the
+                    // default slot: that would strand every new conversation on
+                    // a model that can only refuse.
+                    .disabled(isDefault || isActivating || status == .entitlementUnavailable)
                 }
             }
         }
@@ -1024,6 +1027,8 @@ private struct ApplePrivateCloudPickerSection: View {
             return "Choose Show Options or continue with any downloaded local model."
         case .offline:
             return "Connect to the internet, then reopen this picker to refresh."
+        case .entitlementUnavailable:
+            return "This build was signed without Apple's Private Cloud Compute entitlement, so Apple Private Cloud can't run here. Downloaded local models are unaffected."
         default:
             return "Downloaded local models remain available."
         }

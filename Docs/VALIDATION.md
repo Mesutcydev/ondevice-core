@@ -57,6 +57,30 @@ prompt-cache proof: reuse applied, 22 tokens reused / 30 prefilled on a
 29→52-token turn pair, answers byte-identical between the reused state and
 a fresh full prefill.
 
+Build 56 fixes a reported crash — "app crashes when apple cloud models are
+used" (sideloaded build 55, iPhone 17 Pro Max, iOS 27.2) — and its evidence is
+**reproduced, not inferred**. `PrivateCloudComputeLanguageModel` traps with a
+`fatalError` when the process lacks
+`com.apple.developer.private-cloud-compute`, which a re-signed sideload IPA does
+not carry, while `availability` still reports the model as usable. Driven
+through the app's own facade on the iOS 27 simulator: `currentStatus()` →
+`.ready`, `contextSize()` → 32768, then SIGTRAP under `FoundationModels` with
+Apple's message `Process is missing required entitlement:
+com.apple.developer.private-cloud-compute` (`build/pcc-repro-sim.log`,
+`OnDeviceCoreAIStudio-2026-09-18-185447.ips`). The gate is now
+`EntitlementsProbe` (the binary's own `CS_ENTITLEMENTS` blob) and 31 PCC unit
+tests pass post-fix on the simulator, including the generation path that used to
+trap (`build/pcc-fix-sim.log`). PCC end-to-end behavior on an **entitled**
+install remains unverified — no such install exists here yet; the app reports
+that state instead of guessing.
+
+Note on simulator scope: the aggregate `IOSLocalLLMTests` run still aborts on
+the simulator in `Edge0GatheredQMMTests` — those cases allocate MLX arrays
+without the documented `Edge0TestDevice.requireSimulatorMLXSupport()` guard, and
+mlx's scheduler initializes the GPU stream unconditionally. That abort is
+pre-existing (unrelated to build 56) and is why the simulator gate for build 56
+runs the non-Edge0 suites plus the focused Edge0 suites individually.
+
 Edge0 unit suites execute on the simulator through an isolated sim-compat
 project, because the simulator SDK ships no `CoreAI.framework` and the app's
 `coreai-models` package is device-only. Recipe:

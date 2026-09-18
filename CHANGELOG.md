@@ -87,6 +87,27 @@ and intends to use semantic version tags for source releases.
 
 ### Fixed
 
+- Apple Private Cloud (PCC) crashed the app on any install whose signing
+  profile does not grant `com.apple.developer.private-cloud-compute` — which
+  includes every sideloaded build. `PrivateCloudComputeLanguageModel` traps with
+  a fatalError (`Process is missing required entitlement: …`) instead of
+  throwing, while `availability` still reported `.ready` and `contextSize`
+  returned a real value, so the app's own precondition passed and the SIGTRAP
+  landed on the first generation attempt. Reproduced on the iOS 27 simulator
+  against this app's facade. Fixed with `EntitlementsProbe`, which answers "may
+  this process use PCC?" from both the executable's own `CS_ENTITLEMENTS`
+  signature blob *and*, when the bundle embeds a provisioning profile, that
+  profile's grant — so a re-signer that keeps the blob while signing with a
+  profile that does not grant the capability cannot defeat the gate. Nothing
+  touches the PCC model unless both agree, the runtime's
+  model handle stays `nil` otherwise, and every entry point (status refresh,
+  selection, generation, cancellation, "Show Options") refuses with
+  `.entitlementUnavailable` / `ApplePCCError.notProvisioned` and a breadcrumb.
+  The picker states "Not enabled for this build" with the reason, disables
+  "Set as default", and selecting it explains why instead of crashing; a stale
+  persisted PCC default is repaired to the device-tier model so new
+  conversations are never stranded on a model that can only refuse.
+
 - 35B speed-diagnostic verdicts: completed knob A/Bs (eval-window,
   microbatch, prerouter, compute) exported "FINAL — completed 4/4" with no
   DECISION section — the decision stage gated on Exact/Bounded mode
