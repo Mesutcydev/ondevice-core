@@ -1,5 +1,55 @@
 # OnDevice Core AI Studio — Release Audit 1.0.0
 
+## Build 55 — 2026-09-18 (pool-budget accounting + wide-microbatch A/B kinds)
+
+A decode audit of the build-54 device numbers (decode 8.30 tok/s at a 78%
+pool hit rate, pool auto → 2 GiB / 1213 slots, peak 4.42 GB) attributed the
+bottleneck to the expert pool and found the pool capped by two accounting
+mistakes rather than by the device: the state/KV reserve was a flat
+`ceiling / 8` (~1.06 GB on the 12 GB reference device) while the admitted
+4,096-token context can only materialize ~148 MB, and the tier list stopped
+at 2 GiB. Build 55 implements findings 1+2 and the related finding 4 as
+exactness-inert candidates with full A/B coverage (caching changes no math):
+
+- `Edge0_35BPoolAccounting` (legacy / reclaimed). Reclaimed: reserve =
+  `max(maxContextTokens × 20,480 B + linearStateBytes, 256 MiB)` capped by
+  `ceiling / 8`; tier list gains a 3 GiB tier (peak ≈ 5.4 GB — under the
+  recorded build-45 Jetsam datapoint of ~5.6 GB).
+- **"35B Pool budget A/B (legacy vs reclaimed)"** kind: counterbalanced
+  legacy→reclaimed→reclaimed→legacy plan, auto-selected pool (the fixed
+  512 MiB pin is dropped), engine reload per arm transition, load-captured
+  requested/effective proof pair, per-arm pool size, state-KV/pool
+  allowances, decode hit rate, miss loads/token and peak footprint in the
+  decision. Frozen rule: decode ≥ +5%, prefill/TTFT ≥ −5%, the tier must
+  actually change, reclaimed peak ≤ 5.6 GB.
+- Finding 4: microbatch clamp 4 → 16 and the **"Staged wide-microbatch A/B
+  (g4 vs g8)"** kind. Frozen rule: prefill ≥ +5%, decode ≥ −5%.
+- Defaults unchanged: pool accounting stays `.legacy`, microbatch stays g4
+  until device verdicts promote them.
+
+**Device verdicts:** pending — run the two kinds on the iPhone 17 Pro Max
+(one kind per session, 60 s idle recovery, cool device) and record results
+on the knobs and in `Docs/EDGE0_PERF_UPDATE_SCAN_2026-09-17.md` §9.
+
+| Check | Result |
+| --- | --- |
+| Version metadata | Consistent: 1.0.0 (**55**) in `project.yml` (app + extension) |
+| Focused Edge0 tests (simulator) | **Executed**: 45 passed / 0 failures (Edge0SpeedABDecisionTests 17, Edge0SpeedABRunnerCleanupTests 10, Edge0_35BIntegrationTests 11, Edge0RuntimeBackendTests 7), exit 0 (`build/simcompat-findings12b.log`) |
+| Device-SDK compile | **Succeeded**: workspace builds with signing disabled (`build/agentcheck-device.log`, `build/agentcheck-device2.log`) |
+| IPA packaging | **Packaged** — 59 independent artifact checks passed; ZIP member paths identical to build 54 |
+
+Artifact: `build/releases/OnDeviceCoreAIStudio-sideload-entitled-1.0.0-55.ipa`
+(`...-latest.ipa` identical)
+
+- Version **1.0.0 (55)**; the share extension also uses build **55**.
+- Size: **53,242,426 bytes**.
+- SHA-256: `b04df7faa8b3e636899da83cb76487422bbe07cc94a6a93496e688d8657f85b6`.
+- **59 independent artifact checks passed** (`verification-1.0.0-55/`). ZIP
+  member paths exactly match build 54; entitlements match builds 43–54
+  exactly (PCC, increased memory, extended virtual addressing,
+  CloudKit/iCloud, shared App Group). Bundle IDs and minimum iOS 27.0
+  unchanged.
+
 ## Build 54 — 2026-09-17 (prompt-cache snapshot boundary fix)
 
 Build 53's device validation showed stage 11 running but "reuse NOT
