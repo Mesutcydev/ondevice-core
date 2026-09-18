@@ -279,6 +279,7 @@ final class Edge0DeviceValidationRunner: ObservableObject {
                 let context = Edge0_35BContextBudget.current(outputTokens: output)
                 return "resident \(budget.residentBytes) B"
                     + " · pool slots \(budget.expertPoolSlots)"
+                    + " · accounting \(Edge0EnginePreferences.edge0_35BPoolAccounting.rawValue)"
                     + " · safe input \(context.maxInputTokens) tok"
                     + (context.experimentalLimitApplied ? " (experimental cap)" : "")
             }

@@ -25,6 +25,7 @@ final class Edge0SpeedABRunnerCleanupTests: XCTestCase {
         Edge0EnginePreferences.componentProfilingEnabled = false
         Edge0EnginePreferences.edge0_35BReadaheadHints = false
         Edge0EnginePreferences.expertLoadConcurrency = 4
+        Edge0EnginePreferences.edge0_35BPoolAccounting = .legacy
     }
 
     override func tearDown() {
@@ -178,6 +179,35 @@ final class Edge0SpeedABRunnerCleanupTests: XCTestCase {
         Edge0EnginePreferences.edge0_35BReadaheadHints = false
         snapshot.restore()
         XCTAssertTrue(Edge0EnginePreferences.edge0_35BReadaheadHints)
+    }
+
+    /// Audit findings 1+2: pool accounting is captured and restored like
+    /// every other candidate knob — a leaked arm would change the budget the
+    /// NEXT load resolves.
+    func testScopeRestoresPoolAccounting() async {
+        for original in Edge0_35BPoolAccounting.allCases {
+            resetPreferences()
+            Edge0EnginePreferences.edge0_35BPoolAccounting = original
+            await Edge0DiagnosticPreferences.withRestoration {
+                Edge0EnginePreferences.edge0_35BPoolAccounting =
+                    original == .legacy ? .reclaimed : .legacy
+            }
+            XCTAssertEqual(
+                Edge0EnginePreferences.edge0_35BPoolAccounting, original,
+                "pool accounting must restore \(original.rawValue)"
+            )
+        }
+    }
+
+    func testSnapshotIncludesPoolAccounting() {
+        resetPreferences()
+        Edge0EnginePreferences.edge0_35BPoolAccounting = .reclaimed
+        let snapshot = Edge0DiagnosticPreferences.Snapshot.capture()
+        XCTAssertEqual(snapshot.poolAccounting, .reclaimed)
+
+        Edge0EnginePreferences.edge0_35BPoolAccounting = .legacy
+        snapshot.restore()
+        XCTAssertEqual(Edge0EnginePreferences.edge0_35BPoolAccounting, .reclaimed)
     }
 
     /// The single-active-diagnostic guard must stay intact: a second `run()`

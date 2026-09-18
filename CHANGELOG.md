@@ -7,6 +7,30 @@ and intends to use semantic version tags for source releases.
 
 ### Added
 
+- 35B pool-budget A/B runner (audit findings 1+2): a counterbalanced
+  "35B Pool budget A/B (legacy vs reclaimed)" kind. `reclaimed` accounting
+  reserves only the state/KV the admitted context can actually materialize
+  (4,096 tokens × 20,480 B + 64 MB fixed linear state, floored at 256 MiB)
+  instead of a flat `ceiling / 8` — ~0.8 GB of phantom reserve on the 12 GB
+  reference device — and extends the pool tier list with a 3 GiB tier
+  (peak ≈ 5.4 GB, under the recorded build-45 Jetsam datapoint). Both arms
+  are exactness-inert (caching changes no math). The budget resolves at
+  engine load, so the runner reloads the engine on every arm transition
+  (legacy→reclaimed→reclaimed→legacy) and exports a requested/effective
+  accounting pair plus the resolved state-KV and pool allowances; a
+  requested-reclaimed trial whose load-captured state says otherwise is
+  labeled SETUP-BLOCKED instead of silently comparing same-vs-same.
+  Acceptance rule (frozen): decode ≥ +5%, prefill/TTFT ≥ −5%, a larger tier
+  actually selected, and reclaimed peak footprint ≤ the recorded Jetsam
+  datapoint (5.6 GB). Default stays `.legacy` (exactly current behavior)
+  until the device run accepts the reclaimed arm.
+- 35B wide-microbatch A/B runner (audit finding 4): a counterbalanced
+  "Staged wide-microbatch A/B (g4 vs g8)" kind, and the microbatch clamp
+  raised from 4 to 16 so wider groups can execute (still bounded at runtime
+  by pool capacity / topK). Wider groups are exactness-inert by the same
+  construction as g4 (per-token M=1 QMM; only the completion boundary and
+  lease windowing move). Acceptance rule (frozen): prefill ≥ +5% with
+  decode ≥ −5%. The promoted default stays g4.
 - 35B expert-read concurrency A/B runner: a counterbalanced
   "35B Expert reads A/B (4 vs 6)" kind. Read concurrency is load-captured
   (the store's read semaphore is fixed at engine load), so the runner

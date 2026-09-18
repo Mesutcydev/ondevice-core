@@ -342,3 +342,38 @@ the recorded Phase 5K rejection.
 4. **Long-prompt attention check.** For prompts ≥ 1024 tokens the fused
    head_dim-256 NAX attention path (mlx#3842) is the one to watch; it does
    not engage on the 118-token frozen profile.
+
+## 9. Pool-starved decode: audit findings 1+2+4 (build-55 candidates)
+
+An external audit of the build-54 device numbers (load 1.90 s, prefill
+7.40 s, decode 8.30 tok/s, pool auto → 2 GiB / 1213 slots, hit 78%, peak
+4.42 GB) plus the build-47 expert-load counts (9.6k loads × 1,769,472 B per
+182-token run ≈ 17 GB of flash reads per run) concluded the decode
+bottleneck is the expert pool, and that the pool is capped by two accounting
+mistakes rather than by the device:
+
+1. **The state/KV reserve was a flat `ceiling / 8`** (~1.06 GB on the 12 GB
+   phone) even though the admitted 4,096-token context can only materialize
+   ~148 MB (KV + the fixed linear state). The difference was held out of
+   pool headroom and reserved against nothing.
+2. **The tier list stopped at 2 GiB**, so the binding constraint was the
+   cap, not the headroom.
+
+Landed in this working tree (both exactness-inert — caching changes no math):
+
+| Item | Where |
+| --- | --- |
+| `Edge0_35BPoolAccounting` (legacy / reclaimed). Reclaimed allowance: `max(maxContextTokens × 20,480 B + linearStateBytes, 256 MiB)`, capped by `ceiling / 8`; tier list gains 3,072 MiB | `Edge0_35BMemoryBudget.stateKVAllowance`, `.poolTierBytes(for:)`, `.resolve(accounting:maxContextTokens:)`, `Edge0_35BContextBudget` |
+| Load-captured knob + requested/effective proof pair; the budget resolves at load, so the runner reloads per arm transition | `Edge0EnginePreferences.edge0_35BPoolAccounting` (default `.legacy`), `Edge0_35BEngine.poolAccountingCaptured`, `Edge0RuntimeBackend.metrics35B()` (`pool.accounting*`, `budget.stateKVAllowanceBytes`, `budget.poolAllowanceBytes`) |
+| `35B Pool budget A/B (legacy vs reclaimed)` kind — counterbalanced, auto pool (the fixed 512 MiB pin is dropped for this kind), decision block with per-arm pool/allowance/hit-rate/loads and a Jetsam-line check; frozen rule: decode ≥ +5%, prefill/TTFT ≥ −5%, tier must change, reclaimed peak ≤ 5.6 GB datapoint | `Edge0DiagnosticKind.poolBudgetAB`, `Edge0DiagnosticPlan.poolBudgetAcceptance`, `Edge0SpeedABRunner.*` |
+| Finding 4: microbatch clamp 4 → 16 plus the `Staged wide-microbatch A/B (g4 vs g8)` kind; frozen rule prefill ≥ +5%, decode ≥ −5%; promoted default stays g4 | `Edge0EnginePreferences.edge0_35BMicrobatchGroupSize`, `Edge0DiagnosticKind.microbatchWideAB`, `Edge0DiagnosticPlan.wideMicrobatchAcceptance` |
+| Tests | `Edge0SpeedABDecisionTests` (+8 cases: both plans, both frozen rules with boundary cases, clamp bound, metric pair, load-capture), `Edge0SpeedABRunnerCleanupTests` (snapshot capture/restore), `Edge0_35BIntegrationTests` (legacy behavior pinned exactly; reclaimed allowance/tier expectations) |
+
+Pending device evidence: run **35B Pool budget A/B (legacy vs reclaimed)** and
+**Staged wide-microbatch A/B (g4 vs g8)** on the iPhone 17 Pro Max (one kind
+per session, 60 s idle recovery, cool device). Promote `.reclaimed` — flip
+the default in `Edge0EnginePreferences` and record the verdict on the knob —
+only if the decision block returns an acceptance; if the reclaimed arm does
+not select a larger tier, the run reports that honestly (accounting-only
+outcome). The 4096-MiB tier is deliberately NOT appended: the audit proposes
+it as a separate device A/B once 3 GiB is validated.

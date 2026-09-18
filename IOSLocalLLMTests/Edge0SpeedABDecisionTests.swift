@@ -19,7 +19,12 @@ import XCTest
 //   6. the expert-reads A/B kind and its frozen acceptance rule;
 //   7. the sustained-thermal kind, its stability rule, and thermal ranks;
 //   8. the session-reuse prefix decision (prompt cache);
-//   9. the stable snapshot boundary (prompt cache).
+//   9. the stable snapshot boundary (prompt cache);
+//  10. the pool-budget A/B kind and its frozen acceptance rule
+//      (audit findings 1+2);
+//  11. the wide-microbatch A/B kind and its frozen acceptance rule
+//      (finding 4);
+//  12. the pool-accounting load capture.
 
 @MainActor
 final class Edge0SpeedABDecisionTests: XCTestCase {
@@ -28,6 +33,7 @@ final class Edge0SpeedABDecisionTests: XCTestCase {
         Edge0EnginePreferences.edge0_35BReadaheadHints = false
         Edge0EnginePreferences.edge0_35BRouterReadbackMode = 0
         Edge0EnginePreferences.edge0_35BExecutionMode = .staged
+        Edge0EnginePreferences.edge0_35BPoolAccounting = .legacy
     }
 
     override func tearDown() {
@@ -221,6 +227,147 @@ final class Edge0SpeedABDecisionTests: XCTestCase {
         XCTAssertEqual(Edge0DiagnosticPlan.thermalRank("thermal fair"), 1)
         XCTAssertEqual(Edge0DiagnosticPlan.thermalRank("thermal serious"), 2)
         XCTAssertEqual(Edge0DiagnosticPlan.thermalRank("thermal critical"), 3)
+    }
+
+    // MARK: 10. Pool-budget A/B (audit findings 1+2)
+
+    func testPoolBudgetABHasCounterbalancedStagedPlan() {
+        XCTAssertEqual(
+            Edge0DiagnosticKind.poolBudgetAB.scoredPlan,
+            [.staged, .staged, .staged, .staged]
+        )
+        XCTAssertEqual(
+            Edge0DiagnosticKind.poolBudgetAB.warmUpModes,
+            [.staged]
+        )
+        XCTAssertTrue(Edge0DiagnosticPlan.populationGate(
+            kind: .poolBudgetAB, exactCount: 0, boundedCount: 0, stagedCount: 4
+        ))
+    }
+
+    func testPoolBudgetAcceptanceRule() {
+        // Baseline: decode +5 (THROUGHPUT delta, positive = faster),
+        // prefill/TTFT within the +5% time-delta bound, a larger tier
+        // actually selected, peak under the Jetsam datapoint.
+        XCTAssertTrue(Edge0DiagnosticPlan.poolBudgetAcceptance(
+            decodeDeltaPercent: 5, prefillDeltaPercent: 0, ttftDeltaPercent: 0,
+            effectivePoolsDiffer: true, reclaimedPeakFootprintBytes: 5_400_000_000
+        ))
+        // Decode below +5% fails.
+        XCTAssertFalse(Edge0DiagnosticPlan.poolBudgetAcceptance(
+            decodeDeltaPercent: 4.9, prefillDeltaPercent: -1, ttftDeltaPercent: -1,
+            effectivePoolsDiffer: true, reclaimedPeakFootprintBytes: 5_400_000_000
+        ))
+        // Prefill/TTFT are TIME deltas: slower than +5% is a fail.
+        XCTAssertFalse(Edge0DiagnosticPlan.poolBudgetAcceptance(
+            decodeDeltaPercent: 10, prefillDeltaPercent: 5.1, ttftDeltaPercent: 0,
+            effectivePoolsDiffer: true, reclaimedPeakFootprintBytes: 5_400_000_000
+        ))
+        XCTAssertFalse(Edge0DiagnosticPlan.poolBudgetAcceptance(
+            decodeDeltaPercent: 10, prefillDeltaPercent: 0, ttftDeltaPercent: 5.1,
+            effectivePoolsDiffer: true, reclaimedPeakFootprintBytes: 5_400_000_000
+        ))
+        // An accounting-only effect (no tier change) cannot demonstrate the
+        // pool win.
+        XCTAssertFalse(Edge0DiagnosticPlan.poolBudgetAcceptance(
+            decodeDeltaPercent: 10, prefillDeltaPercent: -1, ttftDeltaPercent: -1,
+            effectivePoolsDiffer: false, reclaimedPeakFootprintBytes: 5_400_000_000
+        ))
+        // Peak boundary: at the recorded datapoint passes; above fails;
+        // unsampled (0) fails closed.
+        XCTAssertTrue(Edge0DiagnosticPlan.poolBudgetAcceptance(
+            decodeDeltaPercent: 6, prefillDeltaPercent: -2, ttftDeltaPercent: -2,
+            effectivePoolsDiffer: true,
+            reclaimedPeakFootprintBytes: Edge0DiagnosticPlan.recordedJetsamFootprintBytes
+        ))
+        XCTAssertFalse(Edge0DiagnosticPlan.poolBudgetAcceptance(
+            decodeDeltaPercent: 6, prefillDeltaPercent: -2, ttftDeltaPercent: -2,
+            effectivePoolsDiffer: true,
+            reclaimedPeakFootprintBytes: Edge0DiagnosticPlan.recordedJetsamFootprintBytes + 1
+        ))
+        XCTAssertFalse(Edge0DiagnosticPlan.poolBudgetAcceptance(
+            decodeDeltaPercent: 6, prefillDeltaPercent: -2, ttftDeltaPercent: -2,
+            effectivePoolsDiffer: true, reclaimedPeakFootprintBytes: 0
+        ))
+    }
+
+    // MARK: 11. Wide-microbatch A/B (finding 4)
+
+    /// Finding 4: the clamp was raised from 4 so the wide-microbatch arms
+    /// (g8) can actually execute; the default stays the promoted g4.
+    func testMicrobatchClampAllowsWideGroups() {
+        resetPreferences()
+        Edge0EnginePreferences.edge0_35BMicrobatchGroupSize = 8
+        XCTAssertEqual(Edge0EnginePreferences.edge0_35BMicrobatchGroupSize, 8)
+        Edge0EnginePreferences.edge0_35BMicrobatchGroupSize = 16
+        XCTAssertEqual(Edge0EnginePreferences.edge0_35BMicrobatchGroupSize, 16)
+        Edge0EnginePreferences.edge0_35BMicrobatchGroupSize = 17
+        XCTAssertEqual(
+            Edge0EnginePreferences.edge0_35BMicrobatchGroupSize, 16,
+            "wide groups clamp at 16"
+        )
+        resetPreferences()
+    }
+
+    func testWideMicrobatchABPlanAndAcceptanceRule() {
+        XCTAssertEqual(
+            Edge0DiagnosticKind.microbatchWideAB.scoredPlan,
+            [.staged, .staged, .staged, .staged]
+        )
+        XCTAssertEqual(
+            Edge0DiagnosticKind.microbatchWideAB.warmUpModes,
+            [.staged]
+        )
+        XCTAssertTrue(Edge0DiagnosticPlan.populationGate(
+            kind: .microbatchWideAB, exactCount: 0, boundedCount: 0, stagedCount: 4
+        ))
+        // Prefill is a TIME delta (negative = faster) and must improve ≥5%;
+        // decode is a THROUGHPUT delta (positive = faster) and may not
+        // degrade beyond −5%. Both boundaries are inclusive.
+        XCTAssertTrue(Edge0DiagnosticPlan.wideMicrobatchAcceptance(
+            prefillDeltaPercent: -5, decodeDeltaPercent: -5
+        ))
+        XCTAssertTrue(Edge0DiagnosticPlan.wideMicrobatchAcceptance(
+            prefillDeltaPercent: -16, decodeDeltaPercent: 2.5
+        ))
+        XCTAssertFalse(Edge0DiagnosticPlan.wideMicrobatchAcceptance(
+            prefillDeltaPercent: -4.9, decodeDeltaPercent: 10
+        ))
+        XCTAssertFalse(Edge0DiagnosticPlan.wideMicrobatchAcceptance(
+            prefillDeltaPercent: 5, decodeDeltaPercent: 10
+        ))
+        XCTAssertFalse(Edge0DiagnosticPlan.wideMicrobatchAcceptance(
+            prefillDeltaPercent: -10, decodeDeltaPercent: -5.1
+        ))
+    }
+
+    // MARK: 12. Pool-accounting load capture
+
+    func testGenerationMetricsCarryPoolAccountingPair() {
+        var metrics = Edge0_35BGenerationMetrics()
+        XCTAssertEqual(metrics.poolAccountingRequested, .legacy)
+        XCTAssertEqual(metrics.poolAccountingEffective, .legacy)
+
+        metrics.poolAccountingRequested = .reclaimed
+        metrics.poolAccountingEffective = .reclaimed
+        XCTAssertEqual(metrics.poolAccountingRequested, .reclaimed)
+        XCTAssertEqual(metrics.poolAccountingEffective, .reclaimed)
+    }
+
+    /// The engine reads the preference ONCE at load and freezes it: a later
+    /// preference change must not leak into the load-captured state, which
+    /// is what the reload-per-arm lifecycle depends on.
+    func testEngineLoadCaptureFreezesPoolAccounting() {
+        Edge0EnginePreferences.edge0_35BPoolAccounting = .reclaimed
+        let engine = Edge0_35BEngine()
+        // Not loaded: the frozen state stays the default (legacy).
+        XCTAssertEqual(engine.poolAccountingCaptured, .legacy)
+        // The preference is still live for the NEXT load to capture.
+        XCTAssertEqual(Edge0EnginePreferences.edge0_35BPoolAccounting, .reclaimed)
+
+        Edge0EnginePreferences.edge0_35BPoolAccounting = .legacy
+        _ = Edge0_35BEngine()
+        XCTAssertEqual(engine.poolAccountingCaptured, .legacy)
     }
 }
 

@@ -345,6 +345,9 @@ struct DiagnosticsView: View {
                                 + (edge0SpeedAB.kind == .readsAB
                                     ? " · reads \(run.readsEffective)"
                                     : "")
+                                + (edge0SpeedAB.kind == .poolBudgetAB
+                                    ? " · accounting \(run.poolAccountingEffective.rawValue)"
+                                    : "")
                                 + (run.sustainedEvidence ? "" : " · sustained evidence insufficient")
                                 + (run.sequenceMatch == false ? " · OUTPUT DIFFERS" : "")
                             )

@@ -81,7 +81,12 @@ enum Edge0EnginePreferences {
     /// completion −10.9%; peak high-water ~2.50 → ~2.71 GB (+~8.4%, below
     /// the frozen review threshold). 1 = per-token routed execution
     /// (diagnostic/reference, selectable). Effective group is further
-    /// bounded by pool capacity / topK at runtime. Clamped 1...4.
+    /// bounded by pool capacity / topK at runtime. Clamped 1...16: the
+    /// clamp was raised from 4 for the wide-microbatch A/B (g4 vs g8) —
+    /// the union effect does not stop at 4, and wider groups stay
+    /// exactness-inert by the same construction (per-token M=1 QMM;
+    /// only the completion boundary and lease windowing move). The
+    /// default stays 4 until the wide A/B accepts a larger group.
     ///
     /// Build-47 device confirmation (iPhone18,2 · 2026-09-17): staged·g4
     /// prefill 6.83–7.07 s vs staged·g1 8.23–8.25 s (−16%), decode
@@ -95,7 +100,7 @@ enum Edge0EnginePreferences {
         }
         set {
             lock.lock(); defer { lock.unlock() }
-            _edge0_35BMicrobatchGroupSize = min(4, max(1, newValue))
+            _edge0_35BMicrobatchGroupSize = min(16, max(1, newValue))
         }
     }
 
@@ -193,13 +198,36 @@ enum Edge0EnginePreferences {
     private static var _edge0_35BSessionReuse = true
 
     static var edge0_35BSessionReuse: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return _edge0_35BSessionReuse }
+        set { lock.lock(); defer { lock.unlock() }; _edge0_35BSessionReuse = newValue }
+    }
+
+    /// Pool-budget accounting for the 35B family (audit findings 1+2;
+    /// build-55 candidate). `.legacy` is the pre-fix accounting: a flat
+    /// `ceiling / 8` state-KV reserve and a 2 GiB tier cap. `.reclaimed`
+    /// reserves only what the admitted context can materialize
+    /// (`maxContextTokens × 20,480 B + 64 MB fixed linear state`, floored at
+    /// 256 MiB) and adds the 3 GiB tier that reserve funds — ~0.8 GB of
+    /// phantom reserve returned to the pool plus one more tier (~1 GB more
+    /// resident experts; peak ≈ 5.4 GB on the 12 GB reference device, under
+    /// the recorded build-45 Jetsam datapoint of ~5.6 GB). Caching changes
+    /// no math, so both arms are exactness-inert; the budget resolves at
+    /// engine load, so the A/B switches arms by reloading.
+    ///
+    /// Device A/B: `35B Pool budget A/B (legacy vs reclaimed)`. Default
+    /// stays `.legacy` (exactly current behavior) until the device run
+    /// accepts the reclaimed arm; promote by flipping this default and
+    /// recording the verdict here.
+    private static var _edge0_35BPoolAccounting: Edge0_35BPoolAccounting = .legacy
+
+    static var edge0_35BPoolAccounting: Edge0_35BPoolAccounting {
         get {
             lock.lock(); defer { lock.unlock() }
-            return _edge0_35BSessionReuse
+            return _edge0_35BPoolAccounting
         }
         set {
             lock.lock(); defer { lock.unlock() }
-            _edge0_35BSessionReuse = newValue
+            _edge0_35BPoolAccounting = newValue
         }
     }
 }

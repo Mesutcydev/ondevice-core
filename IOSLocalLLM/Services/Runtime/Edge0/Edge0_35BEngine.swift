@@ -106,6 +106,12 @@ struct Edge0_35BGenerationMetrics: Sendable, Equatable {
     /// requested alone is not evidence the loaders issue hints.
     var readaheadRequested = false
     var readaheadEffective = false
+    /// Audit findings 1+2 candidate: requested (preference read at
+    /// generation time) vs effective (engine-load-captured) pool-budget
+    /// accounting. A mismatch means the arm's engine was not reloaded after
+    /// the preference changed.
+    var poolAccountingRequested = Edge0_35BPoolAccounting.legacy
+    var poolAccountingEffective = Edge0_35BPoolAccounting.legacy
     /// Session-state reuse (prompt cache): whether the turn restored the
     /// previous prompt-boundary snapshot, how many tokens it reused, and how
     /// many tokens it actually prefilled.
@@ -282,6 +288,12 @@ final class Edge0_35BEngine: @unchecked Sendable {
     /// "effective" half of the readahead requested/effective pair.
     private(set) var readaheadHintsEnabled = false
 
+    /// Pool-budget accounting frozen at load time (audit findings 1+2).
+    /// Authoritative "effective" half of the accounting requested/effective
+    /// pair: the budget resolves at load, so `.reclaimed` must be LOADED,
+    /// not merely requested, for a trial to count as the reclaimed arm.
+    private(set) var poolAccountingCaptured: Edge0_35BPoolAccounting = .legacy
+
     /// Configured expert-read concurrency actually handed to the store.
     var configuredReadConcurrency: Int {
         engineConfiguration?.maxConcurrentReads ?? 0
@@ -331,6 +343,11 @@ final class Edge0_35BEngine: @unchecked Sendable {
         // RELOADING the engine (the loaders freeze this flag), and
         // generation metrics report it back as `readaheadEffective`.
         let readaheadEnabled = Edge0EnginePreferences.edge0_35BReadaheadHints
+        // Same load-capture contract for the pool-budget accounting (audit
+        // findings 1+2): the budget this load will use was resolved from
+        // this preference, so the frozen value is the authoritative
+        // `poolAccountingEffective`.
+        let poolAccounting = Edge0EnginePreferences.edge0_35BPoolAccounting
         do {
             let loaders = try (0..<configuration.numHiddenLayers).map { layer in
                 try Edge0_35BExpertLoader(
@@ -370,6 +387,7 @@ final class Edge0_35BEngine: @unchecked Sendable {
             self.configuration = configuration
             self.engineConfiguration = engineConfiguration
             self.readaheadHintsEnabled = readaheadEnabled
+            self.poolAccountingCaptured = poolAccounting
             self.installSummary = enrichedSummary
             self.eosTokenIDs = requestedEOS
             self.loraModuleCount = summary.loraModuleCount
@@ -916,6 +934,9 @@ final class Edge0_35BEngine: @unchecked Sendable {
             readaheadRequested:
                 Edge0EnginePreferences.edge0_35BReadaheadHints,
             readaheadEffective: readaheadHintsEnabled,
+            poolAccountingRequested:
+                Edge0EnginePreferences.edge0_35BPoolAccounting,
+            poolAccountingEffective: poolAccountingCaptured,
             sessionReuseApplied: reusedTokenCount > 0,
             sessionReusedTokens: reusedTokenCount,
             sessionPrefillTokens: prefillTokenCount

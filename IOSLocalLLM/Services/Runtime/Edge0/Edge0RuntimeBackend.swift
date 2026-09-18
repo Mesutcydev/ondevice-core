@@ -19,6 +19,10 @@ final class Edge0RuntimeBackend: RuntimeEngineBackend, RuntimeParityProbing {
     private(set) var engine8B: Edge0Engine?
     private(set) var engine35B: Edge0_35BEngine?
     private(set) var loadedFamily: Edge0ModelFamily?
+    /// Budget the currently loaded 35B engine was admitted under (audit
+    /// findings 1+2). Exported so the A/B export can show WHICH allowance
+    /// produced the loaded pool, not just the resulting capacity.
+    private var budget35B: Edge0_35BMemoryBudget?
     private var generationTask: Task<Void, Never>?
 
     // MARK: - Directory resolution
@@ -173,12 +177,15 @@ final class Edge0RuntimeBackend: RuntimeEngineBackend, RuntimeParityProbing {
         ))
         engine35B = engine
         loadedFamily = .qwen35MoE
+        budget35B = budget
         Diagnostics.shared.breadcrumb(
             "Edge0-35B runtime ready · \(model.repoID) · exact mode · router K=\(engine.routerTopK)"
                 + " · loraModules=\(engine.loraModuleCount)"
                 + " · poolSlots=\(budget.expertPoolSlots) · poolBytes=\(budget.expertPoolBytes)"
                 + " · resident=\(budget.residentBytes)"
                 + " · reads=\(readConcurrency)"
+                + " · accounting=\(Edge0EnginePreferences.edge0_35BPoolAccounting.rawValue)"
+                + " · stateKVAllowance=\(budget.stateKVBytes)"
                 + " · readahead=\(Edge0EnginePreferences.edge0_35BReadaheadHints)",
             category: "assistant"
         )
@@ -196,6 +203,7 @@ final class Edge0RuntimeBackend: RuntimeEngineBackend, RuntimeParityProbing {
         engine8B = nil
         engine35B = nil
         loadedFamily = nil
+        budget35B = nil
     }
 
     /// Developer parity probe (35B frozen reference). nil for families
@@ -448,6 +456,15 @@ final class Edge0RuntimeBackend: RuntimeEngineBackend, RuntimeParityProbing {
         // half is only meaningful per generation and is exported there.
         metrics["mode.readaheadEffective"] = engine.readaheadHintsEnabled
             ? "true" : "false"
+        // Audit findings 1+2: the load-captured pool-budget accounting and
+        // the allowances the loaded budget resolved to. `pool.capacityBytes`
+        // (added below) is the post-override capacity; these two are the
+        // admission-level values that produced it.
+        metrics["pool.accountingEffective"] = engine.poolAccountingCaptured.rawValue
+        if let budget = budget35B {
+            metrics["budget.stateKVAllowanceBytes"] = "\(budget.stateKVBytes)"
+            metrics["budget.poolAllowanceBytes"] = "\(budget.expertPoolBytes)"
+        }
         if let reads = engine.readStatistics() {
             metrics["reads.configured"] = "\(reads.configuredMaxConcurrentReads)"
             metrics["reads.peak"] = "\(reads.peakConcurrentReads)"
@@ -641,6 +658,10 @@ final class Edge0RuntimeBackend: RuntimeEngineBackend, RuntimeParityProbing {
                 ? "true" : "false"
             metrics["mode.readaheadEffective"] = generation.readaheadEffective
                 ? "true" : "false"
+            metrics["pool.accountingRequested"] =
+                generation.poolAccountingRequested.rawValue
+            metrics["pool.accountingEffective"] =
+                generation.poolAccountingEffective.rawValue
             metrics["advisory.fallbackReasons"] =
                 generation.advisory.fallbackReasons
                     .sorted { $0.key < $1.key }

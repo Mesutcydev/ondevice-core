@@ -17,6 +17,8 @@ enum Edge0DiagnosticKind: String, CaseIterable, Identifiable, Sendable {
     case computeAB = "35B Compute A/B (production vs candidate)"
     case readaheadAB = "35B Readahead A/B (off vs hints)"
     case readsAB = "35B Expert reads A/B (4 vs 6)"
+    case poolBudgetAB = "35B Pool budget A/B (legacy vs reclaimed)"
+    case microbatchWideAB = "Staged wide-microbatch A/B (g4 vs g8)"
     case sustained35B = "35B Sustained Run (thermal)"
     case exactDrift = "Exact drift (early vs late)"
 
@@ -43,6 +45,10 @@ enum Edge0DiagnosticKind: String, CaseIterable, Identifiable, Sendable {
         case .readaheadAB:
             return [.staged, .staged, .staged, .staged]
         case .readsAB:
+            return [.staged, .staged, .staged, .staged]
+        case .poolBudgetAB:
+            return [.staged, .staged, .staged, .staged]
+        case .microbatchWideAB:
             return [.staged, .staged, .staged, .staged]
         case .sustained35B:
             // Back-to-back identical trials (no idle recovery): the point is
@@ -232,6 +238,48 @@ struct Edge0DiagnosticPlan: Sendable {
         decodeDeltaPercent: Double
     ) -> Bool {
         prefillDeltaPercent <= -3 && decodeDeltaPercent >= -3
+    }
+
+    /// Build-45 device datapoint: a 12 GB iPhone reported ~9.2 GB of
+    /// apparent headroom and was still Jetsam-killed around this footprint,
+    /// so it is the operative upper bound for any pool-growth experiment.
+    static let recordedJetsamFootprintBytes: UInt64 = 5_600_000_000
+
+    /// Frozen acceptance rule for the pool-budget A/B (audit findings 1+2:
+    /// context-based state-KV allowance + the 3 GiB tier). The lever is the
+    /// pool: more resident experts cut miss reads, so the primary metric is
+    /// decode THROUGHPUT — at least +5%. Prefill/TTFT are TIME deltas
+    /// (negative = faster) and may not degrade by more than 5%. The larger
+    /// tier must actually have been selected (an accounting-only change
+    /// with no tier shift cannot demonstrate the win), and the reclaimed
+    /// peak footprint must stay at or under the recorded Jetsam datapoint —
+    /// an unsampled peak (0) fails closed. Sequence parity and arm
+    /// effectiveness are separate gates in the runner.
+    static func poolBudgetAcceptance(
+        decodeDeltaPercent: Double,
+        prefillDeltaPercent: Double,
+        ttftDeltaPercent: Double,
+        effectivePoolsDiffer: Bool,
+        reclaimedPeakFootprintBytes: UInt64
+    ) -> Bool {
+        decodeDeltaPercent >= 5
+            && prefillDeltaPercent <= 5
+            && ttftDeltaPercent <= 5
+            && effectivePoolsDiffer
+            && reclaimedPeakFootprintBytes > 0
+            && reclaimedPeakFootprintBytes <= recordedJetsamFootprintBytes
+    }
+
+    /// Frozen acceptance rule for the wide-microbatch A/B (g4 → g8). Same
+    /// construction as the g1 → g4 promotion: prefill is a TIME delta
+    /// (negative = faster) and must improve by at least 5%; decode is a
+    /// THROUGHPUT delta (positive = faster) and may not degrade by more
+    /// than 5%. Sequence parity is a separate gate in the runner.
+    static func wideMicrobatchAcceptance(
+        prefillDeltaPercent: Double,
+        decodeDeltaPercent: Double
+    ) -> Bool {
+        prefillDeltaPercent <= -5 && decodeDeltaPercent >= -5
     }
 
     /// Frozen stability rule for the sustained-thermal run (no A/B arms).

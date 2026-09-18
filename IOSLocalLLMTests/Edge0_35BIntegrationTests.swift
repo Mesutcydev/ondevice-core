@@ -202,10 +202,15 @@ final class Edge0_35BIntegrationTests: XCTestCase {
     }
 
     func testFamilyBudgetsAreDistinctAndRefuseBelowTopK() {
-        // 35B: rich device admits a pool; starvation refuses it.
+        let contextCap = Edge0_35BContextBudget.experimentalMaximumInputTokens
+
+        // 35B: rich device admits a pool; starvation refuses it. Legacy is
+        // the pre-fix accounting and must reproduce its exact expectations.
         let rich = Edge0_35BMemoryBudget.resolve(
             availableBytes: 8 * 1_073_741_824,
-            ceilingBytes: 16 * 1_073_741_824
+            ceilingBytes: 16 * 1_073_741_824,
+            accounting: .legacy,
+            maxContextTokens: contextCap
         )
         XCTAssertTrue(rich.isPoolEnabled)
         XCTAssertEqual(
@@ -217,27 +222,76 @@ final class Edge0_35BIntegrationTests: XCTestCase {
         // saturated 512 MiB with ~45% hit rate).
         let large = Edge0_35BMemoryBudget.resolve(
             availableBytes: 12 * 1_073_741_824,
-            ceilingBytes: 16 * 1_073_741_824
+            ceilingBytes: 16 * 1_073_741_824,
+            accounting: .legacy,
+            maxContextTokens: contextCap
         )
         XCTAssertEqual(large.expertPoolBytes, 2_048 * 1_048_576)
         XCTAssertGreaterThan(large.expertPoolSlots, 512)
 
+        // Audit findings 1+2: the reclaimed accounting reserves only what
+        // the admitted context can materialize and gains the 3 GiB tier.
+        let reclaimed = Edge0_35BMemoryBudget.resolve(
+            availableBytes: 12 * 1_073_741_824,
+            ceilingBytes: 16 * 1_073_741_824,
+            accounting: .reclaimed,
+            maxContextTokens: contextCap
+        )
+        XCTAssertEqual(reclaimed.expertPoolBytes, 3_072 * 1_048_576)
+        XCTAssertGreaterThan(
+            reclaimed.expertPoolSlots, large.expertPoolSlots
+        )
+        XCTAssertLessThan(reclaimed.stateKVBytes, large.stateKVBytes)
+
+        // Finding 1 arithmetic at the 8.5 GB iPhone clamp: legacy reserves
+        // ceiling/8; reclaimed reserves the 256 MiB floor (the 4,096-token
+        // need is 4096 × 20,480 + 64,389,120 ≈ 148 MB).
+        let ceiling: UInt64 = 8_500_000_000
+        XCTAssertEqual(
+            Edge0_35BMemoryBudget.stateKVAllowance(
+                ceilingBytes: ceiling, maxContextTokens: contextCap,
+                accounting: .legacy
+            ),
+            ceiling / 8
+        )
+        XCTAssertEqual(
+            Edge0_35BMemoryBudget.stateKVAllowance(
+                ceilingBytes: ceiling, maxContextTokens: contextCap,
+                accounting: .reclaimed
+            ),
+            Edge0_35BMemoryBudget.minimumStateKVBytes
+        )
+
+        // The reclaimed allowance follows a larger admitted context.
+        XCTAssertEqual(
+            Edge0_35BMemoryBudget.stateKVAllowance(
+                ceilingBytes: ceiling, maxContextTokens: 32_768,
+                accounting: .reclaimed
+            ),
+            32_768 * Edge0_35BMemoryBudget.kvBytesPerToken
+                + Edge0_35BMemoryBudget.linearStateBytes
+        )
+
         let baseline = Edge0_35BMemoryBudget.resolve(
-            availableBytes: 0, ceilingBytes: 8 * 1_073_741_824
+            availableBytes: 0, ceilingBytes: 8 * 1_073_741_824,
+            accounting: .legacy, maxContextTokens: contextCap
         )
         let committed = baseline.residentBytes + baseline.stateKVBytes
             + baseline.scratchBytes + baseline.safetyReserveBytes
         let poor = Edge0_35BMemoryBudget.resolve(
             availableBytes: committed + 3 * Edge0_35BMemoryBudget.expertBundleBytes,
-            ceilingBytes: 8 * 1_073_741_824
+            ceilingBytes: 8 * 1_073_741_824,
+            accounting: .legacy, maxContextTokens: contextCap
         )
         XCTAssertFalse(poor.isPoolEnabled)
 
-        // Context admission is clamped by the documented bring-up limit.
+        // Context admission is clamped by the documented bring-up limit
+        // under the reclaimed accounting too.
         let context = Edge0_35BContextBudget.resolve(
             availableBytes: 12 * 1_073_741_824,
             ceilingBytes: 16 * 1_073_741_824,
-            outputTokens: 256
+            outputTokens: 256,
+            accounting: .reclaimed
         )
         XCTAssertEqual(
             context.maxInputTokens,

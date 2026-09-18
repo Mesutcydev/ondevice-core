@@ -11,7 +11,9 @@ extension Edge0_35BMemoryBudget {
     static func current() -> Edge0_35BMemoryBudget {
         resolve(
             availableBytes: UInt64(max(0, MemoryAdvisor.availableMemoryForModel)),
-            ceilingBytes: UInt64(max(0, MemoryAdvisor.processMemoryCeiling))
+            ceilingBytes: UInt64(max(0, MemoryAdvisor.processMemoryCeiling)),
+            accounting: Edge0EnginePreferences.edge0_35BPoolAccounting,
+            maxContextTokens: Edge0_35BContextBudget.experimentalMaximumInputTokens
         )
     }
 
@@ -27,7 +29,8 @@ extension Edge0_35BContextBudget {
         resolve(
             availableBytes: UInt64(max(0, MemoryAdvisor.availableMemoryForModel)),
             ceilingBytes: UInt64(max(0, MemoryAdvisor.processMemoryCeiling)),
-            outputTokens: outputTokens
+            outputTokens: outputTokens,
+            accounting: Edge0EnginePreferences.edge0_35BPoolAccounting
         )
     }
 

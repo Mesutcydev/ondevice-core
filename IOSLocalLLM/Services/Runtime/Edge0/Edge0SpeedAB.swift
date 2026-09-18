@@ -201,6 +201,18 @@ final class Edge0SpeedABRunner: ObservableObject {
         /// means the engine was not reloaded after the preference changed.
         var readsRequested = 0
         var readsEffective = 0
+        /// Audit findings 1+2: pool-budget accounting arm state. Requested
+        /// (arm value) vs effective (engine-load-captured). A mismatch means
+        /// the engine was not reloaded after the preference changed.
+        var poolAccountingRequested = Edge0_35BPoolAccounting.legacy
+        var poolAccountingEffective = Edge0_35BPoolAccounting.legacy
+        /// Allowances the loaded budget resolved to, and the resulting pool
+        /// behavior needed to read this A/B (cache hits, miss loads).
+        var stateKVAllowanceBytes: UInt64 = 0
+        var poolAllowanceBytes: UInt64 = 0
+        var prefillHitRate = 0.0
+        var decodeHitRate = 0.0
+        var decodeLoadsPerGeneratedToken = 0.0
         var routerHash = ""
         var uniqueExpertTotal = 0
         var moeInvocations = 0
@@ -327,7 +339,15 @@ final class Edge0SpeedABRunner: ObservableObject {
             for: preset.repoID,
             supportsThinking: preset.supportsThinking
         )
-        Edge0EnginePreferences.poolCapacityBytesOverride = Self.poolOverrideBytes
+        // Audit findings 1+2: the pool-budget A/B must run on each
+        // accounting's own auto-selected tier — the fixed 512 MiB pin would
+        // mask exactly what the kind measures.
+        if kind == .poolBudgetAB {
+            Edge0EnginePreferences.poolCapacityBytesOverride = nil
+        } else {
+            Edge0EnginePreferences.poolCapacityBytesOverride =
+                Self.poolOverrideBytes
+        }
         Edge0EnginePreferences.expertLoadConcurrency = 4
         Edge0EnginePreferences.edge0_35BExecutionMode = .exact
         // Profiling is diagnostic-only; scored A/B trials run unprofiled.
@@ -345,8 +365,16 @@ final class Edge0SpeedABRunner: ObservableObject {
         if kind == .readsAB {
             Edge0EnginePreferences.expertLoadConcurrency = 4
         }
+        // Audit findings 1+2: the pool-budget A/B starts on the legacy
+        // (current production) arm; the counterbalanced plan reloads the
+        // engine on every arm transition.
+        if kind == .poolBudgetAB {
+            Edge0EnginePreferences.edge0_35BPoolAccounting = .legacy
+        }
 
-        status = "Loading Edge0-35B (512 MiB pool)…"
+        status = kind == .poolBudgetAB
+            ? "Loading Edge0-35B (auto pool)…"
+            : "Loading Edge0-35B (512 MiB pool)…"
         if service.isModelLoaded {
             await service.unloadAndWaitForCleanup()
         }
@@ -359,6 +387,8 @@ final class Edge0SpeedABRunner: ObservableObject {
         }
         var previousReadaheadArm: Bool? = kind == .readaheadAB ? false : nil
         var previousReadsArm: Int? = kind == .readsAB ? 4 : nil
+        var previousPoolAccountingArm: Edge0_35BPoolAccounting? =
+            kind == .poolBudgetAB ? .legacy : nil
         if let metrics = await service.edge0RuntimeMetrics() {
             let slots = metrics["pool.capacitySlots"] ?? "unavailable"
             let bytes = metrics["pool.capacityBytes"] ?? "unavailable"
@@ -366,7 +396,8 @@ final class Edge0SpeedABRunner: ObservableObject {
             let readahead = metrics["mode.readaheadEffective"] ?? "unavailable"
             status = "Loaded in \(String(format: "%.2f", loadedSeconds))s"
                 + " · pool \(slots) slots/\(bytes) B · reads configured \(reads)"
-            if let slotsValue = Int(slots), slotsValue != Self.expectedSlots {
+            if kind != .poolBudgetAB,
+               let slotsValue = Int(slots), slotsValue != Self.expectedSlots {
                 status += " · WARNING: expected \(Self.expectedSlots) slots"
             }
             if kind == .readaheadAB {
@@ -447,19 +478,37 @@ final class Edge0SpeedABRunner: ObservableObject {
                 ? [false, true, true, false][min(index, 3)] : nil
             let readsOverride: Int? = kind == .readsAB
                 ? [4, 6, 6, 4][min(index, 3)] : nil
-            // Load-captured knobs (readahead hints, expert-read concurrency):
-            // an arm change REQUIRES unloading and reloading the model before
-            // the trial. (The warm-up ran under the initial arm.) Reuse the
-            // same reload for both trials of an arm — only the arm TRANSITION
-            // reloads, not every trial.
+            // Audit findings 1+2: the budget resolves at load, so the arm is
+            // a load-captured value like readahead/reads.
+            let poolAccountingArms: [Edge0_35BPoolAccounting] =
+                [.legacy, .reclaimed, .reclaimed, .legacy]
+            let poolAccountingOverride: Edge0_35BPoolAccounting? =
+                kind == .poolBudgetAB
+                    ? poolAccountingArms[min(index, 3)]
+                    : nil
+            // Load-captured knobs (readahead hints, expert-read concurrency,
+            // pool accounting): an arm change REQUIRES unloading and
+            // reloading the model before the trial. (The warm-up ran under
+            // the initial arm.) Reuse the same reload for both trials of an
+            // arm — only the arm TRANSITION reloads, not every trial.
             let readaheadArmChanged = kind == .readaheadAB
                 && readaheadOverride != previousReadaheadArm
             let readsArmChanged = kind == .readsAB
                 && readsOverride != previousReadsArm
-            if readaheadArmChanged || readsArmChanged {
-                let armDescription = kind == .readaheadAB
-                    ? "readahead \((readaheadOverride ?? false) ? "ON" : "OFF")"
-                    : "reads \(readsOverride ?? 4)"
+            let poolAccountingArmChanged = kind == .poolBudgetAB
+                && poolAccountingOverride != previousPoolAccountingArm
+            if readaheadArmChanged || readsArmChanged
+                || poolAccountingArmChanged {
+                let armDescription: String
+                if kind == .readaheadAB {
+                    armDescription = "readahead "
+                        + ((readaheadOverride ?? false) ? "ON" : "OFF")
+                } else if kind == .readsAB {
+                    armDescription = "reads \(readsOverride ?? 4)"
+                } else {
+                    armDescription = "pool accounting "
+                        + (poolAccountingOverride ?? .legacy).rawValue
+                }
                 phase = .recovery
                 status = "Reloading Edge0-35B for \(armDescription) arm…"
                 await service.unloadAndWaitForCleanup()
@@ -469,6 +518,10 @@ final class Edge0SpeedABRunner: ObservableObject {
                 }
                 if let readsOverride {
                     Edge0EnginePreferences.expertLoadConcurrency = readsOverride
+                }
+                if let poolAccountingOverride {
+                    Edge0EnginePreferences.edge0_35BPoolAccounting =
+                        poolAccountingOverride
                 }
                 let reloadStarted = ContinuousClock.now
                 await service.switchTo(preset, persistAsDefault: false)
@@ -485,13 +538,18 @@ final class Edge0SpeedABRunner: ObservableObject {
                 if let readsOverride {
                     previousReadsArm = readsOverride
                 }
+                if let poolAccountingOverride {
+                    previousPoolAccountingArm = poolAccountingOverride
+                }
                 status = "Reloaded in \(String(format: "%.2f", reloadSeconds))s"
                     + " · \(armDescription) arm"
             }
             let windowOverride: Int? = kind == .evalWindowAB
                 ? [1, 4, 4, 1][min(index, 3)] : nil
             let microbatchOverride: Int? = kind == .microbatchAB
-                ? [1, 4, 4, 1][min(index, 3)] : nil
+                ? [1, 4, 4, 1][min(index, 3)]
+                : (kind == .microbatchWideAB
+                    ? [4, 8, 8, 4][min(index, 3)] : nil)
             let advisoryOverride: Bool? = kind == .prerouterAB
                 ? [false, true, true, false][min(index, 3)] : nil
             let readbackOverride: Int? = kind == .computeAB
@@ -499,7 +557,7 @@ final class Edge0SpeedABRunner: ObservableObject {
             let planLabel: String
             if kind == .evalWindowAB {
                 planLabel = "Staged w\(windowOverride ?? 1)"
-            } else if kind == .microbatchAB {
+            } else if kind == .microbatchAB || kind == .microbatchWideAB {
                 planLabel = "Staged g\(microbatchOverride ?? 1)"
             } else if kind == .prerouterAB {
                 planLabel = "Staged advisory-\((advisoryOverride ?? false) ? "on" : "off")"
@@ -509,6 +567,9 @@ final class Edge0SpeedABRunner: ObservableObject {
                 planLabel = "Staged readahead-\((readaheadOverride ?? false) ? "on" : "off")"
             } else if kind == .readsAB {
                 planLabel = "Staged reads-\(readsOverride ?? 4)"
+            } else if kind == .poolBudgetAB {
+                planLabel = "Staged budget-"
+                    + (poolAccountingOverride ?? .legacy).rawValue
             } else if kind == .sustained35B {
                 planLabel = "Staged sustained"
             } else {
@@ -526,7 +587,8 @@ final class Edge0SpeedABRunner: ObservableObject {
                 advisory: advisoryOverride,
                 readback: readbackOverride,
                 readahead: readaheadOverride,
-                reads: readsOverride
+                reads: readsOverride,
+                poolAccounting: poolAccountingOverride
             )
             run.idleSecondsBefore = idle.seconds
             run.recoveryReason = idle.reason
@@ -647,7 +709,8 @@ final class Edge0SpeedABRunner: ObservableObject {
         advisory: Bool? = nil,
         readback: Int? = nil,
         readahead: Bool? = nil,
-        reads: Int? = nil
+        reads: Int? = nil,
+        poolAccounting: Edge0_35BPoolAccounting? = nil
     ) async -> RunResult {
         Edge0EnginePreferences.edge0_35BExecutionMode = mode
         if let evalWindow {
@@ -673,6 +736,12 @@ final class Edge0SpeedABRunner: ObservableObject {
         // load-captured configuration supplies the effective half.
         if let reads {
             Edge0EnginePreferences.expertLoadConcurrency = reads
+        }
+        // Pool-budget accounting: load-captured like readahead; stamped
+        // before generation so the requested half of the pair reflects the
+        // arm, the load-captured engine state supplies the effective half.
+        if let poolAccounting {
+            Edge0EnginePreferences.edge0_35BPoolAccounting = poolAccounting
         }
         var result = RunResult(label: label, mode: mode, scored: scored)
         result.footprintBefore = MemoryAdvisor.physFootprint
@@ -777,6 +846,21 @@ final class Edge0SpeedABRunner: ObservableObject {
                 ?? Edge0EnginePreferences.expertLoadConcurrency
             result.readsEffective =
                 Int(metrics["reads.configured"] ?? "") ?? 0
+            result.poolAccountingRequested = poolAccounting
+                ?? Edge0EnginePreferences.edge0_35BPoolAccounting
+            result.poolAccountingEffective = Edge0_35BPoolAccounting(
+                rawValue: metrics["pool.accountingEffective"] ?? ""
+            ) ?? .legacy
+            result.stateKVAllowanceBytes =
+                UInt64(metrics["budget.stateKVAllowanceBytes"] ?? "") ?? 0
+            result.poolAllowanceBytes =
+                UInt64(metrics["budget.poolAllowanceBytes"] ?? "") ?? 0
+            result.prefillHitRate =
+                Double(metrics["prefill.pool.hitRate"] ?? "") ?? 0
+            result.decodeHitRate =
+                Double(metrics["decode.pool.hitRate"] ?? "") ?? 0
+            result.decodeLoadsPerGeneratedToken =
+                Double(metrics["decode.loadsPerGeneratedToken"] ?? "") ?? 0
             result.decodeMode = metrics["mode.decode"] ?? ""
             result.modeFallback = metrics["mode.fallback"] ?? ""
             result.poolSlots = Int(metrics["pool.capacitySlots"] ?? "") ?? 0
@@ -943,6 +1027,16 @@ final class Edge0SpeedABRunner: ObservableObject {
                 scored.filter { $0.readsEffective <= 4 },
                 scored.filter { $0.readsEffective >= 6 },
             ]
+        case .poolBudgetAB:
+            return [
+                scored.filter { $0.poolAccountingEffective == .legacy },
+                scored.filter { $0.poolAccountingEffective == .reclaimed },
+            ]
+        case .microbatchWideAB:
+            return [
+                scored.filter { $0.microbatchEffective <= 4 },
+                scored.filter { $0.microbatchEffective >= 8 },
+            ]
         default:
             return []
         }
@@ -988,7 +1082,7 @@ final class Edge0SpeedABRunner: ObservableObject {
         // is the drift diagnosis) and intentionally fails this gate.
         let knobKinds: Set<Edge0DiagnosticKind> = [
             .evalWindowAB, .microbatchAB, .prerouterAB, .computeAB,
-            .readaheadAB, .readsAB,
+            .readaheadAB, .readsAB, .poolBudgetAB, .microbatchWideAB,
         ]
         let staged = scored.filter { $0.mode == .staged }
         guard Edge0DiagnosticPlan.populationGate(
@@ -1458,6 +1552,188 @@ final class Edge0SpeedABRunner: ObservableObject {
             return
         }
 
+        if kind == .poolBudgetAB {
+            let legacy = scored.filter { $0.poolAccountingEffective == .legacy }
+            let reclaimedRequested = scored.filter {
+                $0.poolAccountingRequested == .reclaimed
+            }
+            let blocked = reclaimedRequested.filter {
+                $0.poolAccountingEffective != .reclaimed
+            }
+            let reclaimed = reclaimedRequested.filter {
+                $0.poolAccountingEffective == .reclaimed
+            }
+            if !blocked.isEmpty {
+                decision = [
+                    "SETUP-BLOCKED — not a performance result.",
+                    "Requested reclaimed accounting in \(blocked.count) trial(s); the engine's load-captured value says otherwise (the arm requires an engine RELOAD after the preference change).",
+                    "requested→effective: " + scored.map {
+                        "\($0.poolAccountingRequested.rawValue)→\($0.poolAccountingEffective.rawValue)"
+                    }.joined(separator: ", "),
+                    "Fix the reload lifecycle, then rerun; do not compare timings.",
+                ].joined(separator: "\n")
+                return
+            }
+            guard legacy.count >= 2, reclaimed.count >= 2 else {
+                decision = "Insufficient legacy/reclaimed trials for a decision."
+                return
+            }
+            func bmed(_ values: [Double]) -> Double {
+                Edge0BenchmarkStatistics.median(values) ?? 0
+            }
+            let legacyPrefill = bmed(legacy.map(\.prefillSeconds))
+            let reclaimedPrefill = bmed(reclaimed.map(\.prefillSeconds))
+            let legacyTTFT = bmed(legacy.map(\.ttftSeconds))
+            let reclaimedTTFT = bmed(reclaimed.map(\.ttftSeconds))
+            let legacyDecode = bmed(legacy.map(\.decodeTokensPerSecond))
+            let reclaimedDecode = bmed(reclaimed.map(\.decodeTokensPerSecond))
+            let prefillDelta = legacyPrefill > 0
+                ? (reclaimedPrefill - legacyPrefill) / legacyPrefill * 100 : 0
+            let ttftDelta = legacyTTFT > 0
+                ? (reclaimedTTFT - legacyTTFT) / legacyTTFT * 100 : 0
+            let decodeDelta = legacyDecode > 0
+                ? (reclaimedDecode - legacyDecode) / legacyDecode * 100 : 0
+            let legacyHits = bmed(legacy.map(\.decodeHitRate))
+            let reclaimedHits = bmed(reclaimed.map(\.decodeHitRate))
+            let legacyLoads = bmed(legacy.map(\.decodeLoadsPerGeneratedToken))
+            let reclaimedLoads = bmed(reclaimed.map(\.decodeLoadsPerGeneratedToken))
+            let legacyPeak = legacy.map(\.peakFootprint).max() ?? 0
+            let reclaimedPeak = reclaimed.map(\.peakFootprint).max() ?? 0
+            let poolsDiffer =
+                legacy.first?.poolBytes != reclaimed.first?.poolBytes
+            let seqLegacy = legacy.filter { $0.sequenceMatch == true }.count
+            let seqReclaimed = reclaimed.filter { $0.sequenceMatch == true }.count
+            let accepted = Edge0DiagnosticPlan.poolBudgetAcceptance(
+                decodeDeltaPercent: decodeDelta,
+                prefillDeltaPercent: prefillDelta,
+                ttftDeltaPercent: ttftDelta,
+                effectivePoolsDiffer: poolsDiffer,
+                reclaimedPeakFootprintBytes: UInt64(max(0, reclaimedPeak))
+            )
+            var lines = [
+                "35B Pool budget A/B (legacy = ceiling/8 state-KV reserve + 2 GiB tier cap; reclaimed = admitted-context reserve + 3 GiB tier)",
+                String(
+                    format: "legacy    pool %@ (%d slots) · state-KV allowance %@ · prefill median %.2fs · TTFT %.2fs · decode %.2f tok/s",
+                    Self.bytes(Int64(legacy.first?.poolBytes ?? 0)),
+                    legacy.first?.poolSlots ?? 0,
+                    Self.bytes(Int64(legacy.first?.stateKVAllowanceBytes ?? 0)),
+                    legacyPrefill, legacyTTFT, legacyDecode
+                ),
+                String(
+                    format: "reclaimed pool %@ (%d slots) · state-KV allowance %@ · prefill median %.2fs (%+.1f%%) · TTFT %.2fs (%+.1f%%) · decode %.2f tok/s (%+.1f%%)",
+                    Self.bytes(Int64(reclaimed.first?.poolBytes ?? 0)),
+                    reclaimed.first?.poolSlots ?? 0,
+                    Self.bytes(Int64(reclaimed.first?.stateKVAllowanceBytes ?? 0)),
+                    reclaimedPrefill, prefillDelta, reclaimedTTFT, ttftDelta,
+                    reclaimedDecode, decodeDelta
+                ),
+                String(
+                    format: "decode hit rate: legacy %.0f%% → reclaimed %.0f%% · miss loads/token: %.2f → %.2f",
+                    legacyHits * 100, reclaimedHits * 100,
+                    legacyLoads, reclaimedLoads
+                ),
+                String(
+                    format: "peak footprint: legacy %@ · reclaimed %@ · recorded Jetsam datapoint %@",
+                    Self.bytes(legacyPeak), Self.bytes(reclaimedPeak),
+                    Self.bytes(Int64(Edge0DiagnosticPlan.recordedJetsamFootprintBytes))
+                ),
+                "arm effectiveness: all requested-reclaimed trials load-captured reclaimed",
+                "token-sequence parity: legacy \(seqLegacy)/\(legacy.count) · reclaimed \(seqReclaimed)/\(reclaimed.count)",
+            ]
+            if reclaimedPeak > 0,
+               UInt64(reclaimedPeak) > Edge0DiagnosticPlan.recordedJetsamFootprintBytes {
+                lines.append(
+                    "REJECTED: reclaimed peak footprint is ABOVE the recorded Jetsam datapoint — do not promote"
+                )
+            }
+            lines.append(
+                driftDetected
+                    ? "drift present — treat the comparison as inconclusive"
+                    : (!poolsDiffer
+                        ? "INCONCLUSIVE for the pool lever: the reclaimed accounting did not select a larger tier in this session (headroom still below the next tier)"
+                        : (accepted
+                            ? "candidate meets the pool-budget acceptance rule (decode +5%, prefill/TTFT ≥ −5%, larger tier selected, peak ≤ Jetsam datapoint); confirm on device before promotion"
+                            : "candidate does not meet the pool-budget acceptance rule; keep legacy accounting"))
+            )
+            let configurations = scored.map {
+                "\($0.poolAccountingRequested.rawValue)→\($0.poolAccountingEffective.rawValue)"
+            }
+            lines.append("requested→effective accounting: \(configurations.joined(separator: ", "))")
+            decision = lines.joined(separator: "\n")
+            return
+        }
+
+        if kind == .microbatchWideAB {
+            let four = scored.filter { $0.microbatchEffective <= 4 }
+            let eightRequested = scored.filter { $0.microbatchRequested >= 8 }
+            let blocked = eightRequested.filter { $0.microbatchEffective < 8 }
+            if !blocked.isEmpty {
+                decision = [
+                    "SETUP-BLOCKED — not a performance result.",
+                    "Requested g8 in \(eightRequested.count) trial(s); the engine executed a smaller effective group in \(blocked.count) (the group is bounded by pool capacity / topK at runtime).",
+                    "requested→effective groups: " + scored.map {
+                        "\($0.microbatchRequested)→\($0.microbatchEffective)"
+                    }.joined(separator: ", "),
+                    "Raise the pool or rerun; do not compare timings.",
+                ].joined(separator: "\n")
+                return
+            }
+            let eight = eightRequested.filter { $0.microbatchEffective >= 8 }
+            guard four.count >= 2, eight.count >= 2 else {
+                decision = "Insufficient g4/g8 trials for a decision."
+                return
+            }
+            func wmed(_ values: [Double]) -> Double {
+                Edge0BenchmarkStatistics.median(values) ?? 0
+            }
+            let g4Prefill = wmed(four.map(\.prefillSeconds))
+            let g8Prefill = wmed(eight.map(\.prefillSeconds))
+            let g4TTFT = wmed(four.map(\.ttftSeconds))
+            let g8TTFT = wmed(eight.map(\.ttftSeconds))
+            let g4Decode = wmed(four.map(\.decodeTokensPerSecond))
+            let g8Decode = wmed(eight.map(\.decodeTokensPerSecond))
+            let prefillDelta = g4Prefill > 0
+                ? (g8Prefill - g4Prefill) / g4Prefill * 100 : 0
+            let ttftDelta = g4TTFT > 0
+                ? (g8TTFT - g4TTFT) / g4TTFT * 100 : 0
+            let decodeDelta = g4Decode > 0
+                ? (g8Decode - g4Decode) / g4Decode * 100 : 0
+            let seqFour = four.filter { $0.sequenceMatch == true }.count
+            let seqEight = eight.filter { $0.sequenceMatch == true }.count
+            let accepted = Edge0DiagnosticPlan.wideMicrobatchAcceptance(
+                prefillDeltaPercent: prefillDelta,
+                decodeDeltaPercent: decodeDelta
+            )
+            let lines = [
+                "Staged wide-microbatch A/B (g4 = production, g8 = candidate)",
+                String(
+                    format: "g4 prefill median %.2fs · TTFT %.2fs · decode %.2f tok/s · routed groups %@",
+                    g4Prefill, g4TTFT, g4Decode,
+                    four.first.map { "\($0.routedGroups)" } ?? "?"
+                ),
+                String(
+                    format: "g8 prefill median %.2fs (%+.1f%%) · TTFT %.2fs (%+.1f%%) · decode %.2f tok/s (%+.1f%%) · routed groups %@",
+                    g8Prefill, prefillDelta, g8TTFT, ttftDelta,
+                    g8Decode, decodeDelta,
+                    eight.first.map { "\($0.routedGroups)" } ?? "?"
+                ),
+                "arm effectiveness: all requested-g8 trials executed at g8",
+                "token-sequence parity: g4 \(seqFour)/\(four.count) · g8 \(seqEight)/\(eight.count)",
+                driftDetected
+                    ? "drift present — treat the comparison as inconclusive"
+                    : (accepted
+                        ? "candidate meets the wide-microbatch acceptance rule (prefill +5%, decode ≥ −5%); confirm on device before promotion"
+                        : "candidate does not meet the wide-microbatch acceptance rule; keep g4"),
+            ]
+            let configurations = scored.map {
+                "\($0.microbatchRequested)→\($0.microbatchEffective)"
+            }
+            decision = (lines + [
+                "requested→effective groups: \(configurations.joined(separator: ", "))"
+            ]).joined(separator: "\n")
+            return
+        }
+
         if kind == .sustained35B {
             guard scored.count >= 2 else {
                 decision = "Insufficient sustained trials for a verdict."
@@ -1706,7 +1982,12 @@ final class Edge0SpeedABRunner: ObservableObject {
                 + (terminalReason.isEmpty ? "" : " — \(terminalReason)"),
             "scored trials: \(completedTrials)/\(plannedTrials)"
                 + " · last completed: \(lastCompletedStep)",
-            "profile: 512 MiB pool (expected \(Self.expectedSlots) slots) · reads \(kind == .readsAB ? "4/6 arms" : "4") · thinking off · greedy · max \(kind == .sustained35B ? Self.sustainedTokens : Self.maximumOutputTokens) tokens",
+            "profile: "
+                + (kind == .poolBudgetAB
+                    ? "auto pool (budget-selected tier)"
+                    : "512 MiB pool (expected \(Self.expectedSlots) slots)")
+                + " · reads \(kind == .readsAB ? "4/6 arms" : "4")"
+                + " · thinking off · greedy · max \(kind == .sustained35B ? Self.sustainedTokens : Self.maximumOutputTokens) tokens",
             kind == .sustained35B
                 ? "recovery: none — back-to-back sustained trials (thermal-safety wait only)"
                 : "recovery: minimum \(recoverySeconds)s idle before every scored trial (bounded, cancellable)",
@@ -1734,6 +2015,7 @@ final class Edge0SpeedABRunner: ObservableObject {
                 + " · router readback requested \(run.routerReadbackRequested)/effective \(run.routerReadbackEffective)"
                 + " · readahead requested \(run.readaheadRequested ? "on" : "off")/effective \(run.readaheadEffective ? "on" : "off")"
                 + " · reads requested \(run.readsRequested)/effective \(run.readsEffective)"
+                + " · pool accounting requested \(run.poolAccountingRequested.rawValue)/effective \(run.poolAccountingEffective.rawValue)"
                 + " · routed groups \(run.routedGroups)"
                 + " · peak active leases \(run.peakActiveLeases)"
                 + " · handoff inFlight \(run.handoffInFlightBefore)→\(run.handoffInFlightAfter)"
@@ -1741,6 +2023,10 @@ final class Edge0SpeedABRunner: ObservableObject {
                 + " (pool lifetime total \(run.advisoryLoadsLifetime))"
                 + (run.modeFallback.isEmpty ? "" : " · fallback \(run.modeFallback)")
                 + " · pool \(run.poolSlots)/\(run.poolBytes) B"
+                + " · state-KV allowance \(run.stateKVAllowanceBytes) B · pool allowance \(run.poolAllowanceBytes) B"
+                + " · hit prefill \(String(format: "%.0f%%", run.prefillHitRate * 100))%"
+                + "/decode \(String(format: "%.0f%%", run.decodeHitRate * 100))%"
+                + " · miss loads/token \(String(format: "%.2f", run.decodeLoadsPerGeneratedToken))"
                 + " · reads configured \(run.readsConfigured) peak \(run.readsPeak) active@end \(run.readsActiveAtCompletion)"
             )
             lines.append(String(

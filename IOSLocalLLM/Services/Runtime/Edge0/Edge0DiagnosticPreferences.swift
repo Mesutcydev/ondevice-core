@@ -26,6 +26,11 @@ enum Edge0DiagnosticPreferences {
         /// leave kernel readahead enabled behind it, and so both arms of an
         /// A/B observe the same readahead state (it is set at model load).
         let readaheadHints: Bool
+        /// Audit findings 1+2 candidate. Load-captured like readahead:
+        /// captured here so a diagnostic run can never leave an arm's
+        /// accounting behind it (it changes the budget the NEXT load
+        /// resolves).
+        let poolAccounting: Edge0_35BPoolAccounting
 
         static func capture() -> Snapshot {
             Snapshot(
@@ -46,7 +51,9 @@ enum Edge0DiagnosticPreferences {
                 componentProfilingEnabled:
                     Edge0EnginePreferences.componentProfilingEnabled,
                 readaheadHints:
-                    Edge0EnginePreferences.edge0_35BReadaheadHints
+                    Edge0EnginePreferences.edge0_35BReadaheadHints,
+                poolAccounting:
+                    Edge0EnginePreferences.edge0_35BPoolAccounting
             )
         }
 
@@ -67,6 +74,7 @@ enum Edge0DiagnosticPreferences {
             Edge0EnginePreferences.componentProfilingEnabled =
                 componentProfilingEnabled
             Edge0EnginePreferences.edge0_35BReadaheadHints = readaheadHints
+            Edge0EnginePreferences.edge0_35BPoolAccounting = poolAccounting
         }
     }
 
