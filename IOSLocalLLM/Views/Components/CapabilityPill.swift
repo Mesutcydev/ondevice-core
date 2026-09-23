@@ -26,7 +26,7 @@ struct KCapabilityPill: View {
         // the semantic hue survives as a small leading dot only, so a card
         // never becomes a rainbow of bordered capsules.
         HStack(spacing: 5) {
-            Circle()
+            RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
                 .fill(capability.tint)
                 .frame(width: 4, height: 4)
             Text(capability.label.lowercased())

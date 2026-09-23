@@ -234,6 +234,9 @@ final class LifecycleController: Sendable {
         // the app backgrounded; resume that same selection without reporting
         // a false model failure.
         await CodingAssistantService.shared.resumeInterruptedLoadIfNeeded()
+        // The local API's opt-in load follows lifecycle recovery so a
+        // background cleanup cannot immediately unload the selected model.
+        await LocalAPIManager.shared.autoLoadModelIfEnabled()
         Diagnostics.shared.breadcrumb("scene active complete · epoch=\(epoch)", category: "lifecycle")
     }
 

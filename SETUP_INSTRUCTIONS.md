@@ -139,6 +139,17 @@ Run the standalone voice-orb package tests:
 swift test --package-path Packages/VoiceAgentOrb
 ```
 
+If that fails with `unable to spawn process …/metal` after an Xcode or
+toolchain update, the package's build directory still points at a removed
+toolchain mount (for example a `MetalToolchain-…` cryptex from a previous
+beta). This is an environment issue, not a code failure — clear the stale
+build output and rerun:
+
+```bash
+rm -rf Packages/VoiceAgentOrb/.build
+swift test --package-path Packages/VoiceAgentOrb
+```
+
 Run app unit tests from Xcode or with a Simulator destination:
 
 ```bash

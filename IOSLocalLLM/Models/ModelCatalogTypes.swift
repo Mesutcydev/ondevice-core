@@ -557,7 +557,7 @@ enum LocalModelRegistry {
             }
             return LocalModelDescriptor(
                 id: defaultVisionSelectionID,
-                repoID: "apple/FastVLM-0.5B-MLX",
+                repoID: FastVLMConfig.defaultRepoID,
                 displayName: "FastVLM (built-in)",
                 subtitle: "Apple's encoder + MLX decoder — runs everywhere",
                 role: .vision,

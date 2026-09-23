@@ -19,10 +19,10 @@ struct FixRepoSheet: View {
     /// the download starts.
     private static let alternatives: [DownloadableModel.Category: [String]] = [
         .vlm: [
-            "apple/FastVLM-0.5B-MLX",
-            "mlx-community/llava-fastvithd_0.5b_stage3_llm.fp16",
-            "apple/FastVLM-1.5B-MLX",
-            "mlx-community/FastVLM-0.5B-Stage3-LLM",
+            FastVLMConfig.defaultRepoID,
+            "mlx-community/FastVLM-0.5B-bf16",
+            "apple/FastVLM-0.5B",
+            "InsightKeeper/FastVLM-0.5B-MLX-4bit",
         ],
         .assistant: [
             "mlx-community/Qwen2.5-Coder-1.5B-Instruct-4bit",
@@ -52,7 +52,7 @@ struct FixRepoSheet: View {
             }
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Cancel") { dismiss() }.foregroundColor(T.ink2)
@@ -89,7 +89,7 @@ struct FixRepoSheet: View {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(T.accent)
                         .frame(width: 32, height: 32)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(T.accentSoft))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accentSoft))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("search huggingface")
                             .font(T.mono(13, .semibold))
@@ -114,7 +114,9 @@ struct FixRepoSheet: View {
     private var candidatesSection: some View {
         if !candidates.isEmpty {
             KSection(title: "known_alternatives") {
-                ForEach(Array(candidates.enumerated()), id: \.offset) { i, repoID in
+                // Repo ids are unique, so they are the identity. Offset-keyed
+                // rows reuse the wrong candidate when the list changes.
+                ForEach(Array(candidates.enumerated()), id: \.element) { i, repoID in
                     if i > 0 { Rectangle().fill(T.rule).frame(height: 1) }
                     Button {
                         tryRepo(repoID)
@@ -148,13 +150,13 @@ struct FixRepoSheet: View {
                 KMono(text: "paste any author/repo from huggingface.co.",
                        size: 10, color: T.ink3)
                     .fixedSize(horizontal: false, vertical: true)
-                TextField("author/repo (e.g. apple/FastVLM-0.5B-MLX)",
+                TextField("author/repo (e.g. apple/FastVLM-0.5B-fp16)",
                           text: $newRepoID)
                     .font(T.mono(11))
                     .foregroundColor(T.ink)
                     .padding(8)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface2))
+                    .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                 Button {
@@ -174,7 +176,7 @@ struct FixRepoSheet: View {
                     }
                     .foregroundColor(T.bg)
                     .padding(.horizontal, 12).padding(.vertical, 6)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.ink))
                 }
                 .buttonStyle(.plain)
             }

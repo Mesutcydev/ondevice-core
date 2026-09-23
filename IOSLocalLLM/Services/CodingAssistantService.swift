@@ -53,10 +53,12 @@ struct MLXAssistantExecutionProfile: Equatable, Sendable {
             // Ornith 9B fits the 12 GB Pro Max load envelope, but an unbounded
             // 16K 8-bit KV cache can push it back over the process budget on
             // the first long chat. Keep useful context while bounding both
-            // cache growth and transient prefill allocations.
+            // the configured cache window and transient prefill allocations.
+            // Reply length follows the user/thermal budget: a 256-token cap
+            // can exhaust the entire allowance before reasoning completes.
             return .init(
                 maxContextTokens: 4_096,
-                maxOutputTokens: 256,
+                maxOutputTokens: nil,
                 maxKVSize: 4_096,
                 kvBits: 4,
                 prefillStepSize: 128,
@@ -65,12 +67,14 @@ struct MLXAssistantExecutionProfile: Equatable, Sendable {
         }
         if identity.contains("bonsai-27b") {
             // Bonsai 27B fits as a tightly-bounded text model on high-memory
-            // iPhones, but its vision activations do not. A rotating 2K cache,
-            // 4-bit KV, and small prefill chunks keep chat below the process
-            // watermark while Lens independently chooses a smaller VLM.
+            // iPhones, but its vision activations do not. Keep the 2K cache
+            // setting, 4-bit KV, and small prefill chunks. Like Qwen 3.5,
+            // allow the requested reply length so thinking and the final
+            // answer (including recovery calls) are not cut off at 128 tokens.
+            // Admission, thermal stops, and memory-pressure stops still apply.
             return .init(
                 maxContextTokens: 2_048,
-                maxOutputTokens: 128,
+                maxOutputTokens: nil,
                 maxKVSize: 2_048,
                 kvBits: 4,
                 prefillStepSize: 128,
@@ -2202,7 +2206,7 @@ final class CodingAssistantService: ObservableObject {
         generateTask = Task {
             // Watch for iOS memory warnings — bail out gracefully instead of
             // getting Jetsam-killed silently.
-            let memoryWarningTask = Task { @MainActor [weak self] in
+            let memoryWarningTask = Task { @MainActor in
                 let center = NotificationCenter.default
                 for await _ in center.notifications(
                     named: UIApplication.didReceiveMemoryWarningNotification
@@ -2212,7 +2216,6 @@ final class CodingAssistantService: ObservableObject {
                         category: "assistant"
                     )
                     await MLXGenerationGate.shared.clearCacheWhenIdle()
-                    guard let self else { break }
                     if DeviceSafetyMonitor.shared.shouldStopHeavyWork {
                         Diagnostics.shared.breadcrumb(
                             "sustained memory pressure mid-generation — stopping",
@@ -2237,12 +2240,11 @@ final class CodingAssistantService: ObservableObject {
             // stopping on it produced spurious "device too hot" interruptions
             // mid-reply. Matches DeviceSafetyMonitor's throttle-at-serious,
             // stop-at-critical schedule.
-            let thermalTask = Task { @MainActor [weak self] in
+            let thermalTask = Task { @MainActor in
                 let center = NotificationCenter.default
                 for await _ in center.notifications(
                     named: ProcessInfo.thermalStateDidChangeNotification
                 ).map({ _ in () }) {
-                    guard let self else { break }
                     let s = ProcessInfo.processInfo.thermalState
                     if s == .critical {
                         Diagnostics.shared.breadcrumb(
@@ -2375,7 +2377,7 @@ final class CodingAssistantService: ObservableObject {
                                         hitLimit: hitLimit
                                     )
                                 }
-                                Task { @MainActor [weak self] in self?.tokenRate = rate }
+                                Task { @MainActor in self.tokenRate = rate }
                             }
                         }
 

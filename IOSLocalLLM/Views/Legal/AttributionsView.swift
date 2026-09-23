@@ -51,7 +51,7 @@ struct AttributionsView: View {
                 .padding(.bottom, 32)
             }
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }.foregroundColor(T.ink)
@@ -140,7 +140,7 @@ struct AttributionCard: View {
                     .font(T.mono(9, .medium))
                     .foregroundColor(licenseColor(item.license))
                     .padding(.horizontal, 5).padding(.vertical, 2)
-                    .background(RoundedRectangle(cornerRadius: 3)
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel)
                         .fill(licenseColor(item.license).opacity(0.12)))
             }
 

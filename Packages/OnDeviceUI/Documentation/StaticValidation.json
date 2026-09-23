@@ -1,0 +1,215 @@
+{
+  "checked_at_utc": "2026-09-19T10:38:16.346641+00:00",
+  "scope": "Static Swift grammar, cross-file names, project, resource and documentation structure only. No Swift type check, Xcode build, native rendering or runtime verification.",
+  "tooling": {
+    "tree_sitter": "0.26.0",
+    "tree_sitter_swift": "0.7.3",
+    "swift_compiler_available": false,
+    "xcodebuild_available": false
+  },
+  "errors": [],
+  "swift": [
+    {
+      "file": "Example/OnDeviceUIDemo/OnDeviceUIDemoApp.swift",
+      "lines": 361,
+      "sha256": "aff6d5436130273f0abdbccf94b26411bdc8c362ed4d2bc88cb1fef7c3b9f4eb",
+      "syntax_errors": []
+    },
+    {
+      "file": "Package.swift",
+      "lines": 11,
+      "sha256": "7c072481e37e2d9f52e3258902d4f6159438edf2f89c45ec791765d7cad31839",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/Camera/ODCameraPreview.swift",
+      "lines": 47,
+      "sha256": "a8abbce2ce1e8275ef4a1d29aef59ed78643f361a96e511d6f1740698e61d85a",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/Components/ODComponents.swift",
+      "lines": 245,
+      "sha256": "d39a04fa9a3b5e59eacd5fa2ce291091f9e7fa28a57965c5258c8b0b84b7cf9a",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/Models/ODModels.swift",
+      "lines": 290,
+      "sha256": "63c908464e8e05efbe60c8516b04c8bfd29431741fe67ee8a6727b0843bdd082",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/ODWorkbench.swift",
+      "lines": 107,
+      "sha256": "1db02a07ede93d2fe1f363179dcd606b722118e93e8707f05f09486ad9670d2a",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/State/ODStore.swift",
+      "lines": 136,
+      "sha256": "f050446b621ff95c507a14259904821dfd43efed827c800919e1764a5a30178b",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/Theme/ODTheme.swift",
+      "lines": 111,
+      "sha256": "5254fba55c95fc4ede4f57f84b78e941c345fd8229bf3a8a091c4c5e5211d56e",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/Views/ODChatView.swift",
+      "lines": 479,
+      "sha256": "418fbe38ede1a822abc03d517f4e0d1744fd5ecc2855ddd3788b415856260f95",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/Views/ODConversationDrawer.swift",
+      "lines": 143,
+      "sha256": "6b9b4feb0ac99a3504e3cf615e449bb93c27df93eea8c295619d8438466c4d6c",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/Views/ODImageStudioView.swift",
+      "lines": 320,
+      "sha256": "5e4f37a8a4506287413e1f110e4cc164143a6959c8a3847999d9afd4d623bbb3",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/Views/ODLensView.swift",
+      "lines": 252,
+      "sha256": "e8a89efa2841d2341540741b01c5401bc2ea0cd3a36993d4d6b3ebfd80b0b57d",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/Views/ODModelDetailView.swift",
+      "lines": 232,
+      "sha256": "1a5486cf13e2db550b5d6d54b561da085801c140c0c05e920d32e0dfa2d70673",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/Views/ODModelsView.swift",
+      "lines": 195,
+      "sha256": "f5fd8a00a3504ced56bc9cc077f41f3842e542990e39b2de757e37c288c8b59e",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/Views/ODSettingsView.swift",
+      "lines": 68,
+      "sha256": "08248dab6a9687d8970051810a7748071fcff81ae99c07766e6024d96107e891",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/Views/ODSystemView.swift",
+      "lines": 92,
+      "sha256": "f58b61a62ea8ea06e15bf4cbbf19f8ea51691cf157d1b4d6d3db84661a18988f",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/Views/ODVoiceLibraryView.swift",
+      "lines": 312,
+      "sha256": "18961790f65eb9bd6d52f2d1f341fcad0d5a683b59d7c4313a7231572ac0bb67",
+      "syntax_errors": []
+    },
+    {
+      "file": "Sources/OnDeviceUI/Views/ODVoiceSessionView.swift",
+      "lines": 329,
+      "sha256": "06257cede0ab7997a320056854f18ee9d56065126e57b5b5f1faa2b12f57019f",
+      "syntax_errors": []
+    }
+  ],
+  "name_checks": {
+    "ODLayout": {
+      "referenced": 27,
+      "unresolved": []
+    },
+    "ODPalette": {
+      "referenced": 14,
+      "unresolved": []
+    },
+    "ODStore": {
+      "referenced": 50,
+      "unresolved": []
+    }
+  },
+  "project": {
+    "parsed": true,
+    "objects": 24,
+    "dangling_references": [],
+    "checked_file_references": [
+      "Example/OnDeviceUIDemo/OnDeviceUIDemoApp.swift",
+      "Example/OnDeviceUIDemo/Info.plist",
+      "Example/OnDeviceUIDemo/Resources/studio-example.png"
+    ],
+    "local_package_paths": [
+      "Package.swift"
+    ],
+    "deployment_targets": [
+      "26.0"
+    ],
+    "resource_phase_files": [
+      "Example/OnDeviceUIDemo/Resources/studio-example.png"
+    ]
+  },
+  "plist_scheme_svg": "parsed",
+  "assets": {
+    "color_assets": 16,
+    "json_files": 17,
+    "missing_colors": []
+  },
+  "images": [
+    {
+      "file": "Documentation/Reference/composer-content-concept.png",
+      "pixels": [
+        1536,
+        1024
+      ],
+      "mode": "RGB"
+    },
+    {
+      "file": "Documentation/Reference/composer-layout.png",
+      "pixels": [
+        1600,
+        1120
+      ],
+      "mode": "RGBA"
+    },
+    {
+      "file": "Example/OnDeviceUIDemo/Resources/studio-example.png",
+      "pixels": [
+        1086,
+        1448
+      ],
+      "mode": "RGB"
+    }
+  ],
+  "native_shell": {
+    "tabview_count": 1,
+    "tabs": [
+      "Chat",
+      "Lens",
+      "Voice",
+      "Models"
+    ],
+    "root_tint_override": false,
+    "hidden_tabbar_modifier": false,
+    "source_review": "Independent review confirmed no custom replacement tab bar and genuine native glass button styles."
+  },
+  "mac_script": {
+    "shell_syntax_valid": true,
+    "executed": false
+  },
+  "documentation": {
+    "broken_relative_links": [],
+    "generated_concept_is_not_runtime_screenshot": true
+  },
+  "summary": {
+    "package_swift_files": 16,
+    "package_swift_lines": 3358,
+    "all_swift_files_including_example_and_manifest": 18,
+    "syntax_errors": 0,
+    "status": "PASS",
+    "apple_build": "NOT RUN",
+    "native_rendering": "NOT RUN"
+  }
+}

@@ -61,9 +61,7 @@ struct CompareView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    header
+            List {
                     promptCard
                     pickerCard
                     optionsCard
@@ -71,12 +69,13 @@ struct CompareView: View {
                     resultsGrid
                     if resultA != nil && resultB != nil { votingCard }
                     ArenaLeaderboardCard(lane: .text)
-                }
-                .padding(.bottom, 32)
+
             }
+            .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+            .navigationTitle("Compare models")
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }.foregroundColor(T.ink)
@@ -143,8 +142,8 @@ struct CompareView: View {
                 .font(T.mono(12))
                 .frame(minHeight: 80, maxHeight: 180)
                 .padding(8)
-                .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface2))
+                .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
                 .padding(12)
         }
     }
@@ -181,8 +180,8 @@ struct CompareView: View {
                         .foregroundColor(T.ink3)
                 }
                 .padding(.horizontal, 10).padding(.vertical, 8)
-                .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface2))
+                .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
             }
         }
     }
@@ -225,7 +224,7 @@ struct CompareView: View {
                 }
                 .foregroundColor(T.bg)
                 .padding(.horizontal, 14).padding(.vertical, 8)
-                .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.ink))
             }
             .buttonStyle(.plain)
             .disabled(!canRun)
@@ -276,14 +275,14 @@ struct CompareView: View {
                         .tracking(0.5)
                         .foregroundColor(T.ink2)
                         .padding(.horizontal, 5).padding(.vertical, 2)
-                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.ink2.opacity(0.10)))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.ink2.opacity(0.10)))
                 }
                 if votedOutcome != nil, isWinnerSlot(slot) {
                     Text("WINNER")
                         .font(T.mono(8, .bold)).tracking(0.6)
                         .foregroundColor(T.accent)
                         .padding(.horizontal, 5).padding(.vertical, 2)
-                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accent.opacity(0.14)))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.accent.opacity(0.14)))
                 }
                 Spacer()
                 HStack(spacing: 12) {
@@ -353,8 +352,8 @@ struct CompareView: View {
                 .foregroundColor(T.ink)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 9)
-                .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface2))
+                .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }

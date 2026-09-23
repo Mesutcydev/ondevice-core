@@ -165,7 +165,7 @@ enum LensFramePreparer {
         // (`.dynamicPatchAligned` doesn't take this path — Qwen-VL
         // family handles dynamic inputs natively via the patch-
         // align logic in `alignedToPatchGrid`, no tile split.)
-        let modelTileSize = Self.modelMinimumSide(for: capabilities)
+        let modelTileSize = capabilities.minimumProcessorSide
         let sized = Self.fitToTileLongEdge(oriented, tileSize: modelTileSize)
 
         // Step 3 — strategy-aware resize. Lazy filter graph; not
@@ -354,19 +354,6 @@ enum LensFramePreparer {
             let cap = min(pixelBudget, tilePixelBudget)
             let scale = scaleForPixelBudget(w: w, h: h, budget: cap)
             return lanczos(image, scale: scale)
-        }
-    }
-
-    /// Per-tile target side the model's processor expects. Mirrors
-    /// `LensInferenceLoop.resizeHintSide(for:)` — the two should
-    /// always agree. TODO: hoist to `VLMCapabilities.modelMinimum-
-    /// Side` so there's one source of truth instead of two.
-    private static func modelMinimumSide(for caps: VLMCapabilities) -> Int {
-        switch caps.inputSizingStrategy {
-        case .fixed(let s):                 return Int(max(s.width, s.height))
-        case .dynamicPatchAligned:          return Int(Double(caps.recommendedStreamingPixels).squareRoot().rounded())
-        case .anyresTiling(let base, _):    return base
-        case .fixedTiling(let tile, _):     return tile
         }
     }
 

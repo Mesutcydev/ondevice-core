@@ -106,6 +106,15 @@ final class fastvithd {
         let docsRoot = docs.appendingPathComponent("FastVLMModels", isDirectory: true)
         urls.append(docsRoot.appendingPathComponent("fastvithd.mlmodelc"))
         urls.append(docsRoot.appendingPathComponent("fastvithd.mlpackage"))
+        // 1b. Inside the downloaded MLX weights folder. The HF decoder repo
+        //     (apple/FastVLM-0.5B-fp16) ships fastvithd.mlpackage at its
+        //     root, and the Model Center downloads every repo file INTO the
+        //     decoder destination — so a fully-downloaded FastVLM has the
+        //     encoder nested here, not at the FastVLMModels root. Without
+        //     this path a complete download reported "encoder missing".
+        let downloadedMLX = docsRoot.appendingPathComponent(FastVLMConfig.mlxModelDirectory, isDirectory: true)
+        urls.append(downloadedMLX.appendingPathComponent("fastvithd.mlmodelc"))
+        urls.append(downloadedMLX.appendingPathComponent("fastvithd.mlpackage"))
         // 2. App bundle — pre-compiled mlmodelc (the production path).
         if let compiled = Bundle.main.url(forResource: "fastvithd", withExtension: "mlmodelc") {
             urls.append(compiled)

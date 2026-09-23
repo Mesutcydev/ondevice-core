@@ -27,35 +27,30 @@ enum AppAnimation {
     static let state = Animation.spring(response: 0.36, dampingFraction: 0.86)
 }
 
-/// Camera-safe panel used by the Lens overlays. Deliberately heavier than a
-/// Studio surface: `.regularMaterial` and a brighter stroke, because a thin
-/// material over a live camera feed reads as a smudge rather than a panel.
+/// Panel used by the Lens overlays, which composite over a live camera feed.
+///
+/// Instrument keeps ONE exception to the flat-fill rule, and this is it: over
+/// a moving camera image an opaque panel is the only thing that stays legible,
+/// so `cameraSafe` gets a near-opaque instrument fill rather than a material.
+/// Everything else in the app resolves to a flat panel + hairline, square, no
+/// shadow — same as every other surface.
 struct AppPanelBackground: ViewModifier {
     var cornerRadius: CGFloat = StudioRadius.panel
     var cameraSafe = false
 
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.koduTheme) private var T
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
         content
             .background {
-                if reduceTransparency {
-                    shape.fill(cameraSafe ? Color(uiColor: .secondarySystemBackground) : Color(uiColor: .systemBackground))
-                } else {
-                    shape.fill(cameraSafe ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(.thinMaterial))
-                }
+                // Over the camera the panel must own its pixels; elsewhere it
+                // sits a single value off the page.
+                shape.fill(cameraSafe ? T.bg.opacity(0.92) : T.surface)
             }
             .overlay {
-                shape.stroke(
-                    cameraSafe
-                        ? Color.white.opacity(colorScheme == .dark ? 0.22 : 0.34)
-                        : Color.primary.opacity(0.10),
-                    lineWidth: 0.5
-                )
+                shape.stroke(cameraSafe ? T.rule2 : T.rule, lineWidth: 1)
             }
-            .shadow(color: Color.black.opacity(0.16), radius: 18, y: 6)
     }
 }
 

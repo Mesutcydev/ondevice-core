@@ -1,4 +1,5 @@
 import SwiftUI
+import OnDeviceUI
 
 // MARK: - SettingsView
 
@@ -38,71 +39,36 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Page header — Studio masthead grammar: mono eyebrow,
-                    // 32pt sans semibold, ink hierarchy. The old accent
-                    // eyebrow + display-bold title read as a different
-                    // product from the Home tab it sits next to.
-                    VStack(alignment: .leading, spacing: 6) {
-                        StudioMonoLabel(text: loc.t("Preferences"), size: 11, tracking: 0.9)
-                        Text(loc.t("Settings"))
-                            .font(T.studio.sans(32, .semibold))
-                            .tracking(-0.8)
-                            .foregroundStyle(T.studio.ink)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-                    .padding(.bottom, 16)
-
-                    // Privacy hero (design screen 06) — leads Settings with the
-                    // on-device, no-account promise.
-                    privacyHero
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 14)
-
-                    // Top-level category index. Replaces the previous flat
-                    // 13-section scroll, which dumped every preference,
-                    // status panel, and diagnostic on the same screen and
-                    // overwhelmed first-time users. Each row navigates to a
-                    // focused sub-screen that still hosts the original
-                    // KSection bodies — same content, less noise.
-                    VStack(spacing: 0) {
-                        ForEach(SettingsCategory.allCases) { cat in
-                            NavigationLink {
-                                categoryDestination(cat)
-                            } label: {
-                                categoryRow(cat)
+            List {
+                Section("Preferences") {
+                    ForEach(SettingsCategory.allCases) { category in
+                        NavigationLink {
+                            categoryDestination(category)
+                        } label: {
+                            Label {
+                                VStack(alignment: .leading, spacing: ODLayout.unit) {
+                                    Text(category.title.capitalized).font(.body)
+                                    Text(category.subtitle).font(.footnote).foregroundStyle(.secondary)
+                                }
+                            } icon: {
+                                Image(systemName: category.icon).foregroundStyle(.secondary)
                             }
-                            .buttonStyle(.plain)
+                            .padding(.vertical, ODLayout.unit)
                         }
                     }
-                    .padding(.horizontal, 16)
-
-                    imageStudioBanner
-                        .padding(.horizontal, 16)
-                        .padding(.top, 16)
-
+                }
+                Section {
                     aboutSection
                 }
-                .padding(.bottom, 32)
             }
-            .background(StudioPageBackground())
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background { ODPageBackground().ignoresSafeArea() }
+            .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Text(loc.t("Done")).font(T.sans(15, .medium)).foregroundColor(T.accent)
-                    }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text(loc.t("Settings")).font(T.sans(16, .semibold)).foregroundColor(T.ink)
-                }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
-            .toolbarBackground(.hidden, for: .navigationBar)
         }
         // SwiftUI sheets don't inherit `.preferredColorScheme` from the
         // root WindowGroup in iOS 18, so the appearance Picker's underlying
@@ -132,8 +98,7 @@ struct SettingsView: View {
                             .foregroundColor(T.ink2)
                     }
                 }
-                .toolbarBackground(.hidden, for: .navigationBar)
-            }
+                }
             .preferredColorScheme(settings.resolvedColorScheme)
         }
     }
@@ -264,17 +229,7 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func categoryDestination(_ cat: SettingsCategory) -> some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 4) {
-                    KCaption(text: "SETTINGS")
-                    KPageTitle(title: cat.title.capitalized, size: 28)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
-
+        List {
                 switch cat {
                 case .userGuide:
                     UserGuideView()
@@ -297,12 +252,13 @@ struct SettingsView: View {
                     privacyResetSection
                     legalSection
                 }
-            }
-            .padding(.bottom, 32)
         }
-        .background(StudioPageBackground())
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background { ODPageBackground().ignoresSafeArea() }
+        .navigationTitle(cat.title.capitalized)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.hidden, for: .navigationBar)
+
     }
 
     // MARK: - Sections
@@ -342,7 +298,7 @@ struct SettingsView: View {
                         .font(.system(size: 16))
                         .foregroundColor(T.accent)
                         .frame(width: 32, height: 32)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(T.accentSoft))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accentSoft))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Download models")
                             .font(T.sans(13, .semibold))
@@ -375,7 +331,7 @@ struct SettingsView: View {
                         .font(.system(size: 15))
                         .foregroundColor(T.accent)
                         .frame(width: 32, height: 32)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(T.accentSoft))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accentSoft))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Pick models again")
                             .font(T.sans(13, .semibold))
@@ -446,7 +402,7 @@ struct SettingsView: View {
                         .font(.system(size: 13))
                         .foregroundColor(T.accent)
                         .frame(width: 28, height: 28)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(T.accentSoft))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accentSoft))
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
                             KMono(
@@ -463,18 +419,9 @@ struct SettingsView: View {
                                 KCapabilityPill(capability: marker, size: .compact)
                             }
                         }
-                        // MarqueeText keeps the row height fixed regardless
-                        // of which model is selected. The settings sheet
-                        // gets cramped when this row grows to two lines
-                        // (it shifts the status badge + chevron and forces
-                        // the row above to recalculate), so for long HF
-                        // ids we slide rather than wrap.
-                        MarqueeText(
-                            text: AssistantModelCatalog.currentSelection().displayName,
-                            font: T.mono(13, .semibold),
-                            color: T.ink
-                        )
-                        .frame(height: 18)
+                        Text(AssistantModelCatalog.currentSelection().displayName)
+                            .font(.subheadline).foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer()
                     assistantStatusBadge
@@ -501,15 +448,12 @@ struct SettingsView: View {
                         .font(.system(size: 13))
                         .foregroundColor(T.accent)
                         .frame(width: 28, height: 28)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(T.accentSoft))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accentSoft))
                     VStack(alignment: .leading, spacing: 2) {
                         KMono(text: "Voice model", size: 11, color: T.ink3, mono: false)
-                        MarqueeText(
-                            text: voiceModelDisplayName,
-                            font: T.sans(13, .semibold),
-                            color: T.ink
-                        )
-                        .frame(height: 18)
+                        Text(voiceModelDisplayName)
+                            .font(.subheadline).foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer()
                     voiceModelStatusBadge
@@ -533,7 +477,7 @@ struct SettingsView: View {
                         .font(.system(size: 13))
                         .foregroundColor(PersonaStore.shared.active.accent)
                         .frame(width: 28, height: 28)
-                        .background(RoundedRectangle(cornerRadius: 6)
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel)
                             .fill(PersonaStore.shared.active.accent.opacity(0.12)))
                     VStack(alignment: .leading, spacing: 2) {
                         KMono(text: "Persona", size: 11, color: T.ink3, mono: false)
@@ -658,7 +602,7 @@ struct SettingsView: View {
             VStack(spacing: 0) {
                 HStack(spacing: 10) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 6)
+                        RoundedRectangle(cornerRadius: StudioRadius.panel)
                             .fill(T.good.opacity(0.12))
                             .frame(width: 28, height: 28)
                         Image(systemName: "waveform.path.ecg")
@@ -762,8 +706,8 @@ struct SettingsView: View {
                             .foregroundColor(T.accent)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 7)
-                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accentSoft))
-                            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.accent.opacity(0.4), lineWidth: 0.5))
+                            .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.accentSoft))
+                            .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(T.accent.opacity(0.4), lineWidth: 0.5))
                     }
                     .buttonStyle(.plain)
                     .fixedSize()
@@ -879,7 +823,7 @@ struct SettingsView: View {
                         }
                         .foregroundColor(T.bg)
                         .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.ink))
                     }
                     .buttonStyle(.plain)
                 }
@@ -926,7 +870,7 @@ struct SettingsView: View {
                     KMono(text: "FastVLM repo", size: 11, color: T.ink3, mono: false)
                     Spacer()
                     Button {
-                        settings.fastVLMRepoID = "apple/FastVLM-0.5B-MLX"
+                        settings.fastVLMRepoID = FastVLMConfig.defaultRepoID
                         HapticManager.impact(.light)
                     } label: {
                         Text("Reset")
@@ -938,8 +882,8 @@ struct SettingsView: View {
                     .font(T.mono(11))
                     .foregroundColor(T.ink)
                     .padding(8)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface2))
+                    .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                 KMono(text: "Hugging Face repo for the VLM weights. Takes effect on next app launch.",
@@ -1181,15 +1125,13 @@ struct SettingsView: View {
     /// compiles because of INCLUDE_ALL_APPICON_ASSETS.
     private var appIconPickerRow: some View {
         VStack(alignment: .leading, spacing: 8) {
-            KMono(text: "app icon", size: 11.5, color: T.ink, mono: false)
             HStack(spacing: 14) {
                 appIconOption(name: nil, title: "Max", preview: "AppIconPreview")
                 appIconOption(name: "AppIconClassic", title: "Classic", preview: "AppIconClassicPreview")
                 Spacer()
             }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
     }
 
     private func appIconOption(name: String?, title: String, preview: String) -> some View {
@@ -1201,6 +1143,7 @@ struct SettingsView: View {
             UIApplication.shared.setAlternateIconName(name) { error in
                 guard let error else { return }
                 Task { @MainActor in
+                    activeIconName = UIApplication.shared.alternateIconName
                     ToastCenter.shared.info(
                         "Couldn't change app icon",
                         detail: error.localizedDescription
@@ -1212,15 +1155,14 @@ struct SettingsView: View {
                 Image(preview)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 52, height: 52)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .frame(width: 64, height: 64)
+                    .clipShape(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                             .strokeBorder(selected ? T.accent : T.rule,
                                           lineWidth: selected ? 2 : 1)
                     )
-                KMono(text: title, size: 9.5,
-                      color: selected ? T.accent : T.ink3, mono: false)
+                Text(title).font(.footnote).foregroundStyle(selected ? T.ink : T.ink3)
             }
         }
         .buttonStyle(.plain)
@@ -1229,62 +1171,33 @@ struct SettingsView: View {
     }
     #endif
 
+    private var appearanceSelection: Binding<ODAppearancePreference> {
+        Binding(get: { ODAppearancePreference(rawValue: settings.appearance) ?? .system },
+                set: { settings.appearance = $0.rawValue })
+    }
+
     private var uiSection: some View {
-        KSection(title: loc.t("INTERFACE").lowercased(), tinted: true) {
-            KRow(label: loc.t("appearance"), trailing: {
-                Picker("", selection: $settings.appearance) {
-                    Text(loc.t("light")).tag("light")
-                    Text(loc.t("dark")).tag("dark")
-                    Text(loc.t("OLED")).tag("oled")
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 170)
-            })
-            #if !targetEnvironment(macCatalyst)
-            if UIApplication.shared.supportsAlternateIcons {
+        AppearanceSettingsContent(appearance: appearanceSelection,
+            hapticsEnabled: $settings.hapticsEnabled, showFPSCounter: $settings.showFPSCounter,
+            supportsAlternateIcons: UIApplication.shared.supportsAlternateIcons) {
+                #if !targetEnvironment(macCatalyst)
                 appIconPickerRow
-            }
-            #endif
-            KRow(label: loc.t("language"), trailing: {
-                Picker("", selection: Binding(
+                #endif
+            } languagePicker: {
+                Picker("Language", selection: Binding(
                     get: { AppLanguage(rawValue: settings.uiLanguage) ?? .system },
                     set: { newValue in
                         settings.uiLanguage = newValue.rawValue
                         loc.setLanguage(newValue)
                     }
                 )) {
-                    ForEach(AppLanguage.allCases) { lang in
-                        Text(lang.nativeName).tag(lang)
-                    }
+                    ForEach(AppLanguage.allCases) { lang in Text(lang.nativeName).tag(lang) }
                 }
-                .pickerStyle(.menu)
-                .tint(T.ink)
-            })
-            KRow(label: loc.t("haptic feedback"), trailing: {
-                KToggle(isOn: $settings.hapticsEnabled)
-            })
-            KRow(label: "show fps counter", trailing: {
-                KToggle(isOn: $settings.showFPSCounter)
-            })
-            Rectangle().fill(T.rule).frame(height: 1)
-            Button {
+            } onResetTips: {
                 TipsManager.shared.resetAll()
                 HapticManager.impact(.light)
-                ToastCenter.shared.info("Tips reset",
-                                          detail: "First-use hints will show again.")
-            } label: {
-                HStack {
-                    Image(systemName: "lightbulb").accessibilityLabel("Reset tips")
-                        .font(.system(size: 12))
-                        .foregroundColor(T.ink)
-                    KMono(text: "Reset onboarding tips", size: 11.5, color: T.ink, mono: false)
-                    Spacer()
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                ToastCenter.shared.info("Tips reset", detail: "First-use hints will show again.")
             }
-            .buttonStyle(.plain)
-        }
     }
 
     // MARK: - Thermal protection
@@ -1528,9 +1441,9 @@ struct SettingsView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 58, height: 58)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                                 .stroke(T.rule, lineWidth: 1)
                         )
 
@@ -1560,8 +1473,8 @@ struct SettingsView: View {
                         .foregroundColor(T.warn)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 5)
-                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.warn.opacity(0.10)))
-                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.warn.opacity(0.32), lineWidth: 0.5))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.warn.opacity(0.10)))
+                        .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(T.warn.opacity(0.32), lineWidth: 0.5))
                 }
 
                 HStack(spacing: 8) {
@@ -1581,8 +1494,8 @@ struct SettingsView: View {
                     .foregroundColor(T.ink)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.surface2))
-                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.rule, lineWidth: 1))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.surface2))
+                    .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(T.rule, lineWidth: 1))
                 }
             }
             .padding(15)
@@ -1624,23 +1537,11 @@ struct SettingsView: View {
     }
 
     private var aboutSection: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                KCaption(text: "about")
-                Rectangle().fill(T.rule).frame(height: 1)
-            }
-            .padding(.bottom, 8)
-            KSpecTable(rows: [
-                ("version",   appVersionLabel),
-                ("models",    "apple vision · fastvit-hd · qwen2.5"),
-                ("framework", "core ml · mlx swift · vision"),
-                ("runtime",   "mlx-swift-examples 2.21"),
-                ("ios",       "18.0+"),
-                ("privacy",   "100% on-device"),
-            ], keyWidth: 80)
+        Group {
+            LabeledContent("Version", value: appVersionLabel)
+            Text("OnDevice combines local models with optional web access, Apple Private Cloud Compute, and paired Mac tools. Each network feature is controlled separately.")
+                .font(.footnote).foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 18)
     }
 
     @ViewBuilder
@@ -1736,11 +1637,17 @@ private struct WhisperSTTBlock: View {
         self.whisperModel = m
         // ModelDownloadCenter.buildCatalog runs in init and always
         // appends the whisper-base-en entry, so the optional should
-        // never be nil at runtime. Crash early if catalog wiring
-        // changes — DownloadObserver requires a real model.
-        _observer = StateObject(wrappedValue: DownloadObserver(
-            model: m ?? ModelDownloadCenter.shared.models.first!
-        ))
+        // never be nil at runtime. Fail loudly with a diagnosable
+        // message if catalog wiring changes — DownloadObserver requires
+        // a real model, and silently observing an arbitrary unrelated
+        // catalog entry would break the download card.
+        guard let m else {
+            preconditionFailure(
+                "WhisperSTTBlock: whisper-base-en missing from ModelDownloadCenter catalog "
+                    + "(\(ModelDownloadCenter.shared.models.count) entries) — catalog wiring changed"
+            )
+        }
+        _observer = StateObject(wrappedValue: DownloadObserver(model: m))
     }
 
     /// Reactive install check — disk presence OR observer reporting

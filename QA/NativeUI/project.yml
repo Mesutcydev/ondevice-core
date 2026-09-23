@@ -1,0 +1,73 @@
+name: NativeUIReview
+options:
+  deploymentTarget:
+    iOS: '27.0'
+packages:
+  OnDeviceUI:
+    path: ../../Packages/OnDeviceUI
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    GENERATE_INFOPLIST_FILE: YES
+    CODE_SIGNING_ALLOWED: NO
+    TARGETED_DEVICE_FAMILY: '1,2'
+targets:
+  NativeUIReview:
+    type: application
+    platform: iOS
+    sources:
+      - path: ReviewApp.swift
+      - path: HomeConcepts.swift
+      - path: ../../IOSLocalLLM/Views/AppearanceSettingsContent.swift
+      - path: ../../IOSLocalLLM/Assets.xcassets
+      - path: HostStubs.swift
+      - path: ../../IOSLocalLLM/Views/Bridge/LocalAPIServerView.swift
+      - path: ../../IOSLocalLLM/Views/HomeView.swift
+      - path: ../../IOSLocalLLM/Views/ChatResponseActions.swift
+      - path: ../../IOSLocalLLM/Views/WorkbenchSelectionObserver.swift
+      - path: ../../IOSLocalLLM/Views/ChatThreadEmptyState.swift
+      - path: ../../IOSLocalLLM/Views/BootSplashView.swift
+      - path: ../../IOSLocalLLM/Views/OnboardingOnePager.swift
+      - path: ../../IOSLocalLLM/Views/ImageGenerationView.swift
+      - path: ../../IOSLocalLLM/Models/ConversationStore.swift
+      - path: ../../IOSLocalLLM/Models/PresentationRequestLifetime.swift
+      - path: ../../IOSLocalLLM/Models/CaptureSessionDemand.swift
+      - path: ../../IOSLocalLLM/Models/ChatMessage.swift
+      - path: ../../IOSLocalLLM/Models/TokenLogprob.swift
+      - path: ../../IOSLocalLLM/Models/ApplePrivateCloudTypes.swift
+      - path: ../../IOSLocalLLM/Services/FileAttachmentService.swift
+      - path: ../../Packages/OnDeviceUI/Example/OnDeviceUIDemo/Resources/studio-example.png
+    dependencies:
+      - package: OnDeviceUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.OnDeviceNativeUIReview
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+  HostContracts:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [HostContracts]
+    dependencies:
+      - target: NativeUIReview
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.OnDeviceNativeUIReview.contracts
+  NativeUIFlows:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    dependencies:
+      - target: NativeUIReview
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.OnDeviceNativeUIReview.flows
+schemes:
+  NativeUIReview:
+    build:
+      targets:
+        NativeUIReview: all
+    test:
+      targets:
+        - HostContracts
+        - NativeUIFlows

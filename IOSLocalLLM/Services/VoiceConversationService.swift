@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import AVFoundation
+import os
 
 // MARK: - VoiceConversationService
 // Hands-free voice loop with an industry-standard VAD pipeline.
@@ -47,7 +48,36 @@ final class VoiceConversationService: ObservableObject {
 
     // MARK: - Published
 
-    @Published private(set) var phase: Phase = .idle
+    @Published private(set) var isStarting = false
+    @Published private(set) var isInterrupted = false
+    private var sessionOperationID: UUID?
+    private var turnOperationID = UUID()
+    private var modelLoadTask: Task<Void, Never>?
+    private let audioOwnerID = UUID()
+
+    var hasSession: Bool { sessionOperationID != nil }
+    var isCapturingInput: Bool { dictation.isCapturingInput }
+
+    private func owns(_ operation: UUID) -> Bool { sessionOperationID == operation }
+    private func event(_ name: String, operation: UUID) {
+        #if DEBUG
+        Logger(subsystem: "com.mesutcydev.ondevicemax", category: "sensor-ownership")
+            .debug("voice operation=\(operation.uuidString, privacy: .public) event=\(name, privacy: .public)")
+        #endif
+    }
+
+    @Published private(set) var microphoneMuted = false
+    @Published private(set) var phase: Phase = .idle {
+        didSet {
+            if case .failed = phase {
+                turnOperationID = UUID()
+                dictation.stop()
+                currentAudioQueue.stop()
+                voice.stop()
+                teardownPlaybackSession()
+            }
+        }
+    }
     @Published private(set) var liveTranscript: String = ""
     @Published private(set) var liveReply: String = ""
     /// Legacy mic level. Nothing in the UI reads this — the orb samples
@@ -168,6 +198,8 @@ final class VoiceConversationService: ObservableObject {
     /// Start a fresh voice conversation. Asks for mic + speech permission on
     /// first use. Returns false if either is denied.
     func start() async -> Bool {
+        guard !isStarting else { return false }
+        if case .failed = phase { stop() }
         modelRestoreTask?.cancel()
         modelRestoreTask = nil
         switch phase {
@@ -175,7 +207,24 @@ final class VoiceConversationService: ObservableObject {
         default:             return true    // already running
         }
 
+        let operation = UUID()
+        sessionOperationID = operation
+        isStarting = true
+        isInterrupted = false
+        var started = false
+        event("starting", operation: operation)
+        VoiceAudioSessionManager.shared.acquire(audioOwnerID)
+        defer {
+            if owns(operation) {
+                isStarting = false
+                if !started {
+                    dictation.stop()
+                    teardownPlaybackSession()
+                }
+            }
+        }
         let ok = await dictation.requestAuthorization()
+        guard owns(operation), !Task.isCancelled else { return false }
         guard ok else {
             phase = .failed("Microphone or speech recognition permission denied.")
             return false
@@ -200,7 +249,9 @@ final class VoiceConversationService: ObservableObject {
         }
 
         await applyVoiceModelOverrideIfNeeded()
+        guard owns(operation), !Task.isCancelled else { return false }
         await voice.load()
+        guard owns(operation), !Task.isCancelled else { return false }
 
         let preferredVoice = VoiceEngineKind(rawValue: AppSettings.shared.voiceEngine) ?? .appleSystem
         if preferredVoice != .appleSystem, !voice.isPreferredEngineReady {
@@ -217,7 +268,7 @@ final class VoiceConversationService: ObservableObject {
         // override path) may already have it loading; load() is a no-op then.
         switch assistant.state {
         case .ready, .loading, .generating: break
-        default: Task { [assistant] in await assistant.load() }
+        default: modelLoadTask = Task { [assistant] in await assistant.load() }
         }
 
         session = [ChatMessage(
@@ -235,7 +286,7 @@ final class VoiceConversationService: ObservableObject {
         // deactivate the session on cleanup, leaving it hot for TTS.
         let handler: (String, Bool) -> Void = { [weak self] text, _ in
             Task { @MainActor [weak self] in
-                guard let self else { return }
+                guard let self, self.owns(operation), !self.microphoneMuted, !self.isInterrupted, self.phase == .listening, self.dictation.isCapturingInput else { return }
                 self.liveTranscript = text
                 // Stamp the change time only when the text actually moves,
                 // so "unchanged for N seconds" reflects the user pausing —
@@ -255,14 +306,57 @@ final class VoiceConversationService: ObservableObject {
             return false
         }
 
+        if microphoneMuted { dictation.pauseEngineForTTS() }
         installSessionObservers()
         phase = .listening
+        started = true
+        event("listening", operation: operation)
         startVADLoop()
         return true
     }
 
+    /// Mute capture without ending playback, the transcript or the conversation.
+    func setMicrophoneMuted(_ muted: Bool) {
+        guard microphoneMuted != muted else { return }
+        microphoneMuted = muted
+        lastTranscriptChangeAt = nil
+        if muted {
+            pendingTranscript = ""
+            liveTranscript = ""
+            dictation.pauseEngineForTTS()
+        }
+        else if phase == .listening { _ = resumeListeningOrFail() }
+    }
+
+    var presentationMessages: [ChatMessage] {
+        var turns = session.filter { $0.role == .user || $0.role == .assistant }
+        if let index = turns.lastIndex(where: { $0.role == .assistant && $0.isStreaming }) {
+            turns[index].content = liveReply
+        }
+        // While listening, expose the partial next turn once. During a reply,
+        // the accepted user turn already lives in session.
+        if phase == .listening, !liveTranscript.isEmpty,
+           turns.last(where: { $0.role == .user })?.content != liveTranscript {
+            turns.append(ChatMessage(id: liveUserPresentationID, role: .user, content: liveTranscript))
+        }
+        return turns.filter { !$0.content.isEmpty }
+    }
+    private let liveUserPresentationID = UUID()
+
     /// End the conversation entirely — closes mic, stops playback, resets.
     func stop() {
+        guard let operation = sessionOperationID else { return }
+        // Invalidate before stopping: synchronous and queued callbacks now have no owner.
+        sessionOperationID = nil
+        turnOperationID = UUID()
+        isStarting = false
+        isInterrupted = false
+        event("end", operation: operation)
+        modelLoadTask?.cancel()
+        modelLoadTask = nil
+        currentAudioQueue.stop()
+        pendingTranscript = ""
+        microphoneMuted = false
         vadTask?.cancel()
         vadTask = nil
         replyTask?.cancel()
@@ -292,9 +386,19 @@ final class VoiceConversationService: ObservableObject {
         }
     }
 
+    /// A confirmed replacement waits for selection restoration before claiming
+    /// the shared runtime. Otherwise an old restore can replace the new selection.
+    func stopAndRestoreSelection() async {
+        stop()
+        await modelRestoreTask?.value
+    }
+
     /// User-triggered "interrupt the LLM and start listening again."
     /// Audio stop is synchronous and first; state reconciliation follows.
     func interrupt() async {
+        guard sessionOperationID != nil else { return }
+        turnOperationID = UUID()
+        currentAudioQueue.stop()
         // Generation bump + audible stop before any awaitable work.
         voice.stop()
         SpeechPlaybackCoordinator.shared.interruptImmediately()
@@ -315,6 +419,7 @@ final class VoiceConversationService: ObservableObject {
     /// VoiceService / SystemSpeechService — those were leaving Apple
     /// TTS on the full-duplex zombie path.
     var isHoldingRecordSession: Bool {
+        guard sessionOperationID != nil, !microphoneMuted, !isInterrupted else { return false }
         switch phase {
         case .listening, .thinking: return true
         case .speaking, .idle, .failed: return false
@@ -325,6 +430,7 @@ final class VoiceConversationService: ObservableObject {
     /// Flips to `.playback` and stops the mic engine so Apple System Voice
     /// isn't thinned by a live playAndRecord route.
     func prepareForTTSPlayback() {
+        guard sessionOperationID != nil else { return }
         try? applyConversationSession(forSpeaking: true)
         // Standalone speak()/Test audio never went through streamReply's
         // phase bind — without this the orb stayed on listening and ignored
@@ -335,7 +441,7 @@ final class VoiceConversationService: ObservableObject {
     /// Restore mic-capable session after a one-shot TTS (Test audio) while
     /// still in voice mode. No-op when conversation isn't listening.
     func restoreListeningAfterTTS() {
-        guard case .listening = phase else { return }
+        guard sessionOperationID != nil, !isInterrupted, case .listening = phase else { return }
         try? applyConversationSession(forSpeaking: false)
         _ = resumeListeningOrFail()
     }
@@ -345,6 +451,8 @@ final class VoiceConversationService: ObservableObject {
     /// conversation — soft resume often no-ops after the first TTS route flip.
     @discardableResult
     private func resumeListeningOrFail() -> Bool {
+        guard sessionOperationID != nil, !isInterrupted else { return false }
+        guard !microphoneMuted else { phase = .listening; return true }
         if dictation.resumeRecognition() {
             phase = .listening
             SpeechPlaybackCoordinator.shared.bindSessionPhase(.listening)
@@ -418,13 +526,7 @@ final class VoiceConversationService: ObservableObject {
     /// Clear a failed/abandoned conversation session so later TTS isn't
     /// stuck on playAndRecord.
     private func teardownPlaybackSession() {
-        let audio = AVAudioSession.sharedInstance()
-        do {
-            try audio.setCategory(.playback, mode: .spokenAudio, options: [.duckOthers])
-            try audio.setActive(false, options: .notifyOthersOnDeactivation)
-        } catch {
-            try? audio.setActive(false, options: .notifyOthersOnDeactivation)
-        }
+        VoiceAudioSessionManager.shared.release(audioOwnerID, deactivateIfUnused: true)
     }
 
     // MARK: - Voice-mode model override
@@ -524,7 +626,7 @@ final class VoiceConversationService: ObservableObject {
             // overhead. (Playback energy can't seed the next listening
             // calibration: the .listening transition above already calls
             // detector.reset().)
-            guard current == .listening || current == .speaking else {
+            guard !microphoneMuted, current == .listening || current == .speaking else {
                 if orbLevel != 0 {
                     orbLevel = 0
                     VoiceVisualLevelStore.shared.micLevel = 0
@@ -549,6 +651,8 @@ final class VoiceConversationService: ObservableObject {
             // so the detector's state is never touched concurrently. The energy
             // detector runs inline via the protocol's default.
             let prob = await detector.speechProbabilityAsync(level: raw, frames: frames)
+            guard !Task.isCancelled, sessionOperationID != nil, !microphoneMuted,
+                  !isInterrupted, phase == current else { continue }
 
             if current == .speaking {
                 if endpointer.observeSpeaking(probability: prob, now: now) == .bargeIn {
@@ -611,7 +715,7 @@ final class VoiceConversationService: ObservableObject {
     // MARK: - LLM round-trip
 
     private func handleEndOfTurn(_ text: String) async {
-        guard !Task.isCancelled else { return }
+        guard let operation = sessionOperationID, !microphoneMuted, !isInterrupted, !Task.isCancelled else { return }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             // Heard "speech" but the recogniser produced nothing — probably
@@ -621,9 +725,9 @@ final class VoiceConversationService: ObservableObject {
             return
         }
 
-        // Stop transcribing — but keep the audio engine alive (so we still
-        // get level data) and the audio session hot (so TTS plays).
-        dictation.pauseRecognition()
+        // The accepted turn no longer needs input capture. Keep only the
+        // conversation audio lease while inference and playback continue.
+        dictation.pauseEngineForTTS()
         phase = .thinking
         resetLiveReply()
         SpeechPlaybackCoordinator.shared.beginUtterance()
@@ -644,13 +748,13 @@ final class VoiceConversationService: ObservableObject {
             }
             var waited = 0
             while assistant.state != .ready && waited < 100 {   // up to ~10 s
-                guard !Task.isCancelled else { return }
+                guard owns(operation), !isInterrupted, !Task.isCancelled else { return }
                 if case .failed = assistant.state { break }
                 try? await Task.sleep(nanoseconds: 100_000_000)
                 waited += 1
             }
         }
-        guard !Task.isCancelled else { return }
+        guard owns(operation), !isInterrupted, !Task.isCancelled else { return }
         guard assistant.state == .ready else {
             if case .failed(let msg) = assistant.state {
                 // Genuine load failure (e.g. model too big for this device).
@@ -679,6 +783,9 @@ final class VoiceConversationService: ObservableObject {
     }
 
     private func streamReply() async {
+        guard let operation = sessionOperationID else { return }
+        let turn = UUID()
+        turnOperationID = turn
         // CodingAssistantService silently no-ops generate() while still
         // `.generating`. Wait briefly so turn 2 isn't dropped if turn 1's
         // native decode hasn't flipped back to `.ready` yet.
@@ -687,7 +794,7 @@ final class VoiceConversationService: ObservableObject {
             try? await Task.sleep(nanoseconds: 50_000_000)
             spins += 1
         }
-        if Task.isCancelled { return }
+        guard owns(operation), turnOperationID == turn, !Task.isCancelled else { return }
 
         let history = session.dropLast()
         let speakAloud = AppSettings.shared.voiceAnswerEnabled
@@ -739,7 +846,7 @@ final class VoiceConversationService: ObservableObject {
                 messages: Array(history),
                 onToken: { [weak self] token in
                     Task { @MainActor [weak self] in
-                        guard let self else { return }
+                        guard let self, self.owns(operation), self.turnOperationID == turn else { return }
                         // 1. UI receives the raw token unchanged — batched
                         //    (~8 Hz publish) so SwiftUI doesn't re-evaluate
                         //    the whole voice surface per token.
@@ -785,7 +892,7 @@ final class VoiceConversationService: ObservableObject {
                 onComplete: { [weak self] _ in
                     Task { @MainActor [weak self] in
                         guard let self else { continuation.resume(); return }
-                        guard self.phase == .thinking || self.phase == .speaking else {
+                        guard self.owns(operation), self.turnOperationID == turn, self.phase == .thinking || self.phase == .speaking else {
                             audioQueue?.stop()
                             continuation.resume()
                             return
@@ -839,13 +946,13 @@ final class VoiceConversationService: ObservableObject {
                                 SpeechPlaybackCoordinator.shared.bindSessionPhase(.speaking)
                                 self.voice.speakStream(audioQueue)
                             }
-                            await self.waitForSpeechCompletion()
+                            await self.waitForSpeechCompletion(operation: operation, turn: turn)
                             // Always return the mic after a spoken reply unless
                             // the user already interrupted back to listening or
                             // ended the session. Previously we required
                             // `.speaking`, so a race that cleared isPlaying
                             // early could strand the session mid-phase.
-                            if !Task.isCancelled {
+                            if self.owns(operation), self.turnOperationID == turn, !Task.isCancelled {
                                 switch self.phase {
                                 case .speaking, .thinking:
                                     self.pendingTranscript = ""
@@ -874,13 +981,14 @@ final class VoiceConversationService: ObservableObject {
     /// Sentence-boundary detection lives in `SemanticChunker` now —
     /// see Services/Voice/Pipeline/SemanticChunker.swift.
 
-    private func waitForSpeechCompletion() async {
+    private func waitForSpeechCompletion(operation: UUID, turn: UUID) async {
         // 5 minutes is well above any plausible spoken reply (the longest
         // ~2000-token answer at 150wpm is ~10 minutes, but the streaming
         // path means we're only blocking until the queue drains — not
         // generation). The deadline is a safety net against deadlocks.
         let deadline = Date().addingTimeInterval(300)
         while !Task.isCancelled
+                && owns(operation) && turnOperationID == turn
                 && voice.isPlaying
                 && phase == .speaking
                 && Date() < deadline {
@@ -899,7 +1007,8 @@ final class VoiceConversationService: ObservableObject {
     // Three notifications cover the failure modes the conversation can hit
     // while the user is mid-turn:
     //
-    //   • interruptionNotification     phone calls, Siri, alarms
+    //   • didBecomeInactive /          phone calls, Siri, alarms (iOS 27
+    //     resumptionRecommendation     replacements for interruptionNotification)
     //   • routeChangeNotification      AirPods plug/unplug, Bluetooth swap,
     //                                  CarPlay attach
     //   • mediaServicesWereResetNotification
@@ -915,12 +1024,30 @@ final class VoiceConversationService: ObservableObject {
         removeSessionObservers()
         let center = NotificationCenter.default
         let audio = AVAudioSession.sharedInstance()
+        guard let operation = sessionOperationID else { return }
 
         sessionObservers.append(
-            center.addObserver(forName: AVAudioSession.interruptionNotification,
+            center.addObserver(forName: AVAudioSession.didBecomeInactiveNotification,
                                object: audio, queue: .main) { [weak self] note in
+                // Only another app taking the session is an interruption; our
+                // own deactivation (voice ending) also posts this notification.
+                guard (note.userInfo?[AVAudioSession.deactivationContextKey] as? AVAudioSession.DeactivationContext)?
+                    .interruptionContext != nil else { return }
                 Task { @MainActor [weak self] in
-                    self?.handleInterruption(note)
+                    guard let self, self.owns(operation) else { return }
+                    self.handleInterruptionBegan()
+                }
+            }
+        )
+
+        sessionObservers.append(
+            center.addObserver(forName: AVAudioSession.resumptionRecommendationNotification,
+                               object: audio, queue: .main) { [weak self] note in
+                let recommendation = (note.userInfo?[AVAudioSession.resumptionContextKey] as? AVAudioSession.ResumptionContext)?
+                    .recommendation
+                Task { @MainActor [weak self] in
+                    guard let self, self.owns(operation) else { return }
+                    self.handleInterruptionEnded(shouldResume: recommendation == .shouldResume)
                 }
             }
         )
@@ -929,7 +1056,8 @@ final class VoiceConversationService: ObservableObject {
             center.addObserver(forName: AVAudioSession.routeChangeNotification,
                                object: audio, queue: .main) { [weak self] note in
                 Task { @MainActor [weak self] in
-                    self?.handleRouteChange(note)
+                    guard let self, self.owns(operation) else { return }
+                    self.handleRouteChange(note)
                 }
             }
         )
@@ -938,7 +1066,8 @@ final class VoiceConversationService: ObservableObject {
             center.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification,
                                object: audio, queue: .main) { [weak self] _ in
                 Task { @MainActor [weak self] in
-                    self?.handleMediaServicesReset()
+                    guard let self, self.owns(operation) else { return }
+                    self.handleMediaServicesReset()
                 }
             }
         )
@@ -956,38 +1085,30 @@ final class VoiceConversationService: ObservableObject {
     /// signalled `.shouldResume` (it skips that flag when the user
     /// explicitly handed control elsewhere — e.g. answered the call —
     /// and we should respect that by staying paused).
-    private func handleInterruption(_ note: Notification) {
-        guard
-            let info = note.userInfo,
-            let raw = info[AVAudioSessionInterruptionTypeKey] as? UInt,
-            let type = AVAudioSession.InterruptionType(rawValue: raw)
-        else { return }
+    private func handleInterruptionBegan() {
+        phaseBeforeInterruption = phase
+        isInterrupted = true
+        turnOperationID = UUID()
+        replyTask?.cancel()
+        editedTurnTask?.cancel()
+        currentAudioQueue.stop()
+        voice.stop()
+        assistant.stopGeneration()
+        dictation.pauseEngineForTTS()
+        // Don't transition to .failed — this is a recoverable pause,
+        // not a hard error. Holding .listening keeps the UI calm.
+        phase = .listening
+    }
 
-        switch type {
-        case .began:
-            phaseBeforeInterruption = phase
-            voice.stop()
-            assistant.stopGeneration()
-            dictation.pauseRecognition()
-            // Don't transition to .failed — this is a recoverable pause,
-            // not a hard error. Holding .listening keeps the UI calm.
-            phase = .listening
-
-        case .ended:
-            let optionsRaw = info[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
-            let options = AVAudioSession.InterruptionOptions(rawValue: optionsRaw)
-            guard options.contains(.shouldResume) else {
-                // iOS says don't resume automatically. Stop cleanly so the
-                // user can re-enter voice mode when they're ready instead
-                // of leaving a half-dead session on screen.
-                stop()
-                return
-            }
-            reactivateSessionAndResume()
-
-        @unknown default:
-            break
+    private func handleInterruptionEnded(shouldResume: Bool) {
+        guard shouldResume else {
+            // iOS says don't resume automatically. Stop cleanly so the
+            // user can re-enter voice mode when they're ready instead
+            // of leaving a half-dead session on screen.
+            stop()
+            return
         }
+        reactivateSessionAndResume()
     }
 
     /// Headphones unplugged or Bluetooth route lost. iOS pauses the
@@ -1033,6 +1154,7 @@ final class VoiceConversationService: ObservableObject {
     /// user can tap End and re-enter), and emit a toast so they know what
     /// happened.
     private func handleMediaServicesReset() {
+        stop()
         vadTask?.cancel()
         vadTask = nil
         voice.stop()
@@ -1054,6 +1176,8 @@ final class VoiceConversationService: ObservableObject {
     /// and generation, so restoring `.speaking` / `.thinking` would leave
     /// a dead phase on screen.
     private func reactivateSessionAndResume() {
+        guard sessionOperationID != nil else { return }
+        isInterrupted = false
         phaseBeforeInterruption = nil
         do {
             try applyConversationSession(forSpeaking: false)
@@ -1129,5 +1253,15 @@ final class VoiceConversationService: ObservableObject {
         guard let voiceID = profiles[personaID] else { return nil }
 
         return VoiceService.shared.availableVoices.first { $0.id == voiceID }
+    }
+}
+
+
+extension VoiceConversationService.Phase {
+    var isActiveForPresentation: Bool {
+        switch self {
+        case .listening, .thinking, .speaking: return true
+        case .idle, .failed: return false
+        }
     }
 }

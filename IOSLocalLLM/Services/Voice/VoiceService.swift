@@ -27,7 +27,13 @@ final class VoiceService: ObservableObject {
 
     // MARK: - Published state
 
-    @Published private(set) var isPlaying = false
+    private let audioOwnerID = UUID()
+    @Published private(set) var isPlaying = false {
+        didSet {
+            if isPlaying { VoiceAudioSessionManager.shared.acquire(audioOwnerID) }
+            else { VoiceAudioSessionManager.shared.release(audioOwnerID) }
+        }
+    }
     @Published private(set) var currentEngineKind: VoiceEngineKind = .appleSystem
 
     /// State per engine — used by VoiceStatusView.
@@ -209,7 +215,7 @@ final class VoiceService: ObservableObject {
     // MARK: - Speak
 
     /// Speaks `text` using the user's preferred engine, falling back to system TTS if needed.
-    func speak(_ text: String) {
+    func speak(_ text: String, previewVoiceID: String? = nil) {
         stop()
 
         // Audio-session handshake: dictation leaves the session in `.record`
@@ -244,6 +250,7 @@ final class VoiceService: ObservableObject {
         currentTask = Task {
             let preferredKind = VoiceEngineKind(rawValue: self.settings.voiceEngine) ?? .appleSystem
             await self.ensureEngineReadyIfNeeded(for: preferredKind)
+            guard !Task.isCancelled, self.streamGeneration == myGeneration else { return }
             guard let engine = self.preferredEngineIfReady(for: preferredKind) else {
                 await MainActor.run {
                     self.isPlaying = false
@@ -257,7 +264,7 @@ final class VoiceService: ObservableObject {
             }
             self.currentEngineKind = engine.kind
 
-            let voiceID = self.settings.voiceID
+            let voiceID = previewVoiceID ?? self.settings.voiceID
             // Last-resort fallback: a blank VoiceOption lets AVSpeechSynthesizer
             // choose the system default voice rather than silently dropping speech.
             // Upgrade any compact Default Apple voice to Enhanced/Premium so a
@@ -272,7 +279,7 @@ final class VoiceService: ObservableObject {
                                description: nil)
             if engine.kind == .appleSystem {
                 voice = self.systemEngine.upgradedVoice(for: voice)
-                if voice.id != voiceID, !voice.id.isEmpty {
+                if previewVoiceID == nil, voice.id != voiceID, !voice.id.isEmpty {
                     self.settings.voiceID = voice.id
                 }
             }
@@ -460,6 +467,7 @@ final class VoiceService: ObservableObject {
             guard let self else { return }
             let preferredEngineKind = VoiceEngineKind(rawValue: self.settings.voiceEngine) ?? .appleSystem
             await self.ensureEngineReadyIfNeeded(for: preferredEngineKind)
+            guard !Task.isCancelled, self.streamGeneration == myGeneration else { return }
             guard let preferredEngine = self.preferredEngineIfReady(for: preferredEngineKind) else {
                 await MainActor.run {
                     self.isPlaying = false

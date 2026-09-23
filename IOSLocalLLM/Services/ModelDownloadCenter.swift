@@ -254,6 +254,72 @@ final class ModelDownloadCenter: ObservableObject {
         // Best-effort FastVLM mirror discovery is user-initiated (Models
         // hub / Repair). A launch probe was a silent huggingface.co round
         // trip before the user asked for a download.
+        // But when the user DOES ask and the repo rejects the download
+        // (401/403 — the mirror died or was gated), recovery is automatic:
+        // discovery runs once per dead repo, the entry is swapped to the
+        // live mirror and the download restarts.
+        observeFastVLMFailures()
+        // Keep the catalog entry's downloader in sync with the stored repo
+        // ID — Auto-find, Settings edits and the dead-repo migration all
+        // write AppSettings.fastVLMRepoID, and before this observer the
+        // entry kept downloading from the OLD repo (rebuildFastVLMEntry
+        // was never called).
+        AppSettings.shared.objectWillChange
+            .sink { [weak self] _ in
+                Task { @MainActor in self?.syncFastVLMEntryWithSettings() }
+            }
+            .store(in: &cancellables)
+    }
+
+    // MARK: - FastVLM mirror recovery
+
+    private var fastVLMFailureCancellable: AnyCancellable?
+    /// Dead repos already probed this session — each one gets exactly one
+    /// automatic discovery pass so a fully-offline day can't loop.
+    private var fastVLMRecoveryAttempts: Set<String> = []
+
+    /// Watches the FastVLM downloader for auth failures (401/403) and kicks
+    /// mirror recovery. Re-armed after every entry rebuild, since a rebuild
+    /// swaps in a new downloader instance.
+    private func observeFastVLMFailures() {
+        fastVLMFailureCancellable = fastvlmModel?.downloader?.$state
+            .removeDuplicates()
+            .sink { [weak self] state in
+                guard let self, case .failed = state else { return }
+                Task { @MainActor in self.recoverFastVLMAfterAuthFailure() }
+            }
+    }
+
+    private func syncFastVLMEntryWithSettings() {
+        let stored = AppSettings.shared.fastVLMRepoID
+        guard !stored.isEmpty,
+              fastvlmModel?.downloader?.repoID != stored else { return }
+        rebuildFastVLMEntry(with: stored)
+        observeFastVLMFailures()
+    }
+
+    private func recoverFastVLMAfterAuthFailure() {
+        guard let downloader = fastvlmModel?.downloader,
+              case .failed = downloader.state,
+              downloader.lastFailureKind == .tokenRequired
+                || downloader.lastFailureKind == .tokenRejected else { return }
+        let deadRepo = downloader.repoID
+        guard !fastVLMRecoveryAttempts.contains(deadRepo) else { return }
+        fastVLMRecoveryAttempts.insert(deadRepo)
+        Diagnostics.shared.warning(
+            "FastVLM repo \(deadRepo) rejected the download — probing mirrors",
+            category: "modeldownloadcenter"
+        )
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            guard let live = await FastVLMRepoAutoDiscovery.shared.discover(),
+                  live != deadRepo else { return }
+            self.rebuildFastVLMEntry(with: live)
+            self.observeFastVLMFailures()
+            self.refreshAllStates()
+            ToastCenter.shared.info("FastVLM mirror switched", detail: live)
+            self.fastvlmModel?.start()
+        }
     }
 
     /// Replaces the existing FastVLM catalog entry when auto-discovery finds
@@ -273,12 +339,13 @@ final class ModelDownloadCenter: ObservableObject {
         let new = DownloadableModel(
             id: FastVLMService.modelID,
             displayName: "FastVLM MLX Weights",
-            subtitle: repoID,
-            sizeLabel: "~400 MB",
+            subtitle: "On-device vision encoder · required for Lens",
+            sizeLabel: "~1.8 GB",
             category: .vlm,
             isRequired: true,
             docURL: "https://huggingface.co/\(repoID)",
-            downloader: HFModelDownloadManager(repoID: repoID, destination: dest)
+            downloader: HFModelDownloadManager(repoID: repoID, destination: dest),
+            approxRAMBytes: MemoryAdvisor.estimatedFootprint(for: FastVLMService.modelID)
         )
         new.checkIfReady()
         models[idx] = new
@@ -308,11 +375,15 @@ final class ModelDownloadCenter: ObservableObject {
     /// builds where the default repo ID was broken (private/gated).
     private func migrateStaleSettings() {
         let s = AppSettings.shared
-        // Old default that 401'd:
-        let brokenFastVLM = "mlx-community/llava-fastvithd_0.5b_stage3_llm.fp16"
-        if s.fastVLMRepoID == brokenFastVLM {
-            s.fastVLMRepoID = "apple/FastVLM-0.5B-MLX"
-            Diagnostics.shared.warning("Migrated stale FastVLM repo ID", category: "modeldownloadcenter")
+        // Mirrors that 401/404 anonymously (see FastVLMConfig.deadRepoIDs,
+        // verified 2026-09-20): the stored ID can never download, so reset
+        // it to the live default instead of leaving the user on a dead repo.
+        if FastVLMConfig.deadRepoIDs.contains(s.fastVLMRepoID) {
+            Diagnostics.shared.warning(
+                "Migrated dead FastVLM repo ID \(s.fastVLMRepoID) → \(FastVLMConfig.defaultRepoID)",
+                category: "modeldownloadcenter"
+            )
+            s.fastVLMRepoID = FastVLMConfig.defaultRepoID
         }
         // REMOVED: a previous version of this code reset
         // assistantModelID from "qwen3-4b" to "qwen2.5-coder-1.5b" on
@@ -654,7 +725,7 @@ final class ModelDownloadCenter: ObservableObject {
             id: FastVLMService.modelID,
             displayName: "FastVLM MLX Weights",
             subtitle: "On-device vision encoder · required for Lens",
-            sizeLabel: "~400 MB",
+            sizeLabel: "~1.8 GB",
             category: .vlm,
             isRequired: true,
             docURL: "https://huggingface.co/\(fastVLMRepo)",
@@ -1029,6 +1100,18 @@ final class ModelDownloadCenter: ObservableObject {
     @Published private(set) var totalStorageUsed: Int64 = 0
     @Published private(set) var orphanedDownloadBytes: Int64 = 0
 
+    /// Models living in the HubApi cache — assistant lazy-downloads and
+    /// image-gen repos — that no Download Center entry accounts for.
+    ///
+    /// `totalStorageUsed` has included the hub cache since it was the only way
+    /// to stop the number reading "0 MB" while gigabytes sat on disk. But the
+    /// *counts* next to it still came from `models.filter(\.isReady)`, which
+    /// never sees a hub-cache model. That produced the reverse contradiction:
+    /// "878.5 mb · 0 installed" on a device with a resident assistant. Counted
+    /// in the same directory walk that produces the bytes, so the two figures
+    /// can never disagree again.
+    @Published private(set) var hubCacheModelCount: Int = 0
+
     /// Recomputes `totalStorageUsed` and `orphanedDownloadBytes` off the
     /// main actor and publishes the results.
     func refreshStorageStats() {
@@ -1046,8 +1129,11 @@ final class ModelDownloadCenter: ObservableObject {
         // It's disjoint from the Download Center roots, so no dedupe needed.
         let hubCache = docs.appendingPathComponent("huggingface", isDirectory: true)
         let orphans = orphanedDownloadDirectories()
+        // Enumerated on the main actor alongside the other inputs, then
+        // counted off it — same snapshot the byte total is computed from.
+        let hubRepos = hubCacheRepoDirectories()
 
-        Task.detached(priority: .utility) { [readyDirs, orphans] in
+        Task.detached(priority: .utility) { [readyDirs, orphans, hubRepos] in
             let fm = FileManager.default
             var total: Int64 = 0
             for path in readyDirs {
@@ -1055,12 +1141,19 @@ final class ModelDownloadCenter: ObservableObject {
                     at: URL(fileURLWithPath: path, isDirectory: true))) ?? 0
             }
             total += (try? fm.allocatedSizeOfDirectory(at: hubCache)) ?? 0
+            // Only repos that actually hold bytes count as installed — an
+            // empty directory left behind by a cancelled fetch is not a model.
+            let hubCount = hubRepos.reduce(0) { count, url in
+                let size = (try? fm.allocatedSizeOfDirectory(at: url)) ?? 0
+                return size > 0 ? count + 1 : count
+            }
             let orphanBytes = orphans.reduce(Int64(0)) { sum, url in
                 sum + ((try? fm.allocatedSizeOfDirectory(at: url)) ?? 0)
             } + BackgroundDownloadCoordinator.staleResumeDataBytes()
-            await MainActor.run { [total, orphanBytes] in
+            await MainActor.run { [total, orphanBytes, hubCount] in
                 self.totalStorageUsed = total
                 self.orphanedDownloadBytes = orphanBytes
+                self.hubCacheModelCount = hubCount
             }
         }
     }

@@ -21,11 +21,16 @@ final class FastVLMRepoAutoDiscovery {
     private init() {}
 
     /// Curated candidates in priority order. The first one that responds
-    /// HTTP 200 wins.
+    /// HTTP 200 wins. Verified 2026-09-20: the previously preferred mirrors
+    /// (`apple/FastVLM-0.5B-MLX`, the llava-fastvithd mlx-community repacks)
+    /// now answer 401 anonymously, so the live Apple fp16 bundle leads.
     static let candidates: [String] = [
-        "apple/FastVLM-0.5B-MLX",
+        FastVLMConfig.defaultRepoID,                    // apple/FastVLM-0.5B-fp16 (200)
+        "mlx-community/FastVLM-0.5B-bf16",              // MLX repack (200)
+        "apple/FastVLM-0.5B",                           // raw Apple weights (200)
+        "InsightKeeper/FastVLM-0.5B-MLX-4bit",          // 4-bit MLX repack (200)
+        "apple/FastVLM-0.5B-MLX",                       // dead (401) — kept as last resort
         "mlx-community/llava-fastvithd_0.5b_stage3_llm.fp16",
-        "apple/FastVLM-0.5B",
         "mlx-community/FastVLM-0.5B-Stage3-LLM",
         "mlx-community/llava-fastvithd_0.5b_stage3_llm.bf16",
         "apple/FastVLM-1.5B-MLX",

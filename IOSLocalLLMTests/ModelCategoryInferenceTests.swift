@@ -364,6 +364,91 @@ final class ModelCategoryInferenceTests: XCTestCase {
         XCTAssertTrue(source.contains("yet.\n\n—The image"))
     }
 
+    func test_assistantMarkdownLayout_keepsHeadingsParagraphsAndTableCellsSeparate() {
+        let response = """
+        # October 2026 Calendar Dates
+
+        Based on the sources provided, here are three dates.
+
+        | Date | Day | Event | Type |
+        | --- | --- | --- | --- |
+        | Oct 9 | Friday | Leif Erikson Day | Observance |
+        | Oct 12 | Monday | Columbus Day | Federal Holiday |
+
+        ## Additional Notes
+
+        **Columbus Day** is marked as a federal holiday.
+        """
+        let blocks = StudioMarkdownLayout.parse(response)
+        XCTAssertEqual(blocks, [
+            .heading(1, "October 2026 Calendar Dates"),
+            .paragraph("Based on the sources provided, here are three dates."),
+            .table(
+                ["Date", "Day", "Event", "Type"],
+                [
+                    ["Oct 9", "Friday", "Leif Erikson Day", "Observance"],
+                    ["Oct 12", "Monday", "Columbus Day", "Federal Holiday"]
+                ]
+            ),
+            .heading(2, "Additional Notes"),
+            .paragraph("**Columbus Day** is marked as a federal holiday.")
+        ])
+    }
+
+    func test_assistantMarkdownLayout_keepsListAndQuoteStructure() {
+        XCTAssertEqual(
+            StudioMarkdownLayout.parse("Steps:\n- Check the date\n- Check the source\n\n> Verify before sharing"),
+            [
+                .paragraph("Steps:"),
+                .list([
+                    .init(marker: "•", depth: 0, text: "Check the date"),
+                    .init(marker: "•", depth: 0, text: "Check the source")
+                ]),
+                .quote("Verify before sharing")
+            ]
+        )
+    }
+
+    func test_assistantMarkdownLayout_preservesPipesInsideTableCells() {
+        let response = "| Name | Example |\n| --- | --- |\n| A\\|B | `x|y` |"
+        XCTAssertEqual(
+            StudioMarkdownLayout.parse(response),
+            [.table(["Name", "Example"], [["A|B", "`x|y`"]])]
+        )
+    }
+
+    func test_assistantMarkdownLayout_supportsUnderlinedHeadingsAndEmptyTables() {
+        let response = "Calendar dates\n==============\n\n| Date | Day |\n| --- | --- |"
+        XCTAssertEqual(
+            StudioMarkdownLayout.parse(response),
+            [.heading(1, "Calendar dates"), .table(["Date", "Day"], [])]
+        )
+        XCTAssertEqual(
+            StudioMarkdownLayout.parse("| Date |\n| --- |\n| Sep 23 |"),
+            [.table(["Date"], [["Sep 23"]])]
+        )
+    }
+
+    func test_dateOnlyQuestion_usesDeviceDateWithoutWebPermission() throws {
+        let date = try XCTUnwrap(ISO8601DateFormatter().date(from: "2026-09-23T12:00:00Z"))
+        let timeZone = try XCTUnwrap(TimeZone(secondsFromGMT: 0))
+        XCTAssertEqual(
+            LocalDateAnswer.answer(
+                for: "Whats todays date?", now: date,
+                locale: Locale(identifier: "en_US"), timeZone: timeZone
+            ),
+            "Today is Wednesday, September 23, 2026."
+        )
+
+        let decision = WebToolDecisionEngine().decide(
+            message: "Whats todays date?", settings: WebToolSettings()
+        )
+        guard case .noWebNeeded = decision else {
+            return XCTFail("A date-only question should not request web access")
+        }
+        XCTAssertNil(LocalDateAnswer.answer(for: "What's today's weather?"))
+    }
+
     func test_imageGroundingSanitizer_removesCrossModelControlTokens() {
         let raw = """
         <|im_start|>assistant

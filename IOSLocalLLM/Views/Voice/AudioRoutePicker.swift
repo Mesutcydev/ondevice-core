@@ -37,15 +37,15 @@ struct VoiceRouteControl: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
             AudioRoutePicker(tintColor: UIColor(T.ink2))
-                .frame(width: 28, height: 28)
+                .frame(width: 44, height: 44)
                 .accessibilityLabel("Audio output route")
                 .accessibilityHint("Opens system route picker")
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
         .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.surface)
-                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.rule, lineWidth: 0.5))
+            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.surface)
+                .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(T.rule, lineWidth: 0.5))
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Audio output: \(sessionManager.route.displayName)")

@@ -25,6 +25,21 @@ enum FastVLMConfig {
     // the in-app Download Center → "FastVLM MLX Weights" entry).
     static let mlxModelDirectory = "llava-fastvithd_0.5b_stage3_llm.fp16"
 
+    // MARK: - Hugging Face source repo
+    /// Default weights repo. Apple's official fp16 bundle: MLX-loadable
+    /// config + safetensors, processor configs, tokenizer, and the Core ML
+    /// fastvithd encoder package the bundle validator looks for.
+    static let defaultRepoID = "apple/FastVLM-0.5B-fp16"
+    /// Mirrors that started returning 401/404 anonymously (checked
+    /// 2026-09-20). Stored IDs in this list are migrated to `defaultRepoID`.
+    static let deadRepoIDs: Set<String> = [
+        "apple/FastVLM-0.5B-MLX",
+        "apple/FastVLM-1.5B-MLX",
+        "mlx-community/llava-fastvithd_0.5b_stage3_llm.fp16",
+        "mlx-community/FastVLM-0.5B-Stage3-LLM",
+        "mlx-community/llava-fastvithd_0.5b_stage3_llm.bf16",
+    ]
+
     // MARK: - Encoder I/O
     static let encoderInputName  = "images"
     static let encoderOutputName = "image_features"

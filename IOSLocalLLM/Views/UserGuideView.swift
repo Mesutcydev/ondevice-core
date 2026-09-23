@@ -6,7 +6,11 @@ struct UserGuideView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 20) {
+            // spacing 0: `KSection` is an `InstrumentPanel` now, and panels
+            // tile against each other on shared rules. A 20pt gap between them
+            // would float each one on the page — the card look the grammar
+            // removes. The lead blocks below carry their own vertical padding.
+            VStack(spacing: 0) {
                 // Intro Section
                 VStack(alignment: .leading, spacing: 6) {
                     KCaption(text: "manual")
@@ -16,6 +20,7 @@ struct UserGuideView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
+                .padding(.bottom, 18)
 
                 // Privacy Note
                 HStack(spacing: 12) {
@@ -23,7 +28,7 @@ struct UserGuideView: View {
                         .font(.system(size: 16))
                         .foregroundColor(T.accent)
                         .frame(width: 32, height: 32)
-                        .background(RoundedRectangle(cornerRadius: 8).fill(T.accentSoft))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accentSoft))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("100% On-Device & Private")
                             .font(T.sans(14, .semibold))
@@ -37,6 +42,7 @@ struct UserGuideView: View {
                 .padding(14)
                 .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface)
                 .padding(.horizontal, 16)
+                .padding(.bottom, 18)
 
                 // 1. Assistant View Section
                 KSection(title: "assistant") {
@@ -142,22 +148,20 @@ struct UserGuideView: View {
                     .padding(14)
                 }
 
-                // 6. Mac Bridge Section
-                KSection(title: "mac_bridge") {
+                // 6. Local API server
+                KSection(title: "API server") {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Desktop Coupling")
+                        Text("Local API server")
                             .font(T.sans(15, .semibold))
                             .foregroundColor(T.ink)
                         
-                        Text("Pair with LocalCoderBridge on your Mac. Scan the desktop QR code to establish secure local connection links.")
+                        Text("Open API server from the sidebar to let compatible clients send requests to a model running on this device.")
                             .font(T.sans(12))
                             .foregroundColor(T.ink2)
                             .lineSpacing(3)
 
-                        visualImage("img_mac_bridge")
-
-                        bulletPoint("Dual Inference Routing", "Offload complex reasoning tasks from your Mac to your iOS device's Neural Engine.")
-                        bulletPoint("Visual Inspection", "Streams Mac screenshots, simulator boundaries, and Xcode logs directly to the iOS visual model.")
+                        bulletPoint("Client setup", "Enable the server, choose a downloaded model, then copy the connection URL and API key into your client.")
+                        bulletPoint("Local network", "Use a trusted network. Requests require authentication, and the server stops when the app enters the background.")
                     }
                     .padding(14)
                 }
@@ -166,7 +170,7 @@ struct UserGuideView: View {
         }
         .background(StudioPageBackground())
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.hidden, for: .navigationBar)
+
     }
 
     @ViewBuilder
@@ -174,16 +178,15 @@ struct UserGuideView: View {
         Image(name)
             .resizable()
             .aspectRatio(contentMode: .fit)
-            .cornerRadius(12)
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.glassBorder, lineWidth: 0.5))
-            .shadow(color: .black.opacity(0.08), radius: 14, y: 3)
+            .cornerRadius(StudioRadius.panel)
+            .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.glassBorder, lineWidth: 0.5))
     }
 
     @ViewBuilder
     private func bulletPoint(_ title: String, _ desc: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
-                Circle().fill(T.accent).frame(width: 4, height: 4)
+                Rectangle().fill(T.accent).frame(width: 4, height: 4)
                 KMono(text: title.uppercased(), size: 10, weight: .semibold, color: T.accent)
             }
             Text(desc)

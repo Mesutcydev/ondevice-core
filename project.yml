@@ -42,6 +42,11 @@ packages:
     # Vendored Apple Core AI runtime utilities. Carries the required iOS-27
     # dyld fix documented in Packages/coreai-models/COREAI_PIN_PATCH.md.
     path: Packages/coreai-models
+  OnDeviceUI:
+    # The redesigned presentation layer (six screens + tokens). Local package;
+    # the app supplies inference, downloads, audio, camera and persistence via
+    # ODStore/ODAction. See Packages/OnDeviceUI and ODBridge.swift.
+    path: Packages/OnDeviceUI
 
 settings:
   base:
@@ -158,10 +163,14 @@ targets:
         NSPhotoLibraryUsageDescription: "OnDevice Max uses photos you select for image understanding and conversations with compatible vision models."
         NSMicrophoneUsageDescription: "OnDevice Max uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control."
         NSLocalNetworkUsageDescription: "OnDevice Max can expose your on-device language model to computers on your local network when you enable the Local API Server."
+        # A previously paired Mac bridge auto-starts and advertises this type;
+        # iOS 14+ refuses undeclared Bonjour advertisements.
+        NSBonjourServices:
+          - _localllm._tcp
         NSSpeechRecognitionUsageDescription: "OnDevice Max uses speech recognition to turn your speech into text for voice conversations and dictation."
-        UIRequiresFullScreen: true
-        UIStatusBarStyle: UIStatusBarStyleDarkContent
-        UIViewControllerBasedStatusBarAppearance: false
+        # The share sheet's "Save Image" action (Image studio results) runs in
+        # this process; without this key iOS terminates the app on that tap.
+        NSPhotoLibraryAddUsageDescription: "OnDevice Max saves images you create to your photo library when you choose Save Image."
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UILaunchScreen:
@@ -187,7 +196,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLM/IOSLocalLLM.entitlements
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "10"
+        CURRENT_PROJECT_VERSION: "55"
         # PCC symbols exist only in the iOS 27 SDK. Enable the implementation
         # and its capability automatically for iOS 27 device/simulator builds;
         # Xcode 26 and iOS 18–26 builds keep the existing local-only binary.
@@ -245,6 +254,8 @@ targets:
           # full module-map gymnastics.
           - "$(SRCROOT)/ThirdParty/whisper.cpp/include"
     dependencies:
+      - package: OnDeviceUI
+        product: OnDeviceUI
       - package: VoiceAgentOrb
         product: VoiceAgentOrb
       - package: mlx-swift-lm
@@ -416,7 +427,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "10"
+        CURRENT_PROJECT_VERSION: "55"
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_EMIT_LOC_STRINGS: YES
 

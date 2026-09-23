@@ -291,6 +291,64 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
         LocalModelFileValidator.hasCompleteGGUFVLMPair(in: dir)
     }
 
+    /// Creates `destination` and proves it is writable, repairing the
+    /// on-disk states that produced Cocoa 513 ("You don't have permission
+    /// to save the file … in the folder HFModels") on device:
+    ///   1. A read-only folder left behind by an older install or a bundle
+    ///      copy → re-chmod the whole chain to user-writable and retry.
+    ///   2. A regular file sitting where the model folder should be →
+    ///      moved aside, never deleted.
+    ///   3. Anything still broken after that → the destination is renamed
+    ///      aside (`*.repair-<ts>`) and recreated empty. A partially
+    ///      downloaded model folder is re-downloadable, so sacrificing it
+    ///      is safe; anything else is preserved by the rename.
+    /// Only after all three does the user get the actionable -6 error.
+    static func prepareWritableDestination(_ destination: URL, repoID: String) throws {
+        let fm = FileManager.default
+
+        func attempt() throws {
+            var isDir: ObjCBool = false
+            if fm.fileExists(atPath: destination.path, isDirectory: &isDir), !isDir.boolValue {
+                let aside = destination.appendingPathExtension("stray-\(Int(Date().timeIntervalSince1970))")
+                try fm.moveItem(at: destination, to: aside)
+            }
+            try fm.createDirectory(at: destination, withIntermediateDirectories: true)
+            let probe = destination.appendingPathComponent(".write-probe")
+            try Data([0x6f, 0x6b]).write(to: probe, options: [.atomic])
+            try? fm.removeItem(at: probe)
+        }
+
+        func chmodChain() {
+            var cursor = destination
+            for _ in 0..<3 {
+                try? fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: cursor.path)
+                cursor = cursor.deletingLastPathComponent()
+            }
+        }
+
+        do {
+            try attempt()
+        } catch {
+            chmodChain()
+            do {
+                try attempt()
+            } catch {
+                if fm.fileExists(atPath: destination.path) {
+                    let aside = destination.appendingPathExtension("repair-\(Int(Date().timeIntervalSince1970))")
+                    try? fm.moveItem(at: destination, to: aside)
+                }
+                do {
+                    try attempt()
+                } catch {
+                    throw NSError(domain: "HFDownload", code: -6, userInfo: [
+                        NSLocalizedDescriptionKey:
+                            "Model storage isn't writable (\(error.localizedDescription)). Restart the app and retry; if it persists, check free device storage."
+                    ])
+                }
+            }
+        }
+    }
+
     // MARK: - Core download loop
 
     private func run() async {
@@ -383,9 +441,13 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
             // Start a Dynamic Island / Lock Screen Live Activity for this download
             _ = DownloadLiveActivityManager.shared.start(repoID: repoID)
 
-            // 4. Create destination directory
-            try FileManager.default.createDirectory(
-                at: destination, withIntermediateDirectories: true)
+            // 4. Create destination directory and prove it is writable
+            // BEFORE pulling hundreds of MB. Observed on device: a failed
+            // background-session move surfaced as Cocoa 513 ("You don't
+            // have permission to save the file") only after the last byte
+            // landed — fail fast here with an actionable message instead,
+            // and repair the folder states that caused it (see helper).
+            try Self.prepareWritableDestination(destination, repoID: repoID)
             // Model weights are large and re-downloadable — keep them out
             // of iCloud/iTunes backups. Directory-level exclusion covers
             // every file written beneath it.

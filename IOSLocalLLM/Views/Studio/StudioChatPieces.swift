@@ -6,57 +6,10 @@ import SwiftUI
 // are full-measure prose with no bubble and no avatar. These are the parts
 // that aren't a restyle of something that already existed.
 
-/// Four glyphs under the last answer, above a 1px divider, with the mono
-/// footnote right-aligned. The long-press context menu on the message stays.
-struct StudioAnswerActionRow: View {
-    /// e.g. "searched once · 2 pages · nothing stored"
-    var provenance: String?
-    /// e.g. "qwen3 · 1.2s"
-    var footnote: String?
-    var canRegenerate: Bool = true
-    let onCopy: () -> Void
-    let onRegenerate: () -> Void
-    let onShare: () -> Void
-    let onSpeak: () -> Void
-
-    @Environment(\.koduTheme) private var T
-
-    var body: some View {
-        let S = T.studio
-        VStack(alignment: .leading, spacing: StudioSpacing.s) {
-            if let provenance {
-                StudioMonoLabel(text: provenance, size: 11)
-            }
-            StudioHairline(color: S.rule2)
-            // Zero spacing: the glyph buttons carry their own 44pt tap boxes.
-            HStack(spacing: 0) {
-                StudioGlyphButton(symbol: "doc.on.doc", glyphSize: 14, action: onCopy)
-                    .accessibilityLabel("Copy")
-                if canRegenerate {
-                    StudioGlyphButton(symbol: "arrow.clockwise", glyphSize: 14, action: onRegenerate)
-                        .accessibilityLabel("Regenerate")
-                }
-                StudioGlyphButton(symbol: "square.and.arrow.up", glyphSize: 14, action: onShare)
-                    .accessibilityLabel("Share response")
-                StudioGlyphButton(symbol: "speaker.wave.2", glyphSize: 14, action: onSpeak)
-                    .accessibilityLabel("Read aloud")
-                Spacer(minLength: StudioSpacing.s)
-                if let footnote {
-                    StudioMonoLabel(text: footnote, size: 11)
-                        .lineLimit(1)
-                }
-            }
-            // Keeps the first glyph flush with the prose above it.
-            .padding(.leading, -StudioGlyphButton.opticalInset)
-        }
-    }
-}
-
 // MARK: - Web permission
 
-/// Approval card for `web_search`. Names exactly what leaves the device;
-/// neutral hairline card — no colored spine, no danger tint. The mono
-/// eyebrow + the explicit copy carry the caution.
+/// Approval card for `web_search`. The exact query and the scope of each
+/// choice remain visible before any request leaves the device.
 struct StudioWebPermissionCard: View {
     /// The words that would actually be sent.
     let query: String
@@ -70,64 +23,141 @@ struct StudioWebPermissionCard: View {
 
     var body: some View {
         let S = T.studio
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 6) {
-                Image(systemName: "globe")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(S.ink3)
-                StudioMonoLabel(text: "needs the internet", size: 11, tracking: 0.9)
-            }
+        VStack(alignment: .leading, spacing: 16) {
+            WebPermissionHeader()
+            WebPermissionDisclosure(query: query, reason: reason)
+            WebPermissionActions(
+                onAllowOnce: onAllowOnce,
+                onAlwaysAllow: onAlwaysAllow,
+                onDeny: onDeny
+            )
+        }
+        .padding(StudioSpacing.l)
+        .frame(maxWidth: 520, alignment: .leading)
+        .background(S.surfaceRaised, in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+                .stroke(S.rule, lineWidth: 1)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .contain)
+    }
+}
 
-            Text("I can't answer this without looking it up.")
-                .font(S.sans(17, .semibold))
-                .lineSpacing(17.5 * 0.35)
+private struct WebPermissionHeader: View {
+    @Environment(\.koduTheme) private var T
+
+    var body: some View {
+        let S = T.studio
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "globe")
+                .font(.system(size: 17, weight: .medium))
                 .foregroundStyle(S.ink)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 9)
+                .frame(width: 36, height: 36)
+                .background(S.fillActive, in: RoundedRectangle(cornerRadius: 10))
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Web access requested")
+                    .font(S.sans(16, .semibold))
+                    .foregroundStyle(S.ink)
+                Text("Review what will be sent")
+                    .font(S.sans(13))
+                    .foregroundStyle(S.ink2)
+            }
+        }
+    }
+}
 
-            Text("Only the words “\(query)” would leave your phone. The chat itself stays here.")
-                .font(S.sans(14))
-                .lineSpacing(14.5 * 0.5)
+private struct WebPermissionDisclosure: View {
+    let query: String
+    let reason: String?
+    @Environment(\.koduTheme) private var T
+
+    var body: some View {
+        let S = T.studio
+        VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text("REQUEST")
+                    .font(S.mono(10, .medium))
+                    .tracking(0.7)
+                    .foregroundStyle(S.ink3)
+                Text(query)
+                    .font(S.sans(15, .medium))
+                    .foregroundStyle(S.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(S.fillActive, in: RoundedRectangle(cornerRadius: StudioRadius.tile))
+
+            Text("Only this request is sent from your chat. The rest stays here.")
+                .font(S.sans(13))
                 .foregroundStyle(S.ink2)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, StudioSpacing.s)
-
             if let reason, !reason.isEmpty {
                 Text(reason)
-                    .font(S.sans(13))
+                    .font(S.sans(12))
                     .foregroundStyle(S.ink3)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 6)
             }
+        }
+    }
+}
 
-            StudioHairline().padding(.top, 14)
+private struct WebPermissionActions: View {
+    let onAllowOnce: () -> Void
+    let onAlwaysAllow: (() -> Void)?
+    let onDeny: () -> Void
+    @Environment(\.koduTheme) private var T
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-            StudioPrimaryButton(title: "Look it up once", action: onAllowOnce)
-                .padding(.top, 13)
+    var body: some View {
+        let S = T.studio
+        VStack(spacing: 5) {
+            Button {
+                HapticManager.impact(.light)
+                onAllowOnce()
+            } label: {
+                Text("Look it up once")
+                    .font(S.sans(15, .semibold))
+                    .foregroundStyle(S.paper)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .background(S.ink, in: RoundedRectangle(cornerRadius: 13))
+            }
+            .buttonStyle(.plain)
 
-            HStack(spacing: StudioSpacing.s) {
+            let secondaryLayout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(spacing: 0))
+                : AnyLayout(HStackLayout(spacing: 8))
+            secondaryLayout {
                 if let onAlwaysAllow {
-                    StudioOutlineButton(title: "Always allow", action: onAlwaysAllow)
+                    Button {
+                        HapticManager.impact(.light)
+                        onAlwaysAllow()
+                    } label: {
+                        Text("Always allow future web requests")
+                            .font(S.sans(13, .medium))
+                            .foregroundStyle(S.ink2)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
                 Button {
                     HapticManager.impact(.light)
                     onDeny()
                 } label: {
                     Text("Never mind")
-                        .font(S.sans(14, .medium))
-                        .foregroundStyle(S.ink3)
+                        .font(S.sans(13, .medium))
+                        .foregroundStyle(S.ink2)
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.top, StudioSpacing.s)
         }
-        .padding(StudioSpacing.l)
-        .overlay(
-            RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous)
-                .stroke(S.rule, lineWidth: 1)
-        )
     }
 }
 
@@ -158,22 +188,26 @@ struct StudioStarterList: View {
         let S = T.studio
         VStack(spacing: 0) {
             StudioHairline(color: S.rule2)
+            // Command lines, not suggestion chips. A leading `>` says these
+            // are things you send; the chevron said they were places you go,
+            // which was never true — picking one fills the composer.
             ForEach(starters) { starter in
                 Button {
                     HapticManager.impact(.light)
                     onPick(starter)
                 } label: {
-                    HStack {
+                    HStack(spacing: 10) {
+                        Text(">")
+                            .font(S.mono(13, .medium))
+                            .foregroundStyle(S.accent)
+                            .accessibilityHidden(true)
                         Text(starter.label)
-                            .font(S.sans(16))
+                            .font(S.sans(15))
                             .foregroundStyle(S.ink)
                             .multilineTextAlignment(.leading)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 13))
-                            .foregroundStyle(S.chevron)
+                        Spacer(minLength: 0)
                     }
-                    .padding(.vertical, 15)
+                    .padding(.vertical, 14)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)

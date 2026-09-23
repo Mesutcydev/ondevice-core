@@ -14,9 +14,9 @@ private struct ActivityCardChrome<Content: View>: View {
         content
             .padding(12)
             .frame(maxWidth: 520, alignment: .leading)
-            .glassSurface(.card, cornerRadius: 12)
+            .glassSurface(.card, cornerRadius: StudioRadius.panel)
             .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                     .stroke(T.rule, lineWidth: 1)
             }
             .padding(.horizontal, 18)
@@ -38,7 +38,7 @@ private struct ActivityCardHeader: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(T.accent)
                 .frame(width: 28, height: 28)
-                .background(T.accent.opacity(0.10), in: Circle())
+                .background(T.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous))
                 .symbolEffect(.pulse, isActive: pulsing)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
@@ -64,7 +64,7 @@ struct AssistantLiveStatusRow: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Circle()
+            RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
                 .fill(T.accent)
                 .frame(width: 6, height: 6)
                 .opacity(reduceMotion ? 0.7 : 0.9)
@@ -152,9 +152,9 @@ struct AssistantApprovalCard: View {
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(10)
-                    .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(T.surface))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.surface))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                             .stroke(T.rule, lineWidth: 0.5)
                     )
                 VStack(spacing: 8) {
@@ -167,7 +167,7 @@ struct AssistantApprovalCard: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 11)
                             .foregroundStyle(T.bg)
-                            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(T.ink))
+                            .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.ink))
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Allow this \(AssistantActivity.displayName(forTool: toolName)) once")
@@ -236,7 +236,7 @@ struct AssistantFileApprovalCard: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 11)
                         .foregroundStyle(T.bg)
-                        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(T.ink))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.ink))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Choose a file for the assistant")

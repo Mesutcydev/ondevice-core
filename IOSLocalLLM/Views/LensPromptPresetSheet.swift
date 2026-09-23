@@ -35,7 +35,7 @@ struct LensPromptPresetSheet: View {
             }
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
@@ -94,11 +94,11 @@ struct LensPromptPresetSheet: View {
     @ViewBuilder
     private func radio(selected: Bool) -> some View {
         ZStack {
-            Circle()
+            RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
                 .stroke(selected ? T.accent : T.rule2, lineWidth: 1.5)
                 .frame(width: 16, height: 16)
             if selected {
-                Circle().fill(T.accent).frame(width: 9, height: 9)
+                Rectangle().fill(T.accent).frame(width: 9, height: 9)
             }
         }
     }

@@ -14,18 +14,17 @@ struct PersonaPickerView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    header
+            List {
                     builtInsSection
                     customSection
                     createButton
-                }
-                .padding(.bottom, 32)
+
             }
+            .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+            .navigationTitle("Personas")
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
@@ -55,7 +54,11 @@ struct PersonaPickerView: View {
     private var builtInsSection: some View {
         KSection(title: "built-in") {
             let items = store.personas.filter { $0.isBuiltIn }
-            ForEach(Array(items.enumerated()), id: \.offset) { i, persona in
+            // Keyed on the persona's own id, not its index. Offset-keyed
+            // identity makes SwiftUI reuse the wrong row when the list is
+            // inserted into or reordered — the enumeration is here only to
+            // decide which rows get a leading separator.
+            ForEach(Array(items.enumerated()), id: \.element.id) { i, persona in
                 if i > 0 { Rectangle().fill(T.rule).frame(height: 1) }
                 row(for: persona)
             }
@@ -67,7 +70,7 @@ struct PersonaPickerView: View {
         let custom = store.personas.filter { !$0.isBuiltIn }
         if !custom.isEmpty {
             KSection(title: "custom") {
-                ForEach(Array(custom.enumerated()), id: \.offset) { i, persona in
+                ForEach(Array(custom.enumerated()), id: \.element.id) { i, persona in
                     if i > 0 { Rectangle().fill(T.rule).frame(height: 1) }
                     row(for: persona)
                         .contextMenu {
@@ -95,7 +98,7 @@ struct PersonaPickerView: View {
         } label: {
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
-                    Circle()
+                    RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
                         .fill(persona.accent.opacity(0.12))
                         .frame(width: 32, height: 32)
                     Image(systemName: persona.icon)
@@ -144,7 +147,7 @@ struct PersonaPickerView: View {
             .padding(.horizontal, 16)
             .frame(minHeight: 44)
             .frame(maxWidth: .infinity)
-            .background(RoundedRectangle(cornerRadius: 8).fill(T.ink))
+            .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.ink))
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 16)
@@ -196,7 +199,7 @@ struct PersonaEditorView: View {
             .background(StudioPageBackground())
             .navigationTitle(isNew ? "new persona" : "edit persona")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }.foregroundColor(T.ink2)

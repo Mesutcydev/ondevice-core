@@ -51,7 +51,7 @@ struct LegalDocumentView: View {
                     // fire every child's onAppear up front, defeating the gate).
                     LazyVStack(spacing: 0) {
                         MarkdownTextView(markdown: markdown)
-                            .padding(.horizontal, 18)
+                            .padding(.horizontal, 20)
                             .padding(.top, 12)
                             .padding(.bottom, 32)
                         Color.clear
@@ -63,15 +63,14 @@ struct LegalDocumentView: View {
                 if primaryAction != nil || secondaryAction != nil || onReadConfirmed != nil {
                     Rectangle().fill(T.rule).frame(height: 1)
                     actionBar
-                        .padding(.horizontal, 18)
+                        .padding(.horizontal, 20)
                         .padding(.vertical, 12)
                         .background(T.surface)
                 }
             }
             .background(StudioPageBackground())
-            .navigationTitle(title.lowercased())
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     if let urlStr = externalURL, let url = URL(string: urlStr) {
@@ -83,69 +82,34 @@ struct LegalDocumentView: View {
                             .foregroundColor(T.ink)
                     }
                 }
-                #if targetEnvironment(macCatalyst)
-                // Mac Catalyst sheets can't be swipe-dismissed. The URL-bearing
-                // sheets (Privacy, EULA) otherwise show only the Safari link and
-                // would be impossible to close — which blocks the first-launch
-                // legal gate. Add an explicit Done on Mac for those. (No-URL
-                // sheets already have Done in the trailing slot.) iOS unchanged.
                 if externalURL != nil {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Done") { dismiss() }
-                            .foregroundColor(T.ink)
-                    }
+                    ToolbarItem(placement: .topBarLeading) { Button("Done") { dismiss() } }
                 }
-                #endif
             }
         }
     }
 
     @ViewBuilder
     private var actionBar: some View {
-        HStack(spacing: 8) {
+        VStack(spacing: 12) {
             if let confirm = onReadConfirmed {
-                Button {
-                    HapticManager.impact(.medium)
+                Button(scrolledToEnd ? "I have read this" : "Scroll to the end to continue") {
                     confirm()
                     dismiss()
-                } label: {
-                    Text(scrolledToEnd ? "I have read this" : "Scroll to the end to continue")
-                        .font(T.sans(15, .medium))
-                        .foregroundColor(scrolledToEnd ? T.bg : T.ink3)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(RoundedRectangle(cornerRadius: 10)
-                            .fill(scrolledToEnd ? T.ink : T.surface2))
                 }
-                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .buttonStyle(.glassProminent).controlSize(.large)
+                .tint(T.ink).foregroundStyle(T.bg)
                 .disabled(!scrolledToEnd)
             }
             if let secondary = secondaryAction {
-                Button(role: .destructive) {
-                    secondary.run()
-                } label: {
-                    Text(secondary.label)
-                        .font(T.sans(15, .medium))
-                        .foregroundColor(T.bad)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(RoundedRectangle(cornerRadius: 10).fill(T.bad.opacity(0.10)))
-                }
-                .buttonStyle(.plain)
+                Button(secondary.label, role: .destructive, action: secondary.run)
+                    .buttonStyle(.glass).controlSize(.large)
             }
             if let primary = primaryAction {
-                Button {
-                    HapticManager.impact(.medium)
-                    primary.run()
-                } label: {
-                    Text(primary.label)
-                        .font(T.sans(15, .medium))
-                        .foregroundColor(T.bg)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(RoundedRectangle(cornerRadius: 10).fill(T.ink))
-                }
-                .buttonStyle(.plain)
+                Button(primary.label, action: primary.run)
+                    .buttonStyle(.glassProminent).controlSize(.large)
+                    .tint(T.ink).foregroundStyle(T.bg)
             }
         }
     }

@@ -1,6 +1,7 @@
 import CoreSpotlight
 import MLXVLM
 import SwiftUI
+import OnDeviceUI
 
 @main
 struct IOSLocalLLMApp: App {
@@ -40,15 +41,8 @@ struct IOSLocalLLMApp: App {
             StudioPageBackground()
             ContentView()
             ToastOverlayView()
-            // Mounted above toasts so the burst draws over them, but
-            // pointer-transparent (allowsHitTesting=false inside the
-            // overlay) so it can't intercept taps. Listens for
-            // download-complete notifications below — single firing
-            // point keeps the celebration consistent across MLX,
-            // llama.cpp, and HF Search download paths.
-            ConfettiOverlayView()
             if isShowingSplash {
-                PlumDuskSplashView {
+                BootSplashView {
                     withAnimation(.easeOut(duration: 0.3)) {
                         isShowingSplash = false
                     }
@@ -66,11 +60,6 @@ struct IOSLocalLLMApp: App {
                   let id = UUID(uuidString: idString) else { return }
             AppBridge.shared.openConversation(id: id)
         }
-        .onReceive(NotificationCenter.default.publisher(
-            for: .hfModelDownloadCompleted
-        )) { _ in
-            ConfettiCenter.shared.burst()
-        }
         .task {
             if settings.localAPIEnabled {
                 await LocalAPIManager.shared.start()
@@ -86,15 +75,11 @@ struct IOSLocalLLMApp: App {
             // reliable path to `mlx::core::gpu::check_error` throwing.
             // MLX's default unbounded cache is what the upstream
             // example apps ship with — leave it alone.
-            // Set the UIHostingController's backing view to black so no
-            // white system background bleeds through during the 1-2 UIKit
-            // compositing frames that elapse on camera ↔ assistant tab switch.
-            // SwiftUI's Color.black.ignoresSafeArea() covers this in steady
-            // state; the explicit backgroundColor ensures there is no gap.
+            // Match the system appearance during UIKit view transitions.
             if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                let window = scene.windows.first {
-                window.backgroundColor = .black
-                window.rootViewController?.view.backgroundColor = .black
+                window.backgroundColor = .systemBackground
+                window.rootViewController?.view.backgroundColor = .systemBackground
 
                 #if targetEnvironment(macCatalyst)
                 // The iOS app is iPhone-only/portrait; on Mac that would
@@ -113,6 +98,7 @@ struct IOSLocalLLMApp: App {
             appearance: settings.appearance,
             accent: KoduTheme.appAccent))
         .preferredColorScheme(settings.resolvedColorScheme)
+        .environment(\.odAppearance, ODAppearancePreference(rawValue: settings.appearance) ?? .system)
         .koduScaledType()
         // The in-app language picker is independent of the system language, so
         // SwiftUI's automatic RTL mirroring (which follows the SYSTEM locale)
@@ -134,18 +120,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         // session's crash (incl. jetsam) is detected and surfaced.
         CrashReporter.shared.install()
         Diagnostics.shared.breadcrumb("app launch · \(SystemSnapshot.appVersion()) · iOS \(SystemSnapshot.osVersion())")
-
-        // Force all UINavigationBars to transparent by default. Without this,
-        // switching from the assistant tab (which sets a cream toolbarBackground)
-        // to the camera tab leaves a 1-2 frame UIKit cream strip at the top —
-        // SwiftUI's disablesAnimations cannot suppress UIKit-level bar repaints.
-        // Individual screens also keep toolbar backgrounds hidden so iOS 26 can
-        // render its clear floating controls without an opaque strip underneath.
-        let clear = UINavigationBarAppearance()
-        clear.configureWithTransparentBackground()
-        UINavigationBar.appearance().standardAppearance   = clear
-        UINavigationBar.appearance().compactAppearance    = clear
-        UINavigationBar.appearance().scrollEdgeAppearance = clear
 
         // Override the broken upstream SmolVLMProcessor with our
         // rescue implementation. Has to run before any VLM load

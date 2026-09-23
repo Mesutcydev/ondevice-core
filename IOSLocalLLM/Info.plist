@@ -35,12 +35,18 @@
 	<false/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_localllm._tcp</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>OnDevice Max uses the camera so Lens can read text and describe objects, documents, and scenes you choose to capture.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>OnDevice Max can expose your on-device language model to computers on your local network when you enable the Local API Server.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>OnDevice Max uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>OnDevice Max saves images you create to your photo library when you choose Save Image.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>OnDevice Max uses photos you select for image understanding and conversations with compatible vision models.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
@@ -59,15 +65,9 @@
 		<key>UIColorName</key>
 		<string>LaunchBackground</string>
 	</dict>
-	<key>UIRequiresFullScreen</key>
-	<true/>
-	<key>UIStatusBarStyle</key>
-	<string>UIStatusBarStyleDarkContent</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
-	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<false/>
 </dict>
 </plist>

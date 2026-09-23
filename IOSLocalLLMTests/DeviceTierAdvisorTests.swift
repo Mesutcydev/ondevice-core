@@ -210,7 +210,7 @@ final class DeviceTierAdvisorTests: XCTestCase {
         let profile = MLXAssistantExecutionProfile.resolve(repoID: model.repoID)
 
         XCTAssertEqual(profile.maxContextTokens, 2_048)
-        XCTAssertEqual(profile.maxOutputTokens, 128)
+        XCTAssertNil(profile.maxOutputTokens)
         XCTAssertEqual(profile.maxKVSize, 2_048)
         XCTAssertEqual(profile.kvBits, 4)
         XCTAssertEqual(profile.prefillStepSize, 128)
@@ -228,11 +228,83 @@ final class DeviceTierAdvisorTests: XCTestCase {
         )
 
         XCTAssertEqual(profile.maxContextTokens, 4_096)
-        XCTAssertEqual(profile.maxOutputTokens, 256)
+        XCTAssertNil(profile.maxOutputTokens)
         XCTAssertEqual(profile.maxKVSize, 4_096)
         XCTAssertEqual(profile.kvBits, 4)
         XCTAssertEqual(profile.prefillStepSize, 128)
         XCTAssertEqual(profile.cacheLimitBytes, 0)
+    }
+
+    func test_boundedMLXAssistantProfilesHonorReplyAndRecoveryBudgets() {
+        let repos = [
+            "prism-ml/Bonsai-27B-mlx-1bit",
+            "prism-ml/Ternary-Bonsai-27B-mlx-2bit",
+            "local/Bonsai-27B-mlx-1bit",
+            "mlx-community/Ornith-1.0-9B-4bit",
+            "local/Ornith-1.5-9B-4bit",
+            "local/Qwen3.5-9B-4bit",
+        ]
+        for repo in repos {
+            let profile = MLXAssistantExecutionProfile.resolve(repoID: repo)
+            // Include the 16-token title call, the 768-token final-answer
+            // recovery, and both normal and long user-selected responses.
+            for requested in [16, 128, 768, 2_048, 4_096] {
+                XCTAssertEqual(
+                    AssistantGenerationBudget.maxTokens(
+                        runtime: .mlx,
+                        requested: requested,
+                        thermalCap: 4_096,
+                        backendCap: profile.maxOutputTokens
+                    ),
+                    requested,
+                    "\(repo) must leave room for reasoning and the answer, without overriding a shorter request"
+                )
+            }
+            XCTAssertEqual(profile.kvBits, 4)
+            XCTAssertEqual(profile.prefillStepSize, 128)
+            XCTAssertEqual(profile.cacheLimitBytes, 0)
+        }
+    }
+
+    func test_boundedMLXAssistantProfilesStillHonorThermalCaps() {
+        for repo in ["prism-ml/Bonsai-27B-mlx-1bit", "mlx-community/Ornith-1.0-9B-4bit"] {
+            let profile = MLXAssistantExecutionProfile.resolve(repoID: repo)
+            for thermalCap in [128, 512, 1_536] {
+                XCTAssertEqual(
+                    AssistantGenerationBudget.maxTokens(
+                        runtime: .mlx,
+                        requested: 4_096,
+                        thermalCap: thermalCap,
+                        backendCap: profile.maxOutputTokens
+                    ),
+                    thermalCap,
+                    repo
+                )
+            }
+        }
+    }
+
+    func test_boundedMLXAssistantProfilesKeepPromptHistoryForLongReplies() {
+        let cases = [
+            (repo: "prism-ml/Bonsai-27B-mlx-1bit", context: 2_048),
+            (repo: "mlx-community/Ornith-1.0-9B-4bit", context: 4_096),
+        ]
+        for testCase in cases {
+            let profile = MLXAssistantExecutionProfile.resolve(repoID: testCase.repo)
+            XCTAssertEqual(profile.maxContextTokens, testCase.context)
+            XCTAssertEqual(profile.maxKVSize, testCase.context)
+            for requested in [768, 2_048, 4_096] {
+                XCTAssertEqual(
+                    profile.inputBudget(
+                        modelContextWindowTokens: 32_768,
+                        deviceContextCap: 8_192,
+                        requestedOutputTokens: requested
+                    ),
+                    testCase.context - 512,
+                    "\(testCase.repo) must retain useful history when a longer reply is requested"
+                )
+            }
+        }
     }
 
     func test_dottedQwen35AssistantProfileBoundsMemoryWithoutTruncatingReplies() {

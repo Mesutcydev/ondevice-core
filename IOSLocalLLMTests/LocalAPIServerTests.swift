@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 @testable import IOSLocalLLM
 
 final class LocalAPIServerTests: XCTestCase {
@@ -13,6 +14,33 @@ final class LocalAPIServerTests: XCTestCase {
         XCTAssertTrue(LocalAPIValidation.modelMatches("qwen", id: "qwen", repoID: "org/qwen"))
         XCTAssertTrue(LocalAPIValidation.modelMatches("org/qwen", id: "qwen", repoID: "org/qwen"))
         XCTAssertFalse(LocalAPIValidation.modelMatches("other", id: "qwen", repoID: "org/qwen"))
+    }
+
+    func testModelDetailPathDecodesRepositoryID() {
+        XCTAssertEqual(LocalAPIValidation.modelID(fromDetailPath: "/v1/models/org%2Fqwen"), "org/qwen")
+        XCTAssertEqual(LocalAPIValidation.modelID(fromDetailPath: "/v1/models/qwen"), "qwen")
+        XCTAssertNil(LocalAPIValidation.modelID(fromDetailPath: "/v1/models/"))
+        XCTAssertNil(LocalAPIValidation.modelID(fromDetailPath: "/v1/models/%ZZ"))
+    }
+
+    func testAiderConfigurationUsesBoundedLimitsAndNoSecret() throws {
+        let export = LocalAPIAiderConfiguration.export(
+            modelID: "org/model",
+            inputBudget: 3_072,
+            outputLimit: 512,
+            supportsTools: true,
+            supportsVision: false,
+            baseURL: "http://192.0.2.1:11434/v1"
+        )
+        XCTAssertEqual(export["model"] as? String, "openai/org/model")
+        XCTAssertEqual(export["max_output_tokens"] as? Int, 512)
+        let metadataJSON = try XCTUnwrap(export["metadata_json"] as? String)
+        let metadata = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(metadataJSON.utf8)) as? [String: [String: Any]])
+        XCTAssertEqual(metadata["openai/org/model"]?["max_input_tokens"] as? Int, 3_072)
+        XCTAssertEqual(metadata["openai/org/model"]?["supports_function_calling"] as? Bool, true)
+        let command = try XCTUnwrap(export["launch_command"] as? String)
+        XCTAssertTrue(command.contains("AIDER_API_KEY=YOUR_LOCAL_API_KEY"))
+        XCTAssertTrue(command.contains("192.0.2.1:11434/v1"))
     }
 
     func testTunnelInterfacesAreExcludedFromLANAddresses() {
@@ -57,6 +85,30 @@ final class LocalAPIServerTests: XCTestCase {
                 requested: nil,
                 toolCallingEnabled: false
             )
+        )
+        XCTAssertEqual(
+            LocalAPIInferencePolicy.maxTokens(
+                requested: 2_048,
+                toolCallingEnabled: false,
+                configuredLimit: 512
+            ),
+            512
+        )
+        XCTAssertEqual(
+            LocalAPIInferencePolicy.maxTokens(
+                requested: nil,
+                toolCallingEnabled: false,
+                configuredLimit: 512
+            ),
+            512
+        )
+        XCTAssertEqual(
+            LocalAPIInferencePolicy.maxTokens(
+                requested: 2_048,
+                toolCallingEnabled: true,
+                configuredLimit: 512
+            ),
+            256
         )
     }
 
@@ -704,5 +756,134 @@ final class LocalAPIServerTests: XCTestCase {
         XCTAssertEqual(request?.path, "/v1/chat/completions")
         XCTAssertEqual(request?.headers["authorization"], "Bearer abc")
         XCTAssertEqual(request?.body, Data("{}".utf8))
+    }
+
+    /// Pre-authentication input: an enormous Content-Length must read as
+    /// "body incomplete", not overflow `header + length` and trap.
+    func testHTTPRequestHugeContentLengthDoesNotTrap() {
+        let request = HTTPRequest(data: Data("""
+        POST /v1/chat/completions HTTP/1.1\r
+        Content-Length: \(Int.max)\r
+        \r
+        {}
+        """.utf8))
+        XCTAssertNil(request)
+    }
+
+    func testHTTPRequestIdentifiesUnsupportedChunkedBody() throws {
+        let request = try XCTUnwrap(HTTPRequest(data: Data("""
+        POST /api/chat HTTP/1.1\r
+        Transfer-Encoding:chunked\r
+        \r
+        """.utf8)))
+        XCTAssertTrue(request.declaresChunkedBody)
+        XCTAssertNil(request.body)
+    }
+
+    func testHTTPRequestPreservesPipelinedBinaryBodies() throws {
+        let body = Data([0x00, 0xFF, 0x0D, 0x0A, 0x0D, 0x0A])
+        var bytes = Data("POST /api/chat HTTP/1.1\r\nContent-Length: 6\r\n\r\n".utf8)
+        bytes.append(body)
+        bytes.append(Data("GET /v1/models HTTP/1.1\r\nConnection: close\r\n\r\n".utf8))
+        let first = try XCTUnwrap(HTTPRequest.parse(data: bytes))
+        XCTAssertEqual(first.request.body, body)
+        XCTAssertTrue(first.request.wantsKeepAlive)
+        let second = try XCTUnwrap(HTTPRequest.parse(data: Data(bytes.dropFirst(first.consumedBytes))))
+        XCTAssertEqual(second.request.path, "/v1/models")
+        XCTAssertFalse(second.request.wantsKeepAlive)
+        XCTAssertEqual(LocalAPIServer.chunkFrame(Data("hi".utf8)), Data("2\r\nhi\r\n".utf8))
+    }
+
+    func testHeaderCanBeAuthenticatedBeforeImageBodyArrives() throws {
+        let head = try XCTUnwrap(HTTPRequest.parseHeader(data: Data(
+            "POST /v1/chat/completions HTTP/1.1\r\nAuthorization: Bearer secret\r\nContent-Length: 1000000\r\n\r\n".utf8
+        )))
+        XCTAssertEqual(head.contentLength, 1_000_000)
+        XCTAssertEqual(head.request.headers["authorization"], "Bearer secret")
+        XCTAssertNil(head.request.body)
+    }
+
+    func testEmbeddedImagesDecodeAcrossSupportedDialects() throws {
+        let png = UIGraphicsImageRenderer(size: CGSize(width: 1, height: 1)).pngData { context in
+            UIColor.red.setFill()
+            context.cgContext.fill(CGRect(x: 0, y: 0, width: 1, height: 1))
+        }
+        let encoded = png.base64EncodedString()
+        let dataURL = "data:image/png;base64,\(encoded)"
+        func json(_ object: [String: Any]) throws -> Data {
+            try JSONSerialization.data(withJSONObject: object)
+        }
+        let openAI = try LocalAPIChatRequest.decodeOpenAI(json([
+            "model": "qwen", "messages": [["role": "user", "content": [
+                ["type": "text", "text": "What is this?"],
+                ["type": "image_url", "image_url": ["url": dataURL]]
+            ]]]
+        ]))
+        let responses = try LocalAPIChatRequest.decodeOpenAIResponses(json([
+            "model": "qwen", "input": [["role": "user", "content": [
+                ["type": "input_image", "image_url": dataURL]
+            ]]]
+        ]))
+        let ollama = try LocalAPIChatRequest.decodeOllamaChat(json([
+            "model": "qwen", "messages": [["role": "user", "images": [encoded]]]
+        ]))
+        let generate = try LocalAPIChatRequest.decodeOllamaGenerate(json([
+            "model": "qwen", "prompt": "Describe it", "images": [encoded]
+        ]))
+        let anthropic = try LocalAPIChatRequest.decodeAnthropic(json([
+            "model": "qwen", "max_tokens": 32, "messages": [["role": "user", "content": [
+                ["type": "image", "source": ["type": "base64", "media_type": "image/png", "data": encoded]]
+            ]]]
+        ]))
+        for request in [openAI, responses, ollama, generate, anthropic] {
+            let imageMessage = try XCTUnwrap(request.messages.first { !$0.imageThumbnails.isEmpty })
+            XCTAssertEqual(imageMessage.imageThumbnailData, png)
+            XCTAssertEqual(imageMessage.imageThumbnails.count, 1)
+        }
+    }
+
+    func testRemoteImageURLIsRejected() throws {
+        let data = try JSONSerialization.data(withJSONObject: [
+            "model": "qwen", "messages": [["role": "user", "content": [
+                ["type": "image_url", "image_url": ["url": "https://example.com/image.png"]]
+            ]]]
+        ])
+        XCTAssertThrowsError(try LocalAPIChatRequest.decodeOpenAI(data))
+    }
+
+    func testStrictToolSchemaChecksNestedValuesAndXMLParameters() throws {
+        let schema = #"{"type":"object","required":["count","options"],"additionalProperties":false,"properties":{"count":{"type":"integer"},"options":{"type":"object","required":["enabled"],"properties":{"enabled":{"type":"boolean"}}}}}"#
+        XCTAssertTrue(LocalAPIToolSchema.accepts(
+            argumentsJSON: #"{"count":3,"options":{"enabled":true}}"#, schemaJSON: schema
+        ))
+        XCTAssertFalse(LocalAPIToolSchema.accepts(
+            argumentsJSON: #"{"count":"three","options":{"enabled":true}}"#, schemaJSON: schema
+        ))
+        XCTAssertFalse(LocalAPIToolSchema.accepts(
+            argumentsJSON: #"{"count":3,"options":{"enabled":true},"extra":1}"#, schemaJSON: schema
+        ))
+        XCTAssertFalse(LocalAPIToolSchema.accepts(
+            argumentsJSON: #"{"count":3}"#,
+            schemaJSON: #"{"type":"object","additionalProperties":false}"#
+        ))
+        let tool = LocalAPIToolDefinition(name: "count", description: nil, parametersJSON: schema)
+        let xml = "<tool_call><function name=\"count\"><parameter name=\"count\">3</parameter><parameter name=\"options\">{\"enabled\":true}</parameter></function></tool_call>"
+        let calls = LocalAPIToolCalling.parse(xml, tools: [tool], parallelToolCalls: false,
+                                              validateSchemas: true)
+        XCTAssertEqual(calls.count, 1)
+        XCTAssertEqual(calls.first?.argumentsJSON, #"{"count":3,"options":{"enabled":true}}"#)
+    }
+
+    /// One peer's bad keys lock only that peer, and the lock expires.
+    func testAuthThrottleLocksOnlyTheFailingHost() {
+        var throttle = AuthFailureThrottle()
+        let start = Date()
+        for i in 0..<AuthFailureThrottle.maxFailures {
+            XCTAssertFalse(throttle.isLocked("10.0.0.9", now: start))
+            throttle.recordFailure("10.0.0.9", now: start.addingTimeInterval(Double(i)))
+        }
+        XCTAssertTrue(throttle.isLocked("10.0.0.9", now: start.addingTimeInterval(5)))
+        XCTAssertFalse(throttle.isLocked("10.0.0.2", now: start.addingTimeInterval(5)))
+        XCTAssertFalse(throttle.isLocked("10.0.0.9", now: start.addingTimeInterval(5 + AuthFailureThrottle.lockout)))
     }
 }

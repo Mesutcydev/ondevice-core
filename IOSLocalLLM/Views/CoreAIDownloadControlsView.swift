@@ -31,29 +31,32 @@ struct CoreAIDownloadControlsView: View {
                            ? String(format: " · %.1f MB/s", manager.speedMBps)
                            : "")
                     )
-                    .font(T.mono(8))
+                    .font(T.mono(9))
                     .foregroundStyle(T.ink3)
                 }
-                HStack {
+                HStack(spacing: 8) {
                     if manager.state != .installing {
-                        Button("Pause") { manager.pause() }
-                            .buttonStyle(.bordered)
+                        StudioCompactSecondaryButton(title: "Pause", symbol: "pause.fill") {
+                            manager.pause()
+                        }
                     }
-                    Button("Cancel", role: .destructive) { manager.cancel() }
-                        .buttonStyle(.bordered)
+                    StudioCompactSecondaryButton(title: "Cancel", destructive: true) {
+                        manager.cancel()
+                    }
+                    Spacer(minLength: 0)
                 }
             }
 
         case .paused:
-            HStack {
-                Button("Resume") {
+            HStack(spacing: 8) {
+                StudioCompactPrimaryButton(title: "Resume", symbol: "play.fill") {
                     manager.resume()
                     ToastCenter.shared.info("Resuming Core AI download")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(T.accent)
-                Button("Cancel", role: .destructive) { manager.cancel() }
-                    .buttonStyle(.bordered)
+                StudioCompactSecondaryButton(title: "Cancel", destructive: true) {
+                    manager.cancel()
+                }
+                Spacer(minLength: 0)
             }
 
         case .failed(let message):
@@ -62,15 +65,13 @@ struct CoreAIDownloadControlsView: View {
                     .font(T.sans(10))
                     .foregroundStyle(T.bad)
                     .fixedSize(horizontal: false, vertical: true)
-                HStack {
-                    Button("Retry") {
+                HStack(spacing: 8) {
+                    StudioCompactPrimaryButton(title: "Retry", symbol: "arrow.clockwise") {
                         manager.resume()
                         ToastCenter.shared.info("Retrying Core AI download")
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(T.accent)
-                    Button("Clear") { manager.cancel() }
-                        .buttonStyle(.bordered)
+                    StudioCompactSecondaryButton(title: "Clear") { manager.cancel() }
+                    Spacer(minLength: 0)
                 }
             }
 
@@ -80,14 +81,10 @@ struct CoreAIDownloadControlsView: View {
                 .foregroundStyle(T.good)
 
         case .idle:
-            Button {
+            StudioCompactPrimaryButton(title: "Download", symbol: "arrow.down.circle") {
                 manager.start()
                 ToastCenter.shared.info("Starting Core AI download")
-            } label: {
-                Label("Download", systemImage: "arrow.down.circle")
             }
-            .buttonStyle(.borderedProminent)
-            .tint(T.accent)
         }
     }
 }

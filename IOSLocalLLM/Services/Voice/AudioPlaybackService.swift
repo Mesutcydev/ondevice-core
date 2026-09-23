@@ -16,6 +16,7 @@ final class AudioPlaybackService: ObservableObject {
     @Published private(set) var outputVolume: Float = 1
 
     private let engine = AVAudioEngine()
+    private let audioOwnerID = UUID()
     private let playerNode = AVAudioPlayerNode()
     private let snapshotStore = AudioPlaybackSnapshotStore.shared
     private let meterAtomics = AudioMeterAtomics.shared
@@ -138,15 +139,11 @@ final class AudioPlaybackService: ObservableObject {
                    let converted = Self.convert(buffer, to: connected) {
                     renderBuffer = converted
                 } else {
-                    engine.disconnectNodeInput(mainMixer)
-                    engine.connect(playerNode, to: mainMixer, format: buffer.format)
-                    connectedFormat = buffer.format
+                    guard connectPlayer(to: mainMixer, format: buffer.format) else { return scheduledSampleCount }
                 }
             }
         } else {
-            engine.disconnectNodeInput(mainMixer)
-            engine.connect(playerNode, to: mainMixer, format: buffer.format)
-            connectedFormat = buffer.format
+            guard connectPlayer(to: mainMixer, format: buffer.format) else { return scheduledSampleCount }
         }
 
         let format = renderBuffer.format
@@ -158,10 +155,12 @@ final class AudioPlaybackService: ObservableObject {
                 if !sessionWasManagedElsewhere {
                     try configureAudioSession()
                 }
+                VoiceAudioSessionManager.shared.acquire(audioOwnerID)
                 try engine.start()
                 installMeterTapIfNeeded(format: mainMixer.outputFormat(forBus: 0))
             }
         } catch {
+            VoiceAudioSessionManager.shared.release(audioOwnerID, deactivateIfUnused: true)
             Diagnostics.shared.error("Engine start failed: \(error)", category: "audioplaybackservice")
             return scheduledSampleCount
         }
@@ -215,7 +214,11 @@ final class AudioPlaybackService: ObservableObject {
                 }
             }
             if !playerNode.isPlaying {
-                playerNode.play()
+                // A refused start is reported instead of raising; the
+                // consumption watchdog below still resumes any waiter.
+                do { try playerNode.playAudio() } catch {
+                    Diagnostics.shared.error("Player start failed: \(error)", category: "audioplaybackservice")
+                }
             }
             _ = refreshSnapshotFromPlayer(targetHostTime: 0)
 
@@ -336,14 +339,34 @@ final class AudioPlaybackService: ObservableObject {
         // Tap the mixer output — bounded DSP only.
         let bus: AVAudioNodeBus = 0
         let bufferSize: AVAudioFrameCount = 1024
-        engine.mainMixerNode.installTap(onBus: bus, bufferSize: bufferSize, format: format) { [weak self] buffer, _ in
-            guard let self else { return }
-            Self.computeAndStoreMeter(buffer: buffer, atomics: self.meterAtomics)
+        do {
+            let atomics = meterAtomics
+            try engine.mainMixerNode.installAudioTap(onBus: bus, bufferSize: bufferSize, format: format) { tapBuffer, _ in
+                Self.computeAndStoreMeter(buffer: AVAudioPCMBuffer(copying: tapBuffer), atomics: atomics)
+            }
+            tapInstalled = true
+        } catch {
+            // Playback continues without a level meter.
+            Diagnostics.shared.error("Meter tap failed: \(error)", category: "audioplaybackservice")
         }
-        tapInstalled = true
     }
 
-    private static func computeAndStoreMeter(buffer: AVAudioPCMBuffer, atomics: AudioMeterAtomics) {
+    /// Reconnects the player at `format` (iOS 27 throwing connect). A refused
+    /// format is logged and the chunk skipped, matching an engine-start failure.
+    private func connectPlayer(to mixer: AVAudioNode, format: AVAudioFormat) -> Bool {
+        engine.disconnectNodeInput(mixer)
+        do {
+            try engine.connectNode(playerNode, to: mixer, format: format)
+            connectedFormat = format
+            return true
+        } catch {
+            connectedFormat = nil
+            Diagnostics.shared.error("Player connect failed: \(error)", category: "audioplaybackservice")
+            return false
+        }
+    }
+
+    private nonisolated static func computeAndStoreMeter(buffer: AVAudioPCMBuffer, atomics: AudioMeterAtomics) {
         guard buffer.frameLength > 0, let data = buffer.floatChannelData?[0] else { return }
         let n = Int(buffer.frameLength)
         var sum: Float = 0
@@ -401,6 +424,7 @@ final class AudioPlaybackService: ObservableObject {
         playerNode.reset()
         removeMeterTap()
         if engine.isRunning { engine.stop() }
+        VoiceAudioSessionManager.shared.release(audioOwnerID, deactivateIfUnused: true)
         setPlaying(false)
         currentBufferDuration = 0
         meterAtomics.reset()
@@ -436,6 +460,7 @@ final class AudioPlaybackService: ObservableObject {
             guard !self.isPlaying, self.engine.isRunning else { return }
             self.removeMeterTap()
             self.engine.stop()
+            VoiceAudioSessionManager.shared.release(self.audioOwnerID, deactivateIfUnused: true)
         }
     }
 

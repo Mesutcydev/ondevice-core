@@ -307,11 +307,17 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
             } catch {
                 // Cross-volume or sandbox issue — fall back to copy. Copy
                 // into a .tmp sidecar then rename so a mid-copy crash can't
-                // leave a half-written file at the final path.
+                // leave a half-written file at the final path. If even the
+                // rename is rejected, a plain direct copy is the last resort.
                 let tmp = URL(fileURLWithPath: destination.path + ".tmp")
                 try? fm.removeItem(at: tmp)
-                try fm.copyItem(at: location, to: tmp)
-                try fm.moveItem(at: tmp, to: destination)
+                do {
+                    try fm.copyItem(at: location, to: tmp)
+                    try fm.moveItem(at: tmp, to: destination)
+                } catch {
+                    try? fm.removeItem(at: tmp)
+                    try fm.copyItem(at: location, to: destination)
+                }
                 try? fm.removeItem(at: location)
             }
             // Weights are re-downloadable — keep them out of iCloud backups.
@@ -322,8 +328,35 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
                                        ?? downloadTask.currentRequest?.url)
             pending?.continuation.resume(returning: destination)
         } catch {
+            // One repair attempt before giving up: an older install (or a
+            // bundled-model copy) can leave the destination chain read-only
+            // (Cocoa 513). Re-chmod the parent chain and retry the move
+            // once — the completed temp file is still right there.
+            var cursor = destination.deletingLastPathComponent()
+            for _ in 0..<3 {
+                try? fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: cursor.path)
+                cursor = cursor.deletingLastPathComponent()
+            }
+            do {
+                try fm.moveItem(at: location, to: destination)
+                FileManager.excludeFromBackup(destination)
+                Self.clearResumeData(for: downloadTask.originalRequest?.url
+                                           ?? downloadTask.currentRequest?.url)
+                pending?.continuation.resume(returning: destination)
+                return
+            } catch {
+                // Fall through to the wrapped failure below.
+            }
             try? fm.removeItem(at: location)
-            pending?.continuation.resume(throwing: error)
+            // Wrap the raw Cocoa error with the target folder and a remedy —
+            // the bare "You don't have permission to save the file" gave the
+            // user nothing to act on.
+            let folder = destination.deletingLastPathComponent().lastPathComponent
+            let wrapped = NSError(domain: "HFDownload", code: -7, userInfo: [
+                NSLocalizedDescriptionKey:
+                    "Couldn't save the downloaded file into \(folder) (\(error.localizedDescription)). Restart the app and retry; if it persists, check free device storage."
+            ])
+            pending?.continuation.resume(throwing: wrapped)
         }
     }
 

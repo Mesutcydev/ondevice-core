@@ -1,7 +1,17 @@
-# Agent guide
+## Agent guide
 
 This file applies to the repository root and everything below it except Git
 submodules that provide their own `AGENTS.md`.
+
+> **Active work:** the navigation shell is the local `OnDeviceUI` package
+> (`OnDeviceWorkbench`), not `ContentView`'s old `TabView`. Read
+> `Docs/QA_LOOP_HANDOFF.md` before touching UI. The user's latest 2026-09-19
+> reference explicitly replaces the former TabView requirement: one conversation
+> home page, all features in a leading sidebar, no bottom tabs. Keep visited
+> workspaces mounted to retain drafts and use `WorkbenchSelectionObserver` for
+> host camera/runtime lifecycle. The keyboard hide key stays on the leading
+> edge of the accessory row. The real app cannot run in a simulator (CoreAI is
+> device-only); validate the production package through `QA/NativeUI`.
 
 ## Project identity
 

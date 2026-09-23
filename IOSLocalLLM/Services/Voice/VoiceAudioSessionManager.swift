@@ -70,6 +70,22 @@ final class VoiceAudioSessionManager: ObservableObject {
 
     private var observers: [NSObjectProtocol] = []
 
+    // Each actual audio user holds a lease. Releasing voice must not deactivate
+    // an independent dictation or playback operation that still owns the session.
+    private var owners: Set<UUID> = []
+    func acquire(_ owner: UUID) { owners.insert(owner) }
+    func release(_ owner: UUID, deactivateIfUnused: Bool = false) {
+        owners.remove(owner)
+        guard deactivateIfUnused, owners.isEmpty else { return }
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            // Keep the failure visible; never silently retry a category switch
+            // against an audio object which iOS says is still active.
+            Diagnostics.shared.error("Audio deactivation failed: \(error.localizedDescription)", category: "audio-ownership")
+        }
+    }
+
     /// Why each option exists (do not add options indiscriminately):
     ///
     /// Listening (`.playAndRecord` + `.spokenAudio`):
@@ -108,13 +124,16 @@ final class VoiceAudioSessionManager: ObservableObject {
                 }
             }
         )
-        observers.append(
-            center.addObserver(forName: AVAudioSession.interruptionNotification, object: session, queue: .main) { [weak self] _ in
-                Task { @MainActor in
-                    self?.refreshRoute()
+        // Interruption begin/end (iOS 27 replacements for interruptionNotification).
+        for name in [AVAudioSession.didBecomeInactiveNotification, AVAudioSession.resumptionRecommendationNotification] {
+            observers.append(
+                center.addObserver(forName: name, object: session, queue: .main) { [weak self] _ in
+                    Task { @MainActor in
+                        self?.refreshRoute()
+                    }
                 }
-            }
-        )
+            )
+        }
         observers.append(
             center.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification, object: session, queue: .main) { [weak self] _ in
                 Task { @MainActor in

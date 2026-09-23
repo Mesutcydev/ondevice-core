@@ -114,11 +114,11 @@ struct BridgeAgentCard: View {
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: StudioRadius.panel)
                     .fill(running ? T.surface2 : T.surface3)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 10)
+                RoundedRectangle(cornerRadius: StudioRadius.panel)
                     .stroke(T.rule, lineWidth: 0.5)
             )
         }
@@ -202,7 +202,7 @@ struct BridgeAgentCard: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(8)
-        .background(RoundedRectangle(cornerRadius: 6).fill(T.warn.opacity(0.10)))
+        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.warn.opacity(0.10)))
     }
 
     private func permissionMessage(for codes: [String]) -> String {

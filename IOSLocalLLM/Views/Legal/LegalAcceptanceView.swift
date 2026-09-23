@@ -1,4 +1,5 @@
 import SwiftUI
+import OnDeviceUI
 
 // MARK: - LegalAcceptanceView
 // Full-screen gate shown on first launch and whenever the legal version is
@@ -32,77 +33,38 @@ struct LegalAcceptanceView: View {
     private var canContinue: Bool { readCount == 4 }
 
     var body: some View {
-        let S = T.studio
-        ZStack {
-            StudioPageBackground()
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    header
-                        .padding(.bottom, 26)
-
-                    HStack(alignment: .firstTextBaseline) {
-                        StudioMonoLabel(text: "read & accept", size: 11, tracking: 0.9)
-                        Spacer()
-                        StudioMonoLabel(text: "\(readCount) of 4 read",
-                                        size: 11, tracking: 0.9,
-                                        color: canContinue ? S.accent : S.ink3)
-                    }
-                    .padding(.bottom, StudioSpacing.s)
-
-                    VStack(spacing: 0) {
-                        StudioHairline(color: S.rule2)
-
-                        documentRow(
-                            title: "Privacy policy",
-                            subtitle: "What the app can and cannot see",
-                            icon: "lock.shield",
-                            accepted: $didReadPrivacy
-                        ) { showPrivacy = true }
-
-                        documentRow(
-                            title: "License & safety",
-                            subtitle: "MIT license and third-party notices",
-                            icon: "doc.text",
-                            accepted: $didReadEULA
-                        ) { showEULA = true }
-
-                        documentRow(
-                            title: "AI output disclaimer",
-                            subtitle: "AI can be wrong — verify what matters",
-                            icon: "exclamationmark.triangle",
-                            accepted: $didReadDisclaimer
-                        ) { showDisclaimer = true }
-
-                        documentRow(
-                            title: "Device safety notice",
-                            subtitle: "On-device AI runs the device warm",
-                            icon: "thermometer.medium",
-                            accepted: $didReadDeviceSafety
-                        ) { showDeviceSafety = true }
-                    }
-
-                    StudioPrimaryButton(title: "Agree and continue") {
+        NavigationStack {
+            List {
+                Section {
+                    Text("Read these four documents before continuing. Each is marked as read after you reach its end and confirm.")
+                        .font(.body).foregroundStyle(.secondary)
+                }
+                Section {
+                    documentRow(title: "Privacy policy", subtitle: "How your information is handled", icon: "lock.shield", accepted: $didReadPrivacy) { showPrivacy = true }
+                    documentRow(title: "License & safety", subtitle: "Licensing and third-party notices", icon: "doc.text", accepted: $didReadEULA) { showEULA = true }
+                    documentRow(title: "AI output disclaimer", subtitle: "Accuracy and limitations", icon: "exclamationmark.triangle", accepted: $didReadDisclaimer) { showDisclaimer = true }
+                    documentRow(title: "Device safety notice", subtitle: "Heat, memory, and battery use", icon: "thermometer.medium", accepted: $didReadDeviceSafety) { showDeviceSafety = true }
+                } header: { Text("\(readCount) of 4 read") }
+                Section {
+                    Button("Agree and continue") {
                         legal.acceptLegal()
                         legal.acceptDisclaimer()
                         legal.acceptDeviceSafety()
                         HapticManager.impact(.medium)
                         onAccepted()
                     }
-                    .opacity(canContinue ? 1 : 0.4)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .buttonStyle(.glassProminent).controlSize(.large)
+                    .tint(ODPalette.text).foregroundStyle(ODPalette.background)
                     .disabled(!canContinue)
-                    .padding(.top, 26)
-
+                } footer: {
                     Text("By tapping Agree and continue you confirm that you have read and accepted all four documents above. You can review them any time in Settings → Legal.")
-                        .font(S.sans(12))
-                        .lineSpacing(12 * 0.4)
-                        .foregroundStyle(S.ink3)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.top, 14)
                 }
-                .padding(.horizontal, StudioSpacing.xl)
-                .padding(.vertical, 30)
             }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background { ODPageBackground().ignoresSafeArea() }
+            .navigationTitle("Before you begin")
         }
         // Each doc counts as "read" ONLY after the user scrolls to the end and
         // taps "I have read this" (onReadConfirmed) — not merely on dismiss.
@@ -138,74 +100,21 @@ struct LegalAcceptanceView: View {
         }
     }
 
-    // MARK: - Sub-views
-
-    private var header: some View {
-        let S = T.studio
-        return VStack(alignment: .leading, spacing: 0) {
-            StudioMonoLabel(text: "first launch", size: 11, tracking: 0.9)
-                .padding(.bottom, 10)
-
-            Text("Before\nyou start.")
-                .font(S.sans(32, .semibold))
-                .tracking(-0.8)
-                .lineSpacing(32 * 0.14)
-                .foregroundStyle(S.ink)
-
-            Text("Four short documents: privacy, licensing, AI accuracy, and device safety. Read each one below — the agreement unlocks once all four are checked.")
-                .font(S.sans(15))
-                .lineSpacing(15.5 * 0.5)
-                .foregroundStyle(S.ink2)
-                .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 10)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    @ViewBuilder
-    private func documentRow(
-        title: String,
-        subtitle: String,
-        icon: String,
-        accepted: Binding<Bool>,
-        openAction: @escaping () -> Void
-    ) -> some View {
-        let S = T.studio
-        Button {
-            HapticManager.impact(.light)
-            openAction()
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: icon)
-                    .font(.system(size: 15))
-                    .foregroundStyle(S.ink)
-                    .frame(width: 36, height: 36)
-                    .background(S.fillActive,
-                                in: RoundedRectangle(cornerRadius: StudioRadius.glyph,
-                                                     style: .continuous))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(S.sans(16)).foregroundStyle(S.ink)
-                    Text(subtitle).font(S.sans(13)).foregroundStyle(S.ink3)
+    private func documentRow(title: String, subtitle: String, icon: String,
+                             accepted: Binding<Bool>, openAction: @escaping () -> Void) -> some View {
+        Button(action: openAction) {
+            HStack(spacing: 12) {
+                Image(systemName: icon).frame(width: 24).accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).font(.body)
+                    Text(subtitle).font(.footnote).foregroundStyle(.secondary)
                 }
-
-                Spacer(minLength: StudioSpacing.s)
-
-                if accepted.wrappedValue {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(S.accent)
-                } else {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13))
-                        .foregroundStyle(S.chevron)
-                }
+                Spacer(minLength: 8)
+                Image(systemName: accepted.wrappedValue ? "checkmark.circle.fill" : "chevron.right")
+                    .foregroundStyle(.secondary).accessibilityHidden(true)
             }
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
+            .foregroundStyle(ODPalette.text).padding(.vertical, 4)
         }
-        .buttonStyle(.plain)
-        .overlay(alignment: .bottom) { StudioHairline(color: S.rule2) }
         .accessibilityLabel("\(title). \(subtitle)")
         .accessibilityValue(accepted.wrappedValue ? "Read" : "Not read yet")
         .accessibilityHint("Opens the document for reading")

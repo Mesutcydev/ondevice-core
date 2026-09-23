@@ -142,7 +142,11 @@ final class SpeechDictationService: ObservableObject {
     /// during TTS playback to keep the engine running (so level meter +
     /// VAD stay live) without feeding the assistant's own voice back into
     /// the recogniser.
-    private var inputPaused: Bool = false
+    // ponytail: read on the audio tap thread without a lock, exactly as before
+    // the iOS 27 @Sendable tap made that visible. A torn Bool read only delays
+    // pause/resume by one buffer; move to Synchronization.Atomic if these flags
+    // ever gate anything stronger than dropping audio.
+    nonisolated(unsafe) private var inputPaused: Bool = false
     /// Bumped on every pause / stop / new recognition request so a cancelled
     /// SFSpeechRecognitionTask's async completion cannot call `cleanup()` or
     /// rotate into a fresh request after we've intentionally paused for TTS.
@@ -154,7 +158,7 @@ final class SpeechDictationService: ObservableObject {
     /// When true (continuous / voice-conversation mode) the tap resamples each
     /// buffer to 16 kHz mono and accumulates it for the neural VAD. Kept hot
     /// even while `inputPaused` so barge-in can fire during TTS playback.
-    private var captureVADFrames: Bool = false
+    nonisolated(unsafe) private var captureVADFrames: Bool = false
     /// 16 kHz mono frames awaiting the VAD. Written from the audio render
     /// thread, drained by the listening loop on the main actor — lock-guarded
     /// for the same reason as `_request`.
@@ -225,6 +229,11 @@ final class SpeechDictationService: ObservableObject {
         return ok
     }
 
+    var supportsLocalDictation: Bool {
+        (AppSettings.shared.sttProvider == "whisper" && WhisperModelCatalog.isInstalled)
+            || (recognizer?.isAvailable == true && recognizer?.supportsOnDeviceRecognition == true)
+    }
+
     var isAvailable: Bool {
         recognizer?.isAvailable == true
     }
@@ -238,9 +247,16 @@ final class SpeechDictationService: ObservableObject {
     /// and the AVAudioSession is left active when the service is stopped —
     /// the caller owns that lifecycle so TTS can speak through the same
     /// session without re-activation hiccups.
+    var isCapturingInput: Bool { audioEngine.isRunning && !inputPaused }
+    private let audioOwnerID = UUID()
+
     func start(continuous: Bool = false,
                _ onTranscript: @escaping (String, Bool) -> Void) throws {
         guard !isRecording else { return }
+        VoiceAudioSessionManager.shared.acquire(audioOwnerID)
+        defer {
+            if !isRecording { VoiceAudioSessionManager.shared.release(audioOwnerID, deactivateIfUnused: true) }
+        }
 
         // Provider routing. Whisper is only valid in single-shot mode —
         // it isn't a streaming model, so continuous-mode voice
@@ -340,8 +356,9 @@ final class SpeechDictationService: ObservableObject {
         // the RMS meter accept any Float32 mono buffer.
         _ = try validInputFormat(inputNode, label: "system dictation")
         inputNode.removeTap(onBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: nil) { [weak self] buffer, _ in
+        try inputNode.installAudioTap(onBus: 0, bufferSize: 1024, format: nil) { [weak self] tapBuffer, _ in
             guard let self else { return }
+            let buffer = AVAudioPCMBuffer(copying: tapBuffer)
             // Compute RMS even when paused — caller relies on the level
             // meter for VAD calibration and orb animation.
             if let channelData = buffer.floatChannelData?[0] {
@@ -537,8 +554,9 @@ final class SpeechDictationService: ObservableObject {
         }
         _ = try validInputFormat(inputNode, label: "system dictation resume")
         inputNode.removeTap(onBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: nil) { [weak self] buffer, _ in
+        try inputNode.installAudioTap(onBus: 0, bufferSize: 1024, format: nil) { [weak self] tapBuffer, _ in
             guard let self else { return }
+            let buffer = AVAudioPCMBuffer(copying: tapBuffer)
             if let channelData = buffer.floatChannelData?[0] {
                 let frameCount = Int(buffer.frameLength)
                 var sum: Float = 0
@@ -575,9 +593,7 @@ final class SpeechDictationService: ObservableObject {
         // STT works but the assistant never speaks back".
         let wasContinuous = continuous
         continuous = false
-        guard !wasContinuous else { return }
-        let session = AVAudioSession.sharedInstance()
-        try? session.setActive(false, options: .notifyOthersOnDeactivation)
+        VoiceAudioSessionManager.shared.release(audioOwnerID, deactivateIfUnused: !wasContinuous)
     }
 
     /// Returns the input node's current format only if it's actually usable.
@@ -644,8 +660,9 @@ final class SpeechDictationService: ObservableObject {
         // crashing.
         _ = try validInputFormat(inputNode, label: "whisper dictation")
         inputNode.removeTap(onBus: 0)
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: nil) { [weak self] buffer, _ in
+        try inputNode.installAudioTap(onBus: 0, bufferSize: 1024, format: nil) { [weak self] tapBuffer, _ in
             guard let self else { return }
+            let buffer = AVAudioPCMBuffer(copying: tapBuffer)
             // Same RMS → level meter math as the SFSpeech path so the
             // composer's waveform UI doesn't behave differently between
             // providers.

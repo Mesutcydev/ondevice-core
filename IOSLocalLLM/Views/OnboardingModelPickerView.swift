@@ -1,4 +1,5 @@
 import SwiftUI
+import OnDeviceUI
 import Combine
 
 // MARK: - OnboardingModelPickerView
@@ -165,26 +166,23 @@ struct OnboardingModelPickerView: View {
     // MARK: - Body
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                heroBlock
-                assistantSection
-                visualSection
-                Color.clear.frame(height: 100)   // breathing room under CTA bar
+        List {
+            Section {
+                Text("Choose one chat model and one vision model. Downloads need a network connection; these models run on your device.")
+                    .font(.body).foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
+            Section("Chat") { ForEach(assistantPicks) { assistantCard($0) } }
+            Section("Vision") { ForEach(visualPicks) { visualCard($0) } }
         }
-        .background(StudioPageBackground())
-        .overlay {
-            // The gate is a blocking setup state, so it gets a full-screen
-            // scrim + solid panel rather than a gradient bottom bar. The old
-            // gradient let the scrolling cards bleed through behind the gate
-            // copy (the top of a tall gate sits in the transparent zone).
-            if phase == .downloading { gateOverlay }
-        }
-        .overlay(alignment: .bottom) {
+        .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+        .background { ODPageBackground().ignoresSafeArea() }
+        .navigationTitle("Choose your models")
+        .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
             if phase == .picking { ctaBar }
+        }
+        .overlay {
+            if phase == .downloading { gateOverlay }
         }
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
             guard phase == .downloading else { return }
@@ -206,88 +204,6 @@ struct OnboardingModelPickerView: View {
                 pickedVisualRepoID = defaults.visualRepoID
             }
         }
-    }
-
-    // MARK: - Hero
-
-    private var heroBlock: some View {
-        VStack(spacing: 10) {
-            // Custom hero glyph — concentric rings with a pick mark.
-            // Differentiates from the reference's downward-arrow icon
-            // while landing in the same conceptual space.
-            ZStack {
-                Circle()
-                    .stroke(T.accent.opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [2, 3]))
-                    .frame(width: 88, height: 88)
-                Circle()
-                    .fill(T.accentSoft)
-                    .frame(width: 60, height: 60)
-                Image(systemName: "checkmark")
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundColor(T.accent)
-            }
-            .padding(.top, 4)
-
-            VStack(spacing: 6) {
-                KCaption(text: "STEP · MODEL PICK")
-                Text("Choose your models")
-                    .font(T.sans(26, .semibold))
-                    .tracking(-0.5)
-                    .foregroundColor(T.ink)
-                Text("Pick one assistant and one vision model. Both run entirely on your device — no servers, no API keys.")
-                    .font(T.sans(13))
-                    .foregroundColor(T.ink2)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.horizontal, 8)
-            }
-        }
-    }
-
-    // MARK: - Sections
-
-    private var assistantSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionHeader(eyebrow: "ASSISTANT",
-                          title: "Text & code",
-                          subtitle: "Chat, code review, refactoring, planning.")
-            VStack(spacing: 10) {
-                ForEach(assistantPicks) { pick in
-                    assistantCard(pick)
-                }
-            }
-        }
-    }
-
-    private var visualSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            sectionHeader(eyebrow: "VISION",
-                          title: "Multimodal",
-                          subtitle: "Camera capture, screen reading, image-to-text. Only multimodal models — text-only LLMs can't fill this slot.")
-            VStack(spacing: 10) {
-                ForEach(visualPicks) { pick in
-                    visualCard(pick)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func sectionHeader(eyebrow: String, title: String, subtitle: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                KCaption(text: eyebrow)
-                Rectangle().fill(T.rule).frame(height: 1)
-            }
-            Text(title)
-                .font(T.sans(18, .semibold))
-                .foregroundColor(T.ink)
-            Text(subtitle)
-                .font(T.sans(11))
-                .foregroundColor(T.ink3)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(.horizontal, 2)
     }
 
     // MARK: - Cards
@@ -347,48 +263,20 @@ struct OnboardingModelPickerView: View {
     ) -> some View {
         Button(action: action) {
             HStack(alignment: .top, spacing: 12) {
-                KVendorThumb(vendor: vendor, size: .card)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(title)
-                            .font(T.sans(15, .semibold))
-                            .tracking(-0.2)
-                            .foregroundColor(T.ink)
-                            .lineLimit(1)
-                        Spacer(minLength: 0)
-                        Text(sizeLabel)
-                            .font(T.mono(9, .semibold))
-                            .foregroundColor(T.ink3)
-                    }
-                    Text(summary)
-                        .font(T.sans(11))
-                        .foregroundColor(T.ink2)
-                        .fixedSize(horizontal: false, vertical: true)
-                    if !caps.isEmpty {
-                        KCapabilityPillRow(capabilities: Array(caps), size: .compact)
-                            .padding(.top, 2)
-                    }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(title).font(.body.weight(.medium)).foregroundStyle(ODPalette.text)
+                    Text(summary).font(.footnote).foregroundStyle(.secondary)
+                    Text(sizeLabel).font(.footnote).foregroundStyle(.secondary)
                     deviceFitNotice(verdict: verdict)
                 }
-                radio(selected: selected)
-                    .padding(.top, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if selected { Image(systemName: "checkmark").foregroundStyle(ODPalette.text) }
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .kGlass(cornerRadius: StudioRadius.panel,
-                    tint: selected ? T.accentSoft : nil,
-                    fallbackFill: selected ? T.accentSoft : T.surface)
-            .overlay(
-                // Selected: 1pt accent border + tiny glow.
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(selected ? T.accent.opacity(0.7) : Color.clear,
-                            lineWidth: 1.2)
-            )
-            .shadow(color: selected ? T.accent.opacity(0.20) : .clear,
-                    radius: 10, y: 3)
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: selected)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     /// Small inline warning that surfaces marginal/wontFit verdicts on
@@ -406,7 +294,7 @@ struct OnboardingModelPickerView: View {
                 Text(warning)
                     .font(T.mono(9))
                     .fixedSize(horizontal: false, vertical: true)
-                    .lineLimit(2)
+
             }
             .foregroundColor(T.warn)
             .padding(.top, 4)
@@ -417,24 +305,10 @@ struct OnboardingModelPickerView: View {
                 Text(warning)
                     .font(T.mono(9))
                     .fixedSize(horizontal: false, vertical: true)
-                    .lineLimit(2)
+
             }
             .foregroundColor(T.bad)
             .padding(.top, 4)
-        }
-    }
-
-    @ViewBuilder
-    private func radio(selected: Bool) -> some View {
-        ZStack {
-            Circle()
-                .stroke(selected ? T.accent : T.ink4, lineWidth: 1.5)
-                .frame(width: 20, height: 20)
-            if selected {
-                Circle()
-                    .fill(T.accent)
-                    .frame(width: 12, height: 12)
-            }
         }
     }
 
@@ -453,10 +327,7 @@ struct OnboardingModelPickerView: View {
         }
         .padding(.top, 12)
         .padding(.bottom, 14)
-        .background(
-            LinearGradient(colors: [T.bg.opacity(0), T.bg, T.bg],
-                           startPoint: .top, endPoint: .bottom)
-        )
+        .background { ODPageBackground().ignoresSafeArea() }
     }
 
     // MARK: - Download gate
@@ -492,11 +363,9 @@ struct OnboardingModelPickerView: View {
     /// The scrim is what stops the scroll content from showing through the
     /// gate copy — the panel itself is opaque too, belt-and-suspenders.
     private var gateOverlay: some View {
-        ZStack(alignment: .bottom) {
-            T.bg.opacity(0.97)
-                .ignoresSafeArea()
-            gateBar
-        }
+        ScrollView { gateBar }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background { ODPageBackground().ignoresSafeArea() }
         .transition(.opacity)
     }
 
@@ -527,8 +396,8 @@ struct OnboardingModelPickerView: View {
                     }
                     .foregroundColor(T.bad)
                     .padding(.horizontal, 12).padding(.vertical, 7)
-                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.bad.opacity(0.10)))
-                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.bad.opacity(0.4), lineWidth: 0.5))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.bad.opacity(0.10)))
+                    .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(T.bad.opacity(0.4), lineWidth: 0.5))
                 }
                 .buttonStyle(.plain)
             }
@@ -551,10 +420,10 @@ struct OnboardingModelPickerView: View {
             // into a fully opaque surface so the gate copy always reads clean.
             ZStack {
                 T.bg
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                     .fill(T.surface)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                             .stroke(T.glassBorder, lineWidth: 0.5)
                     )
                     .padding(.horizontal, 8)
@@ -587,8 +456,8 @@ struct OnboardingModelPickerView: View {
                 }
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.rule).frame(height: 3)
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.rule).frame(height: 3)
+                        RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                             .fill(settled ? T.good : (failed ? T.bad : T.accent))
                             .frame(width: max(0, min(1, progress)) * geo.size.width, height: 3)
                     }

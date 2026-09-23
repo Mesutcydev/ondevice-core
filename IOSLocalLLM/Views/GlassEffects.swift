@@ -63,16 +63,20 @@ extension View {
 // MARK: - Accessible material
 
 extension ShapeStyle where Self == AnyShapeStyle {
-    /// A blurred material, or an opaque fill when the user has Reduce
-    /// Transparency enabled — blur over moving content is precisely what that
-    /// setting exists to remove.
+    /// The opaque panel fill, for every user.
     ///
-    /// Works as both a `background` and a shape `fill`, which is why this is a
-    /// `ShapeStyle` rather than a `ViewModifier`. Read the flag at the call
-    /// site with `@Environment(\.accessibilityReduceTransparency)`.
+    /// This used to return `.ultraThinMaterial` unless Reduce Transparency was
+    /// on. Instrument has no blur: a material is depth, and there is no z-axis
+    /// here. It now returns `opaque` in both branches, which also means the
+    /// accessibility setting no longer changes what anyone sees — everyone
+    /// gets the legible version rather than only the users who asked for it.
+    ///
+    /// The parameter is retained because four call sites pass it, and the
+    /// `ShapeStyle` shape is retained because two of them use it as a `fill`
+    /// rather than a `background`.
     static func adaptiveMaterial(reduceTransparency: Bool,
                                  opaque: Color) -> AnyShapeStyle {
-        reduceTransparency ? AnyShapeStyle(opaque) : AnyShapeStyle(.ultraThinMaterial)
+        AnyShapeStyle(opaque)
     }
 }
 
@@ -118,7 +122,9 @@ extension View {
         ))
     }
 
-    /// Capsule variant of `kGlass` — kept for call-site compatibility.
+    /// Historical name: it passes `role: .capsule` for the resting fill but
+    /// draws the chip radius, not a `Capsule()`. Kept for call-site
+    /// compatibility; if you want a true capsule, pass the shape explicitly.
     @ViewBuilder
     func kGlassCapsule(
         tint: Color? = nil,
@@ -218,6 +224,7 @@ private struct ShimmerModifier: ViewModifier {
     let duration: Double
     let intensity: Double
 
+    @Environment(\.koduTheme) private var T
     @State private var phase: CGFloat = -1.0
 
     func body(content: Content) -> some View {
@@ -231,11 +238,15 @@ private struct ShimmerModifier: ViewModifier {
                         // rather than a thin streak (which can read as a
                         // rendering glitch on small surfaces).
                         let bandWidth = width * 0.65
+                        // A lime scan pass, not a white specular sheen. The
+                        // sweep still reports "this surface is working"; it
+                        // just does it in the signal colour under a normal
+                        // blend instead of imitating light on glass.
                         LinearGradient(
                             stops: [
-                                .init(color: .clear,                    location: 0.0),
-                                .init(color: .white.opacity(intensity), location: 0.5),
-                                .init(color: .clear,                    location: 1.0),
+                                .init(color: .clear,                        location: 0.0),
+                                .init(color: T.accent.opacity(intensity),   location: 0.5),
+                                .init(color: .clear,                        location: 1.0),
                             ],
                             startPoint: .leading,
                             endPoint: .trailing
@@ -247,7 +258,6 @@ private struct ShimmerModifier: ViewModifier {
                         // would still be visible at the wrap point and the
                         // loop would read as a snap.
                         .offset(x: phase * (width + bandWidth))
-                        .blendMode(.softLight)
                     }
                     .allowsHitTesting(false)
                 }

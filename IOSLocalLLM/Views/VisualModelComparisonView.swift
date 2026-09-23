@@ -69,9 +69,7 @@ struct VisualModelComparisonView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    header
+            List {
                     imagePickerCard
                     promptCard
                     blindToggle
@@ -83,13 +81,12 @@ struct VisualModelComparisonView: View {
                     if canVote { voteCard }
                     ArenaLeaderboardCard(lane: .vision)
                     Color.clear.frame(height: 24)
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
             }
+            .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+            .navigationTitle("Compare vision models")
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }.foregroundColor(T.ink)
@@ -125,7 +122,7 @@ struct VisualModelComparisonView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(maxHeight: 220)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: StudioRadius.panel))
             } else {
                 ZStack {
                     Color.clear
@@ -159,7 +156,7 @@ struct VisualModelComparisonView: View {
                 }
                 .foregroundColor(fgColor)
                 .padding(.horizontal, 12).padding(.vertical, 6)
-                .background(RoundedRectangle(cornerRadius: 6).fill(bgColor))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(bgColor))
             }
         }
     }
@@ -243,8 +240,8 @@ struct VisualModelComparisonView: View {
                 .foregroundColor(T.ink)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 9)
-                .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface2))
+                .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -294,7 +291,7 @@ struct VisualModelComparisonView: View {
         VStack(alignment: .leading, spacing: 6) {
             modelPicker(side: side, currentID: id)
             ZStack(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: 8).fill(T.surface)
+                RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface)
                 VStack(alignment: .leading, spacing: 4) {
                     if running {
                         HStack(spacing: 6) {
@@ -316,7 +313,7 @@ struct VisualModelComparisonView: View {
                 .padding(10)
             }
             .frame(minHeight: 160, alignment: .topLeading)
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(T.rule, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
         }
         .frame(maxWidth: .infinity)
     }
@@ -387,7 +384,7 @@ struct VisualModelComparisonView: View {
                 .foregroundColor(T.bg)
                 .padding(.horizontal, 16).padding(.vertical, 10)
                 .frame(maxWidth: .infinity)
-                .background(RoundedRectangle(cornerRadius: 8).fill(canRun ? T.ink : T.ink3))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(canRun ? T.ink : T.ink3))
             }
             .buttonStyle(.plain)
             .disabled(!canRun)

@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 // MARK: - Persistent conversation storage
 // Saves to ~/Documents/conversations.json via Codable.
@@ -9,17 +10,16 @@ final class ConversationStore: ObservableObject {
 
     @Published private(set) var conversations: [StoredConversation] = []
 
-    private let fileURL: URL = {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return docs.appendingPathComponent("conversations.json")
-    }()
+    private let fileURL: URL
 
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
     private var saveTask: Task<Void, Never>?
     private var persistRetryCount = 0
 
-    init() {
+    init(fileURL: URL? = nil) {
+        self.fileURL = fileURL ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("conversations.json")
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
         decoder.dateDecodingStrategy = .iso8601
@@ -50,6 +50,15 @@ final class ConversationStore: ObservableObject {
         // Tombstone the id so an enabled iCloud sync propagates the deletion
         // to CloudKit instead of pulling the remote record back next sync.
         CloudSyncTombstones.mark(id)
+        scheduleSave()
+    }
+
+    /// Navigation metadata only. Pinning never rewrites a transcript or draft.
+    func setPinned(_ pinned: Bool, for id: UUID) {
+        guard let index = conversations.firstIndex(where: { $0.id == id }),
+              (conversations[index].isPinned ?? false) != pinned else { return }
+        conversations[index].isPinned = pinned
+        conversations[index].updatedAt = .now
         scheduleSave()
     }
 
@@ -94,6 +103,33 @@ final class ConversationStore: ObservableObject {
     func replaceAll(with newSet: [StoredConversation]) {
         conversations = newSet.sorted { $0.updatedAt > $1.updatedAt }
         scheduleSave()
+    }
+
+    /// UI restoration belongs to the same protected, atomically saved conversation file.
+    /// It never changes message history or the model's context.
+    func savePresentation(id: UUID, presentation: ConversationPresentation) {
+        guard let index = conversations.firstIndex(where: { $0.id == id }) else { return }
+        guard conversations[index].presentation != presentation else { return }
+        conversations[index].presentation = presentation
+        scheduleSave()
+    }
+
+    func preserveUnsentDraft(id: UUID, draft: ConversationPresentation) {
+        guard draft.hasDraft, let index = conversations.firstIndex(where: { $0.id == id }) else { return }
+        var drafts = conversations[index].unsentDrafts ?? []
+        guard !drafts.contains(draft) else { return }
+        drafts.append(draft)
+        conversations[index].unsentDrafts = drafts
+        scheduleSave()
+    }
+
+    func takeUnsentDraft(id: UUID, at draftIndex: Int) -> ConversationPresentation? {
+        guard let index = conversations.firstIndex(where: { $0.id == id }),
+              var drafts = conversations[index].unsentDrafts, drafts.indices.contains(draftIndex) else { return nil }
+        let draft = drafts.remove(at: draftIndex)
+        conversations[index].unsentDrafts = drafts.isEmpty ? nil : drafts
+        scheduleSave()
+        return draft
     }
 
     // MARK: - Persistence
@@ -262,6 +298,10 @@ struct StoredConversation: Identifiable, Codable {
     /// Bounded model-facing memory made from turns older than the live context
     /// window. The full transcript remains in `messages` for display/export.
     var contextMemory: ConversationContextMemory?
+    var presentation: ConversationPresentation?
+    var unsentDrafts: [ConversationPresentation]?
+    /// Optional so conversation files from older builds continue to decode.
+    var isPinned: Bool?
     var createdAt: Date
     var updatedAt: Date
 
@@ -307,6 +347,21 @@ struct StoredConversation: Identifiable, Codable {
         if title.lowercased().contains(q) { return true }
         return messages.contains { $0.content.lowercased().contains(q) }
     }
+}
+
+/// Optional on old records. Attachments store already-extracted, bounded content;
+/// restoring a draft does not reopen a security-scoped URL or perform network work.
+struct ConversationPresentation: Codable, Equatable {
+    var text: String = ""
+    var files: [FileAttachmentService.Attachment] = []
+    var images: [ChatMessage.ImageAttachment] = []
+    var imageIDs: [UUID] = []
+    var legacyImage: Data?
+    var legacyImageID: UUID = UUID()
+    var readingMessageID: UUID?
+    var followsLatest: Bool = true
+
+    var hasDraft: Bool { !text.isEmpty || !files.isEmpty || !images.isEmpty || legacyImage != nil }
 }
 
 struct StoredMessage: Codable {

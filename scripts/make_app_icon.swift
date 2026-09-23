@@ -2,43 +2,49 @@
 //
 // make_app_icon.swift — renders the OnDevice Max app mark.
 //
-// A monolithic MAX wordmark: SF Pro Display Black, set tight, optically
-// centred on a near-black ground with one restrained top-down sheen. No
-// illustration, no mascot, no glow — the mark has to survive being 40pt on a
-// home screen, and a wordmark at that size only works if it is the only thing
-// there.
+// The mark is the app's own throughput trace: a stepped white line over a
+// flat near-black ground. One shape, nothing else.
+
+//
+// It replaces a "MAX" wordmark set in SF Pro Black over a top-down gradient
+// sheen. That mark predated the Instrument language and contradicted three of
+// its rules at once — a gradient, a near-white that was not the UI's white,
+// and a wordmark doing the work a glyph should do. A wordmark also says
+// nothing about the product: every app could use one.
+//
+// A stepped line says "this thing measures something", reads at 40pt on a home
+// screen, and is literally the same shape `InstrumentTrace` draws on the SYS
+// tab — so the icon and the app's most distinctive screen share a mark.
 //
 // Kept in the repo so the icon is reproducible rather than a binary someone
-// has to re-derive. Uses the real system face via CoreText, so the mark is
-// typographically identical to the app's own UI.
+// has to re-derive.
 //
 // Usage:  swift scripts/make_app_icon.swift
 //
 // Writes:
 //   IOSLocalLLM/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
 //   IOSLocalLLM/Assets.xcassets/AppIconPreview.imageset/AppIconPreview-256.png
-//   IOSLocalLLM/Assets.xcassets/AppLogo.imageset/AppLogo-512.png
+//   IOSLocalLLM/Assets.xcassets/AppLogo.imageset/AppLogo.png
 
 import AppKit
-import CoreText
+import CoreGraphics
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 
 // MARK: - Palette
 //
-// Tracks the app's onyx/OLED language: a near-black ground and the same
-// off-white the UI uses for primary ink (#F5F6F8). Pure white is avoided —
-// it glares against the ground at icon scale.
+// Exactly the app's dark appearance. The ground is #0A0B0D — the same value as
+// `KoduTheme.dark.bg` and `LaunchBackground` — so icon, launch screen and first
+// frame are one continuous surface. Flat: no gradient, because the design has
+// no z-axis and a sheen is the clearest possible signal that a mark was drawn
+// to look like a button.
 
-// The ground spans a deliberately narrow luminance range. A wide gradient
-// reads as a 2010-era glossy button; this is just enough tilt to suggest a
-// surface under raking light.
-let groundTop = CGColor(red: 0.086, green: 0.086, blue: 0.098, alpha: 1)  // #161619
-let groundBottom = CGColor(red: 0.027, green: 0.027, blue: 0.035, alpha: 1)  // #070709
-let inkColor = CGColor(red: 0.961, green: 0.965, blue: 0.973, alpha: 1)  // #F5F6F8
+let ground = CGColor(red: 0.039, green: 0.043, blue: 0.051, alpha: 1)   // #0A0B0D
+let trace = CGColor(red: 1.000, green: 1.000, blue: 1.000, alpha: 1)    // #FFFFFF — the live colour
+// (No grid colour — see the Geometry section for why the gridlines were cut.)
 
 let side: CGFloat = 1024
-
-// MARK: - Context
 
 guard
     let ctx = CGContext(
@@ -51,143 +57,82 @@ guard
         bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
     )
 else {
-    FileHandle.standardError.write(Data("could not create bitmap context\n".utf8))
+    FileHandle.standardError.write(Data("could not create context\n".utf8))
     exit(1)
 }
-
-ctx.interpolationQuality = .high
-ctx.setAllowsAntialiasing(true)
-ctx.setShouldSmoothFonts(true)
 
 // MARK: - Ground
+
+ctx.setFillColor(ground)
+ctx.fill(CGRect(x: 0, y: 0, width: side, height: side))
+
+// MARK: - Geometry
 //
-// A shallow vertical gradient rather than a flat fill. At icon scale a flat
-// black tile reads as a hole in the home screen; ~8% of luminance range is
-// enough to make it read as a surface catching light.
+// iOS masks the icon to a squircle and the home screen crops harder than the
+// 1024 master suggests, so the mark lives inside the middle ~62% horizontally.
+// A trace that ran edge to edge would lose its first and last step to the mask.
 
-let full = CGRect(x: 0, y: 0, width: side, height: side)
-if let gradient = CGGradient(
-    colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
-    colors: [groundBottom, groundTop] as CFArray,
-    locations: [0, 1]
-) {
-    ctx.drawLinearGradient(
-        gradient,
-        start: CGPoint(x: 0, y: 0),
-        end: CGPoint(x: 0, y: side),
-        options: []
-    )
-} else {
-    ctx.setFillColor(groundTop)
-    ctx.fill(full)
-}
+let inset: CGFloat = side * 0.165
+let plotW = side - inset * 2
+// Wide and shallow. The first cut used a 0.34 plot height with a monotonic
+// sample set, which made the mark read as a staircase rather than a readout —
+// a trace is a horizontal thing that wobbles, not a diagonal that climbs.
+let plotH = side * 0.26
+let plotY = (side - plotH) / 2
 
-// MARK: - Wordmark
+// No gridlines. `InstrumentTrace` draws two on screen, and carrying them into
+// the mark seemed like the consistent choice — but at icon scale they have no
+// tick labels or axis to belong to, so they read as two stray hairlines
+// escaping either side of the glyph rather than as a grid. The mark is one
+// shape.
 
-/// Builds a single path for `text` with per-glyph tracking applied manually.
-/// CTLine would honour kerning but not let us close the letters up as tightly
-/// as a wordmark wants, so glyphs are positioned by hand.
-func wordmarkPath(_ text: String, font: CTFont, tracking: CGFloat) -> (CGPath, CGRect) {
-    let combined = CGMutablePath()
-    var glyphs: [CGGlyph] = []
-    var chars = Array(text.utf16)
-    glyphs = Array(repeating: 0, count: chars.count)
-    CTFontGetGlyphsForCharacters(font, &chars, &glyphs, chars.count)
+// MARK: - Trace
+//
+// Nine samples, normalised 0–1 bottom to top. Chosen for silhouette: the line
+// must return to mid-height repeatedly so it reads as a signal oscillating
+// about a baseline. An ascending set — which the first cut used — turns the
+// same geometry into a staircase glyph, because every step goes the same way.
+// One clear peak past centre gives it an asymmetric, memorable profile.
 
-    var advances = [CGSize](repeating: .zero, count: glyphs.count)
-    CTFontGetAdvancesForGlyphs(font, .horizontal, glyphs, &advances, glyphs.count)
+let samples: [CGFloat] = [0.34, 0.56, 0.22, 0.48, 0.78, 0.30, 0.96, 0.44, 0.62]
+let step = plotW / CGFloat(samples.count - 1)
 
-    var penX: CGFloat = 0
-    for (index, glyph) in glyphs.enumerated() {
-        if let glyphPath = CTFontCreatePathForGlyph(font, glyph, nil) {
-            combined.addPath(glyphPath, transform: CGAffineTransform(translationX: penX, y: 0))
-        }
-        penX += advances[index].width
-        if index < glyphs.count - 1 { penX += tracking }
+let path = CGMutablePath()
+for (i, v) in samples.enumerated() {
+    let x = inset + CGFloat(i) * step
+    let y = plotY + plotH * v
+    if i == 0 {
+        path.move(to: CGPoint(x: x, y: y))
+    } else {
+        // Stepped, not interpolated — the same discrete-sample logic the live
+        // trace uses. The right angles are most of the mark's character.
+        let prevY = plotY + plotH * samples[i - 1]
+        path.addLine(to: CGPoint(x: x, y: prevY))
+        path.addLine(to: CGPoint(x: x, y: y))
     }
-    return (combined, combined.boundingBoxOfPath)
 }
 
-// SF Pro Display Black. `.black` is the heaviest system weight; at display
-// sizes macOS resolves the system font to the Display optical variant, which
-// is the one with tight enough sidebearings for a wordmark.
-let font = CTFontCreateWithFontDescriptor(
-    NSFont.systemFont(ofSize: 300, weight: .black).fontDescriptor as CTFontDescriptor,
-    300,
-    nil
-)
+ctx.setStrokeColor(trace)
+// 3.6% of the side ≈ 6.5px at the 180px home-screen render. The first cut ran
+// 5.4%, which was heavy enough that adjacent steps visually merged into a solid mass.
+ctx.setLineWidth(side * 0.036)
+ctx.setLineJoin(.miter)
+ctx.setLineCap(.butt)
+ctx.addPath(path)
+ctx.strokePath()
 
-// Negative tracking pulls MAX into a single mass. Too far and the A's apex
-// collides with the M's leg; -18 at 300pt is the point just before that.
-let (rawPath, rawBounds) = wordmarkPath("MAX", font: font, tracking: -18)
-
-// The mark is sized against the tile's full width, not the squircle's. iOS
-// masks the corners, but the horizontal centre line is uncut — a vertically
-// centred wordmark can therefore run much wider than a corner-safe inset
-// would allow. 78% leaves the letterforms breathing room at 40pt.
-let targetWidth = side * 0.78
-let scale = targetWidth / rawBounds.width
-
-var transform = CGAffineTransform.identity
-// Optical centring: translate the path's own bounding box to the origin,
-// scale, then place it at the tile centre. Using the bounding box rather than
-// the font's metrics ignores ascender/descender space MAX doesn't occupy, so
-// the mark sits where the eye expects instead of sitting high.
-transform = transform.translatedBy(x: side / 2, y: side / 2)
-transform = transform.scaledBy(x: scale, y: scale)
-transform = transform.translatedBy(x: -rawBounds.midX, y: -rawBounds.midY)
-
-guard let markPath = rawPath.copy(using: &transform) else {
-    FileHandle.standardError.write(Data("could not transform wordmark path\n".utf8))
+guard let master = ctx.makeImage() else {
+    FileHandle.standardError.write(Data("could not render master\n".utf8))
     exit(1)
-}
-
-ctx.addPath(markPath)
-ctx.setFillColor(inkColor)
-ctx.fillPath()
-
-// MARK: - Sheen
-//
-// One soft highlight across the top third, clipped to nothing else. This is
-// the whole "material" budget for the mark — anything more and it starts
-// looking like a 2010 skeuomorph.
-
-if let sheen = CGGradient(
-    colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
-    colors: [
-        CGColor(red: 1, green: 1, blue: 1, alpha: 0.035),
-        CGColor(red: 1, green: 1, blue: 1, alpha: 0),
-    ] as CFArray,
-    locations: [0, 1]
-) {
-    ctx.saveGState()
-    ctx.clip(to: full)
-    ctx.drawLinearGradient(
-        sheen,
-        start: CGPoint(x: 0, y: side),
-        end: CGPoint(x: 0, y: side * 0.58),
-        options: []
-    )
-    ctx.restoreGState()
 }
 
 // MARK: - Output
 
-guard let master = ctx.makeImage() else {
-    FileHandle.standardError.write(Data("could not snapshot context\n".utf8))
-    exit(1)
-}
-
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 
-/// Downsamples `master` to `size` and writes a PNG. Rendering once at 1024 and
-/// resampling keeps every derived asset pixel-identical to the master instead
-/// of re-running the type layout at each size.
 func writePNG(_ image: CGImage, size: CGFloat, to path: String) {
-    let target: CGImage
-    if size == side {
-        target = image
-    } else {
+    var target = image
+    if size != CGFloat(image.width) {
         guard
             let scaleCtx = CGContext(
                 data: nil,
@@ -225,13 +170,10 @@ func writePNG(_ image: CGImage, size: CGFloat, to path: String) {
     print("wrote \(path) @ \(Int(size))px")
 }
 
-import ImageIO
-import UniformTypeIdentifiers
-
 writePNG(master, size: 1024, to: "IOSLocalLLM/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png")
 writePNG(
     master, size: 256,
     to: "IOSLocalLLM/Assets.xcassets/AppIconPreview.imageset/AppIconPreview-256.png")
 // Filename must stay `AppLogo.png` — that is what the imageset's Contents.json
-// points at, and what `Image("AppLogo")` resolves to on the splash screen.
+// points at, and what `Image("AppLogo")` resolves to.
 writePNG(master, size: 512, to: "IOSLocalLLM/Assets.xcassets/AppLogo.imageset/AppLogo.png")

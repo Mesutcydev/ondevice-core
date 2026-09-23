@@ -1,7 +1,7 @@
 import SwiftUI
+import OnDeviceUI
 
-// MARK: - AnalysisPanelView
-
+/// Native presentation over the existing capture, review, Q&A and sharing pipelines.
 struct AnalysisPanelView: View {
     let staticResult: AnalysisResult
     @ObservedObject var analysis: AnalysisService
@@ -36,37 +36,36 @@ struct AnalysisPanelView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            headerView
-
-            if result.mode == .visual {
-                // Visual mode: single description panel, no tabs
-                Divider().background(T.rule)
-                visualDescriptionTab
-            } else {
-                // Code mode: Code / Review tabs + Q&A bar
-                Picker("", selection: $selectedTab) {
-                    Text("Code").tag(0)
-                    Text("Review").tag(1)
+        NavigationStack {
+            VStack(spacing: 12) {
+                headerView
+                if result.mode == .visual {
+                    visualDescriptionTab
+                } else {
+                    Picker("Result", selection: $selectedTab) {
+                        Text("Code").tag(0)
+                        Text("Review").tag(1)
+                    }
+                    .pickerStyle(.segmented).padding(.horizontal, 20)
+                    if selectedTab == 0 { codeTab } else { reviewWithQATab }
                 }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-
-                Divider().background(T.rule)
-
-                TabView(selection: $selectedTab) {
-                    codeTab.tag(0)
-                    reviewWithQATab.tag(1)
+            }
+            .background { ODPageBackground().ignoresSafeArea() }
+            .navigationTitle("Capture result").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { isPresented = false } }
+                if analysis.isAnalyzing && analysis.activeResult?.id == result.id {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Stop", systemImage: "stop.fill") { analysis.cancelCurrentAnalysis() }
+                            .accessibilityLabel("Stop image analysis")
+                    }
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
+                ToolbarItemGroup(placement: .keyboard) {
+                    ODKeyboardDismissKey(focus: $questionFocused)
+                    Spacer(minLength: 0)
+                }
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(T.bg)
-                .ignoresSafeArea()
-        )
         .onAppear {
             editableCode = result.extractedCode
             // Auto-read if enabled
@@ -102,7 +101,7 @@ struct AnalysisPanelView: View {
                             .foregroundColor(T.ink2)
                     }
                 }
-                .toolbarBackground(.hidden, for: .navigationBar)
+
             }
             .preferredColorScheme(settings.resolvedColorScheme)
         }
@@ -111,157 +110,46 @@ struct AnalysisPanelView: View {
     // MARK: - Header
 
     private var headerView: some View {
-        VStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text("analysis")
-                            .font(T.sans(17, .semibold))
-                            .tracking(-0.4)
-                            .foregroundColor(T.ink)
-                        if result.isStreaming {
-                            sourcePill(label: "streaming", color: T.warn)
-                        } else if result.ocrFallback {
-                            sourcePill(label: "ocr fallback", color: T.warn)
-                        } else if result.mode == .visual {
-                            sourcePill(label: "fastvlm vision", color: T.accent)
-                        } else {
-                            sourcePill(label: "fastvlm", color: T.good)
-                        }
-                    }
-                    HStack(spacing: 6) {
-                        KMono(text: result.detection.label, size: 11, color: T.ink3)
-                            .lineLimit(1)
-                        KMono(text: "·", size: 11, color: T.ink4)
-                        KMono(text: result.timestamp.formatted(date: .omitted, time: .shortened),
-                               size: 11, color: T.ink3)
-                            .fixedSize()
-                    }
-                }
-                Spacer(minLength: 8)
-                KIconButton {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(T.ink)
-                } action: {
-                    withAnimation(.spring(duration: 0.3)) { isPresented = false }
-                }
+                Text(result.detection.label).font(.footnote).foregroundStyle(.secondary)
+                Spacer()
+                if result.isStreaming { ProgressView().accessibilityLabel("Analyzing") }
+                Text(result.timestamp, style: .time).font(.footnote).foregroundStyle(.secondary)
             }
-
-            // Fallback reason banner — flat warn box. Includes the
-            // inline action button beneath it when the result carries
-            // a SuggestedAction (passive error → one-tap recovery).
             if let reason = result.fallbackReason {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .top, spacing: 8) {
-                        Text("◉")
-                            .font(T.mono(11))
-                            .foregroundColor(T.warn)
-                        Text(reason)
-                            .font(T.mono(10))
-                            .foregroundColor(T.warn)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    if let action = result.suggestedAction {
-                        suggestedActionButton(action)
-                    }
-                }
-                .padding(10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 6).fill(T.warn.opacity(0.08)))
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.warn.opacity(0.3), lineWidth: 1))
+                Text(reason).font(.footnote).foregroundStyle(.secondary)
+                if let action = result.suggestedAction { suggestedActionButton(action) }
             }
-
-            // Action row — adapts to mode. Horizontal scroll keeps all buttons
-            // accessible on narrow widths without wrapping.
-            let hasContent = !result.extractedCode.isEmpty
-            if hasContent {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                    // Primary: Ask Assistant — Studio ink-on-bg fill
-                    Button {
-                        HapticManager.impact(.medium)
-                        let source = result.ocrFallback ? "Camera OCR"
-                            : result.mode == .visual ? "FastVLM Vision" : "FastVLM"
-                        bridge.sendToAssistant(
-                            code: result.extractedCode,
-                            source: source,
-                            image: result.ciImage.map { UIImage(ciImage: $0) } ?? result.thumbnail
-                        )
-                        withAnimation { isPresented = false }
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "brain")
-                                .font(.system(size: 12, weight: .medium))
-                            Text("ask assistant")
-                                .font(T.mono(12, .semibold))
-                                .tracking(0.2)
-                        }
-                        .foregroundColor(T.bg)
-                        .padding(.horizontal, 12).padding(.vertical, 8)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
-                    }
-                    .buttonStyle(.plain)
-
-                    // Share — secondary
-                    Button {
-                        shareItems = [result.fullMarkdown]
-                        showShareSheet = true
-                    } label: {
-                        HStack(spacing: 5) {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 12))
-                            Text("share")
-                                .font(T.mono(12))
-                        }
-                        .foregroundColor(T.ink2)
-                        .padding(.horizontal, 10).padding(.vertical, 8)
-                        .kGlass(cornerRadius: StudioRadius.small, fallbackFill: T.surface)
-                    }
-                    .buttonStyle(.plain)
-
-                    // Read Aloud / Stop
-                    let voiceText: String = {
-                        if result.mode == .visual { return result.extractedCode }
-                        return selectedTab == 0 ? result.extractedCode : result.reviewMarkdown
-                    }()
-                    VoiceControlsView(text: voiceText)
-
-                    // Copy
-                    KIconButton {
-                        Image(systemName: "doc.on.doc")
-                            .font(.system(size: 12))
-                            .foregroundColor(T.ink2)
-                    } action: {
-                        UIPasteboard.general.string = result.extractedCode
-                        HapticManager.impact(.light)
-                    }
-                    }   // HStack
-                    .padding(.trailing, 4)
-                }       // ScrollView
+            if !result.extractedCode.isEmpty {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) { resultActions }
+                    VStack(alignment: .leading, spacing: 12) { resultActions }
+                }
             }
         }
-        .padding(.horizontal)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 20).padding(.top, 8)
     }
 
-    /// Mode-source pill (FastVLM / OCR / Vision / streaming) — flat.
-    @ViewBuilder
-    private func sourcePill(label: String, color: Color) -> some View {
-        HStack(spacing: 3) {
-            if label == "streaming" {
-                Circle().fill(color).frame(width: 5, height: 5)
-                    .modifier(BlinkModifier())
+    @ViewBuilder private var resultActions: some View {
+        Button("Ask in Chat", systemImage: "bubble.left") {
+            bridge.sendToAssistant(code: result.extractedCode,
+                source: result.ocrFallback ? "Camera OCR" : "Lens",
+                image: result.ciImage.map { UIImage(ciImage: $0) } ?? result.thumbnail)
+            isPresented = false
+        }.buttonStyle(.glass)
+        Menu("Result actions", systemImage: "ellipsis") {
+            Button("Share", systemImage: "square.and.arrow.up") {
+                shareItems = [result.fullMarkdown]; showShareSheet = true
             }
-            Text(label)
-                .font(T.mono(9, .semibold))
-                .tracking(0.5)
-        }
-        .foregroundColor(color)
-        .padding(.horizontal, 5)
-        .padding(.vertical, 1)
-        .background(RoundedRectangle(cornerRadius: 3).fill(color.opacity(0.12)))
+            Button("Copy text", systemImage: "doc.on.doc") {
+                UIPasteboard.general.string = result.extractedCode
+            }
+            if result.mode != .visual {
+                Button("Edit code", systemImage: "square.and.pencil") { showCodeEditor = true }
+            }
+        }.buttonStyle(.glass)
+        VoiceControlsView(text: result.mode == .visual || selectedTab == 0 ? result.extractedCode : result.reviewMarkdown)
     }
 
     // MARK: - Visual description tab
@@ -341,108 +229,30 @@ struct AnalysisPanelView: View {
 
     // MARK: - Q&A bubble
 
-    @ViewBuilder
     private func qaBubble(_ qa: AnalysisResult.QAExchange) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // USER ───────
-            HStack(spacing: 6) {
-                Text("USER")
-                    .font(T.mono(9))
-                    .tracking(0.5)
-                    .foregroundColor(T.ink3)
-                Rectangle().fill(T.rule).frame(height: 1)
+        VStack(alignment: .leading, spacing: 24) {
+            HStack {
+                Spacer(minLength: 24)
+                Text(qa.question).font(.body).padding(.horizontal, 16).padding(.vertical, 12)
+                    .background(ODPalette.input, in: RoundedRectangle(cornerRadius: 20))
             }
-            Text(qa.question)
-                .font(T.sans(13, .medium))
-                .foregroundColor(T.ink)
-                .fixedSize(horizontal: false, vertical: true)
-                .textSelection(.enabled)
-
-            // QWEN ← ─────
-            HStack(spacing: 6) {
-                Text("QWEN ←")
-                    .font(T.mono(9, .semibold))
-                    .tracking(0.5)
-                    .foregroundColor(T.accent)
-                Rectangle().fill(T.rule).frame(height: 1)
-                if qa.isStreaming {
-                    Text("generating")
-                        .font(T.mono(9))
-                        .foregroundColor(T.warn)
-                }
-            }
-            HStack(alignment: .bottom, spacing: 4) {
-                Text(qa.answer.isEmpty && qa.isStreaming ? "thinking…" : qa.answer)
-                    .font(T.conversationBody)
-                    .foregroundColor(T.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .modifier(StreamSafeTextSelection(streaming: qa.isStreaming))
-                if qa.isStreaming { StreamingCaret() }
-            }
+            Text(qa.answer.isEmpty && qa.isStreaming ? "Thinking…" : qa.answer)
+                .font(.body).frame(maxWidth: .infinity, alignment: .leading)
+                .modifier(StreamSafeTextSelection(streaming: qa.isStreaming))
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
     }
 
-    // MARK: - Ask Question bar
-
-    @ViewBuilder
     private var askQuestionBar: some View {
-        if result.ciImage != nil, FastVLMService.shared.componentStatus.canGenerate {
-            VStack(spacing: 0) {
-                Rectangle().fill(T.rule).frame(height: 1)
-
-                // Question text field — matches the assistant chat composer
-                HStack(spacing: 8) {
-                    Image(systemName: "questionmark.bubble")
-                        .font(.system(size: 13))
-                        .foregroundColor(T.ink3)
-                    TextField("ask about this image…",
-                              text: $pendingQuestion,
-                              axis: .vertical)
-                        .font(T.sans(14))
-                        .foregroundColor(T.ink)
-                        .tint(T.accent)
-                        .lineLimit(1...3)
-                        .focused($questionFocused)
-                        .submitLabel(.send)
-                        .onSubmit { submitQuestion() }
-                }
-                .padding(12)
-                .background(
-                    RoundedRectangle(cornerRadius: 12).fill(T.surface)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(questionFocused ? T.accent.opacity(0.55) : T.rule, lineWidth: 1)
-                )
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .animation(.easeOut(duration: 0.18), value: questionFocused)
-
-                // Studio-themed toolbar above the keyboard (only while focused)
-                if questionFocused {
-                    KeyboardToolbar(
-                        inputText: $pendingQuestion,
-                        inputFocused: $questionFocused,
-                        onPaste: {
-                            if let t = UIPasteboard.general.string, !t.isEmpty {
-                                pendingQuestion = t
-                            }
-                        },
-                        onPickPhoto: {},       // not relevant inside the analysis sheet
-                        onPickSnippet: {},     // ditto
-                        onSend: submitQuestion,
-                        canSend: canSendQuestion,
-                        isSending: false
-                    )
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-            .kClearGlass(in: Rectangle(), fallbackFill: T.bg)
-            .animation(.easeInOut(duration: 0.18), value: questionFocused)
+        HStack(alignment: .bottom, spacing: 12) {
+            TextField("Ask about this image", text: $pendingQuestion, axis: .vertical)
+                .font(.body).lineLimit(1...6).focused($questionFocused).submitLabel(.return)
+                .padding(12).background(ODPalette.surface, in: RoundedRectangle(cornerRadius: 20))
+            Button("Send question", systemImage: "arrow.up", action: submitQuestion)
+                .labelStyle(.iconOnly).buttonStyle(.glassProminent).buttonBorderShape(.circle)
+                .controlSize(.large).tint(ODPalette.send).foregroundStyle(ODPalette.onSend)
+                .disabled(!canSendQuestion || result.isStreaming)
         }
+        .padding(20)
     }
 
     private var canSendQuestion: Bool {
@@ -486,10 +296,10 @@ struct AnalysisPanelView: View {
                         .padding()
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .background(
-                            RoundedRectangle(cornerRadius: 8).fill(T.surface)
+                            RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface)
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8).stroke(T.rule, lineWidth: 1)
+                            RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1)
                         )
 
                         if !result.isStreaming {
@@ -497,8 +307,8 @@ struct AnalysisPanelView: View {
                                 Image(systemName: "pencil").accessibilityLabel("Edit code")
                                     .font(.system(size: 11))
                                     .padding(6)
-                                    .background(RoundedRectangle(cornerRadius: 4).fill(T.surface2))
-                                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(T.rule, lineWidth: 1))
+                                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface2))
+                                    .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
                                     .foregroundColor(T.ink2)
                             }
                             .padding(8)
@@ -585,8 +395,8 @@ struct AnalysisPanelView: View {
             .foregroundColor(tint)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(tint.opacity(0.12)))
-            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(tint.opacity(0.40), lineWidth: 0.5))
+            .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(tint.opacity(0.12)))
+            .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(tint.opacity(0.40), lineWidth: 0.5))
         }
         .buttonStyle(.plain)
     }
@@ -630,7 +440,7 @@ struct StreamingCaret: View {
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 15, paused: reduceMotion || scenePhase != .active)) { context in
             let phase = context.date.timeIntervalSinceReferenceDate * .pi * 2 / 1.2
-            RoundedRectangle(cornerRadius: 3)
+            RoundedRectangle(cornerRadius: StudioRadius.panel)
                 .fill(T.ink)
                 .frame(width: 2, height: caretHeight)
                 .opacity(reduceMotion ? 0.65 : 0.35 + 0.65 * (sin(phase) + 1) / 2)

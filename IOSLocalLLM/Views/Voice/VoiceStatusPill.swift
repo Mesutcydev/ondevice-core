@@ -77,7 +77,7 @@ struct VoiceStatusPill: View {
             }
             .padding(.horizontal, 9).padding(.vertical, 4)
             .kGlassCapsule(fallbackFill: T.surface)
-            .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)

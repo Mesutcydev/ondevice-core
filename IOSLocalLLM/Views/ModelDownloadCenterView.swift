@@ -32,29 +32,20 @@ struct ModelDownloadCenterView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Page header
-                    VStack(alignment: .leading, spacing: 4) {
-                        KCaption(text: "MODELS")
-                        KPageTitle(title: "Download", size: 30)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
-
+            List {
                     storageHeader
                     categorySelector
                     selectedCategoryContent
                     infoSection
-                }
-                .padding(.bottom, 32)
             }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
             .refreshable {
                 HapticManager.impact(.light)
                 center.refreshAllStates()
                 try? await Task.sleep(nanoseconds: 250_000_000)
             }
+            .navigationTitle("Downloads")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -62,7 +53,6 @@ struct ModelDownloadCenterView: View {
                         .foregroundColor(T.ink)
                 }
             }
-            .toolbarBackground(.hidden, for: .navigationBar)
             .sheet(isPresented: $showSearch) { HFSearchView() }
             .sheet(item: $presetSearchFilter) { filter in
                 HFSearchView(initialFilter: filter)
@@ -113,15 +103,15 @@ struct ModelDownloadCenterView: View {
     private var storageHeader: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                KCaption(text: "storage")
+                KCaption(text: "Storage")
                 Rectangle().fill(T.rule).frame(height: 1)
             }
             .padding(.bottom, 8)
 
             KSpecTable(rows: [
-                ("storage", "Documents · sandboxed"),
-                ("ram", MemoryAdvisor.deviceSummary),
-                ("source", "huggingface.co · resumable"),
+                ("Storage", "Documents · sandboxed"),
+                ("Memory", MemoryAdvisor.deviceSummary),
+                ("Source", "huggingface.co · resumable"),
             ], keyWidth: 80)
         }
         .padding(.horizontal, 16)
@@ -180,13 +170,13 @@ struct ModelDownloadCenterView: View {
                         Image(systemName: categorySymbol(cat))
                             .font(.system(size: 14, weight: .semibold))
                         Text(categoryTitle(cat).capitalized)
-                            .font(T.sans(11, .semibold))
+                            .font(T.sans(13, .semibold))
                     }
                     .foregroundColor(selected ? categoryTint(cat) : T.ink3)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .background(
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                             .fill(selected ? categoryTint(cat).opacity(T.isDark ? 0.18 : 0.12) : Color.clear)
                     )
                     .contentShape(Rectangle())
@@ -262,13 +252,13 @@ struct ModelDownloadCenterView: View {
 
     @ViewBuilder
     private func categorySearch(for category: DownloadableModel.Category) -> some View {
-        KSection(title: "find more") {
+        KSection(title: "Find more") {
             switch category {
             case .assistant:
                 let tier = DeviceTierAdvisor.current
                 searchRow(
                     icon: "wand.and.stars", tint: T.accent,
-                    title: "recommended for \(tier.label) tier",
+                    title: "Recommended for \(tier.label.capitalized) tier",
                     subtitle: tierAssistantHint(for: tier)
                 ) {
                     presetSearch = .init(filter: .mlx, query: tierAssistantQuery(for: tier))
@@ -277,8 +267,8 @@ struct ModelDownloadCenterView: View {
             case .vlm:
                 searchRow(
                     icon: "eye.fill", tint: T.accent2,
-                    title: "more vision models",
-                    subtitle: "qwen-vl · smolvlm · gemma vision"
+                    title: "More vision models",
+                    subtitle: "Qwen-VL · SmolVLM · Gemma vision"
                 ) {
                     presetSearch = .init(filter: .vlm, query: "")
                 }
@@ -286,16 +276,16 @@ struct ModelDownloadCenterView: View {
             case .voice:
                 searchRow(
                     icon: "speaker.wave.2.fill", tint: T.voiceTint,
-                    title: "text-to-speech",
-                    subtitle: "tts · kitten, kokoro, …"
+                    title: "Text-to-speech",
+                    subtitle: "TTS · Kitten, Kokoro, …"
                 ) {
                     presetSearch = .init(filter: .tts, query: "")
                 }
                 Rectangle().fill(T.rule).frame(height: 1)
                 searchRow(
                     icon: "mic.fill", tint: T.accent,
-                    title: "speech-to-text",
-                    subtitle: "asr · whisper · dictation"
+                    title: "Speech-to-text",
+                    subtitle: "ASR · Whisper · dictation"
                 ) {
                     presetSearch = .init(filter: .asr, query: "")
                 }
@@ -305,8 +295,8 @@ struct ModelDownloadCenterView: View {
             }
             searchRow(
                 icon: "magnifyingglass", tint: T.ink2,
-                title: "search all models",
-                subtitle: "free text — auto-filtered to your device"
+                title: "Search all models",
+                subtitle: "Free text — auto-filtered to your device"
             ) {
                 showSearch = true
             }
@@ -320,11 +310,10 @@ struct ModelDownloadCenterView: View {
         let ram = MemoryAdvisor.deviceTotalRAM.formattedBytes
         return HStack(spacing: 8) {
             Image(systemName: "iphone")
-                .font(.system(size: 11))
+                .font(.system(size: 12))
                 .foregroundColor(T.ink3)
-            Text("this iphone · \(tier.label) tier · \(ram) ram")
-                .font(T.mono(10, .semibold))
-                .tracking(0.4)
+            Text("This iPhone · \(tier.label.capitalized) tier · \(ram) RAM")
+                .font(T.sans(12))
                 .foregroundColor(T.ink3)
             Spacer()
         }
@@ -344,11 +333,11 @@ struct ModelDownloadCenterView: View {
     }
     private func tierAssistantHint(for tier: DeviceTier) -> String {
         switch tier {
-        case .lite:  return "smallest, fastest — fits in 3 GB"
+        case .lite:  return "Smallest, fastest — fits in 3 GB"
         case .entry: return "1–2 GB · safe on 4 GB devices"
-        case .mid:   return "3 B class · sweet spot on 6 GB"
-        case .pro:   return "4 B class · richer answers on 8 GB"
-        case .max:   return "7 B+ · top quality with plenty of headroom"
+        case .mid:   return "3B class · sweet spot on 6 GB"
+        case .pro:   return "4B class · richer answers on 8 GB"
+        case .max:   return "7B+ · top quality with plenty of headroom"
         }
     }
 
@@ -369,12 +358,14 @@ struct ModelDownloadCenterView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(tint)
                     .frame(width: 32, height: 32)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(tint.opacity(0.14)))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(tint.opacity(0.14)))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
-                        .font(T.mono(13, .semibold))
+                        .font(T.sans(15, .medium))
                         .foregroundColor(T.ink)
-                    KMono(text: subtitle, size: 10, color: T.ink3)
+                    Text(subtitle)
+                        .font(T.sans(12))
+                        .foregroundColor(T.ink3)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
@@ -393,7 +384,7 @@ struct ModelDownloadCenterView: View {
     private var infoSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                KCaption(text: "guarantees")
+                KCaption(text: "Guarantees")
                 Rectangle().fill(T.rule).frame(height: 1)
             }
             .padding(.bottom, 8)
@@ -404,9 +395,11 @@ struct ModelDownloadCenterView: View {
                         .font(T.mono(10))
                         .foregroundColor(T.good)
                     VStack(alignment: .leading, spacing: 2) {
-                        KMono(text: "privacy", size: 11, weight: .semibold, color: T.ink)
+                        Text("Privacy")
+                            .font(T.sans(13, .semibold))
+                            .foregroundColor(T.ink)
                         Text("All models run 100% on-device after download. No data is sent to any server.")
-                            .font(T.sans(11))
+                            .font(T.sans(12))
                             .foregroundColor(T.ink2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -417,9 +410,11 @@ struct ModelDownloadCenterView: View {
                         .font(T.mono(10))
                         .foregroundColor(T.ink2)
                     VStack(alignment: .leading, spacing: 2) {
-                        KMono(text: "resumable", size: 11, weight: .semibold, color: T.ink)
+                        Text("Resumable downloads")
+                            .font(T.sans(13, .semibold))
+                            .foregroundColor(T.ink)
                         Text("Interrupted downloads resume automatically. You can close the app mid-download.")
-                            .font(T.sans(11))
+                            .font(T.sans(12))
                             .foregroundColor(T.ink2)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -475,11 +470,12 @@ struct ModelDownloadCard: View {
                                            size: .compact)
                     }
                     // Human one-liner.
-                    KMono(text: model.subtitle, size: 11, color: T.ink2)
+                    KMono(text: model.subtitle, size: 13, color: T.ink2, mono: false)
                         .lineLimit(2)
                     // Demoted developer meta: repo id · size (kept, not lost —
-                    // just no longer the headline).
-                    KMono(text: metaLine, size: 9.5, color: T.ink3)
+                    // just no longer the headline). Stays monospaced — a repo
+                    // id is genuinely technical content.
+                    KMono(text: metaLine, size: 11, color: T.ink3)
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
@@ -576,10 +572,10 @@ struct ModelDownloadCard: View {
                 .animation(.easeInOut(duration: 0.18), value: downloaderObs.progress)
         case .enumerating:
             Text("Preparing…")
-                .font(T.mono(10))
+                .font(T.sans(12))
                 .foregroundColor(T.warn)
         case .failed:
-            KStatusBadge(glyph: .remote, label: "failed", color: T.bad)
+            KStatusBadge(glyph: .remote, label: "Failed", color: T.bad)
         case .idle:
             EmptyView()
         }
@@ -653,16 +649,23 @@ struct ModelDownloadCard: View {
                     model.start()
                     HapticManager.impact(.medium)
                 } label: {
-                    HStack(spacing: 5) {
+                    HStack(spacing: 6) {
                         Image(systemName: isFailed ? "arrow.clockwise" : "arrow.down")
-                            .font(.system(size: 11, weight: .medium))
-                        Text(isFailed ? "retry" : "download")
-                            .font(T.mono(11, .semibold))
-                            .tracking(0.3)
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(isFailed ? "Retry" : "Download")
+                            .font(T.sans(13, .semibold))
                     }
-                    .foregroundColor(T.bg)
-                    .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
+                    // Accent-filled capsule — matches the blue primary-action
+                    // language of the native surfaces (Image studio, composer)
+                    // instead of the retired inverted ink slab.
+                    // One line, never wrap mid-word: when the row is tight the
+                    // failure message (layoutPriority -1) yields, not the label.
+                    .lineLimit(1)
+                    .fixedSize()
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16).padding(.vertical, 9)
+                    .background(Capsule().fill(Color.blue))
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
 
@@ -682,12 +685,15 @@ struct ModelDownloadCard: View {
                                     Image(systemName: "sparkles")
                                         .font(.system(size: 10))
                                 }
-                                Text(isAutoDiscovering ? "finding…" : "auto-find")
-                                    .font(T.mono(10, .semibold))
+                                Text(isAutoDiscovering ? "Finding…" : "Auto-find")
+                                    .font(T.sans(12, .semibold))
                             }
+                            .lineLimit(1)
+                            .fixedSize()
                             .foregroundColor(T.good)
-                            .padding(.horizontal, 8).padding(.vertical, 5)
-                            .background(RoundedRectangle(cornerRadius: 6).fill(T.good.opacity(0.12)))
+                            .padding(.horizontal, 10).padding(.vertical, 5)
+                            .frame(minHeight: 44)
+                            .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.good.opacity(0.12)))
                         }
                         .buttonStyle(.plain)
                         .disabled(isAutoDiscovering)
@@ -700,27 +706,34 @@ struct ModelDownloadCard: View {
                         HStack(spacing: 4) {
                             Image(systemName: "wrench.and.screwdriver")
                                 .font(.system(size: 10))
-                            Text("find repo")
-                                .font(T.mono(10, .semibold))
+                            Text("Find repo")
+                                .font(T.sans(12, .semibold))
                         }
+                        .lineLimit(1)
+                        .fixedSize()
                         .foregroundColor(T.accent)
-                        .padding(.horizontal, 8).padding(.vertical, 5)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(T.accentSoft))
+                        .padding(.horizontal, 10).padding(.vertical, 5)
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accentSoft))
                     }
                     .buttonStyle(.plain)
                 }
 
                 if case .failed(let msg) = dlState {
-                    KMono(text: msg, size: 9, color: T.bad)
+                    // The message is the row's flexible element: buttons keep
+                    // their natural one-line width (fixedSize above) while the
+                    // error text compresses and wraps first.
+                    KMono(text: msg, size: 12, color: T.bad, mono: false)
                         .lineLimit(2)
+                        .layoutPriority(-1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
             case .enumerating:
                 HStack(spacing: 4) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 10))
-                    Text("preparing…")
-                        .font(T.mono(11))
+                    Text("Preparing…")
+                        .font(T.sans(12))
                 }
                 .foregroundColor(T.ink3)
 
@@ -732,17 +745,18 @@ struct ModelDownloadCard: View {
                     HStack(spacing: 4) {
                         Image(systemName: "pause.circle")
                             .font(.system(size: 11))
-                        Text("pause")
-                            .font(T.mono(11, .semibold))
+                        Text("Pause")
+                            .font(T.sans(13, .semibold))
                     }
                     .foregroundColor(T.warn)
-                    .padding(.horizontal, 9).padding(.vertical, 5)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.warn.opacity(0.12)))
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(Capsule().fill(T.warn.opacity(0.12)))
+                    .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
 
             case .ready:
-                KStatusBadge(glyph: .ready, label: "ready to use", color: T.good)
+                KStatusBadge(glyph: .ready, label: "Ready to use", color: T.good)
 
                 Spacer()
 

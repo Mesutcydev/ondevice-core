@@ -1,0 +1,57 @@
+{
+  "reviewed_date": "2026-09-19",
+  "sources": [
+    {
+      "title": "Official Codex desktop demo",
+      "url": "https://learn.chatgpt.com/docs/app",
+      "asset_url": "https://learn.chatgpt.com/images/codex/video-posters/proactive-teammate-v2.webp",
+      "role": "Primary composer reference: writing area above one footer; attachment metadata inside the same surface.",
+      "limit": "Retained demo visibly says Codex. No build date is exposed; not evidence of the exact current installed client."
+    },
+    {
+      "title": "Hermes Desktop",
+      "url": "https://hermes-agent.nousresearch.com/desktop",
+      "role": "Initial desktop design research."
+    },
+    {
+      "title": "Hermes desktop design contract",
+      "url": "https://github.com/NousResearch/hermes-agent/blob/main/apps/desktop/DESIGN.md",
+      "role": "Quiet layout, restrained hierarchy and context-preserving navigation; brand color was not adopted."
+    },
+    {
+      "title": "Apple: Adopting Liquid Glass",
+      "url": "https://developer.apple.com/documentation/technologyoverviews/adopting-liquid-glass",
+      "role": "Native navigation and control ownership."
+    },
+    {
+      "title": "SwiftUI TabView",
+      "url": "https://developer.apple.com/documentation/swiftui/tabview",
+      "role": "Actual system tab bar implementation."
+    },
+    {
+      "title": "SwiftUI glass button style",
+      "url": "https://developer.apple.com/documentation/swiftui/primitivebuttonstyle/glass",
+      "role": "Native glass buttons."
+    },
+    {
+      "title": "SwiftUI prominent glass button style",
+      "url": "https://developer.apple.com/documentation/swiftui/primitivebuttonstyle/glassprominent",
+      "role": "Native Send and Stop treatment."
+    },
+    {
+      "title": "Apple Messages guide",
+      "url": "https://support.apple.com/guide/iphone/send-and-reply-to-messages-iph82fb73ba3/ios",
+      "role": "Secondary touch and message-composition reference."
+    },
+    {
+      "title": "ChatGPT official App Store listing",
+      "url": "https://apps.apple.com/us/app/chatgpt/id6448311069",
+      "role": "Secondary published chat-composer image reference; promotional screenshot, not an installed-app inspection."
+    },
+    {
+      "title": "Claude official App Store listing",
+      "url": "https://apps.apple.com/us/app/claude-by-anthropic/id6473753684",
+      "role": "Secondary published attachment and composer image reference; promotional screenshot, not an installed-app inspection."
+    }
+  ]
+}

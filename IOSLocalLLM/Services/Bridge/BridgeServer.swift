@@ -15,13 +15,8 @@ actor BridgeServer {
 
     private var listener: NWListener?
 
-    /// Brute-force guard on `/v1/pair` — counts failed nonce attempts.
-    private var failedPairAttempts: [Date] = []
-    private var pairLockedUntil: Date?
-
-    private static let maxFailedPairAttempts = 5
-    private static let pairAttemptWindow: TimeInterval = 60
-    private static let pairLockoutDuration: TimeInterval = 60
+    /// Brute-force guard on `/v1/pair` — failed nonce attempts per remote host.
+    private var pairThrottle = AuthFailureThrottle()
 
     static let port: NWEndpoint.Port = 8443
 
@@ -140,7 +135,8 @@ actor BridgeServer {
     // MARK: - /v1/pair
 
     private func handlePair(_ req: HTTPRequest, conn: NWConnection) async {
-        if let locked = pairLockedUntil, locked > Date() {
+        let host = AuthFailureThrottle.host(of: conn)
+        if pairThrottle.isLocked(host) {
             await respond(conn, status: 429, body: "Too many pairing attempts")
             return
         }
@@ -151,12 +147,11 @@ actor BridgeServer {
         }
         let ok = await MainActor.run { BridgeManager.shared.verifyAndConsumeNonce(pr.nonce) }
         guard ok else {
-            recordFailedPairAttempt()
+            pairThrottle.recordFailure(host)
             await respond(conn, status: 401, body: "Invalid nonce")
             return
         }
-        failedPairAttempts.removeAll()
-        pairLockedUntil = nil
+        pairThrottle.recordSuccess(host)
         let token    = UUID().uuidString + UUID().uuidString
         let deviceId = await MainActor.run {
             UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
@@ -273,16 +268,6 @@ actor BridgeServer {
 
     // MARK: - Auth
 
-    private func recordFailedPairAttempt() {
-        let cutoff = Date().addingTimeInterval(-Self.pairAttemptWindow)
-        failedPairAttempts.removeAll { $0 < cutoff }
-        failedPairAttempts.append(Date())
-        if failedPairAttempts.count >= Self.maxFailedPairAttempts {
-            pairLockedUntil = Date().addingTimeInterval(Self.pairLockoutDuration)
-            failedPairAttempts.removeAll()
-        }
-    }
-
     private func bearerValid(_ req: HTTPRequest) -> Bool {
         guard let auth = req.headers["authorization"],
               auth.hasPrefix("Bearer ") else { return false }
@@ -347,41 +332,84 @@ private final class ThrowingResumeOnce: @unchecked Sendable {
 struct HTTPRequest {
     let method: String
     let path: String
+    let version: String
     let headers: [String: String]
     let body: Data?
 
-    init?(data: Data) {
-        guard let str = String(data: data, encoding: .utf8),
-              let sep = str.range(of: "\r\n\r\n") else { return nil }
+    var wantsKeepAlive: Bool {
+        let tokens = headers["connection"]?
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() } ?? []
+        if tokens.contains("close") { return false }
+        return version.uppercased() == "HTTP/1.1" || tokens.contains("keep-alive")
+    }
 
-        let headerSection = String(str[str.startIndex..<sep.lowerBound])
+    /// The shared request reader only supports Content-Length framing.
+    /// Let the API answer a chunked upload explicitly instead of treating
+    /// the first chunk as an empty JSON body.
+    var declaresChunkedBody: Bool {
+        guard let value = headers["transfer-encoding"]?
+            .trimmingCharacters(in: .whitespacesAndNewlines) else { return false }
+        return !value.isEmpty && value.lowercased() != "identity"
+    }
+
+    init?(data: Data) {
+        guard let parsed = Self.parse(data: data) else { return nil }
+        self = parsed.request
+    }
+
+    /// Returns how many bytes belong to this request so a persistent API
+    /// connection can keep a pipelined request in its receive buffer. The Mac
+    /// bridge continues using `init(data:)` and its single-request lifecycle.
+    static func parse(data: Data) -> (request: Self, consumedBytes: Int)? {
+        guard let head = parseHeader(data: data),
+              head.contentLength <= data.count - head.headerBytes else { return nil }
+        let body: Data? = head.contentLength > 0
+            ? Data(data[head.headerBytes..<(head.headerBytes + head.contentLength)]) : nil
+        return (Self(method: head.request.method, path: head.request.path,
+                     version: head.request.version, headers: head.request.headers,
+                     body: body), head.headerBytes + head.contentLength)
+    }
+
+    /// Makes authentication and declared-size checks possible before an
+    /// image-bearing POST body is buffered in full.
+    static func parseHeader(data: Data) -> (request: Self, headerBytes: Int, contentLength: Int)? {
+        guard let separator = data.range(of: Data("\r\n\r\n".utf8)),
+              let headerSection = String(data: data[..<separator.lowerBound], encoding: .utf8)
+        else { return nil }
         var lines = headerSection.components(separatedBy: "\r\n")
         guard !lines.isEmpty else { return nil }
 
         let requestLine = lines.removeFirst()
-        let parts = requestLine.components(separatedBy: " ")
+        let parts = requestLine.split(separator: " ", maxSplits: 2).map(String.init)
         guard parts.count >= 2 else { return nil }
-        method = parts[0]
-        path   = String(parts[1].split(separator: "?", maxSplits: 1).first ?? Substring(parts[1]))
+        let method = parts[0]
+        let path = String(parts[1].split(separator: "?", maxSplits: 1).first ?? Substring(parts[1]))
+        let version = parts.count > 2 ? parts[2] : "HTTP/1.0"
 
         var hdrs: [String: String] = [:]
         for line in lines {
-            if let colonRange = line.range(of: ": ") {
-                let key = String(line[line.startIndex..<colonRange.lowerBound]).lowercased()
-                let val = String(line[colonRange.upperBound...])
+            if let colon = line.firstIndex(of: ":") {
+                let key = line[..<colon].trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                let val = line[line.index(after: colon)...].trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !key.isEmpty else { continue }
                 hdrs[key] = val
             }
         }
-        headers = hdrs
+        guard let contentLength = Int(hdrs["content-length"] ?? "0") else { return nil }
+        guard contentLength >= 0 else { return nil }
+        let headerByteCount = separator.upperBound
+        return (Self(method: method, path: path, version: version,
+                     headers: hdrs, body: nil), headerByteCount, contentLength)
+    }
 
-        let contentLength = Int(hdrs["content-length"] ?? "0") ?? 0
-        let headerByteCount = headerSection.utf8.count + 4   // 4 = "\r\n\r\n"
-        if contentLength > 0 {
-            guard data.count >= headerByteCount + contentLength else { return nil }
-            body = data[headerByteCount..<(headerByteCount + contentLength)]
-        } else {
-            body = nil
-        }
+    private init(method: String, path: String, version: String,
+                 headers: [String: String], body: Data?) {
+        self.method = method
+        self.path = path
+        self.version = version
+        self.headers = headers
+        self.body = body
     }
 }
 

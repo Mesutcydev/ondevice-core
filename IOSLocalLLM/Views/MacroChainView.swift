@@ -20,9 +20,7 @@ struct MacroChainView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    header
+            List {
                     macroList
                     if let m = selectedMacro {
                         runCard(macro: m)
@@ -33,12 +31,13 @@ struct MacroChainView: View {
                             finalCard(text: final)
                         }
                     }
-                }
-                .padding(.bottom, 32)
+
             }
+            .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+            .navigationTitle("Workflows")
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }.foregroundColor(T.ink)
@@ -71,11 +70,11 @@ struct MacroChainView: View {
                 } label: {
                     HStack(spacing: 10) {
                         ZStack {
-                            Circle()
+                            RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
                                 .stroke(selectedMacroID == m.id ? T.accent : T.rule2, lineWidth: 1.5)
                                 .frame(width: 16, height: 16)
                             if selectedMacroID == m.id {
-                                Circle().fill(T.accent).frame(width: 9, height: 9)
+                                Rectangle().fill(T.accent).frame(width: 9, height: 9)
                             }
                         }
                         VStack(alignment: .leading, spacing: 2) {
@@ -104,8 +103,8 @@ struct MacroChainView: View {
                     .font(T.mono(12))
                     .frame(minHeight: 100, maxHeight: 200)
                     .padding(8)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface2))
+                    .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
                 runButton(macro: macro)
             }
             .padding(12)
@@ -142,8 +141,8 @@ struct MacroChainView: View {
                     }
                     .foregroundColor(T.bad)
                     .padding(.horizontal, 12).padding(.vertical, 7)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.bad.opacity(0.12)))
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.bad.opacity(0.4), lineWidth: 1))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.bad.opacity(0.12)))
+                    .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.bad.opacity(0.4), lineWidth: 1))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Stop macro")
@@ -162,7 +161,7 @@ struct MacroChainView: View {
                 }
                 .foregroundColor(T.bg)
                 .padding(.horizontal, 14).padding(.vertical, 8)
-                .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.ink))
             }
             .buttonStyle(.plain)
             .disabled(disabled)

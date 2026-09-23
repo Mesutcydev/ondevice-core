@@ -16,17 +16,16 @@ struct SnippetPickerView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    header
+            List {
                     list
                     createButton
-                }
-                .padding(.bottom, 32)
+
             }
+            .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+            .navigationTitle("Saved text")
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }.foregroundColor(T.ink)
@@ -58,7 +57,11 @@ struct SnippetPickerView: View {
             emptyState
         } else {
             KSection(title: "saved") {
-                ForEach(Array(store.snippets.enumerated()), id: \.offset) { i, s in
+                // Snippets are created, edited and deleted from this very
+                // list, so index-keyed identity is actively wrong here: a
+                // delete shifts every row below it onto a new offset and
+                // SwiftUI reuses the wrong cell.
+                ForEach(Array(store.snippets.enumerated()), id: \.element.id) { i, s in
                     if i > 0 { Rectangle().fill(T.rule).frame(height: 1) }
                     row(for: s)
                         .contextMenu {
@@ -102,7 +105,7 @@ struct SnippetPickerView: View {
                 }
                 .foregroundColor(T.bg)
                 .padding(.horizontal, 14).padding(.vertical, 7)
-                .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.ink))
             }
             .buttonStyle(.plain)
             .padding(.top, 4)
@@ -150,7 +153,7 @@ struct SnippetPickerView: View {
             .padding(.horizontal, 16)
             .frame(minHeight: 44)
             .frame(maxWidth: .infinity)
-            .background(RoundedRectangle(cornerRadius: 8).fill(T.ink))
+            .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.ink))
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 16)
@@ -200,7 +203,7 @@ struct SnippetEditorView: View {
             .background(StudioPageBackground())
             .navigationTitle(isNew ? "new snippet" : "edit snippet")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }.foregroundColor(T.ink2)

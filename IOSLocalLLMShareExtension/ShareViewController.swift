@@ -167,16 +167,11 @@ final class ShareViewController: UIViewController {
 
     private func loadText(from attachment: NSItemProvider) async throws -> String {
         try await withCheckedThrowingContinuation { continuation in
-            attachment.loadItem(forTypeIdentifier: UTType.plainText.identifier, options: nil) { item, error in
-                if let error { continuation.resume(throwing: error); return }
-                if let s = item as? String {
-                    continuation.resume(returning: s); return
-                }
-                if let data = item as? Data,
-                   let s = String(data: data, encoding: .utf8) {
-                    continuation.resume(returning: s); return
-                }
-                continuation.resume(throwing: NSError(
+            // NSString's item-provider reading decodes every plain-text
+            // representation the old String/Data branches handled.
+            _ = attachment.loadObject(ofClass: String.self) { text, error in
+                if let text { continuation.resume(returning: text); return }
+                continuation.resume(throwing: error ?? NSError(
                     domain: "ShareExtension", code: -4,
                     userInfo: [NSLocalizedDescriptionKey: "Couldn't read text"]))
             }
@@ -185,15 +180,9 @@ final class ShareViewController: UIViewController {
 
     private func loadURL(from attachment: NSItemProvider) async throws -> URL {
         try await withCheckedThrowingContinuation { continuation in
-            attachment.loadItem(forTypeIdentifier: UTType.url.identifier, options: nil) { item, error in
-                if let error { continuation.resume(throwing: error); return }
-                if let url = item as? URL {
-                    continuation.resume(returning: url); return
-                }
-                if let s = item as? String, let url = URL(string: s) {
-                    continuation.resume(returning: url); return
-                }
-                continuation.resume(throwing: NSError(
+            _ = attachment.loadObject(ofClass: URL.self) { url, error in
+                if let url { continuation.resume(returning: url); return }
+                continuation.resume(throwing: error ?? NSError(
                     domain: "ShareExtension", code: -5,
                     userInfo: [NSLocalizedDescriptionKey: "Couldn't read URL"]))
             }

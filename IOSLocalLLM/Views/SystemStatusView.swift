@@ -13,29 +13,18 @@ struct SystemStatusView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    // Page header
-                    VStack(alignment: .leading, spacing: 4) {
-                        KCaption(text: "DIAGNOSTICS")
-                        KPageTitle(title: "status", size: 28)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 4)
-                    .padding(.bottom, 4)
-
+            List {
                     memorySection
                     computeSection
                     storageSection
                     modelsSection
                     usageHistorySection
-                }
-                .padding(.bottom, 32)
             }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
             .background(StudioPageBackground())
+            .navigationTitle("System status")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
@@ -92,7 +81,7 @@ struct SystemStatusView: View {
                 }
             }
             .frame(height: 6)
-            .clipShape(RoundedRectangle(cornerRadius: 3))
+            .clipShape(RoundedRectangle(cornerRadius: StudioRadius.panel))
         }
     }
 

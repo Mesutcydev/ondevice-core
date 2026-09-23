@@ -154,6 +154,13 @@ final class AppSettings: ObservableObject {
     /// Comma-separated browser origins allowed to read API responses.
     /// Empty keeps CORS off (terminal / native clients only).
     @AppStorage("localAPICORSOrigins") var localAPICORSOrigins: String = ""
+    // Keep existing API behavior until the user changes these controls.
+    @AppStorage("localAPIToolCallingEnabled") var localAPIToolCallingEnabled: Bool = true
+    @AppStorage("localAPIParallelToolCallsEnabled") var localAPIParallelToolCallsEnabled: Bool = true
+    @AppStorage("localAPIReasoningEnabled") var localAPIReasoningEnabled: Bool = true
+    @AppStorage("localAPIStrictToolSchemasEnabled") var localAPIStrictToolSchemasEnabled: Bool = false
+    @AppStorage("localAPIAutoLoadModel") var localAPIAutoLoadModel: Bool = false
+    @AppStorage("localAPIMaxOutputTokens") var localAPIMaxOutputTokens: Int = 4096
 
     // FastVLM pipeline
     // OCR fallback defaults OFF: the lens starts in visual (describe) mode, so
@@ -165,7 +172,9 @@ final class AppSettings: ObservableObject {
     @AppStorage("showDebugModelShapes")    var showDebugModelShapes: Bool = false
     /// HuggingFace repo ID for FastVLM MLX weights. User-editable so they
     /// can switch to a working mirror if the default 404s/401s.
-    @AppStorage("fastVLMRepoID")           var fastVLMRepoID: String = "apple/FastVLM-0.5B-MLX"
+    /// Default is Apple's official fp16 bundle — the former default
+    /// `apple/FastVLM-0.5B-MLX` started returning 401 anonymously (2026-09).
+    @AppStorage("fastVLMRepoID")           var fastVLMRepoID: String = FastVLMConfig.defaultRepoID
 
     /// Active visual model the camera tab uses. Empty string = the built-in
     /// FastVLM path (Core ML encoder + MLX decoder). Any other value is a
@@ -208,15 +217,23 @@ final class AppSettings: ObservableObject {
     // UI
     @AppStorage("showFPSCounter")          var showFPSCounter: Bool = true
     @AppStorage("hapticsEnabled")          var hapticsEnabled: Bool = true
-    /// "light", "dark", or "oled" — the palette switches accordingly. "oled"
-    /// is the Plum Dusk glass direction (see KoduTheme.oled).
-    @AppStorage("appearance")              var appearance: String = "light"
+    /// "system", "light", "dark", or "oled". OLED keeps the dark controls
+    /// on a true-black page canvas (see KoduTheme.oled).
+    ///
+    /// New installations follow the system; saved appearance choices remain intact.
+    @AppStorage("appearance")              var appearance: String = "system"
 
     /// SwiftUI color scheme for the chosen appearance. Both "dark" and "oled"
     /// resolve to `.dark`; only "light" is light. Use this instead of an inline
     /// `appearance == "dark" ? .dark : .light` so OLED doesn't fall through to
     /// light.
-    var resolvedColorScheme: ColorScheme { appearance == "light" ? .light : .dark }
+    var resolvedColorScheme: ColorScheme? {
+        switch appearance {
+        case "light": return .light
+        case "dark", "oled": return .dark
+        default: return nil
+        }
+    }
     /// UI language override: "system" (follow device), "en", or "tr".
     /// Live-switchable via LocalizationService — see Settings → INTERFACE
     /// → language picker.

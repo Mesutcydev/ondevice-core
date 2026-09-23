@@ -127,6 +127,20 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     private init() {
         let raw = UserDefaults.standard.string(forKey: "uiLanguage") ?? AppLanguage.system.rawValue
         self.language = AppLanguage(rawValue: raw) ?? .system
+
+        // The resolved system language is cached for the render path, so it
+        // has to be dropped when iOS tells us the user reordered their
+        // preferred languages — otherwise a live locale change would keep
+        // rendering the old translation until relaunch. Singleton lifetime,
+        // so the observer is never removed.
+        NotificationCenter.default.addObserver(
+            forName: NSLocale.currentLocaleDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Self.invalidateSystemLanguageCache()
+            self?.objectWillChange.send()
+        }
     }
 
     /// Programmatically change the active language. Persists to
@@ -153,24 +167,48 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     /// The language actually in force: the explicit choice, or the closest
     /// supported match for the device's preferred language when set to
     /// `.system`. Never returns `.system` itself.
-    var effectiveLanguage: AppLanguage {
-        if language != .system { return language }
+    /// ISO prefix → translation table. A dictionary rather than a ladder of
+    /// fourteen `hasPrefix` calls, so resolution is one hash instead of up to
+    /// fourteen string comparisons.
+    private static let systemLanguageMap: [String: AppLanguage] = [
+        "de": .german,  "fr": .french,     "es": .spanish, "pt": .portuguese,
+        "it": .italian, "el": .greek,      "ro": .romanian, "ru": .russian,
+        "tr": .turkish, "ar": .arabic,     "hi": .hindi,   "zh": .chinese,
+        "ja": .japanese, "ko": .korean,
+    ]
+
+    /// Resolved once per locale, not once per string.
+    ///
+    /// `effectiveLanguage` is read by `t()`, which is called from view bodies
+    /// — so once per `Text` per body evaluation. Resolving it each time put a
+    /// `Locale.preferredLanguages` allocation plus up to fourteen prefix
+    /// comparisons on the render path of every localized string in the app.
+    /// Invalidated when the system locale changes; an explicit in-app choice
+    /// bypasses this path entirely.
+    private static let cacheLock = NSLock()
+    nonisolated(unsafe) private static var cachedSystemLanguage: AppLanguage?
+
+    private static func resolvedSystemLanguage() -> AppLanguage {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        if let cached = cachedSystemLanguage { return cached }
         let preferred = Locale.preferredLanguages.first ?? "en"
-        if preferred.hasPrefix("de") { return .german }
-        if preferred.hasPrefix("fr") { return .french }
-        if preferred.hasPrefix("es") { return .spanish }
-        if preferred.hasPrefix("pt") { return .portuguese }
-        if preferred.hasPrefix("it") { return .italian }
-        if preferred.hasPrefix("el") { return .greek }
-        if preferred.hasPrefix("ro") { return .romanian }
-        if preferred.hasPrefix("ru") { return .russian }
-        if preferred.hasPrefix("tr") { return .turkish }
-        if preferred.hasPrefix("ar") { return .arabic }
-        if preferred.hasPrefix("hi") { return .hindi }
-        if preferred.hasPrefix("zh") { return .chinese }
-        if preferred.hasPrefix("ja") { return .japanese }
-        if preferred.hasPrefix("ko") { return .korean }
-        return .english
+        let code = String(preferred.prefix(2)).lowercased()
+        let resolved = systemLanguageMap[code] ?? .english
+        cachedSystemLanguage = resolved
+        return resolved
+    }
+
+    /// Drop the resolved system language so the next read re-derives it.
+    /// Called when iOS reports the user changed their preferred languages.
+    static func invalidateSystemLanguageCache() {
+        cacheLock.lock()
+        cachedSystemLanguage = nil
+        cacheLock.unlock()
+    }
+
+    var effectiveLanguage: AppLanguage {
+        language != .system ? language : Self.resolvedSystemLanguage()
     }
 
     func t(_ key: String) -> String {

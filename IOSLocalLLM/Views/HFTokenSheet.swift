@@ -63,7 +63,7 @@ struct HFTokenSheet: View {
             }
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") { dismiss() }
@@ -86,10 +86,7 @@ struct HFTokenSheet: View {
     private var headerBlock: some View {
         VStack(alignment: .leading, spacing: 6) {
             KCaption(text: "API · HUGGING FACE")
-            Text("Access Token")
-                .font(T.sans(26, .semibold))
-                .tracking(-0.5)
-                .foregroundColor(T.ink)
+            KPageTitle(title: "Access token")
             Text("Paste a personal access token to download gated models like Gemma source weights, Llama 3, and Ministral. Generate one at huggingface.co/settings/tokens (read access is enough).")
                 .font(T.sans(13))
                 .foregroundColor(T.ink2)
@@ -146,8 +143,8 @@ struct HFTokenSheet: View {
                     .buttonStyle(.plain)
                 }
                 .padding(10)
-                .background(RoundedRectangle(cornerRadius: 8).fill(T.surface2))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(T.rule, lineWidth: 0.5))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface2))
+                .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 0.5))
 
                 HStack(spacing: 8) {
                     Button {
@@ -189,8 +186,9 @@ struct HFTokenSheet: View {
                         .foregroundColor(T.accent)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accentSoft))
-                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.accent.opacity(0.4), lineWidth: 0.5))
+                        .frame(minHeight: 44)
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.accentSoft))
+                        .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(T.accent.opacity(0.4), lineWidth: 0.5))
                     }
                     .buttonStyle(.plain)
                     .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || testing)
@@ -211,8 +209,8 @@ struct HFTokenSheet: View {
                                 .foregroundColor(T.bad)
                                 .padding(.horizontal, 10)
                                 .padding(.vertical, 6)
-                                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.bad.opacity(0.10)))
-                                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.bad.opacity(0.30), lineWidth: 0.5))
+                                .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.bad.opacity(0.10)))
+                                .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(T.bad.opacity(0.30), lineWidth: 0.5))
                         }
                         .buttonStyle(.plain)
                     }
@@ -257,8 +255,8 @@ struct HFTokenSheet: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 10).fill(tint.opacity(0.08)))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(tint.opacity(0.35), lineWidth: 0.5))
+        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(tint.opacity(0.08)))
+        .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(tint.opacity(0.35), lineWidth: 0.5))
         .padding(.horizontal, 16)
         .padding(.top, 10)
     }

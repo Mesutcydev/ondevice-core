@@ -49,7 +49,7 @@ struct VoiceControlsView: View {
             }
             .foregroundColor(T.warn)
             .padding(.horizontal, 10).padding(.vertical, 8)
-            .background(RoundedRectangle(cornerRadius: 6).fill(T.warn.opacity(0.12)))
+            .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.warn.opacity(0.12)))
         }
         .buttonStyle(.plain)
     }
@@ -85,7 +85,7 @@ struct SpeakerAnimationView: View {
             let phase = reduceMotion ? 0 : context.date.timeIntervalSinceReferenceDate * .pi * 2
             HStack(spacing: 2) {
                 ForEach(0..<3) { i in
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                         .fill(T.ink2)
                         .frame(width: 2, height: 5 + CGFloat(sin(phase + Double(i) * .pi / 2)) * 3)
                 }

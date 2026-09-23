@@ -1,320 +1,225 @@
 import SwiftUI
+import OnDeviceUI
 
-// MARK: - ImageGenerationView
-//
-// Text-to-image generation UI over `ImageGenerationService`. Lets the user
-// pick one of the on-device diffusion models, type a prompt, and generate.
-// Presented as a sheet from the Models tab's Images section.
-
+/// Current native Image studio composition over the existing generation service.
 struct ImageGenerationView: View {
-
-    @ObservedObject private var svc = ImageGenerationService.shared
-    @Environment(\.koduTheme) private var T
+    var onOpenMenu: (() -> Void)? = nil
+    @ObservedObject private var service = ImageGenerationService.shared
     @Environment(\.dismiss) private var dismiss
-
-    @State private var prompt: String = ""
-    @State private var negativePrompt: String = ""
-    @State private var steps: Double = 0          // 0 = use model default
-    @State private var showAdvanced = false
-
-    private var model: ImageGenerationService.Model { svc.selectedModel }
+    @Environment(\.dynamicTypeSize) private var dynamicType
+    @FocusState private var promptFocused: Bool
+    @State private var prompt = ""
+    @State private var negativePrompt = ""
+    @State private var steps: Double = 0
+    @State private var showsModels = false
+    @State private var showsOptions = false
+    @State private var deletingModel: ImageGenerationService.Model?
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                StudioPageBackground()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        modelPicker
-                        preview
-                        promptCard
-                        generateStrip
-                        if showAdvanced { advancedCard }
+            ScrollView {
+                VStack(alignment: .leading, spacing: ODLayout.groupGap) {
+                    if let image = service.image {
+                        Image(uiImage: image)
+                            .resizable().scaledToFit()
+                            .clipShape(RoundedRectangle(cornerRadius: ODLayout.corner))
+                            .accessibilityLabel("Generated image")
+                        if let resultPrompt = service.resultPrompt {
+                            Text(resultPrompt).font(.body).textSelection(.enabled)
+                                .accessibilityIdentifier("image.result.prompt")
+                        }
+                    } else {
+                        emptyCanvas
+                        ODImagePromptSuggestions(prompt: $prompt) { promptFocused = true }
+                            .disabled(service.isWorking)
                     }
-                    .padding(16)
-                    .padding(.bottom, 40)
+                    if service.isWorking {
+                        HStack(spacing: ODLayout.elementGap) {
+                            ProgressView()
+                            Text(service.statusMessage.isEmpty ? "Preparing image" : service.statusMessage)
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
+                    }
+                    if case .failed(let message) = service.state {
+                        Label(message, systemImage: "exclamationmark.circle")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
                 }
-                .scrollDismissesKeyboard(.interactively)
+                .padding(ODLayout.pageInset)
             }
-            .navigationTitle("Image Generation")
-            .navigationBarTitleDisplayMode(.inline)
+            .background { ODPageBackground().ignoresSafeArea() }
+            .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom, spacing: 0) { ODWorkspaceBottomBar { nextImageDock } }
+            .navigationTitle("Image studio")
+            .navigationBarTitleDisplayMode(onOpenMenu == nil ? .inline : .large)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                if let onOpenMenu {
+                    ToolbarItem(placement: .topBarLeading) {
+                        ODAppMenuButton(action: onOpenMenu).accessibilityIdentifier("navigation.menu")
+                    }
+                } else {
+                    ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
                 }
-                ToolbarItem(placement: .primaryAction) {
-                    if let img = svc.image {
-                        ShareLink(item: Image(uiImage: img),
-                                  preview: SharePreview("Generated image",
-                                                        image: Image(uiImage: img))) {
-                            Image(systemName: "square.and.arrow.up")
+                ToolbarItem(placement: .topBarTrailing) {
+                    if let image = service.image, let url = service.resultURL {
+                        ShareLink(item: url, preview: SharePreview("Generated image", image: Image(uiImage: image))) {
+                            Label("Share image", systemImage: "square.and.arrow.up")
                         }
                     }
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    ODKeyboardDismissKey(focus: $promptFocused)
+                    Spacer(minLength: 0)
+                }
             }
+            .sheet(isPresented: $showsModels) { modelPicker }
+            .sheet(isPresented: $showsOptions) { options }
         }
     }
 
-    // MARK: - Model picker
+    /// A compact marker for the result slot before the first generation. It
+    /// pre-teaches where output lands without dominating the writing area.
+    private var emptyCanvas: some View {
+        HStack(spacing: ODLayout.labelGap) {
+            Image(systemName: "photo.on.rectangle.angled")
+                .font(.title3.weight(.light))
+            Text("Your image will appear here")
+                .font(.subheadline)
+        }
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity)
+        .frame(height: 96)
+        .background(
+            RoundedRectangle(cornerRadius: ODLayout.corner, style: .continuous)
+                .fill(ODPalette.text.opacity(0.045))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: ODLayout.corner, style: .continuous)
+                .strokeBorder(ODPalette.text.opacity(0.10), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("No image yet. Your image will appear here.")
+    }
+
+    private var nextImageDock: some View {
+        VStack(alignment: .leading, spacing: ODLayout.elementGap) {
+            TextField("Describe an image", text: $prompt, axis: .vertical)
+                .font(.body).lineLimit(1...6).submitLabel(.return)
+                .focused($promptFocused)
+                .padding(.vertical, 4)
+                .accessibilityIdentifier("image.draft.prompt")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: ODLayout.elementGap) { modelActionLabel; Spacer(minLength: 8); createButton }
+                VStack(alignment: .leading, spacing: ODLayout.elementGap) { modelActionLabel; createButton }
+            }
+        }
+        .padding(ODLayout.panelHorizontalInset)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: ODLayout.panelCorner))
+        .padding(.horizontal, ODLayout.pageInset)
+        .padding(.vertical, ODLayout.elementGap)
+        .background { ODPageBackground().ignoresSafeArea() }
+    }
+
+    @ViewBuilder private var modelActionLabel: some View {
+        if !service.isInstalled(service.selectedModel) && !service.isWorking {
+            Text("Image model required").font(.subheadline).foregroundStyle(.secondary)
+        } else { modelMenu }
+    }
+
+    private var modelMenu: some View {
+        Menu {
+            Button("Choose image model", systemImage: "cube") { showsModels = true }
+            Button("Generation options", systemImage: "slider.horizontal.3") { showsOptions = true }
+        } label: {
+            Label(service.selectedModel.displayName, systemImage: "chevron.down")
+                .font(.subheadline)
+                .foregroundStyle(ODPalette.secondary)
+                .lineLimit(1)
+                .frame(minHeight: ODLayout.minimumHit)
+        }
+        .disabled(service.isWorking)
+        .accessibilityIdentifier("image.model")
+    }
+
+    private var generationFailed: Bool { if case .failed = service.state { return true }; return false }
+
+    private var createButton: some View {
+        Button(service.isCancelling ? "Stopping" : service.isWorking ? "Cancel" : !service.isInstalled(service.selectedModel) ? "Choose model" : generationFailed ? "Retry" : "Create", systemImage: service.isWorking ? "stop.fill" : !service.isInstalled(service.selectedModel) ? "cube" : generationFailed ? "arrow.clockwise" : "arrow.up") {
+            if service.isWorking { service.cancel() }
+            else if !service.isInstalled(service.selectedModel) { showsModels = true }
+            else {
+                // The service snapshots model, prompt and options before any asynchronous work.
+                ODBridge.shared.store.requestExclusiveOperation("Creating an image") {
+                    service.generate(prompt: prompt, negativePrompt: negativePrompt, steps: steps < 1 ? nil : Int(steps))
+                }
+                promptFocused = false
+            }
+        }
+        .buttonStyle(.glassProminent).tint(.blue)
+        .controlSize(.large)
+        .disabled(service.isCancelling || (!service.isWorking && service.isInstalled(service.selectedModel) && prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
+    }
 
     private var modelPicker: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("MODEL")
-                .font(T.mono(10, .semibold))
-                .tracking(0.6)
-                .foregroundColor(T.ink3)
-            ForEach(ImageGenerationService.catalog) { m in
-                modelRow(m)
-            }
-            Text("SDXL needs the highest-memory iPhones. Live headroom is checked before loading it.")
-                .font(T.mono(9))
-                .foregroundColor(T.ink3)
-                .padding(.top, 2)
-        }
-    }
-
-    @ViewBuilder
-    private func modelRow(_ m: ImageGenerationService.Model) -> some View {
-        let installed = svc.isInstalled(m)
-        let selected = m.id == svc.selectedModelID
-        Button {
-            svc.select(m.id)
-            HapticManager.impact(.light)
-        } label: {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: selected ? "largecircle.fill.circle" : "circle")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(selected ? T.accent : T.ink4)
-                    .padding(.top, 2)
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
-                        Text(m.displayName)
-                            .font(T.sans(16, .semibold))
-                            .foregroundColor(T.ink)
-                        if installed {
-                            Text("installed")
-                                .font(T.mono(8, .semibold))
-                                .foregroundColor(T.good)
-                                .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.good.opacity(0.14)))
-                        }
-                    }
-                    Text(m.subtitle)
-                        .font(T.mono(9))
-                        .foregroundColor(T.ink3)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(m.sizeLabel)
-                        .font(T.mono(10, .semibold))
-                        .foregroundColor(T.ink2)
-                    if installed {
+        NavigationStack {
+            List {
+                ForEach(ImageGenerationService.catalog) { model in
+                    Section {
                         Button {
-                            svc.deleteModel(m)
-                            HapticManager.impact(.medium)
+                            service.select(model.id)
+                            showsModels = false
                         } label: {
-                            Text("delete")
-                                .font(T.mono(9, .semibold))
-                                .foregroundColor(T.bad)
+                            HStack(alignment: .top, spacing: ODLayout.labelGap) {
+                                VStack(alignment: .leading, spacing: ODLayout.unit) {
+                                    Text(model.displayName).font(.body).foregroundStyle(ODPalette.text)
+                                    Text(model.subtitle).font(.footnote).foregroundStyle(.secondary)
+                                    Text(model.sizeLabel).font(.footnote).foregroundStyle(.secondary)
+                                }
+                                Spacer(minLength: 0)
+                                if model.id == service.selectedModelID { Image(systemName: "checkmark").foregroundStyle(ODPalette.text) }
+                            }
                         }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(selected ? T.accentSoft : T.surface)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(selected ? T.accent.opacity(0.4) : T.rule, lineWidth: selected ? 1 : 0.5)
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
-    // MARK: - Preview
-
-    private var preview: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.clear)
-                .aspectRatio(1, contentMode: .fit)
-                .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface)
-
-            if let img = svc.image {
-                Image(uiImage: img)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            } else {
-                VStack(spacing: 10) {
-                    Image(systemName: "photo.artframe")
-                        .font(.system(size: 34, weight: .light))
-                        .foregroundColor(T.ink4)
-                    Text("Your generated image appears here")
-                        .font(T.mono(10))
-                        .foregroundColor(T.ink3)
-                }
-            }
-
-            // Progress overlay for download / load / generate.
-            if let overlay = progressOverlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(T.bg.opacity(0.72))
-                VStack(spacing: 12) {
-                    if let frac = overlay.fraction {
-                        ProgressView(value: frac).tint(T.accent)
-                            .frame(width: 160)
-                        Text("\(Int(frac * 100))%")
-                            .font(T.mono(11, .semibold))
-                            .foregroundColor(T.accent)
-                    } else {
-                        ProgressView().tint(T.accent)
-                    }
-                    Text(overlay.label)
-                        .font(T.mono(10))
-                        .foregroundColor(T.ink2)
-                }
-                .padding(20)
-            }
-        }
-    }
-
-    private struct Overlay { let label: String; let fraction: Double? }
-
-    private var progressOverlay: Overlay? {
-        switch svc.state {
-        case .downloading(let f): return Overlay(label: "Downloading \(model.displayName)…", fraction: f)
-        case .loading:            return Overlay(label: "Loading \(model.displayName)…", fraction: nil)
-        case .generating(let f):  return Overlay(label: "Generating…", fraction: f)
-        default:                  return nil
-        }
-    }
-
-    // MARK: - Prompt
-
-    private var promptCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("PROMPT")
-                .font(T.mono(10, .semibold))
-                .tracking(0.6)
-                .foregroundColor(T.ink3)
-            TextField("a watercolor fox in a misty forest…",
-                      text: $prompt, axis: .vertical)
-                .font(T.sans(15))
-                .foregroundColor(T.ink)
-                .tint(T.accent)
-                .lineLimit(2...5)
-                .padding(12)
-                .background(RoundedRectangle(cornerRadius: 14).fill(T.surface))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(T.rule, lineWidth: 0.5))
-
-            Button { withAnimation { showAdvanced.toggle() } } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: showAdvanced ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                    Text(showAdvanced ? "Hide options" : "More options")
-                        .font(T.mono(10, .semibold))
-                }
-                .foregroundColor(T.ink3)
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private var advancedCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("NEGATIVE PROMPT")
-                    .font(T.mono(9, .semibold)).foregroundColor(T.ink3)
-                TextField("things to avoid…", text: $negativePrompt, axis: .vertical)
-                    .font(T.sans(14))
-                    .foregroundColor(T.ink)
-                    .tint(T.accent)
-                    .lineLimit(1...3)
-                    .padding(10)
-                    .background(RoundedRectangle(cornerRadius: 12).fill(T.surface))
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(T.rule, lineWidth: 0.5))
-            }
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("STEPS")
-                        .font(T.mono(9, .semibold)).foregroundColor(T.ink3)
-                    Spacer()
-                    Text(steps < 1 ? "default (\(model.defaultSteps))" : "\(Int(steps))")
-                        .font(T.mono(10, .semibold)).foregroundColor(T.ink2)
-                }
-                Slider(value: $steps, in: 0...50, step: 1).tint(T.accent)
-                Text("More steps = more detail but slower. Turbo models need only 1–4.")
-                    .font(T.mono(8)).foregroundColor(T.ink3)
-            }
-        }
-        .padding(14)
-        .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface.opacity(0.6))
-    }
-
-    // MARK: - Generate
-
-    private var isBusy: Bool {
-        switch svc.state {
-        case .downloading, .loading, .generating: return true
-        default: return false
-        }
-    }
-
-    private var generateStrip: some View {
-        VStack(spacing: 8) {
-            if case .failed(let msg) = svc.state {
-                Text(msg)
-                    .font(T.mono(10))
-                    .foregroundColor(T.bad)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            HStack(spacing: 10) {
-                if isBusy {
-                    Button {
-                        svc.cancel()
-                        HapticManager.impact(.medium)
-                    } label: {
-                        Text("Stop")
-                            .font(T.sans(16, .semibold))
-                            .foregroundColor(T.bad)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(RoundedRectangle(cornerRadius: 16).fill(T.bad.opacity(0.12)))
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    Button {
-                        KeyboardDismiss.now()
-                        let s = steps < 1 ? nil : Int(steps)
-                        svc.generate(prompt: prompt,
-                                     negativePrompt: negativePrompt,
-                                     steps: s)
-                        HapticManager.impact(.medium)
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "sparkles")
-                            Text(svc.isInstalled(model) ? "Generate" : "Download & Generate")
+                        if service.isInstalled(model) {
+                            Button("Delete model", role: .destructive) { deletingModel = model }
+                        } else if service.isDownloading(model) {
+                            ProgressView(value: service.downloadProgress(for: model))
+                        } else {
+                            Button("Download model", systemImage: "arrow.down.circle") { service.startDownload(model) }
                         }
-                        .font(T.sans(16, .semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(prompt.trimmingCharacters(in: .whitespaces).isEmpty
-                                      ? T.ink4 : T.roseHi)
-                        )
+                        if let error = service.directDownloadErrors[model.id] {
+                            Text(error).font(.footnote).foregroundStyle(.secondary)
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .disabled(prompt.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Image models")
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showsModels = false } } }
+            .confirmationDialog("Delete image model?", isPresented: Binding(get: { deletingModel != nil }, set: { if !$0 { deletingModel = nil } })) {
+                Button("Delete", role: .destructive) {
+                    if let model = deletingModel { service.deleteModel(model) }
+                    deletingModel = nil
+                }
+            }
+        }
+    }
+
+    private var options: some View {
+        NavigationStack {
+            Form {
+                if service.selectedModel.supportsNegativePrompt {
+                    Section("Avoid in the image") {
+                        TextField("Negative prompt", text: $negativePrompt, axis: .vertical).lineLimit(1...6)
+                    }
+                }
+                Section("Generation steps") {
+                    LabeledContent("Steps", value: steps < 1 ? "Model default" : String(Int(steps)))
+                    Slider(value: $steps, in: 0...50, step: 1)
+                    Text("More steps take longer. Turbo models usually need only a few.").font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("Generation options")
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showsOptions = false } } }
         }
     }
 }

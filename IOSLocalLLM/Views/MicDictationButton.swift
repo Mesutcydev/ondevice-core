@@ -1,4 +1,5 @@
 import SwiftUI
+import OnDeviceUI
 
 // MARK: - MicDictationButton
 // Hold-to-talk mic button. Tap-and-hold (or single-tap to toggle) starts
@@ -13,20 +14,38 @@ struct MicDictationButton: View {
     @State private var preCaptureText: String = ""    // baseline before this session
     @State private var permissionsRequested = false
     @State private var showDeniedSheet = false
+    @State private var authorizationRequestID = UUID()
 
     @Environment(\.koduTheme) private var T
 
     /// When true, show the recording state inline as a chip; otherwise toggle the icon only.
     var compact: Bool = false
+    var resetID: UUID? = nil
+    var showsTitle = false
 
     var body: some View {
+        Group {
+        if dictation.supportsLocalDictation {
         Button {
             HapticManager.impact(.light)
-            Task { await toggleRecording() }
+            let requestID = authorizationRequestID
+            ODBridge.shared.store.requestExclusiveOperation("Dictation") { Task { await toggleRecording(requestID: requestID) } }
         } label: {
-            iconLabel
+            if showsTitle {
+                Label(dictation.isRecording ? "Stop dictation" : "Start dictation",
+                      systemImage: dictation.isRecording ? "stop.circle" : "mic")
+                    .frame(minHeight: ODLayout.minimumHit)
+            } else { iconLabel }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(dictation.isRecording ? "Stop dictation" : "Dictate message")
+        } else if showsTitle {
+            Text("On-device dictation is unavailable for the current language.")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+        }
+        .onDisappear { authorizationRequestID = UUID(); dictation.stop() }
+        .onChange(of: resetID) { _, _ in authorizationRequestID = UUID(); dictation.stop() }
         .alert("Microphone access needed",
                isPresented: $showDeniedSheet) {
             Button("Open Settings") {
@@ -42,45 +61,17 @@ struct MicDictationButton: View {
 
     // MARK: - Label
 
-    @ViewBuilder
     private var iconLabel: some View {
-        if dictation.isRecording {
-            // Recording: red pulsing dot + level meter
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(T.bad)
-                    .frame(width: 8, height: 8)
-                    .scaleEffect(1 + CGFloat(dictation.levelMeter) * 0.6)
-                    .animation(.easeOut(duration: 0.18), value: dictation.levelMeter)
-                if !compact {
-                    Text("listening")
-                        .font(T.mono(11, .semibold))
-                        .foregroundColor(T.bad)
-                }
-            }
-            .padding(.horizontal, compact ? 0 : 8)
-            .frame(width: compact ? 36 : nil, height: 36)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(T.bad.opacity(0.12))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(T.bad.opacity(0.4), lineWidth: 1)
-            )
-        } else {
-            // Idle: standard mic icon button
-            Image(systemName: "mic")
-                .font(.system(size: 14))
-                .foregroundColor(T.ink2)
-                .frame(width: 36, height: 36)
-                .kGlass(cornerRadius: StudioRadius.small, fallbackFill: T.surface)
-        }
+        Image(systemName: dictation.isRecording ? "mic.fill" : "mic")
+            .font(.title3)
+            .foregroundStyle(dictation.isRecording ? ODPalette.red : ODPalette.text)
+            .frame(minWidth: ODLayout.minimumHit, minHeight: ODLayout.minimumHit)
+            .contentShape(Rectangle())
     }
 
     // MARK: - Actions
 
-    private func toggleRecording() async {
+    private func toggleRecording(requestID: UUID) async {
         if dictation.isRecording {
             dictation.stop()
             return
@@ -90,6 +81,7 @@ struct MicDictationButton: View {
         if !permissionsRequested {
             permissionsRequested = true
             let ok = await dictation.requestAuthorization()
+            guard authorizationRequestID == requestID else { return }
             if !ok {
                 showDeniedSheet = true
                 return
@@ -99,12 +91,13 @@ struct MicDictationButton: View {
             return
         }
 
-        guard dictation.isAvailable else {
+        guard dictation.supportsLocalDictation else {
             ToastCenter.shared.error("Speech recognition unavailable",
                                       detail: dictation.lastError ?? "Try again in a moment.")
             return
         }
 
+        guard authorizationRequestID == requestID else { return }
         preCaptureText = text
         do {
             try dictation.start { transcript, isFinal in

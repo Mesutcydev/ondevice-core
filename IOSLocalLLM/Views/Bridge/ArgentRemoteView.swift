@@ -114,7 +114,7 @@ struct ArgentRemoteView: View {
                           size: 11, color: T.ink)
                         .textSelection(.enabled)
                         .padding(.horizontal, 8).padding(.vertical, 6)
-                        .background(RoundedRectangle(cornerRadius: 6,
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel,
                                                      style: .continuous)
                                         .fill(T.surface3))
                     KSecondaryButton(label: "re-check",
@@ -129,7 +129,7 @@ struct ArgentRemoteView: View {
         case .ready(let version):
             KSection(title: "argent · ready") {
                 HStack(spacing: 8) {
-                    Circle().fill(T.good).frame(width: 7, height: 7)
+                    Rectangle().fill(T.good).frame(width: 7, height: 7)
                     KMono(text: version ?? "version unknown",
                           size: 11, color: T.ink2)
                     Spacer()
@@ -147,7 +147,7 @@ struct ArgentRemoteView: View {
             KSection(title: "argent · not responding") {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
-                        Circle().fill(T.warn).frame(width: 7, height: 7)
+                        Rectangle().fill(T.warn).frame(width: 7, height: 7)
                         KMono(text: "argent is installed but didn't report a version. Commands won't work until it's reachable.",
                               size: 11, color: T.ink2)
                             .fixedSize(horizontal: false, vertical: true)
@@ -220,7 +220,7 @@ struct ArgentRemoteView: View {
 
     private func deviceRow(_ d: DeviceRow) -> some View {
         HStack(spacing: 10) {
-            Circle()
+            RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
                 .fill(d.state == "Booted" ? T.good : T.ink4)
                 .frame(width: 7, height: 7)
             VStack(alignment: .leading, spacing: 2) {
@@ -352,7 +352,7 @@ struct ArgentRemoteView: View {
                         .textFieldStyle(.plain)
                         .font(T.mono(11))
                         .padding(.horizontal, 8).padding(.vertical, 6)
-                        .background(RoundedRectangle(cornerRadius: 6,
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel,
                                                      style: .continuous)
                                         .fill(T.surface3))
                         .autocorrectionDisabled(true)
@@ -432,7 +432,7 @@ struct ArgentRemoteView: View {
                         .textFieldStyle(.plain)
                         .font(T.mono(11))
                         .padding(.horizontal, 8).padding(.vertical, 6)
-                        .background(RoundedRectangle(cornerRadius: 6,
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel,
                                                      style: .continuous)
                                         .fill(T.surface3))
                         .autocorrectionDisabled(true)
@@ -455,7 +455,7 @@ struct ArgentRemoteView: View {
                         .textFieldStyle(.plain)
                         .font(T.mono(11))
                         .padding(.horizontal, 8).padding(.vertical, 6)
-                        .background(RoundedRectangle(cornerRadius: 6,
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel,
                                                      style: .continuous)
                                         .fill(T.surface3))
                         .keyboardType(.URL)
@@ -479,7 +479,7 @@ struct ArgentRemoteView: View {
                         .textFieldStyle(.plain)
                         .font(T.mono(11))
                         .padding(.horizontal, 8).padding(.vertical, 6)
-                        .background(RoundedRectangle(cornerRadius: 6,
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel,
                                                      style: .continuous)
                                         .fill(T.surface3))
                         .autocorrectionDisabled(true)
@@ -540,7 +540,7 @@ struct ArgentRemoteView: View {
                         .textFieldStyle(.plain)
                         .font(T.mono(11))
                         .padding(.horizontal, 8).padding(.vertical, 6)
-                        .background(RoundedRectangle(cornerRadius: 6,
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel,
                                                      style: .continuous)
                                         .fill(T.surface3))
                         .autocorrectionDisabled(true)
@@ -554,7 +554,7 @@ struct ArgentRemoteView: View {
                         .textFieldStyle(.plain)
                         .font(T.mono(11))
                         .padding(.horizontal, 8).padding(.vertical, 6)
-                        .background(RoundedRectangle(cornerRadius: 6,
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel,
                                                      style: .continuous)
                                         .fill(T.surface3))
                         .autocorrectionDisabled(true)
@@ -626,10 +626,10 @@ struct ArgentRemoteView: View {
                             Image(uiImage: img)
                                 .resizable()
                                 .scaledToFit()
-                                .clipShape(RoundedRectangle(cornerRadius: 8,
+                                .clipShape(RoundedRectangle(cornerRadius: StudioRadius.panel,
                                                             style: .continuous))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 8,
+                                    RoundedRectangle(cornerRadius: StudioRadius.panel,
                                                      style: .continuous)
                                         .stroke(T.rule, lineWidth: 0.5)
                                 )

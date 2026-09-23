@@ -1,4 +1,5 @@
 import SwiftUI
+import OnDeviceUI
 
 // MARK: - StudioAddSheet
 //
@@ -8,6 +9,7 @@ import SwiftUI
 
 struct StudioAddSheet: View {
 
+    @Binding var draft: String
     @Binding var thinkingEnabled: Bool
     @Binding var webLookupsAllowed: Bool
 
@@ -29,160 +31,73 @@ struct StudioAddSheet: View {
     @Environment(\.koduTheme) private var T
 
     var body: some View {
-        let S = T.studio
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    header
-
-                    StudioHairline()
-
-                    row(symbol: "camera", title: "Photo",
-                        subtitle: "Library, or take one now", chevron: true) {
-                        onPhoto()
-                    }
-                    row(symbol: "doc.text", title: "File",
-                        subtitle: "PDF, text, code — read on device", chevron: true) {
-                        onFile()
-                    }
-                    row(symbol: "doc.on.clipboard", title: "Paste clipboard",
-                        // ponytail: `hasStrings` instead of reading the string for a
-                        // live character count — reading it on every sheet open fires
-                        // the system paste prompt. The read happens on tap, where the
-                        // user expects it.
-                        subtitle: UIPasteboard.general.hasStrings
-                            ? "Text ready to paste"
-                            : "Nothing copied",
-                        chevron: false) {
-                        onPaste()
-                    }
-                    row(symbol: "text.badge.plus", title: "Saved text",
-                        subtitle: "\(snippetCount) snippet\(snippetCount == 1 ? "" : "s")",
-                        chevron: true) {
-                        onSnippets()
-                    }
-
-                    StudioMonoLabel(text: "how it answers", size: 11, tracking: 0.9)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, StudioSpacing.xl)
-                        .padding(.top, 14)
-                        .padding(.bottom, StudioSpacing.s)
-
-                    toggleRow(title: "Think before answering",
-                              subtitle: "Slower, better on hard questions",
-                              isOn: $thinkingEnabled)
-                    toggleRow(title: "Allow web lookups",
-                              subtitle: "Asks before every search",
-                              isOn: $webLookupsAllowed)
-                    StudioHairline(color: S.rule2)
-
+            List {
+                Section("Add to this message") {
                     NavigationLink {
-                        StudioAnswerStyleView(
-                            temperature: $temperature,
-                            topP: $topP,
-                            topK: $topK,
-                            repetitionPenalty: $repetitionPenalty,
-                            defaults: samplerDefaults
-                        )
+                        DictationDraftView(text: $draft)
                     } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Answer length & wording")
-                                    .font(S.sans(16))
-                                    .foregroundStyle(S.ink)
-                                Text(StudioAnswerStyle.summary)
-                                    .font(S.sans(13))
-                                    .foregroundStyle(S.ink3)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 13))
-                                .foregroundStyle(S.chevron)
-                        }
-                        .padding(.horizontal, StudioSpacing.xl)
-                        .padding(.vertical, 14)
-                        .contentShape(Rectangle())
+                        Label("Dictate text", systemImage: "mic")
                     }
-                    .buttonStyle(.plain)
-
-                    Spacer(minLength: 30)
+                    .accessibilityIdentifier("chat.tools.dictate")
+                    action("Photo", symbol: "photo", detail: "Choose from your library", run: onPhoto)
+                    action("File", symbol: "doc", detail: "PDF, text, or code", run: onFile)
+                    action("Paste clipboard", symbol: "doc.on.clipboard", detail: UIPasteboard.general.hasStrings ? "Text ready to paste" : "Nothing copied", run: onPaste)
+                        .disabled(!UIPasteboard.general.hasStrings)
+                    action("Saved text", symbol: "text.badge.plus", detail: "\(snippetCount) saved snippets", run: onSnippets)
+                }
+                Section("Response") {
+                    Toggle("Think before answering", isOn: $thinkingEnabled)
+                    Toggle("Allow web lookups", isOn: $webLookupsAllowed)
+                    NavigationLink {
+                        StudioAnswerStyleView(temperature: $temperature, topP: $topP, topK: $topK,
+                            repetitionPenalty: $repetitionPenalty, defaults: samplerDefaults)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Answer length & wording")
+                            Text(StudioAnswerStyle.summary).font(.footnote).foregroundStyle(.secondary)
+                        }
+                    }
                 }
             }
-            .background(S.paper)
-            .toolbar(.hidden, for: .navigationBar)
+            .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+            .background { ODPageBackground().ignoresSafeArea() }
+            .navigationTitle("Message options").navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
-        .presentationDetents([.height(520), .large])
-        .presentationDragIndicator(.hidden)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 
-    private var header: some View {
-        let S = T.studio
-        return HStack(alignment: .firstTextBaseline) {
-            Text("Add to this message")
-                .font(S.sans(21, .semibold))
-                .tracking(-0.4)
-                .foregroundStyle(S.ink)
-            Spacer()
-            Button("Close") { dismiss() }
-                .font(S.sans(14, .medium))
-                .foregroundStyle(S.ink3)
-                .buttonStyle(.plain)
-        }
-        .padding(.horizontal, StudioSpacing.xl)
-        .padding(.top, StudioSpacing.l)
-        .padding(.bottom, 14)
-    }
-
-    @ViewBuilder
-    private func row(symbol: String, title: String, subtitle: String,
-                     chevron: Bool, action: @escaping () -> Void) -> some View {
-        let S = T.studio
-        Button {
-            HapticManager.impact(.light)
-            action()
-        } label: {
-            HStack(spacing: 14) {
-                Image(systemName: symbol)
-                    .font(.system(size: 15))
-                    .foregroundStyle(S.ink)
-                    .frame(width: 36, height: 36)
-                    .background(S.fillActive,
-                                in: RoundedRectangle(cornerRadius: StudioRadius.glyph,
-                                                     style: .continuous))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(S.sans(16)).foregroundStyle(S.ink)
-                    Text(subtitle).font(S.sans(13)).foregroundStyle(S.ink3)
+    private func action(_ title: String, symbol: String, detail: String, run: @escaping () -> Void) -> some View {
+        Button(action: run) {
+            Label {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).foregroundStyle(ODPalette.text)
+                    Text(detail).font(.footnote).foregroundStyle(.secondary)
                 }
-                Spacer()
-                if chevron {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13))
-                        .foregroundStyle(S.chevron)
-                }
-            }
-            .padding(.horizontal, StudioSpacing.xl)
-            .padding(.vertical, StudioSpacing.l)
-            .contentShape(Rectangle())
+            } icon: { Image(systemName: symbol).foregroundStyle(.secondary) }
+            .padding(.vertical, 4)
         }
-        .buttonStyle(.plain)
-        .overlay(alignment: .bottom) { StudioHairline(color: S.rule2) }
     }
+}
 
-    @ViewBuilder
-    private func toggleRow(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
-        let S = T.studio
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(S.sans(16)).foregroundStyle(S.ink)
-                Text(subtitle).font(S.sans(13)).foregroundStyle(S.ink3)
+/// Dictation edits the existing draft and ends when this screen is dismissed.
+private struct DictationDraftView: View {
+    @Binding var text: String
+    var body: some View {
+        Form {
+            Section {
+                TextField("Message", text: $text, axis: .vertical).lineLimit(3...8)
+            } footer: {
+                Text("Dictation adds words to your draft. Review them before sending.")
             }
-            Spacer()
-            StudioSquareToggle(isOn: isOn)
+            Section {
+                MicDictationButton(text: $text, showsTitle: true)
+            }
         }
-        .padding(.horizontal, StudioSpacing.xl)
-        .padding(.vertical, 14)
-        .overlay(alignment: .top) { StudioHairline(color: S.rule2) }
-        .accessibilityElement(children: .combine)
+        .navigationTitle("Dictate text")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -224,52 +139,41 @@ struct StudioAnswerStyleView: View {
     @State private var advancedExpanded = false
 
     var body: some View {
-        let S = T.studio
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                Text("Answer length & wording")
-                    .font(S.sans(21, .semibold))
-                    .tracking(-0.4)
-                    .foregroundStyle(S.ink)
-                    .padding(.horizontal, StudioSpacing.xl)
-                    .padding(.top, StudioSpacing.l)
-                    .padding(.bottom, 14)
-
-                StudioMonoLabel(text: "how long", size: 11, tracking: 0.9)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, StudioSpacing.xl)
-                    .padding(.bottom, StudioSpacing.s)
-                StudioHairline(color: S.rule2)
+        Form {
+            Section("Length") {
                 ForEach(StudioAnswerStyle.lengths, id: \.label) { option in
-                    choiceRow(title: option.label,
-                              subtitle: subtitle(forLength: option.label),
+                    choiceRow(title: option.label, subtitle: subtitle(forLength: option.label),
                               selected: StudioAnswerStyle.lengthLabel == option.label) {
                         settings.assistantMaxTokens = option.tokens
                     }
                 }
-
-                StudioMonoLabel(text: "how it words things", size: 11, tracking: 0.9)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, StudioSpacing.xl)
-                    .padding(.top, 18)
-                    .padding(.bottom, StudioSpacing.s)
-                StudioHairline(color: S.rule2)
+            }
+            Section("Wording") {
                 ForEach(StudioAnswerStyle.wordings, id: \.label) { option in
-                    choiceRow(title: option.label,
-                              subtitle: subtitle(forWording: option.label),
+                    choiceRow(title: option.label, subtitle: subtitle(forWording: option.label),
                               selected: StudioAnswerStyle.wordingLabel == option.label) {
                         settings.assistantTemperature = option.temperature
                     }
                 }
-
-                advanced
-                    .padding(.top, 22)
-
-                Spacer(minLength: 30)
             }
+            Section {
+                DisclosureGroup("Advanced", isExpanded: $advancedExpanded) {
+                    slider("Temperature", value: $temperature, fallback: defaults.temperature, range: 0...1.5, step: 0.05)
+                    slider("Top-p", value: $topP, fallback: defaults.topP, range: 0.5...1, step: 0.01)
+                    VStack(alignment: .leading, spacing: 8) {
+                        labelRow("Top-k", value: "\(topK ?? defaults.topK)")
+                        Slider(value: Binding(get: { Double(topK ?? defaults.topK) }, set: { topK = Int($0.rounded()) }), in: 1...100, step: 1)
+                            .accessibilityLabel("Top-k")
+                    }
+                    slider("Repetition penalty", value: $repetitionPenalty, fallback: defaults.repetitionPenalty, range: 1...1.3, step: 0.01)
+                    Button("Reset to model defaults") {
+                        temperature = nil; topP = nil; topK = nil; repetitionPenalty = nil
+                    }
+                }
+            } footer: { Text("Advanced values apply only to the next message. Untouched controls use the model’s saved profile.") }
         }
-        .background(S.paper)
-        .navigationBarTitleDisplayMode(.inline)
+        .scrollContentBackground(.hidden).background { ODPageBackground().ignoresSafeArea() }
+        .navigationTitle("Answer style").navigationBarTitleDisplayMode(.inline)
     }
 
     private func subtitle(forLength label: String) -> String {
@@ -288,90 +192,18 @@ struct StudioAnswerStyleView: View {
         }
     }
 
-    @ViewBuilder
-    private func choiceRow(title: String, subtitle: String,
-                           selected: Bool, action: @escaping () -> Void) -> some View {
-        let S = T.studio
-        Button {
-            HapticManager.selection()
-            action()
-        } label: {
+    private func choiceRow(title: String, subtitle: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
             HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(S.sans(16)).foregroundStyle(S.ink)
-                    Text(subtitle).font(S.sans(13)).foregroundStyle(S.ink3)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).foregroundStyle(ODPalette.text)
+                    Text(subtitle).font(.footnote).foregroundStyle(.secondary)
                 }
                 Spacer()
-                if selected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(S.accent)
-                }
+                if selected { Image(systemName: "checkmark").foregroundStyle(ODPalette.text) }
             }
-            .padding(.horizontal, StudioSpacing.xl)
-            .padding(.vertical, 14)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .overlay(alignment: .bottom) { StudioHairline(color: S.rule2) }
         .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-
-    /// The old sampling sheet, folded into a disclosure. These values apply
-    /// to the next message only.
-    private var advanced: some View {
-        let S = T.studio
-        return VStack(alignment: .leading, spacing: 0) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.18)) { advancedExpanded.toggle() }
-            } label: {
-                HStack {
-                    Text("Advanced").font(S.sans(16)).foregroundStyle(S.ink)
-                    Spacer()
-                    Image(systemName: advancedExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 13))
-                        .foregroundStyle(S.chevron)
-                }
-                .padding(.horizontal, StudioSpacing.xl)
-                .padding(.vertical, 14)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .overlay(alignment: .top) { StudioHairline(color: S.rule2) }
-
-            if advancedExpanded {
-                VStack(alignment: .leading, spacing: 18) {
-                    slider("Temperature", value: $temperature,
-                           fallback: defaults.temperature, range: 0...1.5, step: 0.05)
-                    slider("Top-p", value: $topP,
-                           fallback: defaults.topP, range: 0.5...1, step: 0.01)
-                    VStack(alignment: .leading, spacing: 6) {
-                        labelRow("Top-k", value: "\(topK ?? defaults.topK)")
-                        Slider(value: Binding(get: { Double(topK ?? defaults.topK) },
-                                              set: { topK = Int($0.rounded()) }),
-                               in: 1...100, step: 1)
-                            .tint(S.accent)
-                    }
-                    slider("Repetition penalty", value: $repetitionPenalty,
-                           fallback: defaults.repetitionPenalty, range: 1...1.3, step: 0.01)
-
-                    Text("These values apply only to the next message. Untouched controls use the model's saved profile.")
-                        .font(S.sans(13))
-                        .foregroundStyle(S.ink3)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    Button("Reset to model defaults") {
-                        temperature = nil; topP = nil; topK = nil; repetitionPenalty = nil
-                        HapticManager.selection()
-                    }
-                    .font(S.sans(14, .medium))
-                    .foregroundStyle(S.danger)
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, StudioSpacing.xl)
-                .padding(.bottom, 18)
-            }
-        }
     }
 
     private func slider(_ title: String, value: Binding<Double?>,
@@ -382,7 +214,7 @@ struct StudioAnswerStyleView: View {
             Slider(value: Binding(get: { value.wrappedValue ?? fallback },
                                   set: { value.wrappedValue = $0 }),
                    in: range, step: step)
-                .tint(T.studio.accent)
+                .accessibilityLabel(title)
         }
     }
 

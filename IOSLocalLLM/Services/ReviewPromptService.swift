@@ -190,10 +190,7 @@ struct ReviewPromptSheet: View {
                 Image(systemName: "sparkles")
                     .font(.system(size: 32, weight: .regular))
                     .foregroundStyle(
-                        LinearGradient(
-                            colors: [T.accent, T.roseHi],
-                            startPoint: .top, endPoint: .bottom
-                        )
+                        T.accent
                     )
                 Text(loc.t("Enjoying OnDevice?"))
                     .font(T.display(22, .semibold))
@@ -258,8 +255,8 @@ struct ReviewPromptSheet: View {
                         .padding(.vertical, 10)
                         .frame(maxWidth: .infinity)
                         .background(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.clear)
-                                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.rule, lineWidth: 0.5))
+                            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(.clear)
+                                .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(T.rule, lineWidth: 0.5))
                         )
                 }
                 .buttonStyle(.plain)
@@ -292,10 +289,10 @@ struct ReviewPromptSheet: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                     .fill(fill)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                             .stroke(fill == T.surface ? T.rule : .clear, lineWidth: 0.5)
                     )
             )

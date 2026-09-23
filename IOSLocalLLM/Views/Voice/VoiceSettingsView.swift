@@ -8,6 +8,7 @@ struct VoiceSettingsView: View {
     @StateObject private var vm = VoiceSettingsViewModel()
     @ObservedObject private var voiceSettings = VoiceSettingsStore.shared
     @ObservedObject private var voiceService = VoiceService.shared
+    @ObservedObject private var conversation = VoiceConversationService.shared
     @ObservedObject private var assistant = CodingAssistantService.shared
     @State private var showEnginePicker = false
     @State private var showPerModelOverrides = false
@@ -36,33 +37,23 @@ struct VoiceSettingsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        KCaption(text: "SYSTEM")
-                        KPageTitle(title: "voice", size: 28)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 4)
-
+            List {
                     engineSection
                     voiceSection
-                    appearanceSection
                     audioSection
                     behaviorSection
                     perModelSection
                     modelsSection
-                }
-                .padding(.bottom, 32)
             }
+            .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+            .navigationTitle("Voice settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }.foregroundColor(T.ink)
                 }
             }
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .background(StudioPageBackground())
             .sheet(isPresented: $showEnginePicker) {
                 VoiceModelPickerView()
@@ -155,42 +146,12 @@ struct VoiceSettingsView: View {
                 .padding(.vertical, 10)
             }
             .buttonStyle(.plain)
+            .disabled(conversation.hasSession)
+            .accessibilityHint(conversation.hasSession ? "End the current conversation to preview a voice" : "Play a voice sample")
         }
     }
 
     // MARK: - Appearance
-
-    private var appearanceSection: some View {
-        KSection(title: "appearance") {
-            HStack(spacing: 14) {
-                VoiceActivityOrb(
-                    phase: .listening,
-                    micLevel: 0.35,
-                    reduceMotion: false
-                )
-                .frame(width: 72, height: 72)
-                .allowsHitTesting(false)
-                .onAppear {
-                    VoiceVisualLevelStore.shared.micLevel = 0.35
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    KMono(text: "thinking orbs",
-                          size: 11.5, color: T.ink)
-                    KMono(text: "state-driven dotted activity",
-                          size: 10, color: T.ink3)
-                    Link(destination: URL(string: "https://orbs.jakubantalik.com")!) {
-                        KMono(text: "thanks to creator Jakub Antalik",
-                              size: 9.5, color: T.accent)
-                    }
-                    .buttonStyle(.plain)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-        }
-    }
 
     // MARK: - Audio
 

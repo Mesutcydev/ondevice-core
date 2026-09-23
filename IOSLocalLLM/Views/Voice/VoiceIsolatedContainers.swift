@@ -24,13 +24,13 @@ struct VoiceOrbContainer: View {
                 )
                 .frame(width: diameter, height: diameter)
 
-                Circle()
+                RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
                     .fill(Color.white.opacity(flash ? 0.55 : 0))
                     .frame(width: diameter, height: diameter)
                     .allowsHitTesting(false)
             }
             .frame(width: proxy.size.width, height: diameter)
-            .contentShape(Circle())
+            .contentShape(RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous))
             .onTapGesture {
                 switch orb.phase {
                 case .idle:

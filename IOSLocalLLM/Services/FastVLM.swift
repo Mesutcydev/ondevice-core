@@ -217,6 +217,15 @@ private enum Language {
             } else if let inputs {
                 h = embedTokens(inputs)
             } else {
+                // Unreachable by construction — the generate pipeline always
+                // passes token ids or a prompt embedding — but the throwing
+                // boundary lives in MLXLMCommon's protocol, not here, so this
+                // stays a trap. Log a fault first so CrashReporter's trail
+                // records the state that led to the SIGABRT instead of
+                // leaving a bare, context-free trap.
+                Diagnostics.shared.fault(
+                    "FastVLM Qwen2Model called with neither inputs nor inputEmbedding — trapping",
+                    category: "fastvlm")
                 fatalError("one of inputs or inputEmbedding must be non-nil")
             }
 

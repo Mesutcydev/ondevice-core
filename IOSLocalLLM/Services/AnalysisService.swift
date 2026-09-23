@@ -22,6 +22,55 @@ import Combine
 final class AnalysisService: ObservableObject {
     // MARK: - Published state
 
+    @Published private(set) var selectedImage: UIImage?
+    private var requestSettings: [UUID: (modelID: String, prompt: String)] = [:]
+    private var selectedImageBuffer: CVPixelBuffer?
+
+    /// Review owns an immutable, upright snapshot. Analysis consumes this exact
+    /// buffer even if the device rotates or the live camera delivers more frames.
+    func captureForReview() {
+        guard !isAnalyzing, let latestPixelBuffer,
+              let copy = Self.deepCopyPixelBuffer(latestPixelBuffer) else {
+            ToastCenter.shared.info("Camera not ready", detail: "Wait for the preview, or choose a photo.")
+            return
+        }
+        let frame = CIImage(cvPixelBuffer: copy).oriented(Self.cgOrientation(for: UIDevice.current.orientation))
+        guard let cg = CIContext().createCGImage(frame, from: frame.extent) else { return }
+        selectImageForReview(UIImage(cgImage: cg))
+    }
+
+    func selectImageForReview(_ image: UIImage) {
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = image.scale
+        let upright = UIGraphicsImageRenderer(size: image.size, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: image.size))
+        }
+        guard let buffer = Self.pixelBuffer(from: upright) else {
+            ToastCenter.shared.error("Couldn't decode image")
+            return
+        }
+        cancelCurrentAnalysis()
+        dismissActiveResult()
+        selectedImageBuffer = buffer
+        selectedImage = upright
+        camera.stop()
+    }
+
+    func retakeSelectedImage() {
+        cancelCurrentAnalysis()
+        dismissActiveResult()
+        selectedImageBuffer = nil
+        selectedImage = nil
+        camera.start()
+    }
+
+    func analyzeSelectedImage() {
+        guard !isAnalyzing, let buffer = selectedImageBuffer else { return }
+        let detection = Detection(boundingBox: CGRect(x: 0, y: 0, width: 1, height: 1),
+                                  confidence: 1, label: "Selected image", classIndex: -1)
+        triggerAnalysis(detection: detection, pixelBuffer: buffer, source: .imported)
+    }
+
     @Published var analysisResults: [AnalysisResult] = []
     @Published var activeResult: AnalysisResult?
     @Published var isAnalyzing = false
@@ -74,11 +123,13 @@ final class AnalysisService: ObservableObject {
     // MARK: - Setup
 
     func start() async {
+        guard !Task.isCancelled else { return }
         camera.delegate = self
         camera.configure()
 
+        // The visible-workspace observer owns capture demand, including covers
+        // and the drawer. Preparing metadata never starts a hidden camera.
         await loadModels()
-        camera.start()
     }
 
     private func loadModels() async {
@@ -290,6 +341,10 @@ final class AnalysisService: ObservableObject {
         let thumb = AnalysisService.makeThumbnail(from: ciImage, maxDim: 240)
 
         let placeholderID = UUID()
+        let settings = AppSettings.shared
+        let custom = settings.lensCustomPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        requestSettings[placeholderID] = (settings.cameraVisualModelID,
+            custom.isEmpty ? LensPromptPreset.from(rawValue: settings.lensPromptPresetID).prompt : custom)
         let placeholder = AnalysisResult(
             id: placeholderID,
             detection: detection,
@@ -303,7 +358,10 @@ final class AnalysisService: ObservableObject {
             isStreaming: true
         )
         self.analysisResults.insert(placeholder, at: 0)
-        if self.analysisResults.count > 10 { self.analysisResults.removeLast() }
+        if self.analysisResults.count > 10 {
+            let removed = self.analysisResults.removeLast()
+            requestSettings.removeValue(forKey: removed.id)
+        }
         self.activeResult = placeholder
 
         analysisTask?.cancel()
@@ -343,6 +401,7 @@ final class AnalysisService: ObservableObject {
         // its native captures before dispatching this frame. This closes the
         // rapid tab-switch path where no VLM `switchTo` call was needed.
         await CodingAssistantService.shared.unloadAndWaitForCleanup()
+        guard ownsAnalysis(resultID), !Task.isCancelled else { return }
         let genSettings = Self.fastVLMGenerationSettings(for: mode)
 
         // MLX-VLM path — takes precedence when the user has selected a
@@ -350,7 +409,7 @@ final class AnalysisService: ObservableObject {
         // FastVLM when MLX VLM isn't ready or errors out so the camera tab
         // never goes dark.
         let effectiveVisionSelection = memorySafeVisionSelection(
-            AppSettings.shared.cameraVisualModelID
+            requestSettings[resultID]?.modelID ?? AppSettings.shared.cameraVisualModelID
         )
         let visionSelection = LocalModelRegistry.storedVisionSelectionID(
             effectiveVisionSelection
@@ -393,6 +452,7 @@ final class AnalysisService: ObservableObject {
                 vlmError = "\(vlmName) could not process this frame. If the phone is hot, let it cool — or select Qwen3-VL-2B in the camera toolbar."
             }
             await MainActor.run {
+                guard self.ownsAnalysis(resultID) else { return }
                 self.updateResult(id: resultID) { r in
                     r.extractedCode = vlmError
                     r.isStreaming = false
@@ -411,22 +471,29 @@ final class AnalysisService: ObservableObject {
         // are on disk but not in memory yet, kick the load before trying
         // to analyze.
         if AppSettings.shared.fastVLMEnabled, !fastVLM.componentStatus.canGenerate {
-            await MainActor.run { self.statusMessage = "Loading FastVLM…" }
+            await MainActor.run {
+                guard self.ownsAnalysis(resultID) else { return }
+                self.statusMessage = "Loading FastVLM…"
+            }
             await fastVLM.load()
             await MainActor.run {
+                guard self.ownsAnalysis(resultID) else { return }
                 self.fastVLMStatus = self.fastVLM.componentStatus
                 self.fastVLMLoaded = self.fastVLM.componentStatus.canGenerate
             }
         }
+        guard ownsAnalysis(resultID), !Task.isCancelled else { return }
         if fastVLM.componentStatus.canGenerate, AppSettings.shared.fastVLMEnabled {
             do {
                 var generatedText = ""
-                let task: FastVLMTask = (mode == .visual) ? .describeImage : .extractCode
+                let prompt = requestSettings[resultID]?.prompt ?? "Describe this image."
+                let task: FastVLMTask = (mode == .visual) ? .answerQuestion(prompt) : .extractCode
                 let stream = fastVLM.analyze(pixelBuffer: pixelBuffer, task: task, settings: genSettings)
                 for try await chunk in stream {
                     generatedText += chunk
                     let snapshot = generatedText
                     await MainActor.run {
+                        guard self.ownsAnalysis(resultID) else { return }
                         self.updateResult(id: resultID) { r in
                             r.extractedCode = snapshot
                         }
@@ -437,6 +504,7 @@ final class AnalysisService: ObservableObject {
                     let review = generatedText.isEmpty
                         ? "" : ocr.generateBasicReview(for: generatedText)
                     await MainActor.run {
+                        guard self.ownsAnalysis(resultID) else { return }
                         self.updateResult(id: resultID) { r in
                             r.isStreaming = false
                             r.reviewMarkdown = review
@@ -446,6 +514,7 @@ final class AnalysisService: ObservableObject {
                     }
                 } else {
                     await MainActor.run {
+                        guard self.ownsAnalysis(resultID) else { return }
                         self.updateResult(id: resultID) { r in
                             r.isStreaming = false
                         }
@@ -462,6 +531,7 @@ final class AnalysisService: ObservableObject {
                         ? "FastVLM required for Visual mode. Error: \(error.localizedDescription)"
                         : "FastVLM generation failed:\n\(error.localizedDescription)"
                     await MainActor.run {
+                        guard self.ownsAnalysis(resultID) else { return }
                         self.updateResult(id: resultID) { r in
                             r.extractedCode = msg
                             r.isStreaming = false
@@ -501,6 +571,7 @@ final class AnalysisService: ObservableObject {
                 ? .pickVisualModel
                 : .enableFastVLM
             await MainActor.run {
+                guard self.ownsAnalysis(resultID) else { return }
                 self.updateResult(id: resultID) { r in
                     r.isStreaming = false
                     r.fallbackReason = reason
@@ -587,6 +658,7 @@ final class AnalysisService: ObservableObject {
         let text = (try? await ocr.extractText(from: pixelBuffer)) ?? "Could not extract text."
         let review = ocr.generateBasicReview(for: text)
         await MainActor.run {
+            guard self.ownsAnalysis(resultID) else { return }
             self.updateResult(id: resultID) { r in
                 r.extractedCode = text
                 r.reviewMarkdown = review
@@ -615,6 +687,8 @@ final class AnalysisService: ObservableObject {
             self.statusMessage = "OCR fallback complete"
         }
     }
+
+    private func ownsAnalysis(_ id: UUID) -> Bool { activeResult?.id == id && !cancelledResultIDs.contains(id) }
 
     /// Mutates the matching stored result and `activeResult` together.
     private func updateResult(id: UUID, _ apply: (inout AnalysisResult) -> Void) {
@@ -971,6 +1045,7 @@ extension AnalysisService: CameraServiceDelegate {
         if shouldSwitch {
             await vision.switchTo(repoID: desiredRepoID)
         }
+        guard ownsAnalysis(resultID), !Task.isCancelled else { return true }
         // Surface the real stop reason (heat / memory) instead of a blank
         // "could not process" when the device is actively refusing work.
         if let reason = DeviceSafetyMonitor.shared.stopReason {
@@ -1048,6 +1123,7 @@ extension AnalysisService: CameraServiceDelegate {
                 return "Transcribe ALL visible code/text exactly as shown. Use fenced code blocks. No explanation."
             }
             let settings = AppSettings.shared
+            if let captured = requestSettings[resultID] { return captured.prompt }
             let custom = settings.lensCustomPrompt
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if !custom.isEmpty { return custom }
@@ -1072,7 +1148,7 @@ extension AnalysisService: CameraServiceDelegate {
                 image: uiImage,
                 prompt: prompt,
                 maxTokens: safeMaxTokens,
-                onToken: { token in
+                onToken: { [weak self] token in
                     acc.value += token
                     let snapshot = acc.value
                     Task { @MainActor [weak self] in
@@ -1081,9 +1157,9 @@ extension AnalysisService: CameraServiceDelegate {
                         }
                     }
                 },
-                onComplete: { _ in
+                onComplete: { [weak self] _ in
                     Task { @MainActor [weak self] in
-                        guard let self else { cont.resume(); return }
+                        guard let self, self.ownsAnalysis(snapID) else { cont.resume(); return }
                         let final = acc.value
                         let review = (mode == .code && !final.isEmpty)
                             ? self.ocr.generateBasicReview(for: final)
@@ -1167,6 +1243,7 @@ extension AnalysisService: CameraServiceDelegate {
                 return "Transcribe ALL visible code/text exactly as shown. Use fenced code blocks. No explanation."
             }
             let settings = AppSettings.shared
+            if let captured = requestSettings[resultID] { return captured.prompt }
             let custom = settings.lensCustomPrompt
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if !custom.isEmpty { return custom }
@@ -1184,7 +1261,7 @@ extension AnalysisService: CameraServiceDelegate {
                 image: uiImage,
                 prompt: prompt,
                 maxTokens: safeMaxTokens,
-                onToken: { token in
+                onToken: { [weak self] token in
                     acc.value += token
                     let snapshot = acc.value
                     Task { @MainActor [weak self] in
@@ -1193,9 +1270,9 @@ extension AnalysisService: CameraServiceDelegate {
                         }
                     }
                 },
-                onComplete: { _ in
+                onComplete: { [weak self] _ in
                     Task { @MainActor [weak self] in
-                        guard let self else { cont.resume(); return }
+                        guard let self, self.ownsAnalysis(snapID) else { cont.resume(); return }
                         let final = acc.value
                         if final.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                            case .failed(let msg) = llama.state {

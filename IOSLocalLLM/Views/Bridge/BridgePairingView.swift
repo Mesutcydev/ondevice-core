@@ -21,6 +21,7 @@ struct BridgePairingView: View {
     @ObservedObject private var settings  = AppSettings.shared
     @Environment(\.koduTheme) private var T
 
+    @Environment(\.dismiss) private var dismiss
     @State private var showScanner = false
 
     /// Copy for the orange banner shown when the assistant isn't
@@ -50,9 +51,7 @@ struct BridgePairingView: View {
         // doesn't affect existing layout — the inner ScrollView
         // still owns its scroll axis.
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    header
+            List {
                     serverStatusRow
                     LocalAPIServerCard()
                     macBridgeIntegrationCard
@@ -68,9 +67,11 @@ struct BridgePairingView: View {
                         BridgeAgentCard()
                         argentRemoteRow
                     }
-                }
-                .padding(20)
             }
+            .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+            .navigationTitle("Mac bridge")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .background(StudioPageBackground())
             // Start the iPhone's inference server as soon as the tab opens so it's
             // ready by the time the QR is scanned and the Mac tries to connect.
@@ -129,7 +130,7 @@ struct BridgePairingView: View {
         } label: {
             HStack(spacing: 14) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                         .fill(T.studio.fillActive)
                     Image(systemName: "book.closed.fill").accessibilityLabel("Open documentation")
                         .font(.system(size: 22, weight: .semibold))
@@ -148,7 +149,7 @@ struct BridgePairingView: View {
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.surface3)
+                                RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.surface3)
                             )
                     }
                     Text("Review the public pairing protocol, security boundaries, and client implementation notes.")
@@ -222,7 +223,7 @@ struct BridgePairingView: View {
         let running: Bool = { if case .running = manager.serverState { return true } else { return false } }()
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Circle()
+                RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
                     .fill(running ? T.good : T.ink4)
                     .frame(width: 7, height: 7)
                 StudioMonoLabel(text: "Mac bridge", size: 11, tracking: 0.9)
@@ -245,11 +246,11 @@ struct BridgePairingView: View {
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                 .fill(T.surface)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
+            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                 .stroke(T.rule, lineWidth: 1)
         )
     }
@@ -258,7 +259,7 @@ struct BridgePairingView: View {
 
     private var serverStatusRow: some View {
         HStack(spacing: 10) {
-            Circle()
+            RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
                 .fill(statusColor)
                 .frame(width: 8, height: 8)
             Text(statusLabel)
@@ -364,10 +365,10 @@ struct BridgePairingView: View {
                     Text("Scan Mac QR")
                 }
                 .font(T.mono(13, .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(T.onAccentFill)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(RoundedRectangle(cornerRadius: 10).fill(T.accent))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accent))
             }
             .buttonStyle(.plain)
             .disabled(!BridgeQRScannerView.isAvailable)
@@ -556,10 +557,10 @@ private struct LocalAPIServerCard: View {
                 } label: {
                     Text("Load")
                         .font(theme.mono(10, .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(theme.onAccentFill)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(theme.accent))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(theme.accent))
                 }
                 .buttonStyle(.plain)
             }
@@ -571,7 +572,9 @@ private struct LocalAPIServerCard: View {
                     .font(.system(size: 12, weight: .bold))
                     .foregroundColor(theme.ink)
                     .frame(width: 30, height: 30)
-                    .background(Circle().fill(theme.surface2))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous).fill(theme.surface2))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .disabled(isModelBusy)
@@ -654,7 +657,7 @@ private struct LocalAPIServerCard: View {
 
     private var status: some View {
         HStack(spacing: 8) {
-            Circle()
+            RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
                 .fill(statusColor)
                 .frame(width: 7, height: 7)
             Text(statusText)
@@ -811,7 +814,7 @@ private struct LocalAPIServerCard: View {
                 .textSelection(.enabled)
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(theme.surface3, in: RoundedRectangle(cornerRadius: 8))
+                .background(theme.surface3, in: RoundedRectangle(cornerRadius: StudioRadius.panel))
             Button("Copy setup commands") {
                 UIPasteboard.general.string = command
                 ToastCenter.shared.success("Linux setup copied")
@@ -861,7 +864,7 @@ private struct CopyableAPIEndpoint: View {
                     .foregroundColor(theme.ink3)
             }
             .padding(9)
-            .background(theme.surface3, in: RoundedRectangle(cornerRadius: 8))
+            .background(theme.surface3, in: RoundedRectangle(cornerRadius: StudioRadius.panel))
         }
         .buttonStyle(.plain)
     }
@@ -921,7 +924,7 @@ private struct ScannerSheet: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 20)
                     .padding(.vertical, 10)
-                    .background(Color.black.opacity(0.55).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous)))
+                    .background(Color.black.opacity(0.55).clipShape(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)))
                     .padding(.bottom, 60)
             }
         }

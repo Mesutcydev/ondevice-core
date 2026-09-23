@@ -1,4 +1,34 @@
 import SwiftUI
+import OnDeviceUI
+
+// MARK: - KeyboardDismissKey
+//
+// Leading keyboard-toolbar control. The system draws the only chrome.
+// This view does not add a capsule, stroke, or material of its own.
+// Send stays in the composer.
+
+struct KeyboardDismissKey: View {
+    @FocusState.Binding var focus: Bool
+    var clearance: ODComposerKeyboardClearance?
+
+    var body: some View {
+        Button("Hide keyboard", systemImage: "keyboard.chevron.compact.down") {
+            focus = false
+            KeyboardDismiss.now()
+            HapticManager.impact(.light)
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.plain)
+        .frame(minWidth: 44, minHeight: 44)
+        .accessibilityLabel("Hide keyboard")
+        .background {
+            if let clearance {
+                ODGlobalEdgeReader(edge: .top) { clearance.setButtonTop($0) }
+            }
+        }
+        .onDisappear { clearance?.setButtonTop(nil) }
+    }
+}
 
 // MARK: - KeyboardToolbar
 // Studio-themed accessory strip that floats above the system keyboard. Holds
@@ -120,8 +150,8 @@ struct KeyboardToolbar: View {
                             .foregroundColor(T.ink2)
                             .lineLimit(1)
                             .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
-                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
+                            .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface2))
+                            .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
                     }
                     .buttonStyle(.plain)
                 }

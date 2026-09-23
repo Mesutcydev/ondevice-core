@@ -23,7 +23,7 @@ public enum FileAttachmentService {
 
     // MARK: - Attachment model
 
-    public struct Attachment: Sendable, Hashable, Identifiable {
+    public struct Attachment: Codable, Sendable, Hashable, Identifiable {
         public let id: UUID
         public let url: URL              // security-scoped URL the user picked
         public let displayName: String   // last path component
@@ -34,7 +34,7 @@ public enum FileAttachmentService {
         /// Set when extraction had to truncate or skip parts.
         public let warning: String?
 
-        public enum Kind: String, Sendable {
+        public enum Kind: String, Codable, Sendable {
             case text, code, pdf, markdown, json
         }
     }

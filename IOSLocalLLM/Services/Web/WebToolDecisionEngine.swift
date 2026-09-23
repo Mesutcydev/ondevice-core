@@ -24,6 +24,12 @@ public struct WebToolDecisionEngine: Sendable {
             return .noWebNeeded(reason: "Web Access is off in Settings.")
         }
 
+        // The device already knows its calendar date. A date-only question
+        // should never send a search query or require network permission.
+        if LocalDateAnswer.isDateOnlyQuestion(message) {
+            return .noWebNeeded(reason: "The device can answer its current date.")
+        }
+
         // 2. Direct URL in the message? Always treat as direct fetch intent.
         if let url = Self.firstHTTPURL(in: message) {
             switch settings.mode {
@@ -77,6 +83,43 @@ public struct WebToolDecisionEngine: Sendable {
             raw.removeLast()
         }
         return URL(string: raw)
+    }
+}
+
+/// A narrow, deterministic answer for date-only questions. Other uses of
+/// "today" (news, weather, prices) still go through the normal web decision.
+enum LocalDateAnswer {
+    static func isDateOnlyQuestion(_ message: String) -> Bool {
+        let withoutApostrophes = message.lowercased()
+            .replacingOccurrences(of: "'", with: "")
+            .replacingOccurrences(of: "’", with: "")
+        let words = withoutApostrophes.split {
+            !$0.isLetter && !$0.isNumber
+        }
+        let normalized = words.joined(separator: " ")
+        return [
+            "whats todays date", "what is todays date",
+            "what is the date today", "what date is it today",
+            "whats the date today", "what is the current date",
+            "what is the date", "whats the date", "todays date",
+            "current date", "date today", "tell me todays date",
+            "what day is it today", "what day is today"
+        ].contains(normalized)
+    }
+
+    static func answer(
+        for message: String,
+        now: Date = Date(),
+        locale: Locale = .current,
+        timeZone: TimeZone = .current
+    ) -> String? {
+        guard isDateOnlyQuestion(message) else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeZone = timeZone
+        formatter.dateStyle = .full
+        formatter.timeStyle = .none
+        return "Today is \(formatter.string(from: now))."
     }
 }
 

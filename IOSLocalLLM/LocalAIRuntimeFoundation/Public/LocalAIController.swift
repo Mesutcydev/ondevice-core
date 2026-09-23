@@ -119,7 +119,7 @@ public final class LocalAIController {
                                     onToken: { token in
                                         continuation.yield(.token(token))
                                     },
-                                    onComplete: { rate in
+                                    onComplete: { [weak self] rate in
                                         continuation.yield(.usage(
                                             tokensPerSecond: rate,
                                             inputTokens: nil,
@@ -162,7 +162,7 @@ public final class LocalAIController {
                 }
             }
 
-            continuation.onTermination = { @Sendable _ in
+            continuation.onTermination = { @Sendable [weak self] _ in
                 task.cancel()
                 Task { @MainActor [weak self] in
                     self?.cancelGeneration()
@@ -253,7 +253,7 @@ public final class LocalAIController {
                 }
             }
 
-            continuation.onTermination = { @Sendable _ in
+            continuation.onTermination = { @Sendable [weak self] _ in
                 task.cancel()
                 Task { @MainActor [weak self] in
                     self?.cancelGeneration()

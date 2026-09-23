@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import ImageIO
 import MLX
 import MLXRandom
 import Hub
@@ -43,6 +44,7 @@ final class ImageGenerationService: ObservableObject {
         let preset: StableDiffusionConfiguration.Preset
 
         var config: StableDiffusionConfiguration { preset.configuration }
+        var supportsNegativePrompt: Bool { config.defaultParameters().cfgWeight > 1 }
         /// 8× the latent edge — the pixel dimension of the generated image.
         var pixelEdge: Int { latentEdge * 8 }
 
@@ -158,10 +160,23 @@ final class ImageGenerationService: ObservableObject {
 
     @Published private(set) var state: State = .idle
     @Published var selectedModelID: String = "stabilityai/sd-turbo"
+    @Published private(set) var resultPrompt: String?
+    @Published private(set) var resultModelID: String?
+    @Published private(set) var resultURL: URL?
+    @Published private var generationLifetime = PresentationRequestLifetime()
+    var isCancelling: Bool { generationLifetime.isCancelled }
     @Published private(set) var image: UIImage?
     @Published private(set) var statusMessage: String = ""
     @Published private(set) var directDownloadProgress: [String: Double] = [:]
     @Published private(set) var directDownloadErrors: [String: String] = [:]
+
+    var isWorking: Bool {
+        if generationLifetime.isRunning { return true }
+        switch state {
+        case .downloading, .loading, .generating: return true
+        default: return false
+        }
+    }
 
     var selectedModel: Model {
         Self.model(forID: selectedModelID) ?? Self.catalog[0]
@@ -179,6 +194,7 @@ final class ImageGenerationService: ObservableObject {
         HubApi(hfToken: HFTokenStore.shared.isActive ? HFTokenStore.shared.currentToken() : nil)
     }
     private var genTask: Task<Void, Never>?
+    private var cancellationTask: Task<Void, Never>?
     private var directDownloadTasks: [String: Task<Void, Never>] = [:]
 
     private init() {}
@@ -295,12 +311,11 @@ final class ImageGenerationService: ObservableObject {
     // MARK: - Generation
 
     func cancel() {
+        guard generationLifetime.isRunning, !generationLifetime.isCancelled else { return }
+        generationLifetime.cancel()
         genTask?.cancel()
-        genTask = nil
-        Task { await MLXGenerationGate.shared.cancelAll() }
-        if case .generating = state { state = isInstalled(selectedModel) ? .ready : .idle }
-        if case .loading = state { state = isInstalled(selectedModel) ? .ready : .idle }
-        if case .downloading = state { state = .idle }
+        statusMessage = "Stopping image generation…"
+        cancellationTask = Task { await MLXGenerationGate.shared.cancelAll() }
     }
 
     /// Download (if needed), load, and generate an image for `prompt`.
@@ -313,15 +328,25 @@ final class ImageGenerationService: ObservableObject {
             ToastCenter.shared.info("Enter a prompt first")
             return
         }
-        guard genTask == nil else { return }
+        guard genTask == nil, let requestID = generationLifetime.begin() else { return }
         let model = selectedModel
+        state = .loading
         genTask = Task { [weak self] in
-            await self?.runGeneration(model: model,
-                                       prompt: trimmed,
+            guard let self else { return }
+            await self.runGeneration(model: model,
+                                       prompt: prompt,
                                        negativePrompt: negativePrompt,
                                        steps: steps ?? model.defaultSteps,
-                                       seed: seed)
-            await MainActor.run { self?.genTask = nil }
+                                       seed: seed, requestID: requestID)
+            await self.cancellationTask?.value
+            let wasCancelled = self.generationLifetime.isCancelled
+            guard self.generationLifetime.finish(requestID) else { return }
+            self.genTask = nil
+            self.cancellationTask = nil
+            if wasCancelled {
+                self.state = self.isInstalled(model) ? .ready : .idle
+                self.statusMessage = ""
+            }
         }
     }
 
@@ -329,7 +354,7 @@ final class ImageGenerationService: ObservableObject {
                                prompt: String,
                                negativePrompt: String,
                                steps: Int,
-                               seed: UInt64?) async {
+                               seed: UInt64?, requestID: UUID) async {
         Diagnostics.shared.breadcrumb(
             "imagegen start · \(model.id) · steps=\(steps) · avail=\(MemoryAdvisor.availableMemoryForModel.formattedBytes)",
             category: "imagegen")
@@ -357,6 +382,7 @@ final class ImageGenerationService: ObservableObject {
             return
         }
         await CodingAssistantService.shared.unloadAndWaitForCleanup()
+        guard generationLifetime.accepts(requestID), !Task.isCancelled else { return }
         MLXVisionService.shared.unload()
         FastVLMService.shared.unload()
         await LlamaCppVLMService.shared.unloadAndWaitForCleanup()
@@ -364,6 +390,7 @@ final class ImageGenerationService: ObservableObject {
         // so cancelled VLM Metal work must drain before reclamation and before
         // the memory measurement below.
         await MLXGenerationGate.shared.clearCacheWhenIdle()
+        guard generationLifetime.accepts(requestID), !Task.isCancelled else { return }
 
         // 2. Memory gate — the real per-process ceiling on iOS. Diffusion's
         //    transient load peak is high; refuse rather than SIGKILL.
@@ -406,7 +433,7 @@ final class ImageGenerationService: ObservableObject {
             }
             do {
                 try await downloadViaCoordinator(model) { [weak self] frac in
-                    guard let self else { return }
+                    guard let self, self.generationLifetime.accepts(requestID) else { return }
                     if case .downloading = self.state { self.state = .downloading(frac) }
                 }
             } catch is CancellationError {
@@ -503,7 +530,7 @@ final class ImageGenerationService: ObservableObject {
             // Return PNG Data (Sendable) from the gate — CGImage / UIImage are
             // not reliably Sendable across the actor boundary.
             let availForCap = avail
-            let pngData = try await MLXGenerationGate.shared.run { () -> Data in
+            let pngData = try await MLXGenerationGate.shared.run { [self] () -> Data in
                 // Bound MLX's allocator for the duration of THIS generation only.
                 // IOSLocalLLMApp deliberately leaves the cache unbounded globally —
                 // a low global cap starves the resident LLM and triggers Metal
@@ -601,7 +628,8 @@ final class ImageGenerationService: ObservableObject {
                             i += 1
                             let frac = Double(i) / Double(max(totalSteps, 1))
                             Task { @MainActor [weak self] in
-                                self?.state = .generating(frac)
+                                guard let self, self.generationLifetime.accepts(requestID) else { return }
+                                self.state = .generating(frac)
                             }
                         }
                         guard let lastXt else { throw MLXGenerationGate.Cancelled() }
@@ -627,7 +655,18 @@ final class ImageGenerationService: ObservableObject {
                 return data
             }
 
-            image = UIImage(data: pngData)
+            guard generationLifetime.accepts(requestID), !Task.isCancelled else { return }
+            let artifact = try await Task.detached(priority: .userInitiated) {
+                try Self.prepareResult(pngData, requestID: requestID)
+            }.value
+            guard generationLifetime.accepts(requestID), !Task.isCancelled else {
+                try? FileManager.default.removeItem(at: artifact.url)
+                return
+            }
+            resultPrompt = prompt
+            resultModelID = model.id
+            resultURL = artifact.url
+            image = artifact.image
             state = .ready
             statusMessage = ""
             Diagnostics.shared.breadcrumb("imagegen done · \(model.id)", category: "imagegen")
@@ -641,6 +680,7 @@ final class ImageGenerationService: ObservableObject {
             Diagnostics.shared.breadcrumb("imagegen cancelled", category: "imagegen")
             state = isInstalled(model) ? .ready : .idle
         } catch {
+            guard generationLifetime.accepts(requestID) else { return }
             Diagnostics.shared.error("imagegen failed · \(error.localizedDescription)", category: "imagegen")
             state = .failed(error.localizedDescription)
             ToastCenter.shared.error("Image generation failed",
@@ -649,6 +689,25 @@ final class ImageGenerationService: ObservableObject {
     }
 
     // MARK: - Resilient download
+
+    /// Save the full result for sharing and decode once away from SwiftUI rendering.
+    nonisolated private static func prepareResult(_ data: Data, requestID: UUID) throws -> (url: URL, image: UIImage) {
+        let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("OnDeviceGeneratedImages", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let url = directory.appendingPathComponent(requestID.uuidString).appendingPathExtension("png")
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceShouldCacheImmediately: true,
+                kCGImageSourceThumbnailMaxPixelSize: 4096
+              ] as CFDictionary) else {
+            throw NSError(domain: "ImageGen", code: -2, userInfo: [NSLocalizedDescriptionKey: "Could not decode the generated image."])
+        }
+        try data.write(to: url, options: [.atomic, .completeFileProtection])
+        return (url, UIImage(cgImage: cgImage))
+    }
 
     /// Downloads each file the StableDiffusion preset needs, one at a time,
     /// through `BackgroundDownloadCoordinator` — the same downloader every LLM
@@ -828,6 +887,7 @@ final class ImageGenerationService: ObservableObject {
     /// single-use and never held past a generation, so there's nothing to
     /// release here beyond draining the gate.
     func unload() {
+        if generationLifetime.isRunning { cancel(); return }
         Task { await MLXGenerationGate.shared.cancelAll() }
         if case .generating = state { state = isInstalled(selectedModel) ? .ready : .idle }
     }

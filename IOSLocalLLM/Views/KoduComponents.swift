@@ -1,4 +1,5 @@
 import SwiftUI
+import OnDeviceUI
 
 // MARK: - KoduComponents
 // Reusable UI primitives matching the Kodu Studio design language.
@@ -44,10 +45,10 @@ struct KCaption: View {
     var body: some View {
         // Neutral ink by default — colour is reserved for state; callers pass
         // `color:` for the rare intentional accent eyebrow.
-        Text(text.uppercased())
-            .font(T.mono(11, .medium))
+        Text(text)
+            .font(.footnote)
             .foregroundColor(color ?? T.ink3)
-            .tracking(0.9)
+            .tracking(0)
     }
 }
 
@@ -122,28 +123,15 @@ struct KPrimaryButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                if let sys = systemImage {
-                    Image(systemName: sys)
-                        .font(.system(size: 13, weight: .medium))
-                }
-                Text(label)
-                    .font(T.sans(15, .medium))
-                Spacer(minLength: 0)
-                if let trailing {
-                    Text(trailing)
-                        .font(T.mono(10))
-                        .foregroundColor(T.bg.opacity(0.65))
-                }
+            HStack(spacing: ODLayout.elementGap) {
+                if let systemImage { Image(systemName: systemImage) }
+                Text(label).font(.body)
+                if let trailing { Text(trailing).font(.footnote) }
             }
-            .foregroundColor(T.bg)
-            .padding(.horizontal, 14)
-            .frame(minHeight: 44)
-            .frame(maxWidth: .infinity)
-            .background(T.ink, in: RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous))
-            .opacity(disabled ? 0.45 : 1)
+            .frame(maxWidth: .infinity, minHeight: 44)
         }
-        .buttonStyle(StudioPressStyle())
+        .buttonStyle(.glassProminent).controlSize(.large)
+        .tint(ODPalette.send).foregroundStyle(ODPalette.onSend)
         .disabled(disabled)
     }
 }
@@ -160,32 +148,16 @@ struct KSecondaryButton: View {
     @Environment(\.koduTheme) private var T
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                if let sys = systemImage {
-                    Image(systemName: sys)
-                        .font(.system(size: 13))
-                        .foregroundColor(destructive ? T.bad : T.ink)
-                }
-                Text(label)
-                    .font(T.sans(14, .medium))
-                    .foregroundColor(destructive ? T.bad : T.ink)
-                Spacer(minLength: 0)
-                if let trailing {
-                    Text(trailing)
-                        .font(T.mono(10))
-                        .foregroundColor(T.ink3)
-                }
+        Button(role: destructive ? .destructive : nil, action: action) {
+            HStack(spacing: ODLayout.elementGap) {
+                if let systemImage { Image(systemName: systemImage) }
+                Text(label).font(.body)
+                if let trailing { Text(trailing).font(.footnote) }
             }
-            .padding(.horizontal, 14)
-            .frame(minHeight: 44)
-            .frame(maxWidth: .infinity)
-            .overlay(
-                RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous)
-                    .stroke(destructive ? T.bad.opacity(0.35) : T.ink.opacity(0.14), lineWidth: 1)
-            )
+            .frame(maxWidth: .infinity, minHeight: 44)
         }
-        .buttonStyle(StudioPressStyle())
+        .buttonStyle(.glass).controlSize(.large)
+        .tint(destructive ? ODPalette.red : ODPalette.text)
     }
 }
 
@@ -203,27 +175,12 @@ struct KSection<Content: View>: View {
     @Environment(\.koduTheme) private var T
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                KCaption(text: title.replacingOccurrences(of: "_", with: " "))
-                Rectangle().fill(T.rule).frame(height: 1)
-            }
-            .padding(.bottom, 8)
-
-            VStack(spacing: 0) {
-                content()
-            }
-            .background(
-                T.studio.surfaceRaised,
-                in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
-                    .strokeBorder(T.studio.strokeRest, lineWidth: 1)
-            )
+        Section {
+            content()
+        } header: {
+            Text(title.replacingOccurrences(of: "_", with: " ").capitalized)
+                .font(.footnote).foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 20)
     }
 }
 
@@ -242,6 +199,7 @@ struct KCollapsibleSection<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     @Environment(\.koduTheme) private var T
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var localExpanded: Bool
 
     init(title: String,
@@ -256,51 +214,13 @@ struct KCollapsibleSection<Content: View>: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                KCaption(text: title.replacingOccurrences(of: "_", with: " "))
-                Rectangle().fill(T.rule).frame(height: 1)
-            }
-            .padding(.bottom, 8)
-
-            Button {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    localExpanded.toggle()
-                }
-                HapticManager.impact(.light)
-            } label: {
-                VStack(spacing: 0) {
-                    HStack(spacing: 12) {
-                        Text(title.replacingOccurrences(of: "_", with: " ").capitalized)
-                            .font(T.sans(15, .semibold)).foregroundColor(T.ink)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(T.ink4)
-                            .rotationEffect(.degrees(localExpanded ? 90 : 0))
-                    }
-                    .padding(.horizontal, 15)
-                    .padding(.vertical, 13)
-
-                    if localExpanded {
-                        Rectangle().fill(T.rule).frame(height: 1)
-                        VStack(spacing: 0) { content() }
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-            .background(
-                T.studio.surfaceRaised,
-                in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
-                    .strokeBorder(T.studio.strokeRest, lineWidth: 1)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous))
+        DisclosureGroup(isExpanded: $localExpanded) {
+            content()
+        } label: {
+            Text(title.replacingOccurrences(of: "_", with: " ").capitalized)
+                .font(.body).foregroundStyle(ODPalette.text)
+                .frame(minHeight: ODLayout.minimumHit)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 20)
     }
 }
 
@@ -346,31 +266,23 @@ struct KRow<Trailing: View>: View {
 struct KSpecTable: View {
     let rows: [(String, String)]
     var keyWidth: CGFloat = 110
-
-    @Environment(\.koduTheme) private var T
+    @Environment(\.dynamicTypeSize) private var dynamicType
 
     var body: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(rows.enumerated()), id: \.offset) { i, row in
-                if i > 0 { Rectangle().fill(T.rule).frame(height: 1) }
-                HStack(spacing: 12) {
-                    KMono(text: row.0, size: 11, color: T.ink3)
-                        .frame(width: keyWidth, alignment: .leading)
-                    KMono(text: row.1, size: 11, color: T.ink)
-                    Spacer()
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                if dynamicType.isAccessibilitySize {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(row.0).foregroundStyle(.secondary)
+                        Text(row.1).textSelection(.enabled)
+                    }
+                } else {
+                    LabeledContent(row.0) { Text(row.1).textSelection(.enabled) }
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
             }
         }
-        .background(
-            T.studio.surfaceRaised,
-            in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
-                .strokeBorder(T.studio.strokeRest, lineWidth: 1)
-        )
+        .font(.body)
+        .padding(.vertical, 8)
     }
 }
 
@@ -484,7 +396,7 @@ struct KActivePill: View {
     let text: String
     @Environment(\.koduTheme) private var T
     var body: some View {
-        Text(text.uppercased())
+        Text(text)
             .font(T.mono(9, .semibold))
             .tracking(0.4)
             .foregroundColor(T.accent)
@@ -545,7 +457,7 @@ struct KCompatChip: View {
             }
             .foregroundColor(color)
             .padding(.horizontal, 7).padding(.vertical, 2.5)
-            .kClearGlass(in: RoundedRectangle(cornerRadius: 10, style: .continuous), tint: color.opacity(T.isDark ? 0.16 : 0.10))
+            .kClearGlass(in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous), tint: color.opacity(T.isDark ? 0.16 : 0.10))
         }
         .buttonStyle(.plain)
         .disabled(detail == nil)
@@ -621,17 +533,24 @@ struct KDisclosureRows<Content: View>: View {
 /// Studio grammar: sans semibold with slight negative tracking, matching the
 /// Home masthead and the Models header — not the old display-bold face that
 /// made management screens read as a different product.
+/// A page masthead — uppercase mono, letter-spaced, one size.
+///
+/// This was a 30pt semibold display headline with negative tracking, which is
+/// a magazine cover set on a control surface. Twenty-four screens used it, so
+/// every one of them opened like an editorial spread regardless of what it
+/// actually did. Instrument labels a panel; it does not title an article.
+///
+/// `size` is kept in the signature because call sites pass 26/28/30 and there
+/// is no reason to touch twenty-four files to delete an argument — but it is
+/// deliberately ignored. A masthead has one size, or it is not a masthead.
 struct KPageTitle: View {
     let title: String
     var size: CGFloat = 30
-    @Environment(\.koduTheme) private var T
-
     var body: some View {
-        Text(title)
-            .font(T.sans(size, .semibold))
-            .tracking(-0.8)
-            .foregroundColor(T.ink)
-            .lineLimit(1)
+        Text(title).font(.title2.weight(.semibold))
+            .foregroundStyle(ODPalette.text)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -641,34 +560,13 @@ struct KPageTitle: View {
 // `StudioSquareToggle`, so Settings rows and Studio rows flip the same
 // object. The old 32×18 pill was the last remaining micro-switch dialect.
 
-struct KToggle: View {
-    @Binding var isOn: Bool
-    @Environment(\.koduTheme) private var T
-
-    var body: some View {
-        Button {
-            withAnimation(.easeOut(duration: 0.18)) { isOn.toggle() }
-            HapticManager.impact(.light)
-        } label: {
-            RoundedRectangle(cornerRadius: StudioRadius.tile, style: .continuous)
-                .fill(isOn ? T.accent : T.ink.opacity(0.13))
-                .frame(width: 48, height: 29)
-                .overlay(alignment: isOn ? .trailing : .leading) {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(.white)
-                        .frame(width: 23, height: 23)
-                        .padding(.horizontal, 3)
-                }
-        }
-        .buttonStyle(.plain)
-        // This is a custom switch, not a SwiftUI Toggle — without these traits
-        // VoiceOver announces a bare "button". `.isToggle` + on/off value makes
-        // it read as "<label>, switch, on" like a native control. The label
-        // comes from the enclosing KRow / settings context.
-        .accessibilityAddTraits(.isToggle)
-        .accessibilityValue(isOn ? "on" : "off")
-    }
-}
+/// One switch for the whole app. This used to be a second, byte-identical copy
+/// of `StudioSquareToggle` (48x29, same animation, same colours) whose only
+/// difference was the accessibility traits — so the traits moved onto the
+/// original and this became the name Settings rows already use.
+///
+/// The label comes from the enclosing `KRow` / settings context.
+typealias KToggle = StudioSquareToggle
 
 // MARK: - Active row marker — removed
 //
@@ -731,7 +629,7 @@ struct KModelName: View {
     }
 
     var body: some View {
-        Text(Self.softBreakable(raw))
+        Text(Self.softBreakable(ODPresentation.modelName(raw)))
             .font(font)
             .foregroundColor(color)
             .multilineTextAlignment(alignment)

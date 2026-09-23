@@ -20,24 +20,18 @@ struct KnowledgeBaseView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                StudioPageBackground()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 18) {
-                        if !kb.isAvailable { unavailableCard }
-                        toggleCard
-                        addStrip
-                        if kb.isIndexing {
-                            indexingRow
-                            Button("Cancel import") { kb.cancelImports() }
-                                .frame(minHeight: 44)
-                        }
-                        documentsList
-                    }
-                    .padding(16)
-                    .padding(.bottom, 40)
+            List {
+                if !kb.isAvailable { unavailableCard }
+                toggleCard
+                addStrip
+                if kb.isIndexing {
+                    indexingRow
+                    Button("Cancel import") { kb.cancelImports() }.frame(minHeight: 44)
                 }
+                documentsList
             }
+            .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+            .background(StudioPageBackground())
             .navigationTitle("Knowledge Base")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -90,7 +84,7 @@ struct KnowledgeBaseView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 16).fill(T.bad.opacity(0.10)))
+        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.bad.opacity(0.10)))
     }
 
     private var toggleCard: some View {
@@ -128,10 +122,10 @@ struct KnowledgeBaseView: View {
                 Image(systemName: icon)
                 Text(label).font(T.sans(15, .semibold))
             }
-            .foregroundColor(.white)
+            .foregroundColor(T.onAccentFill)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 13)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(T.roseHi))
+            .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.roseHi))
         }
         .buttonStyle(.plain)
     }
@@ -177,7 +171,7 @@ struct KnowledgeBaseView: View {
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(T.accent2)
                 .frame(width: 36, height: 36)
-                .background(RoundedRectangle(cornerRadius: 10).fill(T.accent2Soft))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accent2Soft))
             VStack(alignment: .leading, spacing: 3) {
                 Text(doc.name).font(T.sans(14, .semibold)).foregroundColor(T.ink).lineLimit(1)
                 Text("\(doc.chunkCount) chunks · \(Int64(doc.byteCount).formattedBytes)")
@@ -187,7 +181,12 @@ struct KnowledgeBaseView: View {
             Button {
                 kb.removeDocument(doc.id); HapticManager.impact(.light)
             } label: {
-                Image(systemName: "trash").accessibilityLabel("Remove document").font(.system(size: 13)).foregroundColor(T.bad)
+                Image(systemName: "trash")
+                    .font(.system(size: 13))
+                    .foregroundColor(T.bad)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+                    .accessibilityLabel("Remove document")
             }
             .buttonStyle(.plain)
         }
@@ -204,11 +203,11 @@ struct KnowledgeBaseView: View {
                 VStack(spacing: 12) {
                     TextField("Name (e.g. Project notes)", text: $pasteName)
                         .font(T.sans(15)).padding(12)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(T.surface))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface))
                     TextEditor(text: $pasteText)
                         .font(T.mono(12)).scrollContentBackground(.hidden)
                         .padding(10)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(T.surface))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface))
                         .frame(minHeight: 220)
                     Spacer()
                 }

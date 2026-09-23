@@ -127,11 +127,11 @@ struct LensDebugOverlay: View {
         }
         .padding(10)
         .background(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: StudioRadius.panel)
                 .fill(Color.black.opacity(0.75))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: StudioRadius.panel)
                 .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
         )
         .frame(maxWidth: 340)

@@ -62,8 +62,8 @@ struct DiffView: View {
             }
         }
         .background(T.surface)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: StudioRadius.panel))
+        .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
     }
 
     @ViewBuilder

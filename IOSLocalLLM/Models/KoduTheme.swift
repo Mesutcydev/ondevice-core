@@ -1,21 +1,9 @@
 import SwiftUI
+import OnDeviceUI
 import UIKit   // resolves the concrete SF face names for the type helpers
 
-// MARK: - KoduTheme
-//
-// The app's single source of colour and type. Three appearances (light, dark,
-// OLED) and a brand-accent family, injected at the root and read everywhere via
-// `@Environment(\.koduTheme)`. `StudioTokens` is a view onto this, not a
-// second palette.
-//
-// Neutral content, hairline boundaries, colour reserved for state or the one
-// primary action on a screen. Set in SF Pro / SF Mono — an earlier revision
-// specified Geist, but no font files were ever added to the target, so the
-// helpers below resolve the system faces and say so.
-//
-// Usage:
-//   @Environment(\.koduTheme) var T
-//   Text("hello").font(T.mono(11)).foregroundColor(T.ink2)
+// Compatibility names for host screens, backed by the current native palette.
+// Persisted legacy appearance/accent values are retained for data compatibility.
 
 // MARK: - Palette
 
@@ -52,8 +40,7 @@ struct KoduTheme {
     let gap: CGFloat
 
     let isDark: Bool
-    /// True for the pure-black OLED appearance, where `bg` is #010102 rather
-    /// than a near-black. Raised surfaces read this so they lift just enough
+    /// True for the OLED appearance, where `bg` is pure black. Raised surfaces read this so they lift just enough
     /// to register without pulling the page off true black.
     var isOLED: Bool = false
 
@@ -65,107 +52,36 @@ struct KoduTheme {
     let roseDeep: Color      // inline code / deep edge of user bubble
     let accentStrong: Color  // primary CTA / active tab — deeper than `accent`
 
-    // MARK: - Light — original white tone (no cream)
-    static let light = KoduTheme(
-        bg:        Color(hex: 0xF7F9FD),                          // original pearl-white canvas
-        surface:   Color(hex: 0x1C1C1E).opacity(0.04),            // quiet panel tint
-        surface2:  Color(hex: 0x1C1C1E).opacity(0.07),            // raised tint
-        surface3:  Color(hex: 0x1C1C1E).opacity(0.03),            // whisper tint
-        ink:       Color(hex: 0x1C1C1E),
-        ink2:      Color(hex: 0x6D6D72),
-        ink3:      Color(hex: 0x5A5A5F),                          // glyphs / mono metrics (4.5:1 floor)
-        ink4:      Color(hex: 0xC7C7CC),                          // placeholders and chevrons only
-        rule:      Color(hex: 0x1C1C1E).opacity(0.10),
-        rule2:     Color(hex: 0x1C1C1E).opacity(0.14),
-        accent:    Color(hex: 0x1F5E46),                          // sage, state only
-        accentSoft:   Color(hex: 0x1F5E46).opacity(0.10),
-        accentSofter: Color(hex: 0x1F5E46).opacity(0.06),
-        good:      Color(hex: 0x1F5E46),
-        warn:      Color(hex: 0x8A6116),
-        bad:       Color(hex: 0xA8352C),
-        pad: 16, gap: 10,
-        isDark: false,
-        roseHi:       Color(hex: 0x2F7A5C),
-        roseDeep:     Color(hex: 0x17452F),
-        accentStrong: Color(hex: 0x1C1C1E)
-    )
+    /// Host compatibility tokens resolve directly to the current supplied native palette.
+    static let light = native(isDark: false)
+    static let dark = native(isDark: true)
+    static let oled = native(isDark: true, isOLED: true)
 
-    // MARK: - Dark — neutral ink
-    static let dark = KoduTheme(
-        // The dark appearance inverts the white-tone palette: ink becomes the
-        // page, paper becomes the text, rules lift to warm-neutral white.
-        bg:        Color(hex: 0x151517),
-        surface:   Color(hex: 0xF5F6F8).opacity(0.06),
-        surface2:  Color(hex: 0xF5F6F8).opacity(0.10),
-        surface3:  Color(hex: 0xF5F6F8).opacity(0.04),
-        ink:       Color(hex: 0xF5F6F8),
-        ink2:      Color(hex: 0xB4B4B9),
-        ink3:      Color(hex: 0xA0A0A5),
-        ink4:      Color(hex: 0x6F6F74),
-        rule:      Color(hex: 0xF5F6F8).opacity(0.10),
-        rule2:     Color(hex: 0xF5F6F8).opacity(0.16),
-        accent:    Color(hex: 0x8FBFA8),
-        accentSoft:   Color(hex: 0x8FBFA8).opacity(0.14),
-        accentSofter: Color(hex: 0x8FBFA8).opacity(0.08),
-        good:      Color(hex: 0x8FBFA8),
-        warn:      Color(hex: 0xD9A75F),
-        bad:       Color(hex: 0xE2836F),
-        pad: 16, gap: 10,
-        isDark: true,
-        roseHi:       Color(hex: 0xA8CFBB),
-        roseDeep:     Color(hex: 0x5F8F76),
-        accentStrong: Color(hex: 0x8FBFA8)
-    )
+    private static func native(isDark: Bool, isOLED: Bool = false) -> KoduTheme {
+        KoduTheme(bg: isOLED ? .black : ODPalette.background, surface: ODPalette.surface,
+                  surface2: ODPalette.input, surface3: ODPalette.chrome,
+                  ink: ODPalette.text, ink2: ODPalette.secondary,
+                  ink3: ODPalette.secondary, ink4: ODPalette.secondary,
+                  rule: ODPalette.line, rule2: ODPalette.line,
+                  accent: ODPalette.text, accentSoft: ODPalette.selected,
+                  accentSofter: ODPalette.input,
+                  good: ODPalette.text, warn: .orange, bad: ODPalette.red,
+                  pad: ODLayout.pageInset, gap: ODLayout.elementGap,
+                  isDark: isDark, isOLED: isOLED, roseHi: ODPalette.text,
+                  roseDeep: ODPalette.text, accentStrong: ODPalette.send)
+    }
 
-    // MARK: - OLED Dark — Plum Dusk
-    //
-    // Pure #000000 page so OLED pixels switch off (deeper blacks, less battery),
-    // with NEUTRAL grays for ink/surfaces instead of the warm mulberry of the
-    // standard dark theme — the readable, high-contrast look of a modern code
-    // editor. Surfaces are translucent whites over the black page, so cards/
-    // pills read as subtly elevated panels (≈#121212 / #212121) rather than
-    // pure black, keeping depth without lifting the page off true black.
-    static let oled = KoduTheme(
-        bg:        Color(red: 0.004, green: 0.004, blue: 0.008),  // #010102 OLED black
-        surface:   Color.white.opacity(0.10),                     // clear elevated card
-        surface2:  Color.white.opacity(0.15),                     // clear glass highlight
-        surface3:  Color.white.opacity(0.06),                     // quiet glass layer
-        ink:       Color(red: 0.929, green: 0.929, blue: 0.937),  // #EDEDEF off-white (not harsh pure white)
-        ink2:      Color(red: 0.706, green: 0.706, blue: 0.729),  // #B4B4BA secondary
-        ink3:      Color(red: 0.510, green: 0.510, blue: 0.533),  // #828288 tertiary
-        ink4:      Color(red: 0.337, green: 0.337, blue: 0.357),  // #56565B quaternary
-        rule:      Color.white.opacity(0.09),
-        rule2:     Color.white.opacity(0.16),
-        accent:    Color(red: 0.769, green: 0.169, blue: 0.522),  // #C42B85
-        accentSoft:   Color(red: 0.643, green: 0.067, blue: 0.384).opacity(0.30),
-        accentSofter: Color(red: 0.643, green: 0.067, blue: 0.384).opacity(0.16),
-        good:      Color(red: 0.525, green: 1.000, blue: 0.753),  // #86FFC0
-        warn:      Color(red: 0.988, green: 0.827, blue: 0.302),  // #FCD34D
-        bad:       Color(red: 0.988, green: 0.647, blue: 0.647),  // #FCA5A5
-        pad: 16, gap: 10,
-        isDark: true,
-        isOLED: true,
-        roseHi:       Color(red: 0.635, green: 0.071, blue: 0.400), // #A21266
-        roseDeep:     Color(red: 0.431, green: 0.043, blue: 0.275), // #6E0B46
-        accentStrong: Color(red: 0.431, green: 0.043, blue: 0.275)
-    )
-
-    // MARK: - Accent palettes (theme combinations)
-    //
-    // Each palette swaps ONLY the brand-accent family (accent + soft/softer +
-    // hi/deep/strong). Backgrounds, ink, the sage `accent2`, and good/warn/bad
-    // are untouched, so layout and the semantic color language don't change.
-    // `.rose` returns the original Liquid Pink theme byte-for-byte.
     enum KoduAccent: String, CaseIterable, Identifiable, Sendable {
         // `onyx` is the app's default — a near-black graphite monochrome (the
         // professional, ChatGPT-like look: near-black primary actions, color
         // reserved for status). Listed first so it leads the Settings swatch
         // row. `system` (vivid iOS blue) and the rest stay selectable.
         // rawValues are persisted, so the order may change freely.
-        case onyx, system, rose, blue, violet, emerald, amber, graphite, teal, indigo, coral, magenta
+        case instrument, onyx, system, rose, blue, violet, emerald, amber, graphite, teal, indigo, coral, magenta
         var id: String { rawValue }
         var displayName: String {
             switch self {
+            case .instrument: return "Instrument"
             case .onyx: return "Onyx"
             case .system: return "System"
             case .rose: return "Rose"
@@ -195,6 +111,20 @@ struct KoduTheme {
         fileprivate func anchors(dark: Bool) -> (accent: Color, hi: Color, deep: Color, strong: Color) {
             func c(_ r: Double, _ g: Double, _ b: Double) -> Color { Color(red: r, green: g, blue: b) }
             switch self {
+            case .instrument:
+                // Monochrome. There is no brand hue: "live" is pure white on
+                // dark (17.9:1) and pure ink on light, one step brighter than
+                // body text rather than a different colour from it. The only
+                // hues left in the product are `warn` and `bad`, which means
+                // anything coloured on screen is a condition, not decoration.
+                //
+                // This replaced a signal lime. The lime worked structurally —
+                // it was unmistakably not an AI-app accent — but it read as
+                // loud rather than expensive, and an instrument whose lamp is
+                // lit at all times is not telling you anything.
+                return dark
+                    ? (c(1.000,1.000,1.000), c(1.000,1.000,1.000), c(0.659,0.682,0.714), c(0.910,0.918,0.929))
+                    : (c(0.039,0.043,0.051), c(0.039,0.043,0.051), c(0.000,0.000,0.000), c(0.039,0.043,0.051))
             case .onyx:
                 // Near-black graphite monochrome — the ChatGPT-like default.
                 // Light: near-black accent/CTA (white text ~15:1). Dark: a
@@ -265,35 +195,14 @@ struct KoduTheme {
     /// The only app-facing accent for now. Keeping the palette implementation
     /// below makes it easy to restore user-selectable colors later without
     /// allowing an old persisted choice to override the current black theme.
-    static let appAccent: KoduAccent = .onyx
+    static let appAccent: KoduAccent = .instrument
 
     /// Build a theme for an appearance + accent palette. `appearance` is the
     /// stored string — "light", "dark", or "oled". `.rose` is the untouched
     /// default; other palettes substitute only the brand-accent family.
     /// Applied at the root scene + tabs so the choice is app-wide.
     static func make(appearance: String, accent: KoduAccent) -> KoduTheme {
-        let base: KoduTheme
-        switch appearance {
-        case "oled": base = .oled
-        case "dark": base = .dark
-        default:     base = .light
-        }
-        let dark = base.isDark
-        if accent == .rose { return base }
-        let a = accent.anchors(dark: dark)
-        return KoduTheme(
-            bg: base.bg, surface: base.surface, surface2: base.surface2, surface3: base.surface3,
-            ink: base.ink, ink2: base.ink2, ink3: base.ink3, ink4: base.ink4,
-            rule: base.rule, rule2: base.rule2,
-            accent: a.accent,
-            accentSoft: a.accent.opacity(dark ? 0.18 : 0.14),
-            accentSofter: a.accent.opacity(dark ? 0.10 : 0.07),
-            good: base.good, warn: base.warn, bad: base.bad,
-            pad: base.pad, gap: base.gap,
-            isDark: base.isDark,
-            isOLED: base.isOLED,
-            roseHi: a.hi, roseDeep: a.deep, accentStrong: a.strong
-        )
+        native(isDark: appearance != "light", isOLED: appearance == "oled")
     }
 
     // MARK: - Liquid Pink extras
@@ -305,12 +214,15 @@ struct KoduTheme {
     var accentStrongSoft: Color {
         accentStrong.opacity(isDark ? 0.18 : 0.12)
     }
+    /// Label/glyph color for content sitting ON an accent-family fill
+    /// (`accent`, `roseHi`, `accentStrong`). The native palette renders those
+    /// fills as near-black ink in light and near-white in dark, so the
+    /// contrasting label must flip with the appearance — hard-coded `.white`
+    /// is unreadable in dark mode (2026-09-21 device report: discovery
+    /// catalog "download" capsule). `ODPalette.onSend` is exactly that pair.
+    var onAccentFill: Color { ODPalette.onSend }
     /// Secondary neutral accent used for quiet supporting glyphs.
-    var accent2: Color {
-        isDark
-            ? Color(red: 0.620, green: 0.650, blue: 0.700)
-            : Color(red: 0.430, green: 0.460, blue: 0.520)
-    }
+    var accent2: Color { ODPalette.secondary }
     /// Soft sage — fill for glyph tiles and pills that use `accent2`.
     var accent2Soft: Color {
         accent2.opacity(isDark ? 0.20 : 0.16)
@@ -325,19 +237,11 @@ struct KoduTheme {
     // image card.
 
     /// Voice role — violet.
-    var voiceTint: Color {
-        isDark
-            ? Color(red: 0.745, green: 0.624, blue: 1.000)   // #BE9FFF
-            : Color(red: 0.553, green: 0.420, blue: 0.871)   // #8D6BDE
-    }
+    var voiceTint: Color { ODPalette.secondary }
     var voiceTintSoft: Color { voiceTint.opacity(isDark ? 0.20 : 0.14) }
 
     /// Image role — warm amber/orange (distinct from the cooler `warn`).
-    var imageTint: Color {
-        isDark
-            ? Color(red: 1.000, green: 0.722, blue: 0.404)   // #FFB867
-            : Color(red: 0.910, green: 0.561, blue: 0.180)   // #E88F2E
-    }
+    var imageTint: Color { ODPalette.secondary }
     var imageTintSoft: Color { imageTint.opacity(isDark ? 0.20 : 0.14) }
     /// Subtle border used by legacy glass call sites.
     var glassBorder: Color {
@@ -353,59 +257,82 @@ struct KoduTheme {
     // The app is set in SF Pro / SF Mono. These helpers exist for one reason:
     // to get an ARBITRARY point size that still follows Dynamic Type.
     //
-    // `.font(.system(size: 17))` is a fixed size — it ignores the user's text
-    // size entirely. `Font.custom(_:size:relativeTo:)` is the only way to ask
-    // for "17pt, but scale it like body text does", so every helper below
-    // routes through it. Prefer these over `.system(size:)` for anything the
-    // user reads.
+    // The sans face used to be built with
+    // `Font.custom(sansFace, size: size, relativeTo: .body)`, where `sansFace`
+    // was cached from `UIFont.systemFont(ofSize: 17).fontName`. That call
+    // reports a PRIVATE name (".SFUI-Regular"), and CoreText cannot
+    // re-instantiate a dot-prefixed system face by name. Every one of those
+    // calls therefore fell through to the last-resort face — **Times New
+    // Roman** — at every size, in every label, everywhere in the app.
     //
-    // These previously probed for a bundled "Geist" family first. No Geist
-    // files were ever added to the target and `UIAppFonts` is absent from
-    // Info.plist, so every call had always fallen through to the system face —
-    // the lookup, its cache and its weight-name mapping were dead code
-    // describing a design intent that did not ship.
+    // That is measured, not inferred: at 20pt the string "Probe text 123"
+    // rendered 113.3pt wide through `sans(20)` and 113.3pt through
+    // `.custom("Times New Roman", 20)`, with identical ink height, against
+    // 122.7pt for `.system(size: 20)`. `Font.system(size:weight:)` is both the
+    // correct face and Dynamic-Type aware — the same string re-measured at
+    // Accessibility Extra Large was 251.3pt through `sans` and 346.0pt through
+    // `.system(size:)` — so it is used directly.
+    //
+    // Rule: never address an SF face by name. `.system(...)` or a real family.
 
-    /// Cached system face names. `UIFont.systemFont(...).fontName` resolves to
-    /// the concrete SF face (e.g. ".SFUI-Regular"); it does not change at
-    /// runtime, so resolving it once avoids a UIFont construction per call.
-    nonisolated(unsafe) private static let sansFace: String =
-        UIFont.systemFont(ofSize: 17).fontName
-    nonisolated(unsafe) private static let monoFace: String =
-        UIFont.monospacedSystemFont(ofSize: 17, weight: .regular).fontName
+    /// The system serif (New York). Resolved per call through the `.serif`
+    /// design descriptor rather than a single baked-in face name, so each
+    /// requested weight maps to the matching New York cut instead of
+    /// synthesizing every weight from one. On iOS this resolves to the real
+    /// New York faces; the fallback in `serif(_:)` covers any platform where
+    /// the serif design is unavailable. An unresolvable custom face does NOT
+    /// fall back to sans — it falls back to Times, which is how the sans
+    /// helpers above shipped a serif app — hence the explicit `design: .serif`
+    /// fallback here.
+    static func serifFontName(weight: UIFont.Weight) -> String? {
+        let base = UIFont.systemFont(ofSize: 17, weight: weight)
+        // `withDesign` is the only failable step; the descriptor initializer
+        // itself is non-failable and always yields a usable face.
+        guard let desc = base.fontDescriptor.withDesign(.serif) else { return nil }
+        return UIFont(descriptor: desc, size: 17).fontName
+    }
 
     /// Display / sans body at an arbitrary size, scaling with Dynamic Type.
+    private func semantic(_ size: CGFloat) -> Font.TextStyle {
+        switch size {
+        case ..<14: return .footnote
+        case ..<16: return .subheadline
+        case ..<19: return .body
+        case ..<23: return .title3
+        case ..<28: return .title2
+        case ..<33: return .title
+        default: return .largeTitle
+        }
+    }
     func display(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
-        Font.custom(Self.sansFace, size: size, relativeTo: .body).weight(weight)
+        .system(semantic(size)).weight(weight)
     }
-
-    /// Shared reading size for prompts, live responses, and completed transcripts.
     var conversationBody: Font { .body }
-
     func sans(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        Font.custom(Self.sansFace, size: size, relativeTo: .body).weight(weight)
+        .system(semantic(size)).weight(weight)
+    }
+    func serif(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
+        .system(semantic(size)).weight(weight)
+    }
+    func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
+        .system(semantic(size)).weight(weight)
     }
 
-    /// Monospaced — pervasive in this design language, used for every machine
-    /// fact (metrics, byte counts, model ids).
-    func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        Font.custom(Self.monoFace, size: size, relativeTo: .body).weight(weight)
-    }
 }
 
 // MARK: - Dynamic Type modifier
 
 extension View {
-    /// Limits how aggressively a view scales with iOS Larger Text settings.
-    /// We allow up to `.accessibility2` so the design doesn't blow up.
+    /// Semantic typography follows the full system Dynamic Type range.
     func koduScaledType() -> some View {
-        self.dynamicTypeSize(...DynamicTypeSize.accessibility2)
+        self
     }
 }
 
 // MARK: - Environment
 
 private struct KoduThemeKey: EnvironmentKey {
-    static let defaultValue: KoduTheme = .light
+    static let defaultValue: KoduTheme = .dark
 }
 
 extension EnvironmentValues {
@@ -418,6 +345,13 @@ extension EnvironmentValues {
 extension View {
     /// Inject a KoduTheme into the environment.
     func koduTheme(_ theme: KoduTheme) -> some View {
-        self.environment(\.koduTheme, theme)
+        modifier(NativeThemeEnvironment())
+    }
+}
+
+private struct NativeThemeEnvironment: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    func body(content: Content) -> some View {
+        content.environment(\.koduTheme, colorScheme == .dark ? .dark : .light)
     }
 }

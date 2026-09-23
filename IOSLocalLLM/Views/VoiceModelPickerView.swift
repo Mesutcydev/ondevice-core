@@ -34,21 +34,23 @@ struct VoiceModelPickerView: View {
     @Environment(\.koduTheme) private var T
     @State private var query = ""
     @State private var selectedCatalogEntry: VoiceCatalogEntry?
+    @State private var pendingEngine: VoiceEngineKind?
+    @State private var pendingModel: DownloadableModel?
+    @State private var confirmInterruption = false
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    header
+            List {
                     catalogSearch
                     catalogSections
                     hintCard
-                }
-                .padding(.bottom, 32)
+
             }
+            .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+            .navigationTitle("Voice engines")
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }.foregroundColor(T.ink)
@@ -59,6 +61,24 @@ struct VoiceModelPickerView: View {
                 for: .hfModelDownloadCompleted)
             ) { _ in
                 center.refreshAllStates()
+            }
+            .alert("End voice to change speech engine?", isPresented: $confirmInterruption) {
+                Button("End voice and continue", role: .destructive) {
+                    guard let kind = pendingEngine else { return }
+                    let model = pendingModel
+                    pendingEngine = nil
+                    pendingModel = nil
+                    Task { @MainActor in
+                        await VoiceConversationService.shared.stopAndRestoreSelection()
+                        choose(kind, model: model)
+                    }
+                }
+                Button("Keep voice conversation", role: .cancel) {
+                    pendingEngine = nil
+                    pendingModel = nil
+                }
+            } message: {
+                Text("This changes the speech engine used by the ongoing conversation.")
             }
             .sheet(item: $selectedCatalogEntry) { entry in
                 VoiceCatalogDetailView(entry: entry)
@@ -159,24 +179,27 @@ struct VoiceModelPickerView: View {
             }
             .buttonStyle(.plain)
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 if entry.id == "tts.apple.system" {
-                    Button("Select") { choose(.appleSystem, model: nil) }
-                        .buttonStyle(.borderedProminent)
+                    StudioCompactPrimaryButton(title: "Select", height: 32) {
+                        choose(.appleSystem, model: nil)
+                    }
                 } else if entry.isDownloadEnabled, let model = downloadable {
-                    Button(primaryTitle(for: model)) { activate(entry, model: model) }
-                        .buttonStyle(.borderedProminent)
+                    StudioCompactPrimaryButton(title: primaryTitle(for: model), height: 32) {
+                        activate(entry, model: model)
+                    }
                 } else {
-                    Button(entry.statusLabel) {}
-                        .buttonStyle(.bordered)
-                        .disabled(true)
+                    StudioCompactSecondaryButton(title: entry.statusLabel, enabled: false, height: 32) {}
                 }
-                Button("Details") { selectedCatalogEntry = entry }.buttonStyle(.bordered)
+                StudioCompactSecondaryButton(title: "Details", height: 32) {
+                    selectedCatalogEntry = entry
+                }
                 if let source = entry.sourceURL, let url = URL(string: source) {
-                    Link("Open Project", destination: url).font(T.sans(11, .semibold))
+                    Link("Open Project", destination: url)
+                        .font(T.sans(11, .semibold))
+                        .foregroundStyle(T.ink2)
                 }
             }
-            .font(T.sans(11, .semibold))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -206,6 +229,12 @@ struct VoiceModelPickerView: View {
     // MARK: - One-tap action
 
     private func choose(_ kind: VoiceEngineKind, model: DownloadableModel?) {
+        if VoiceConversationService.shared.hasSession {
+            pendingEngine = kind
+            pendingModel = model
+            confirmInterruption = true
+            return
+        }
         HapticManager.impact(.light)
 
         // Commit immediately. VoiceService.resolvedEngine falls back to
@@ -302,13 +331,26 @@ struct VoiceCatalogDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Text(entry.name).font(T.sans(28, .semibold)).foregroundColor(T.ink)
+                    // The voice's proper name — editorial content, so it gets
+                    // the serif display face like every other named thing in
+                    // the product (model names, voice names, session titles).
+                    Text(entry.name).font(T.serif(24, .semibold)).foregroundColor(T.ink)
                     Text(entry.summary).font(T.sans(15)).foregroundColor(T.ink2)
                     LabeledContent("Task", value: entry.task == .textToSpeech ? "Text to Speech" : "Speech Recognition")
                     LabeledContent("Support", value: entry.statusLabel)
                     if let source = entry.sourceURL, let url = URL(string: source) {
-                        Link("Open Project", destination: url)
-                            .buttonStyle(.borderedProminent)
+                        Link(destination: url) {
+                            Text("Open Project")
+                                .font(T.sans(13, .medium))
+                                .foregroundStyle(T.studio.ink)
+                                .padding(.horizontal, 14)
+                                .frame(minHeight: 36)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous)
+                                        .strokeBorder(T.studio.rule2, lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(StudioPressStyle())
                     }
                 }
                 .padding(20)

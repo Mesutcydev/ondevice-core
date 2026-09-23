@@ -72,7 +72,7 @@ struct ArenaLeaderboardCard: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Text(String(format: "%.0f%% win · %d games", r.winRate * 100, r.games))
-                    .font(T.mono(8))
+                    .font(T.mono(9))
                     .foregroundColor(T.ink3)
             }
             .frame(maxWidth: .infinity, alignment: .leading)

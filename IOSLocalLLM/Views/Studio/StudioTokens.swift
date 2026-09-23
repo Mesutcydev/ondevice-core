@@ -1,14 +1,7 @@
 import SwiftUI
+import OnDeviceUI
 
-// MARK: - StudioTokens
-//
-// Token layer for the composer/chat rethink, wired into the app's existing
-// `koduTheme` so the design follows the user's appearance setting. The
-// palette (paper / ink / hairlines / sage accent) maps onto the theme's own
-// sans/mono faces: light mode keeps the app's original pearl-white tone
-// (no warm cast), and dark mode inverts it to a neutral near-black page with
-// paper-toned text, rules at 10-16% white, and the sage accent tint.
-
+// Compatibility names for host views. All presentation values follow OnDeviceUI.
 struct StudioTokens {
     let theme: KoduTheme
 
@@ -38,31 +31,14 @@ struct StudioTokens {
     var rule: Color { theme.rule }
     var rule2: Color { theme.rule2 }
     var fillActive: Color { theme.ink.opacity(theme.isDark ? 0.08 : 0.06) }
-    var userTurnFill: Color { theme.ink.opacity(theme.isDark ? 0.06 : 0.055) }
+    var userTurnFill: Color { ODPalette.input }
     var scrim: Color { Color.black.opacity(0.34) }
 
-    // MARK: Elevation
-    //
-    // The composer is a contained surface, so it needs a fill that reads as
-    // lifted ABOVE `paper` plus a boundary and a shadow. Light mode lifts to
-    // pure white; dark lifts a step off the page; OLED lifts just enough to
-    // register as a surface without pulling the page off true black.
-
-    var surfaceRaised: Color {
-        if theme.isOLED { return Color(hex: 0x141416) }
-        return theme.isDark ? Color(hex: 0x1F1F22) : .white
-    }
-    /// Resting boundary of a raised surface — slightly stronger than a `rule`
-    /// so the container edge survives against a busy thread behind it.
-    var strokeRest: Color { theme.ink.opacity(theme.isDark ? 0.14 : 0.10) }
-    /// Focused boundary — the accent, at a weight that reads as attention
-    /// rather than as a validation error.
-    var strokeFocus: Color { theme.accent.opacity(theme.isDark ? 0.55 : 0.42) }
-
-    /// Wide, soft, barely-there — the ambient occlusion under a raised panel.
-    var shadowAmbient: Color { Color.black.opacity(theme.isDark ? 0.34 : 0.07) }
-    /// Tight contact shadow directly beneath the panel edge.
-    var shadowKey: Color { Color.black.opacity(theme.isDark ? 0.28 : 0.05) }
+    var surfaceRaised: Color { ODPalette.surface }
+    var strokeRest: Color { ODPalette.line }
+    var strokeFocus: Color { ODPalette.text }
+    var shadowAmbient: Color { .clear }
+    var shadowKey: Color { .clear }
 
     // Code blocks stay dark in both appearances so code reads as code.
     var codeBg: Color {
@@ -80,6 +56,12 @@ struct StudioTokens {
 
     func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
         theme.mono(size, weight)
+    }
+
+    /// Editorial serif — the rarest face. Proper names only: model names,
+    /// voice names, session titles. See `KoduTheme.serif`.
+    func serif(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
+        theme.serif(size, weight)
     }
 }
 
@@ -107,45 +89,128 @@ enum StudioSpacing {
     static let m: CGFloat = 12
     static let l: CGFloat = 16
     static let xl: CGFloat = 20
-    static let xxl: CGFloat = 26
+    // 24, not 26: the scale is 4pt-derived end to end; 26 was the one
+    // off-grid value left in it.
+    static let xxl: CGFloat = 24
+
+    /// End-of-list breathing room for a scrolling tab page.
+    ///
+    /// This was 140pt of run-out, written when the app mounted its own bar as a
+    /// bottom `safeAreaInset` and a page had to clear it by hand. The shell is a
+    /// native `TabView` now, and a native bar *is* reserved in the scroll view's
+    /// inset — measured at ~82pt above the screen edge on an iPhone 17 — so the
+    /// 140 left a third of a screen of empty paper after the last row. Same
+    /// value as the package's `ODSpace.tabBarRunout`, so a page cannot be short
+    /// or long by accident.
+    static let tabBarClearance: CGFloat = 24
 }
 
-/// Radii in points. Nothing is a pill — never 9999.
-///
-/// Six values, no more: 3 · 6 · 10 · 14 · 20 · 26. The app had accumulated
-/// nineteen distinct radii, which is the main reason nothing looked like it
-/// belonged to the same product. The semantic names are kept so call sites
-/// read by intent (and so this consolidation touches no other file); several
-/// of them deliberately resolve to the same number.
+/// App-owned content corners. Native controls retain their OS geometry.
 enum StudioRadius {
-    /// The clipped edge on a spined block. Nearly square by design.
-    static let spine: CGFloat = 3
-    static let small: CGFloat = 6
-    static let chip: CGFloat = 10
-    static let tile: CGFloat = 10
-    static let glyph: CGFloat = 10
-    static let action: CGFloat = 14
-    static let send: CGFloat = 14
-    /// Contained surfaces: the composer, cards that carry their own elevation.
+    static let spine: CGFloat = 12
     static let panel: CGFloat = 20
-    static let sheet: CGFloat = 26
+    static let small: CGFloat = 8
+    static let tile: CGFloat = 12
+    static let chip: CGFloat = 12
+    static let glyph: CGFloat = 12
+    static let action: CGFloat = 20
+    static let send: CGFloat = 24
+    static let sheet: CGFloat = 24
+    static let badge: CGFloat = 8
+    static let composer: CGFloat = 24
+}
+
+// MARK: - Motion
+
+/// The app's four motion roles.
+///
+/// Durations were literals in every file that needed one — 0.1, 0.18, 0.25,
+/// 0.55, 1.5, 1.6 — which is exactly how a design system drifts: the same
+/// gesture ends up with three different curves depending on which file it was
+/// written in. Four roles, named after what the motion *means*, not how long
+/// it takes.
+///
+/// Ambient motion (`breathe`, `sweep`) must be gated on Reduce Motion by the
+/// caller — see `studioAnimation(_:value:)`, which does it for you. A slower
+/// pulse is still a pulse.
+enum StudioMotion {
+    /// A press, a toggle, a filter switching. Must land before the finger
+    /// lifts or it reads as lag rather than feedback.
+    static let tap = Animation.easeOut(duration: 0.12)
+
+    /// A value updating in place, a row revealing, a meter refilling. The
+    /// workhorse — most of the app's motion is this one.
+    static let state = Animation.easeOut(duration: 0.22)
+
+    /// Content arriving on screen. The only curve in the system with
+    /// overshoot; that slight settle is what separates "appeared" from
+    /// "materialised".
+    static let entrance = Animation.spring(response: 0.40, dampingFraction: 0.80)
+
+    /// A lit indicator at rest. Slow enough to read as breathing rather than
+    /// blinking.
+    static func breathe(_ period: Double = 1.5) -> Animation {
+        .easeInOut(duration: period).repeatForever(autoreverses: true)
+    }
+
+    /// A pass that says "still running" between discrete updates — the
+    /// difference between a stalled runtime and a working one when the
+    /// numbers happen to be identical for a second.
+    static func sweep(_ period: Double = 1.6) -> Animation {
+        .linear(duration: period).repeatForever(autoreverses: false)
+    }
+
+    /// Delay for the nth item in a staggered entrance. Capped, so a long list
+    /// does not take a second and a half to finish arriving.
+    static func stagger(_ index: Int, step: Double = 0.035, cap: Double = 0.28) -> Double {
+        min(Double(max(index, 0)) * step, cap)
+    }
+}
+
+/// `.animation` that yields to Reduce Motion.
+///
+/// The accessibility setting means "no motion", not "less motion", so this
+/// drops to `nil` rather than substituting a gentler curve.
+private struct StudioAnimationModifier<V: Equatable>: ViewModifier {
+    let animation: Animation?
+    let value: V
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content.animation(reduceMotion ? nil : animation, value: value)
+    }
+}
+
+extension View {
+    /// Animate `value` changes with `animation`, unless the user has asked
+    /// for Reduce Motion. Prefer this over a bare `.animation` anywhere the
+    /// motion is decorative rather than essential to understanding the state.
+    func studioAnimation<V: Equatable>(_ animation: Animation?, value: V) -> some View {
+        modifier(StudioAnimationModifier(animation: animation, value: value))
+    }
 }
 
 // MARK: - Primitives
 
-/// Press feedback for filled controls: a small, fast inset. Distinct from
-/// `.plain`, which gives no feedback at all, and from `.borderless`, which
-/// dims the label instead of moving it.
+/// The app's single press feedback: the control dims, it does not move.
+///
+/// This used to scale to 0.93 on press. Nothing in an instrument shrinks when
+/// you touch it — the readout changes, the panel does not — and the app was
+/// running two press languages at once: 11 controls scaled, 4 dimmed. One
+/// language, and it is the one that leaves the geometry alone.
 struct StudioPressStyle: ButtonStyle {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.93 : 1)
-            .opacity(configuration.isPressed ? 0.88 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .opacity(configuration.isPressed ? 0.72 : 1)
+            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
     }
 }
+
+/// Alias kept so the Instrument components read in their own vocabulary.
+/// Identical behaviour by construction rather than by copy — two structs with
+/// the same body is how a design system drifts.
+typealias InstrumentPressStyle = StudioPressStyle
 
 /// The single 1px boundary that separates composer, nav and sheet headers
 /// from content. Defaults to the studio `rule` colour.
@@ -207,76 +272,112 @@ struct StudioGlyphButton: View {
     }
 }
 
-/// The one filled button per screen.
+/// Native actions shared by secondary host screens.
 struct StudioPrimaryButton: View {
     let title: String
     var height: CGFloat = 44
-    var radius: CGFloat = StudioRadius.action
+    var radius: CGFloat = 12
     let action: () -> Void
-
-    @Environment(\.koduTheme) private var T
-
     var body: some View {
-        let S = T.studio
-        Button(action: action) {
-            Text(title)
-                .font(S.sans(15, .medium))
-                .foregroundStyle(S.paper)
-                .frame(maxWidth: .infinity, minHeight: height)
-                .background(S.ink, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
-        }
-        .buttonStyle(StudioPressStyle())
+        Button(title, action: action)
+            .font(.body.weight(.medium))
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .buttonStyle(.glassProminent)
+            .tint(ODPalette.send).foregroundStyle(ODPalette.onSend)
+            .controlSize(.large)
     }
 }
 
-/// Outlined secondary — a border, never a fill, never a pill.
+struct StudioSecondaryButton: View {
+    let title: String
+    var height: CGFloat = 44
+    var symbol: String? = nil
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: ODLayout.elementGap) {
+                if let symbol { Image(systemName: symbol) }
+                Text(title)
+            }
+            .font(.body).frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.glass).controlSize(.large)
+        .foregroundStyle(ODPalette.text)
+    }
+}
+
 struct StudioOutlineButton: View {
     let title: String
     var height: CGFloat = 44
     let action: () -> Void
-
-    @Environment(\.koduTheme) private var T
-
     var body: some View {
-        let S = T.studio
-        Button(action: action) {
-            Text(title)
-                .font(S.sans(14, .medium))
-                .foregroundStyle(S.ink)
-                .frame(maxWidth: .infinity, minHeight: height)
-                .overlay(
-                    RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous)
-                        .stroke(S.ink.opacity(0.14), lineWidth: 1)
-                )
-        }
-        .buttonStyle(.plain)
+        StudioSecondaryButton(title: title, action: action)
     }
 }
 
-/// Square-cut switch: 48x29, radius 8, knob 23 radius 6.
+struct StudioDangerButton: View {
+    let title: String
+    var height: CGFloat = 44
+    var symbol: String? = nil
+    let action: () -> Void
+    var body: some View {
+        Button(role: .destructive, action: action) {
+            HStack(spacing: ODLayout.elementGap) {
+                if let symbol { Image(systemName: symbol) }
+                Text(title)
+            }
+            .font(.body).frame(maxWidth: .infinity, minHeight: 44)
+        }
+        .buttonStyle(.glass).controlSize(.large)
+        .tint(ODPalette.red)
+    }
+}
+
+struct StudioCompactPrimaryButton: View {
+    let title: String
+    var symbol: String? = nil
+    var enabled = true
+    var height: CGFloat = 44
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: ODLayout.elementGap) {
+                if let symbol { Image(systemName: symbol) }
+                Text(title)
+            }
+            .font(.footnote).frame(minHeight: 44)
+        }
+        .buttonStyle(.glassProminent)
+        .tint(ODPalette.send).foregroundStyle(ODPalette.onSend)
+        .disabled(!enabled)
+    }
+}
+
+struct StudioCompactSecondaryButton: View {
+    let title: String
+    var symbol: String? = nil
+    var destructive = false
+    var enabled = true
+    var height: CGFloat = 44
+    let action: () -> Void
+    var body: some View {
+        Button(role: destructive ? .destructive : nil, action: action) {
+            HStack(spacing: ODLayout.elementGap) {
+                if let symbol { Image(systemName: symbol) }
+                Text(title)
+            }
+            .font(.footnote).frame(minHeight: 44)
+        }
+        .buttonStyle(.glass)
+        .tint(destructive ? ODPalette.red : ODPalette.text)
+        .disabled(!enabled)
+    }
+}
+
 struct StudioSquareToggle: View {
     @Binding var isOn: Bool
-
-    @Environment(\.koduTheme) private var T
-
     var body: some View {
-        let S = T.studio
-        Button {
-            withAnimation(.easeOut(duration: 0.18)) { isOn.toggle() }
-            HapticManager.impact(.light)
-        } label: {
-            RoundedRectangle(cornerRadius: StudioRadius.tile, style: .continuous)
-                .fill(isOn ? S.accent : S.ink.opacity(0.13))
-                .frame(width: 48, height: 29)
-                .overlay(alignment: isOn ? .trailing : .leading) {
-                    RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(.white)
-                        .frame(width: 23, height: 23)
-                        .padding(.horizontal, 3)
-                }
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isOn ? .isSelected : [])
+        Toggle("", isOn: $isOn).labelsHidden().toggleStyle(.switch)
     }
 }
 
@@ -291,9 +392,8 @@ struct StudioMonoLabel: View {
     @Environment(\.koduTheme) private var T
 
     var body: some View {
-        Text(text.uppercased())
-            .font(T.studio.mono(size))
-            .tracking(tracking)
+        Text(text)
+            .font(.footnote)
             .foregroundStyle(color ?? T.studio.ink3)
     }
 }

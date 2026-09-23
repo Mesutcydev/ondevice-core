@@ -46,7 +46,7 @@ struct WebStatusBadge: View {
         }
         .foregroundColor(color)
         .padding(.horizontal, 6).padding(.vertical, 3)
-        .background(RoundedRectangle(cornerRadius: 4).fill(color.opacity(0.12)))
-        .overlay(RoundedRectangle(cornerRadius: 4).stroke(color.opacity(0.4), lineWidth: 0.5))
+        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(color.opacity(0.12)))
+        .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(color.opacity(0.4), lineWidth: 0.5))
     }
 }

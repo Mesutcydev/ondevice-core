@@ -78,9 +78,7 @@ struct VisualModelPickerView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    header
+            List {
                     if hasStaleMLXSelection { staleSelectionCard }
                     defaultRow
                     if !downloadedVLMs.isEmpty {
@@ -93,8 +91,7 @@ struct VisualModelPickerView: View {
                     browseMoreCard
                     hintCard
                     statusCard
-                }
-                .padding(.bottom, 32)
+
                 // NB: previous shape was `.id(downloadTick)` on this VStack
                 // to force a full subtree rebuild when a download finished.
                 // That worked but tore the picker apart on every tick —
@@ -103,9 +100,11 @@ struct VisualModelPickerView: View {
                 // @Published, so SwiftUI rebuilds the affected rows on its
                 // own when a download completes; no manual id-bump needed.
             }
+            .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+            .navigationTitle("Vision models")
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(loc.t("Close")) { dismiss() }
@@ -154,7 +153,7 @@ struct VisualModelPickerView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(T.accent)
                     .frame(width: 32, height: 32)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.accentSoft))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accentSoft))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(loc.t("compare models"))
                         .font(T.mono(12, .semibold))
@@ -275,8 +274,8 @@ struct VisualModelPickerView: View {
         .foregroundColor(T.accent)
         .padding(.horizontal, 6)
         .padding(.vertical, 2.5)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accent.opacity(0.10)))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.accent.opacity(0.32), lineWidth: 0.5))
+        .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.accent.opacity(0.10)))
+        .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(T.accent.opacity(0.32), lineWidth: 0.5))
         .fixedSize(horizontal: true, vertical: false)
     }
 
@@ -292,10 +291,10 @@ struct VisualModelPickerView: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 2.5)
             .background(
-                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.ink2.opacity(0.10))
+                RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.ink2.opacity(0.10))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.ink2.opacity(0.28), lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(T.ink2.opacity(0.28), lineWidth: 0.5)
             )
             .fixedSize(horizontal: true, vertical: false)
     }
@@ -312,7 +311,7 @@ struct VisualModelPickerView: View {
             }
         }()
         HStack(spacing: 4) {
-            Circle().fill(color).frame(width: 6, height: 6)
+            Rectangle().fill(color).frame(width: 6, height: 6)
             Text(bytes.formattedBytes)
                 .font(T.mono(8, .semibold))
                 .tracking(0.4)
@@ -320,8 +319,8 @@ struct VisualModelPickerView: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 2.5)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(color.opacity(0.10)))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(color.opacity(0.32), lineWidth: 0.5))
+        .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(color.opacity(0.10)))
+        .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(color.opacity(0.32), lineWidth: 0.5))
         .fixedSize(horizontal: true, vertical: false)
     }
 
@@ -342,11 +341,11 @@ struct VisualModelPickerView: View {
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(
-                RoundedRectangle(cornerRadius: 4)
+                RoundedRectangle(cornerRadius: StudioRadius.panel)
                     .fill((warning ? T.bad : T.ink2).opacity(0.10))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 4)
+                RoundedRectangle(cornerRadius: StudioRadius.panel)
                     .stroke((warning ? T.bad : T.ink2).opacity(0.25), lineWidth: 0.5)
             )
     }
@@ -370,8 +369,8 @@ struct VisualModelPickerView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 8).fill(T.bad.opacity(0.08)))
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(T.bad.opacity(0.4), lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.bad.opacity(0.08)))
+        .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.bad.opacity(0.4), lineWidth: 1))
         .padding(.horizontal, 16)
         .padding(.top, 8)
     }
@@ -536,11 +535,11 @@ struct VisualModelPickerView: View {
     @ViewBuilder
     private func radio(selected: Bool) -> some View {
         ZStack {
-            Circle()
+            RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
                 .stroke(selected ? T.accent : T.rule2, lineWidth: 1.5)
                 .frame(width: 16, height: 16)
             if selected {
-                Circle().fill(T.accent).frame(width: 9, height: 9)
+                Rectangle().fill(T.accent).frame(width: 9, height: 9)
             }
         }
     }
@@ -579,7 +578,7 @@ struct VisualModelPickerView: View {
             }
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 6).fill(T.accentSoft))
+            .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accentSoft))
             .padding(.horizontal, 16)
             .padding(.top, 8)
         case .failed(let msg):
@@ -588,7 +587,7 @@ struct VisualModelPickerView: View {
                 .foregroundColor(T.bad)
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 6).fill(T.bad.opacity(0.10)))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.bad.opacity(0.10)))
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
         default:

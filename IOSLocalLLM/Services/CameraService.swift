@@ -17,6 +17,13 @@ final class CameraService: NSObject, ObservableObject {
     @Published var isRunning = false
     @Published var error: CameraError?
 
+    // Capture configuration, demand and foreground state belong to processingQueue.
+    // Permission completion may configure an idle session but never acquires ownership.
+    private var isConfigured = false
+    private var configurationPending = false
+    private var demand = CaptureSessionDemand()
+    private let ownershipID = UUID()
+
     // Published camera control state
     @Published private(set) var zoomFactor: CGFloat = 1.0
     @Published private(set) var minZoom: CGFloat = 1.0
@@ -46,8 +53,6 @@ final class CameraService: NSObject, ObservableObject {
     private var bgObserver: NSObjectProtocol?
     private var fgObserver: NSObjectProtocol?
     private var thermalObserver: NSObjectProtocol?
-    /// True if we suspended on background and need to resume on foreground.
-    private var resumeOnForeground = false
 
     // MARK: - Init / Deinit
 
@@ -58,22 +63,19 @@ final class CameraService: NSObject, ObservableObject {
 
     // MARK: - Lifecycle passthrough (driven by LifecycleController)
 
-    /// Called on `.inactive` and `.background`. Pauses frame submission
-    /// but keeps the capture session alive. Idempotent.
     func deactivateForLifecycle() {
-        resumeOnForeground = captureSession.isRunning
-        if captureSession.isRunning {
-            stop()
+        processingQueue.async { [weak self] in
+            guard let self else { return }
+            self.demand.isForeground = false
+            self.reconcileCapture()
         }
     }
 
-    /// Called on `.active`. Restarts the camera only if it was running
-    /// before deactivation. Idempotent.
     func reactivateForLifecycle() {
-        guard resumeOnForeground else { return }
-        resumeOnForeground = false
-        if !captureSession.isRunning {
-            start()
+        processingQueue.async { [weak self] in
+            guard let self else { return }
+            self.demand.isForeground = true
+            self.reconcileCapture()
         }
     }
 
@@ -81,7 +83,8 @@ final class CameraService: NSObject, ObservableObject {
         if let o = bgObserver { NotificationCenter.default.removeObserver(o) }
         if let o = fgObserver { NotificationCenter.default.removeObserver(o) }
         if let o = thermalObserver { NotificationCenter.default.removeObserver(o) }
-        if captureSession.isRunning { captureSession.stopRunning() }
+        let session = captureSession
+        processingQueue.async { if session.isRunning { session.stopRunning() } }
     }
 
     /// Auto-suspend the capture session when the app backgrounds so we don't
@@ -92,19 +95,13 @@ final class CameraService: NSObject, ObservableObject {
             forName: UIApplication.didEnterBackgroundNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
-            guard let self else { return }
-            if self.captureSession.isRunning {
-                self.resumeOnForeground = true
-                self.stop()
-            }
+            self?.deactivateForLifecycle()
         }
         fgObserver = NotificationCenter.default.addObserver(
-            forName: UIApplication.willEnterForegroundNotification,
+            forName: UIApplication.didBecomeActiveNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
-            guard let self, self.resumeOnForeground else { return }
-            self.resumeOnForeground = false
-            self.start()
+            self?.reactivateForLifecycle()
         }
         // Thermal degradation: halve the frame-rate cap while the device
         // is hot, restore when it cools. Raw ProcessInfo state is fine
@@ -113,38 +110,41 @@ final class CameraService: NSObject, ObservableObject {
             forName: ProcessInfo.thermalStateDidChangeNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
-            self?.applyThermalFrameRate()
+            self?.processingQueue.async { [weak self] in self?.applyThermalFrameRate() }
         }
     }
 
     // MARK: - Setup
 
     func configure() {
-        guard AVCaptureDevice.authorizationStatus(for: .video) == .authorized ||
-              AVCaptureDevice.authorizationStatus(for: .video) == .notDetermined else {
-            error = .permissionDenied
-            return
-        }
-
-        AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-            guard let self else { return }
-            if granted {
-                DispatchQueue.main.async { self.setupSession() }
-            } else {
-                DispatchQueue.main.async { self.error = .permissionDenied }
+        processingQueue.async { [weak self] in
+            guard let self, !self.isConfigured, !self.configurationPending else { return }
+            self.configurationPending = true
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                self?.processingQueue.async { [weak self] in
+                    guard let self else { return }
+                    self.configurationPending = false
+                    if granted { self.setupSession() }
+                    else { DispatchQueue.main.async { self.error = .permissionDenied } }
+                }
             }
         }
     }
 
     private func setupSession() {
+        dispatchPrecondition(condition: .onQueue(processingQueue))
+        guard !isConfigured else { return }
         captureSession.beginConfiguration()
-        defer { captureSession.commitConfiguration() }
+        defer {
+            captureSession.commitConfiguration()
+            reconcileCapture()
+        }
 
         // Use the best back camera on iPhone 17 Pro Max
         videoDevice = bestBackCamera()
         guard let device = videoDevice,
               let input = try? AVCaptureDeviceInput(device: device) else {
-            error = .deviceUnavailable
+            DispatchQueue.main.async { self.error = .deviceUnavailable }
             return
         }
 
@@ -155,9 +155,11 @@ final class CameraService: NSObject, ObservableObject {
         // thermal/battery cost with zero caption-quality benefit.
         captureSession.sessionPreset = .hd1920x1080
 
-        if captureSession.canAddInput(input) {
-            captureSession.addInput(input)
+        guard captureSession.canAddInput(input), captureSession.canAddOutput(videoOutput) else {
+            DispatchQueue.main.async { self.error = .deviceUnavailable }
+            return
         }
+        captureSession.addInput(input)
 
         videoOutput.videoSettings = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
@@ -186,6 +188,7 @@ final class CameraService: NSObject, ObservableObject {
             }
         }
 
+        isConfigured = true
         configureFrameRate(for: device, targetFPS: 24)
 
         // Surface camera capabilities for UI
@@ -299,26 +302,34 @@ final class CameraService: NSObject, ObservableObject {
     // MARK: - Start / Stop
 
     func start() {
-        // Check `isRunning` INSIDE the serial queue, not on the caller. A rapid
-        // background→foreground (stop() then start()) evaluated the guard
-        // against the pre-dispatch state on the main thread: stop() could see
-        // "not yet running" and bail while start()'s async startRunning was
-        // still queued, leaving the camera in the wrong final state. Gating on
-        // the serial queue makes the start/stop pair reconcile in dispatch
-        // order against the session's true state.
         processingQueue.async { [weak self] in
-            guard let self, !self.captureSession.isRunning else { return }
-            self.captureSession.startRunning()
-            DispatchQueue.main.async { self.isRunning = true }
+            guard let self else { return }
+            self.demand.isRequested = true
+            self.reconcileCapture()
         }
     }
 
     func stop() {
         processingQueue.async { [weak self] in
-            guard let self, self.captureSession.isRunning else { return }
-            self.captureSession.stopRunning()
-            DispatchQueue.main.async { self.isRunning = false }
+            guard let self else { return }
+            self.demand.isRequested = false
+            self.reconcileCapture()
         }
+    }
+
+    private func reconcileCapture() {
+        dispatchPrecondition(condition: .onQueue(processingQueue))
+        let shouldRun = isConfigured && demand.shouldRun
+        if shouldRun != captureSession.isRunning {
+            if shouldRun { captureSession.startRunning() }
+            else { captureSession.stopRunning() }
+            #if DEBUG
+            Logger(subsystem: "com.mesutcydev.ondevicemax", category: "sensor-ownership")
+                .debug("camera operation=\(self.ownershipID.uuidString, privacy: .public) running=\(self.captureSession.isRunning) requested=\(self.demand.isRequested) foreground=\(self.demand.isForeground)")
+            #endif
+        }
+        let running = captureSession.isRunning
+        DispatchQueue.main.async { [weak self] in self?.isRunning = running }
     }
 
     // MARK: - Camera controls (zoom, focus, torch)

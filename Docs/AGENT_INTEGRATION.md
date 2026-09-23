@@ -9,7 +9,7 @@ claim complete compatibility with every option in the upstream APIs.
 
 ## Local API server
 
-Enable the server in the app's Mac/bridge settings. The default port is
+Open **API server** from the app’s leading sidebar and enable the server there. The default port is
 `11434`, and the UI displays the reachable LAN address and generated API key.
 
 Every request requires either:
@@ -28,18 +28,36 @@ The key is generated locally, stored in Keychain, and can be rotated from the
 app. Traffic is plain HTTP, so use the server only on a trusted network. The
 listener stops when iOS backgrounds the app.
 
+The API server page can disable tool calling, require sequential tool calls,
+validate emitted tool arguments against their supplied JSON schemas, automatically
+load an already downloaded selected model when the server starts in the foreground,
+ask the model to skip reasoning, and lower the API output cap. Existing
+installations keep their previous behavior until these controls are changed.
+Tool selection retains its separate 256-token safety limit.
+API inference requires a loaded on-device model; selecting Apple Private Cloud
+does not route API requests to the cloud. Auto-loading uses the app's existing
+memory and thermal admission checks and never downloads weights implicitly.
+Text and embedded base64 images are accepted for user messages when the loaded
+local model supports vision. Remote image URLs are rejected. HTTP/1.1 connections
+can be reused for multiple requests, including chunked streaming responses.
+
 ### Implemented routes
 
 | Dialect | Method and route | Notes |
 | --- | --- | --- |
+| Discovery | `GET /` or `GET /v1` | Authenticated route and authentication summary |
 | OpenAI | `GET /v1/models` | Lists locally available assistant models |
-| OpenAI | `POST /v1/chat/completions` | Text chat, streaming, and supported tool calls |
-| OpenAI | `POST /v1/responses` | Text input/output compatibility; no tool calling |
-| Anthropic | `POST /v1/messages` | Text messages and supported tool-use blocks |
+| OpenAI | `GET /v1/models/{model}` | Returns metadata for the selected model ID or repository ID |
+| OpenAI | `GET /v1/aider/config` | Exports local Aider metadata and setup commands using current device limits |
+| OpenAI | `POST /v1/chat/completions` | Text/image chat, streaming, and supported tool calls |
+| OpenAI | `POST /v1/responses` | Text/image input and text output compatibility; no tool calling |
+| Anthropic | `POST /v1/messages` | Text/image user messages and supported tool-use blocks |
 | Ollama | `GET /api/tags` | Lists available models |
+| Ollama | `GET /api/ps` | Lists the active model only while it is loaded |
+| Ollama | `GET /api/version` | Returns the OnDevice Max app version |
 | Ollama | `POST /api/show` | Returns local model information |
-| Ollama | `POST /api/chat` | Chat and supported tool definitions |
-| Ollama | `POST /api/generate` | Prompt-based text generation |
+| Ollama | `POST /api/chat` | Text/image chat and supported tool definitions |
+| Ollama | `POST /api/generate` | Prompt-based text/image generation |
 
 Unsupported request options are rejected explicitly rather than silently
 ignored. The route implementation and decoding rules live in
@@ -71,7 +89,10 @@ work even when a request is otherwise valid.
 ## Tool calling
 
 The OpenAI chat and Anthropic message decoders accept supported function/tool
-definitions and normalize them into the app's internal tool-call format.
+definitions and normalize them into the app's internal tool-call format. The
+optional validation setting checks emitted arguments against common JSON Schema
+constraints, including required properties, types, enums, composition, and
+additional properties. The parser also accepts structured XML function calls.
 Tool-choice and parallel-call behavior differ by dialect. The Responses
 compatibility route is currently text-only.
 

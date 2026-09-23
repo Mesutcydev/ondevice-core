@@ -57,8 +57,8 @@ struct WebPermissionSheet: View {
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(10)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.surface))
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface))
+                    .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
             case .url(let u):
                 Text("URL: \(u.absoluteString)")
                     .font(T.mono(13))
@@ -67,8 +67,8 @@ struct WebPermissionSheet: View {
                     .lineLimit(3)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(10)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.surface))
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface))
+                    .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
             }
         }
     }
@@ -110,7 +110,7 @@ struct WebPermissionSheet: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .foregroundColor(T.bg)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(T.ink))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.ink))
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Allow this web request once")

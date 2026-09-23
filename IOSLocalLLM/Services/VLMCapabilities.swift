@@ -105,6 +105,22 @@ struct VLMCapabilities: Equatable {
     /// latency for a single high-fidelity describe.
     let recommendedStillPixels: Int
 
+    // MARK: - Derived sizing helpers
+
+    /// Per-tile / per-side target the model's processor expects — the
+    /// "resize hint" side. Single source of truth shared by
+    /// `LensFramePreparer` (tile-fit before the strategy-aware resize)
+    /// and `LensInferenceLoop.resizeHintSide` (the processor resize
+    /// hint). Both must agree; add cases here, not at call sites.
+    var minimumProcessorSide: Int {
+        switch inputSizingStrategy {
+        case .fixed(let s):              return Int(max(s.width, s.height))
+        case .dynamicPatchAligned:       return Int(Double(recommendedStreamingPixels).squareRoot().rounded())
+        case .anyresTiling(let base, _): return base
+        case .fixedTiling(let tile, _):  return tile
+        }
+    }
+
     // MARK: - Debug-overlay description
     //
     // Format chosen so the overlay can show the resolved capabilities

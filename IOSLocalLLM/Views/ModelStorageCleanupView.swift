@@ -64,7 +64,9 @@ struct ModelStorageCleanupView: View {
                             )
                         }
 
-                        Color.clear.frame(height: 96)
+                        // The action bar is a bottom inset; 96pt of tail on top of that
+            // pushed the last row a third of a screen away from it.
+            Color.clear.frame(height: StudioSpacing.xxl)
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
@@ -270,7 +272,7 @@ private struct ModelStorageCleanupRow: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(isKept ? T.accent : T.ink3)
                     .frame(width: 42, height: 42)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                         .fill((isKept ? T.accent : T.ink3).opacity(0.10)))
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
@@ -334,7 +336,7 @@ private struct ModelPartialDownloadCleanupRow: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(T.warn)
                     .frame(width: 42, height: 42)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                         .fill(T.warn.opacity(0.10)))
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Partial downloads")
@@ -371,11 +373,11 @@ private struct ModelStorageCleanupActionBar: View {
                 Spacer()
                 Text(reclaimableBytes.formattedBytes)
             }
-            .font(.headline)
+            .font(.subheadline.weight(.semibold))
             .foregroundStyle(.white)
             .padding(.horizontal, 16)
-            .frame(maxWidth: .infinity, minHeight: 50)
-            .background(enabled ? Color.accentColor : Color.secondary, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(enabled ? Color.accentColor : Color.secondary, in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(!enabled)

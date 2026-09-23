@@ -486,6 +486,11 @@ final class LensInferenceLoop: ObservableObject {
                 func markNetwork() { lock.withLock { _isNetwork = true } }
             }
             let latch = VerbLatch(false)
+            // Built outside the load chain so none of its closures capture
+            // self; the loader may call this until the load finishes.
+            let reportProgress: @Sendable (String) -> Void = { [weak self] text in
+                Task { @MainActor in self?.state = .loading(text) }
+            }
 
             // Prefer a directory-based config when weights are
             // pre-staged — avoids MLX re-fetching from HuggingFace
@@ -514,10 +519,8 @@ final class LensInferenceLoop: ObservableObject {
                                progress.fractionCompleted < 0.20 {
                                 latch.markNetwork()
                             }
-                            Task { @MainActor [weak self, latch] in
-                                let verb = latch.isNetwork ? "Downloading" : "Preparing"
-                                self?.state = .loading("\(verb) \(pct)%")
-                            }
+                            let verb = latch.isNetwork ? "Downloading" : "Preparing"
+                            reportProgress("\(verb) \(pct)%")
                         }
                         mlxClearCache()
                         return c
@@ -1387,17 +1390,10 @@ final class LensInferenceLoop: ObservableObject {
     /// step then has a clean square intermediate to work with.
     /// `nonisolated` because it's pure computation called from inside
     /// `container.perform`'s @Sendable closure, which runs off the
-    /// MainActor.
+    /// MainActor. The value itself lives on
+    /// `VLMCapabilities.minimumProcessorSide` so the preparer and the
+    /// loop can never drift apart.
     nonisolated fileprivate static func resizeHintSide(for caps: VLMCapabilities) -> Int {
-        switch caps.inputSizingStrategy {
-        case .fixed(let s):
-            return Int(max(s.width, s.height))
-        case .dynamicPatchAligned(_, _, _, _):
-            return Int(Double(caps.recommendedStreamingPixels).squareRoot().rounded())
-        case .anyresTiling(let base, _):
-            return base
-        case .fixedTiling(let tile, _):
-            return tile
-        }
+        caps.minimumProcessorSide
     }
 }

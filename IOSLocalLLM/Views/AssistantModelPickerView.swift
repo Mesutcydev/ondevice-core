@@ -171,9 +171,9 @@ struct AssistantModelPickerView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    header
+            List {
+                    Text(downloadedOnly ? "Choose a model for this conversation, or set a default for new chats." : "New conversations start with your default model.")
+                        .font(.footnote).foregroundStyle(.secondary)
                     if ApplePrivateCloud.isSupportedOnCurrentOS {
                         ApplePrivateCloudPickerSection(
                             status: assistant.applePrivateCloudStatus,
@@ -224,8 +224,10 @@ struct AssistantModelPickerView: View {
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 13)
                                 }
-                                .buttonStyle(.borderedProminent)
-                                .tint(T.accent)
+                                .buttonStyle(StudioPressStyle())
+                                .foregroundStyle(T.studio.paper)
+                                .background(T.studio.ink,
+                                            in: RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous))
                                 .padding(.horizontal, 24)
                             }
                             .padding(.top, 48)
@@ -256,9 +258,9 @@ struct AssistantModelPickerView: View {
                         importSection
                         customSection
                     }
-                }
-                .padding(.bottom, 32)
             }
+            .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+            .navigationTitle(downloadedOnly ? "Chat model" : "Default model")
             .sheet(isPresented: $showLocalImport) {
                 LocalModelDocumentPicker(
                     onPick: { url in
@@ -277,7 +279,6 @@ struct AssistantModelPickerView: View {
             }
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }.foregroundColor(T.ink)
@@ -313,8 +314,12 @@ struct AssistantModelPickerView: View {
                     Label("Browse Core AI packs", systemImage: "arrow.down.circle")
                         .font(T.sans(13, .semibold))
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(T.accent)
+                .buttonStyle(StudioPressStyle())
+                .foregroundStyle(T.studio.paper)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 36)
+                .background(T.studio.ink,
+                            in: RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous))
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -385,8 +390,8 @@ struct AssistantModelPickerView: View {
             Spacer()
         }
         .padding(10)
-        .background(RoundedRectangle(cornerRadius: 6).fill(color.opacity(0.10)))
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(color.opacity(0.4), lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(color.opacity(0.10)))
+        .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(color.opacity(0.4), lineWidth: 1))
         .padding(.horizontal, 16)
         .padding(.top, 8)
     }
@@ -434,7 +439,7 @@ struct AssistantModelPickerView: View {
                         .foregroundColor(T.accent)
                         .frame(width: 48, height: 48)
                         .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                                 .fill(T.accentSoft)
                         )
 
@@ -508,15 +513,7 @@ struct AssistantModelPickerView: View {
         title: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
-                KCaption(text: title)
-                Rectangle().fill(T.rule).frame(height: 1)
-            }
-            content()
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 22)
+        Section(title) { content() }
     }
 
     @ViewBuilder
@@ -578,11 +575,11 @@ struct AssistantModelPickerView: View {
                         Spacer(minLength: 4)
 
                         ZStack {
-                            Circle()
+                            RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
                                 .stroke(isSelected ? T.accent : T.rule2, lineWidth: 2)
                                 .frame(width: 22, height: 22)
                             if isSelected {
-                                Circle()
+                                RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
                                     .fill(T.accent)
                                     .frame(width: 12, height: 12)
                             }
@@ -617,11 +614,11 @@ struct AssistantModelPickerView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .kGlass(cornerRadius: StudioRadius.sheet, fallbackFill: T.surface)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                         .stroke(isSelected ? T.accent.opacity(0.35) : Color.clear,
                                 lineWidth: 1)
                 )
-                .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous))
             }
             .buttonStyle(.plain)
 
@@ -659,8 +656,8 @@ struct AssistantModelPickerView: View {
             .foregroundColor(T.ink2)
             .padding(.horizontal, 6)
             .padding(.vertical, 2.5)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.ink2.opacity(0.10)))
-            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.ink2.opacity(0.28), lineWidth: 0.5))
+            .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.ink2.opacity(0.10)))
+            .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(T.ink2.opacity(0.28), lineWidth: 0.5))
             .fixedSize(horizontal: true, vertical: false)
     }
 
@@ -674,7 +671,7 @@ struct AssistantModelPickerView: View {
             }
         }()
         HStack(spacing: 4) {
-            Circle().fill(color).frame(width: 6, height: 6)
+            Rectangle().fill(color).frame(width: 6, height: 6)
             Text(bytes.formattedBytes)
                 .font(T.mono(8, .semibold))
                 .tracking(0.4)
@@ -682,8 +679,8 @@ struct AssistantModelPickerView: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 2.5)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(color.opacity(0.10)))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(color.opacity(0.32), lineWidth: 0.5))
+        .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(color.opacity(0.10)))
+        .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(color.opacity(0.32), lineWidth: 0.5))
         .fixedSize(horizontal: true, vertical: false)
     }
 
@@ -700,8 +697,8 @@ struct AssistantModelPickerView: View {
         .foregroundColor(T.accent)
         .padding(.horizontal, 6)
         .padding(.vertical, 2.5)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accent.opacity(0.10)))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.accent.opacity(0.32), lineWidth: 0.5))
+        .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.accent.opacity(0.10)))
+        .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(T.accent.opacity(0.32), lineWidth: 0.5))
         .fixedSize(horizontal: true, vertical: false)
     }
 
@@ -717,8 +714,8 @@ struct AssistantModelPickerView: View {
         .foregroundColor(T.ink2)
         .padding(.horizontal, 6)
         .padding(.vertical, 2.5)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.ink2.opacity(0.08)))
-        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(T.ink2.opacity(0.24), lineWidth: 0.5))
+        .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.ink2.opacity(0.08)))
+        .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(T.ink2.opacity(0.24), lineWidth: 0.5))
         .fixedSize(horizontal: true, vertical: false)
         .accessibilityHint(compatibility.detail)
     }
@@ -761,7 +758,7 @@ struct AssistantModelPickerView: View {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(T.good)
                         .frame(width: 32, height: 32)
-                        .background(RoundedRectangle(cornerRadius: 6)
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel)
                             .fill(T.good.opacity(0.12)))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("import from files")
@@ -833,8 +830,8 @@ struct AssistantModelPickerView: View {
                     .font(T.mono(11))
                     .foregroundColor(T.ink)
                     .padding(8)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface2))
+                    .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
                     .autocorrectionDisabled()
                     .textInputAutocapitalization(.never)
                 Button {
@@ -864,7 +861,7 @@ struct AssistantModelPickerView: View {
                     }
                     .foregroundColor(T.bg)
                     .padding(.horizontal, 12).padding(.vertical, 6)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.ink))
                 }
                 .buttonStyle(.plain)
             }
@@ -903,7 +900,7 @@ private struct ApplePrivateCloudPickerSection: View {
                             .foregroundStyle(T.accent)
                             .frame(width: 48, height: 48)
                             .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                                     .fill(T.accentSoft)
                             )
 
@@ -943,7 +940,7 @@ private struct ApplePrivateCloudPickerSection: View {
                     .padding(16)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .kGlass(cornerRadius: StudioRadius.sheet, fallbackFill: T.surface)
-                    .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .contentShape(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(isActivating)
@@ -1060,7 +1057,7 @@ private struct ApplePrivateCloudPrivacyDisclosureView: View {
                         .foregroundStyle(T.accent)
 
                     Text("Use Apple Private Cloud")
-                        .font(T.sans(28, .semibold))
+                        .font(T.sans(22, .medium))
                         .foregroundStyle(T.ink)
 
                     Text(
@@ -1093,8 +1090,10 @@ private struct ApplePrivateCloudPrivacyDisclosureView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 13)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(T.accent)
+                    .buttonStyle(StudioPressStyle())
+                    .foregroundStyle(T.studio.paper)
+                    .background(T.studio.ink,
+                                in: RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous))
                 }
                 .padding(22)
             }

@@ -16,9 +16,7 @@ struct BenchmarkView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    header
+            List {
                     deviceCard
                     if let warning = thermalWarning { warningCard(warning) }
                     runCard
@@ -27,12 +25,13 @@ struct BenchmarkView: View {
                         resultsCard(result, isCurrent: true)
                     }
                     historyCard
-                }
-                .padding(.bottom, 32)
+
             }
+            .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+            .navigationTitle("Benchmark")
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }.foregroundColor(T.ink)
@@ -63,7 +62,7 @@ struct BenchmarkView: View {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(T.accent)
                         .frame(width: 32, height: 32)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(T.accent.opacity(0.12)))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accent.opacity(0.12)))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("run quality eval")
                             .font(T.mono(13, .semibold))
@@ -139,7 +138,7 @@ struct BenchmarkView: View {
                             .lineLimit(4)
                             .truncationMode(.head)
                             .padding(8)
-                            .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
+                            .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface2))
                     }
                 }
                 if case .failed(let msg) = service.phase {
@@ -148,7 +147,7 @@ struct BenchmarkView: View {
                         .foregroundColor(T.bad)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(8)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(T.bad.opacity(0.10)))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.bad.opacity(0.10)))
                 }
             }
             .padding(14)
@@ -166,7 +165,7 @@ struct BenchmarkView: View {
             }
             .foregroundColor(T.bg)
             .padding(.horizontal, 14).padding(.vertical, 8)
-            .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
+            .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.ink))
         }
         .buttonStyle(.plain)
         .disabled(!isReadyToRun)
@@ -189,8 +188,8 @@ struct BenchmarkView: View {
             .foregroundColor(T.bad)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
-            .background(RoundedRectangle(cornerRadius: 6).fill(T.bad.opacity(0.10)))
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.bad.opacity(0.4), lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.bad.opacity(0.10)))
+            .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.bad.opacity(0.4), lineWidth: 1))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Stop benchmark")
@@ -363,8 +362,8 @@ struct BenchmarkView: View {
             Spacer()
         }
         .padding(10)
-        .background(RoundedRectangle(cornerRadius: 6).fill(T.warn.opacity(0.10)))
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.warn.opacity(0.4), lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.warn.opacity(0.10)))
+        .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.warn.opacity(0.4), lineWidth: 1))
         .padding(.horizontal, 16)
         .padding(.top, 8)
     }

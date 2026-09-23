@@ -17,21 +17,20 @@ struct QualityEvalView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    header
+            List {
                     deviceCard
                     runCard
                     if case .finished(let result) = eval.phase {
                         resultsCard(result)
                     }
                     historyCard
-                }
-                .padding(.bottom, 32)
+
             }
+            .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+            .navigationTitle("Quality evaluation")
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }.foregroundColor(T.ink)
@@ -93,7 +92,7 @@ struct QualityEvalView: View {
                             .lineLimit(4)
                             .truncationMode(.head)
                             .padding(8)
-                            .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
+                            .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface2))
                     }
                 }
                 if case .failed(let msg) = eval.phase {
@@ -102,7 +101,7 @@ struct QualityEvalView: View {
                         .foregroundColor(T.bad)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(8)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(T.bad.opacity(0.10)))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.bad.opacity(0.10)))
                 }
             }
             .padding(14)
@@ -120,7 +119,7 @@ struct QualityEvalView: View {
             }
             .foregroundColor(T.bg)
             .padding(.horizontal, 14).padding(.vertical, 8)
-            .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
+            .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.ink))
         }
         .buttonStyle(.plain)
         .disabled(!isReadyToRun)
@@ -204,7 +203,7 @@ struct QualityEvalView: View {
                     .truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(6)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.surface2))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface2))
             }
         }
         .padding(.vertical, 6)

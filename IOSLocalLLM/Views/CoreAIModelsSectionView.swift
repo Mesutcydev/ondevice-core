@@ -155,41 +155,72 @@ struct CoreAIModelsSectionView: View {
             }
             HStack(spacing: 8) {
                 if let model = installed.assistantModel {
+                    let isActive = assistant.activeModel.id == model.id
+                        && assistant.state == .ready
                     Button {
                         Task { await assistant.switchTo(model) }
                     } label: {
                         Label(
-                            assistant.activeModel.id == model.id
-                                ? "Active in Assistant"
-                                : "Use in Assistant",
-                            systemImage: "brain"
+                            isActive ? "Active in Assistant" : "Use in Assistant",
+                            systemImage: isActive ? "checkmark.circle.fill" : "brain"
                         )
+                        .font(T.sans(13, .medium))
+                        .foregroundStyle(isActive ? T.ink2 : T.bg)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 36)
+                        .background(
+                            RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous)
+                                .fill(isActive ? T.surface2 : T.ink)
+                        )
+                        .contentShape(RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous))
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(T.accent)
-                    .disabled(
-                        assistant.activeModel.id == model.id
-                            && assistant.state == .ready
-                    )
+                    .buttonStyle(StudioPressStyle())
+                    .disabled(isActive)
                 }
-                Button("Remove", role: .destructive) {
+                Button {
                     pendingRemovalID = installed.id
+                } label: {
+                    Text("Remove")
+                        .font(T.sans(13, .medium))
+                        .foregroundStyle(T.bad)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 36)
+                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(StudioPressStyle())
+                .accessibilityLabel("Remove Core AI pack")
             }
         }
         .padding(12)
-        .background(T.good.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
+        // Installed is a condition, so the surface is a hairline-ruled band
+        // rather than a tinted card — colour on this screen is reserved for
+        // `warn`/`bad`, and a green-tinted box would be decoration.
+        .overlay(alignment: .top) { Rectangle().fill(T.rule).frame(height: 1) }
+        .overlay(alignment: .bottom) { Rectangle().fill(T.rule).frame(height: 1) }
     }
 
+    /// Informational status area. Was a 4%-ink gray slab that read as
+    /// unfinished placeholder UI; now a quiet left-ruled line, which states
+    /// a fact without claiming to be a surface the user should inspect.
     private func statusRow(_ text: String, symbol: String) -> some View {
-        Label(text, systemImage: symbol)
-            .font(T.sans(11))
-            .foregroundStyle(T.ink2)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(T.ink.opacity(0.04), in: RoundedRectangle(cornerRadius: 14))
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(T.ink3)
+                .frame(width: 14)
+            Text(text)
+                .font(T.sans(12))
+                .foregroundStyle(T.ink2)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 10)
+        .padding(.leading, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .leading) {
+            Rectangle().fill(T.rule2).frame(width: 2)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func packCard(_ model: CoreAIZooModel) -> some View {
@@ -232,22 +263,17 @@ struct CoreAIModelsSectionView: View {
             } else if let manager {
                 CoreAIDownloadControlsView(manager: manager)
             } else {
-                Button {
+                StudioCompactPrimaryButton(title: "Download", symbol: "arrow.down.circle") {
                     downloads.start(model: model)
                     ToastCenter.shared.info(
                         "Starting \(model.displayName)",
                         detail: "Listing the verified Hugging Face files…"
                     )
-                } label: {
-                    Label("Download", systemImage: "arrow.down.circle")
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(T.accent)
             }
         }
         .padding(12)
-        .background(T.ink.opacity(0.035), in: RoundedRectangle(cornerRadius: 14))
+        .background(T.ink.opacity(0.035), in: RoundedRectangle(cornerRadius: StudioRadius.panel))
     }
 
     private func badge(_ text: String) -> some View {
@@ -256,7 +282,7 @@ struct CoreAIModelsSectionView: View {
             .foregroundStyle(T.ink2)
             .padding(.horizontal, 6)
             .padding(.vertical, 3)
-            .background(T.ink.opacity(0.06), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .background(T.ink.opacity(0.06), in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous))
     }
 
     private func removeInstalledPack(id: String) {

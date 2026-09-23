@@ -1,4 +1,5 @@
 import SwiftUI
+import OnDeviceUI
 
 // MARK: - HFSearchView
 // Live search of Hugging Face for downloadable models.
@@ -24,19 +25,20 @@ struct HFSearchView: View {
     }
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.displayScale) private var displayScale
     @Environment(\.koduTheme) private var T
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 filterBar
-                Rectangle().fill(T.rule).frame(height: 1)
+                Rectangle().fill(T.rule).frame(height: 1 / displayScale)
                 resultsList
             }
             .background(StudioPageBackground())
             .navigationTitle("Find Models")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
@@ -44,7 +46,7 @@ struct HFSearchView: View {
                 }
             }
             .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always),
-                        prompt: "search models (qwen, llama, kokoro…)")
+                        prompt: "Search models")
             .onChange(of: query) { _, _ in scheduleSearch() }
             .onChange(of: filter) { _, _ in scheduleSearch() }
             // Fire on appear when either a query is already set OR the user
@@ -86,30 +88,33 @@ struct HFSearchView: View {
                     }
                 } label: {
                     Label(filter.rawValue, systemImage: "line.3.horizontal.decrease")
-                        .font(T.sans(14, .medium))
+                        .font(.subheadline.weight(.medium))
                         .foregroundColor(T.ink)
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: 38)
-                        .kGlassCapsule(fallbackFill: T.surface, fallbackStroke: T.glassBorder)
                 }
+                .buttonStyle(.glass)
+                .frame(minHeight: ODLayout.minimumHit)
+                .accessibilityLabel("Model runtime filter")
+                .accessibilityValue(filter.rawValue)
 
                 Spacer()
 
                 // Show "N of M" when the compatibility filter is hiding some,
                 // so filtered-out results aren't silently uncounted.
-                Text(results.count == search.results.count
-                     ? "\(results.count) models"
-                     : "\(results.count) of \(search.results.count)")
-                    .font(T.sans(12))
-                    .foregroundColor(T.ink3)
+                if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !search.isSearching {
+                    Text(results.count == search.results.count
+                         ? "\(results.count) models"
+                         : "\(results.count) of \(search.results.count)")
+                        .font(T.sans(12))
+                        .foregroundColor(T.ink2)
+                }
             }
 
             Toggle(isOn: $showOnlyCompatible) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Fits this iPhone")
+                VStack(alignment: .leading, spacing: ODLayout.unit) {
+                    Text("Compatible with this iPhone")
                         .font(T.sans(14, .medium))
                         .foregroundColor(T.ink)
-                    Text("Hide models that cannot run on this device")
+                    Text("Hide models this device cannot run")
                         .font(T.sans(11))
                         .foregroundColor(T.ink3)
                 }
@@ -120,7 +125,7 @@ struct HFSearchView: View {
                 HapticManager.impact(.light)
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, ODLayout.pageInset)
         .padding(.vertical, 12)
     }
 
@@ -136,31 +141,34 @@ struct HFSearchView: View {
                         SearchRowSkeleton()
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, ODLayout.pageInset)
                 .padding(.vertical, 12)
             }
         } else if let err = search.lastError {
-            VStack(spacing: 10) {
+            VStack(spacing: ODLayout.labelGap) {
                 Image(systemName: "wifi.exclamationmark")
                     .font(.system(size: 30))
                     .foregroundColor(T.ink3)
-                KMono(text: "search failed", size: 12, color: T.ink2)
+                Text("Couldn’t search models").font(.headline).foregroundStyle(T.ink)
                 Text(err)
                     .font(T.sans(11))
                     .foregroundColor(T.ink3)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 30)
+                    .padding(.horizontal, ODLayout.pageInset)
+                Button("Try again") { scheduleSearch() }
+                    .buttonStyle(.glass)
+                    .frame(minHeight: ODLayout.minimumHit)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if query.isEmpty {
             promotedSuggestions
         } else if results.isEmpty {
-            VStack(spacing: 10) {
+            VStack(spacing: ODLayout.labelGap) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 30))
                     .foregroundColor(T.ink3)
-                KMono(text: "no matches", size: 12, color: T.ink2)
-                KMono(text: "try a different query or filter.", size: 10, color: T.ink3)
+                Text("No matching models").font(.headline).foregroundStyle(T.ink)
+                Text("Try another name or runtime filter.").font(.subheadline).foregroundStyle(T.ink2)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
@@ -170,7 +178,7 @@ struct HFSearchView: View {
                         HFSearchRow(model: model)
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, ODLayout.pageInset)
                 .padding(.vertical, 12)
             }
             .refreshable {
@@ -185,12 +193,12 @@ struct HFSearchView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 KCaption(text: "Suggestions")
-                    .padding(.horizontal, 16)
-                    .padding(.top, 10)
+                    .padding(.horizontal, ODLayout.pageInset)
+                    .padding(.top, ODLayout.labelGap)
 
                 VStack(spacing: 0) {
                     ForEach(Array(curated.enumerated()), id: \.offset) { i, q in
-                        if i > 0 { Rectangle().fill(T.rule).frame(height: 1) }
+                        if i > 0 { Rectangle().fill(T.rule).frame(height: 1 / displayScale) }
                         Button {
                             query = q
                             HapticManager.impact(.light)
@@ -207,18 +215,18 @@ struct HFSearchView: View {
                                     .font(.system(size: 10))
                                     .foregroundColor(T.ink3)
                             }
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
+                            .padding(.horizontal, ODLayout.labelGap)
+                            .padding(.vertical, ODLayout.labelGap)
                         }
                         .buttonStyle(.plain)
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous))
                 .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface, fallbackStroke: T.glassBorder)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, ODLayout.pageInset)
 
                 infoBox
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, ODLayout.pageInset)
                     .padding(.top, 8)
             }
             .padding(.bottom, 16)
@@ -232,8 +240,8 @@ struct HFSearchView: View {
     ]
 
     private var infoBox: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 5) {
+        VStack(alignment: .leading, spacing: ODLayout.elementGap) {
+            HStack(spacing: ODLayout.elementGap) {
                 Image(systemName: "iphone.gen3")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(T.good)
@@ -241,12 +249,12 @@ struct HFSearchView: View {
                     .font(T.sans(13, .semibold))
                     .foregroundColor(T.ink)
             }
-            Text("Results filtered to on-device runtimes by default — MLX, Core ML, and supported GGUF vision repos. Files are stored privately in the app's Documents folder.")
+            Text("Download models to use on this device. Compatibility filters help you find a suitable model; available memory also affects what can run.")
                 .font(T.sans(11))
                 .foregroundColor(T.ink2)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(14)
+        .padding(ODLayout.labelGap)
         .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface, fallbackStroke: T.glassBorder)
     }
 
@@ -298,7 +306,7 @@ struct HFSearchRow: View {
                     .font(.system(size: 17, weight: .semibold))
                     .frame(width: 44, height: 44)
                     .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                             .fill(T.accentSoft)
                     )
 
@@ -349,8 +357,8 @@ struct HFSearchRow: View {
                             .foregroundColor(tagColor(tag).contentColor)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(tagColor(tag).background))
-                            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(tagColor(tag).background))
+                            .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                                 .stroke(tagColor(tag).contentColor.opacity(0.22), lineWidth: 0.5))
                     }
                 }
@@ -369,7 +377,10 @@ struct HFSearchRow: View {
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(T.ink2)
                             .frame(width: 34, height: 34)
-                            .background(Circle().fill(T.surface2))
+                            .background(RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous).fill(T.surface2))
+                            // Drawn 34, tapped 44 — the app's own glyph-button rule.
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                 }
 
@@ -380,7 +391,9 @@ struct HFSearchRow: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(T.ink2)
                         .frame(width: 34, height: 34)
-                        .background(Circle().fill(T.surface2))
+                        .background(RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous).fill(T.surface2))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -446,7 +459,7 @@ struct HFSearchRow: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+        .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
             .fill(color.opacity(0.09)))
     }
 
@@ -467,7 +480,7 @@ struct HFSearchRow: View {
             .foregroundColor(T.accent2)
             .padding(.horizontal, 14)
             .frame(minHeight: 36)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(T.accent2.opacity(0.12)))
+            .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(T.accent2.opacity(0.12)))
         } else {
         switch state {
         case .idle, .failed:
@@ -493,10 +506,10 @@ struct HFSearchRow: View {
                     Text(isFailed ? "retry" : (isBlocked ? "incompatible" : "download"))
                         .font(T.sans(13, .semibold))
                 }
-                .foregroundColor(.white)
+                .foregroundColor(isBlocked ? .white : T.onAccentFill)
                 .padding(.horizontal, 14)
                 .frame(minHeight: 36)
-                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(isBlocked ? T.ink3 : T.accentStrong))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(isBlocked ? T.ink3 : T.accentStrong))
             }
             .buttonStyle(.plain)
             .disabled(isBlocked)
@@ -612,23 +625,23 @@ struct SearchRowSkeleton: View {
             // gradient sweep masks the actual placeholder geometry rather
             // than a uniform rectangle behind everything. The cumulative
             // effect reads as "filling in" rather than "fading".
-            RoundedRectangle(cornerRadius: 3)
+            RoundedRectangle(cornerRadius: StudioRadius.panel)
                 .fill(T.surface2)
                 .frame(width: 18, height: 18)
                 .shimmer(duration: 1.4)
             VStack(alignment: .leading, spacing: 5) {
-                RoundedRectangle(cornerRadius: 3)
+                RoundedRectangle(cornerRadius: StudioRadius.panel)
                     .fill(T.surface2)
                     .frame(height: 12)
                     .frame(maxWidth: .infinity)
                     .shimmer(duration: 1.4)
-                RoundedRectangle(cornerRadius: 3)
+                RoundedRectangle(cornerRadius: StudioRadius.panel)
                     .fill(T.surface2)
                     .frame(width: 110, height: 9)
                     .shimmer(duration: 1.4)
             }
             Spacer()
-            RoundedRectangle(cornerRadius: 4)
+            RoundedRectangle(cornerRadius: StudioRadius.panel)
                 .fill(T.surface2)
                 .frame(width: 70, height: 24)
                 .shimmer(duration: 1.4)

@@ -42,8 +42,18 @@ struct FastVLMModelBundleValidator {
     static func validate() -> FastVLMComponentStatus {
         var status = FastVLMComponentStatus()
 
-        // Encoder (fastvithd.mlpackage or .mlmodelc)
-        status.encoder = fileExists(names: ["fastvithd.mlpackage", "fastvithd.mlmodelc"])
+        // Encoder (fastvithd.mlpackage or .mlmodelc). Also probe INSIDE the
+        // downloaded MLX weights folder: the HF decoder repo ships the
+        // encoder at its root and the Model Center downloads every repo
+        // file into the decoder destination, so a complete download nests
+        // the package there. Mirrors fastvithd.encoderSearchURLs.
+        let fm = FileManager.default
+        let nestedEncoder = mlxModelURL().map { dir in
+            ["fastvithd.mlmodelc", "fastvithd.mlpackage"].contains {
+                fm.fileExists(atPath: dir.appendingPathComponent($0).path)
+            }
+        } ?? false
+        status.encoder = (fileExists(names: ["fastvithd.mlpackage", "fastvithd.mlmodelc"]) || nestedEncoder)
             ? .ready
             : .unloaded
 

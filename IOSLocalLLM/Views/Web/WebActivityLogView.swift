@@ -25,7 +25,7 @@ struct WebActivityLogView: View {
             .background(StudioPageBackground())
             .navigationTitle("Web Activity")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }.foregroundColor(T.ink)

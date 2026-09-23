@@ -32,7 +32,7 @@ struct WebSettingsView: View {
             }
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.hidden, for: .navigationBar)
+
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }.foregroundColor(T.ink)
@@ -166,8 +166,8 @@ struct WebSettingsView: View {
             SecureField("paste API key", text: $apiKeyInput)
                 .font(T.mono(11))
                 .padding(8)
-                .background(RoundedRectangle(cornerRadius: 6).fill(T.surface))
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface))
+                .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
             Button {
                 let trimmed = apiKeyInput.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !trimmed.isEmpty else { return }
@@ -180,7 +180,7 @@ struct WebSettingsView: View {
                     .font(T.mono(11, .semibold))
                     .foregroundColor(T.bg)
                     .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.ink))
             }
             .buttonStyle(.plain)
             .disabled(apiKeyInput.isEmpty)
@@ -197,8 +197,8 @@ struct WebSettingsView: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .padding(8)
-                .background(RoundedRectangle(cornerRadius: 6).fill(T.surface))
-                .overlay(RoundedRectangle(cornerRadius: 6).stroke(T.rule, lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface))
+                .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
             Button {
                 Task { await saveEndpoint() }
             } label: {
@@ -206,7 +206,7 @@ struct WebSettingsView: View {
                     .font(T.mono(11, .semibold))
                     .foregroundColor(T.bg)
                     .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(T.ink))
+                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.ink))
             }
             .buttonStyle(.plain)
             .disabled(endpointInput.isEmpty)
@@ -386,11 +386,11 @@ struct WebSettingsView: View {
     @ViewBuilder
     private func radio(selected: Bool) -> some View {
         ZStack {
-            Circle()
+            RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
                 .stroke(selected ? T.accent : T.rule2, lineWidth: 1.5)
                 .frame(width: 16, height: 16)
             if selected {
-                Circle().fill(T.accent).frame(width: 9, height: 9)
+                Rectangle().fill(T.accent).frame(width: 9, height: 9)
             }
         }
     }
