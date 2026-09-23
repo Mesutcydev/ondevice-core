@@ -97,7 +97,7 @@ final class ModelStoragePathsTests: XCTestCase {
         let inside = ModelStoragePaths.llmModelDirectory(named: "Edge0-8B-A1B-preview")
         XCTAssertEqual(
             ModelStoragePaths.sandboxRelativePath(inside),
-            "Documents/LLMModels/Edge0-8B-A1B-preview"
+            "LLMModels/Edge0-8B-A1B-preview"
         )
         XCTAssertEqual(
             ModelStoragePaths.sandboxRelativePath(URL(fileURLWithPath: "/LLMModels")),

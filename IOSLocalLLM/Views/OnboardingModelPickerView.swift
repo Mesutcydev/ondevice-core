@@ -216,7 +216,7 @@ struct OnboardingModelPickerView: View {
     private var heroBlock: some View {
         VStack(spacing: 10) {
             VStack(spacing: 6) {
-                KCaption(text: "STEP 3 OF 3")
+                KCaption(text: "STEP 2 OF 2")
                 Text("Choose your models")
                     .font(T.display(26, .semibold))
                     .tracking(-0.5)

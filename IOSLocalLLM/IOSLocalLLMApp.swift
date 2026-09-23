@@ -5,6 +5,7 @@ import SwiftUI
 @main
 struct IOSLocalLLMApp: App {
     @ObservedObject private var settings = AppSettings.shared
+    @ObservedObject private var localization = LocalizationService.shared
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @State private var isShowingSplash = true
@@ -115,6 +116,7 @@ struct IOSLocalLLMApp: App {
             appearance: settings.appearance,
             accent: KoduTheme.appAccent))
         .preferredColorScheme(settings.resolvedColorScheme)
+        .environment(\.layoutDirection, localization.resolvedLayoutDirection)
         .koduScaledType()
     }
 }

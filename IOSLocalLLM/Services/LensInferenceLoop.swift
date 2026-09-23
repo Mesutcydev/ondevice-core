@@ -514,7 +514,7 @@ final class LensInferenceLoop: ObservableObject {
                                progress.fractionCompleted < 0.20 {
                                 latch.markNetwork()
                             }
-                            Task { @MainActor [weak self, latch] in
+                            Task { @MainActor [weak self = self, latch] in
                                 let verb = latch.isNetwork ? "Downloading" : "Preparing"
                                 self?.state = .loading("\(verb) \(pct)%")
                             }

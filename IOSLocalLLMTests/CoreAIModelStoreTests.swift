@@ -209,6 +209,53 @@ final class CoreAIModelStoreTests: XCTestCase {
         XCTAssertTrue(store.installedAssistantModels().isEmpty)
     }
 
+    func testDownloadedPackIsInstalledByMoveWithoutDuplicatingWeights() throws {
+        let staging = modelRoot.appendingPathComponent(".download-test-pack", isDirectory: true)
+        let resources = staging.appendingPathComponent("resources", isDirectory: true)
+        try FileManager.default.createDirectory(at: resources, withIntermediateDirectories: true)
+        try makeMinimalPack(at: resources, name: "Downloaded.aimodel")
+        let sourceWeight = resources
+            .appendingPathComponent("Downloaded.aimodel", isDirectory: true)
+            .appendingPathComponent("main.mlirb")
+        let sourceFileNumber = try XCTUnwrap(
+            FileManager.default.attributesOfItem(atPath: sourceWeight.path)[.systemFileNumber]
+                as? NSNumber
+        )
+
+        try store.installDownloadedModel(
+            from: resources,
+            preferredID: "test-downloaded",
+            preferredDisplayName: "Downloaded Pack"
+        )
+
+        let installedWeight = try XCTUnwrap(store.modelResourcesURL)
+            .appendingPathComponent("Downloaded.aimodel", isDirectory: true)
+            .appendingPathComponent("main.mlirb")
+        let installedFileNumber = try XCTUnwrap(
+            FileManager.default.attributesOfItem(atPath: installedWeight.path)[.systemFileNumber]
+                as? NSNumber
+        )
+        XCTAssertEqual(installedFileNumber, sourceFileNumber)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: staging.path))
+        XCTAssertEqual(store.manifest?.id, "test-downloaded")
+    }
+
+    func testDownloadedPackRejectsNonStoreStagingLocation() throws {
+        let resources = tempRoot.appendingPathComponent("outside-staging", isDirectory: true)
+        try FileManager.default.createDirectory(at: resources, withIntermediateDirectories: true)
+        try makeMinimalPack(at: resources, name: "Outside.aimodel")
+
+        XCTAssertThrowsError(
+            try store.installDownloadedModel(
+                from: resources,
+                preferredID: "outside",
+                preferredDisplayName: "Outside Pack"
+            )
+        ) { error in
+            XCTAssertEqual(error as? CoreAIModelStoreError, .invalidStagingLocation)
+        }
+    }
+
     // MARK: - Helpers
 
     private func makeMinimalPack(at root: URL, name: String) throws {

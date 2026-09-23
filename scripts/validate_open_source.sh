@@ -85,12 +85,42 @@ if [[ -n "$secret_matches" ]]; then
   exit 1
 fi
 
-if ! cmp -s \
-  OnDeviceCoreAIStudio.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved \
-  OnDeviceCoreAIStudio.xcworkspace/xcshareddata/swiftpm/Package.resolved; then
-  echo "error: committed Swift package lockfiles differ" >&2
-  exit 1
-fi
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+paths = (
+    Path("OnDeviceCoreAIStudio.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"),
+    Path("OnDeviceCoreAIStudio.xcworkspace/xcshareddata/swiftpm/Package.resolved"),
+)
+
+def normalized_pins(path):
+    data = json.loads(path.read_text(encoding="utf-8"))
+    pins = {}
+    for pin in data.get("pins", []):
+        identity = pin["identity"]
+        location = pin.get("location", "")
+        # Xcode 27 serializes the original mlx-swift URL in a workspace
+        # lockfile when a SwiftPM mirror is active, while a project resolve
+        # serializes the mirror URL. Both resolve to the audited Prism commit.
+        if identity == "mlx-swift" and location in {
+            "https://github.com/ml-explore/mlx-swift",
+            "https://github.com/PrismML-Eng/mlx-swift.git",
+        }:
+            location = "mlx-swift-audited-mirror"
+        value = {
+            "kind": pin.get("kind"),
+            "location": location,
+            "state": pin.get("state"),
+        }
+        if identity in pins:
+            raise SystemExit(f"error: duplicate Swift package identity {identity} in {path}")
+        pins[identity] = value
+    return pins
+
+if normalized_pins(paths[0]) != normalized_pins(paths[1]):
+    raise SystemExit("error: committed Swift package lockfiles differ semantically")
+PY
 
 python3 -m json.tool codemeta.json >/dev/null
 python3 -m json.tool SBOM.spdx.json >/dev/null

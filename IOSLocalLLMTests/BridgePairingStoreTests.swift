@@ -29,4 +29,16 @@ final class BridgePairingStoreTests: XCTestCase {
         XCTAssertTrue(BridgePairingStore.shared.clients().isEmpty)
         XCTAssertFalse(BridgePairingStore.shared.isValid(token: "token-a"))
     }
+
+    func test_repairingMacReplacesOnlyItsOldBearer() throws {
+        try BridgePairingStore.shared.save(token: "old-token", clientName: "Mac A")
+        try BridgePairingStore.shared.save(token: "other-token", clientName: "Mac B")
+
+        try BridgePairingStore.shared.save(token: "new-token", clientName: "Mac A")
+
+        XCTAssertFalse(BridgePairingStore.shared.isValid(token: "old-token"))
+        XCTAssertTrue(BridgePairingStore.shared.isValid(token: "new-token"))
+        XCTAssertTrue(BridgePairingStore.shared.isValid(token: "other-token"))
+        XCTAssertEqual(BridgePairingStore.shared.clients().count, 2)
+    }
 }

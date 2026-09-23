@@ -40,14 +40,6 @@ final class BridgePairingStore {
         macAgentPort: UInt16? = nil,
         macCertFingerprint: String? = nil
     ) throws {
-        // The Mac dedupes paired iPhones by `iphoneName` — when the
-        // user re-pairs, the Mac rotates `macBearerToken` and drops
-        // the prior row. Mirror that here: any pre-existing keychain
-        // row for the same `clientName` (any token) is stale and would
-        // make `firstAgentClient()` non-deterministically return a
-        // bearer the Mac no longer accepts → 401. Drop them first.
-        deleteAll(matchingClientName: clientName)
-
         let client = Client(
             token:          token,
             clientName:     clientName,
@@ -68,12 +60,17 @@ final class BridgePairingStore {
         SecItemDelete(attrs as CFDictionary)
         let status = SecItemAdd(attrs as CFDictionary, nil)
         guard status == errSecSuccess else { throw PairingError.saveFailed(status) }
+
+        // Keep the existing pairing if Keychain rejects the replacement.
+        // Once the new bearer is stored, remove older rows for this Mac so
+        // agent lookups cannot select a stale credential.
+        deleteAll(matchingClientName: clientName, except: token)
     }
 
     /// Remove every keychain row whose decoded `clientName` matches.
     /// Used by `save` to keep one row per paired Mac.
-    private func deleteAll(matchingClientName name: String) {
-        for client in clients() where client.clientName == name {
+    private func deleteAll(matchingClientName name: String, except token: String) {
+        for client in clients() where client.clientName == name && client.token != token {
             SecItemDelete([
                 kSecClass:       kSecClassGenericPassword,
                 kSecAttrService: BridgePairingStore.service,

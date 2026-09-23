@@ -95,7 +95,10 @@ final class GGUFGenerationProfileTests: XCTestCase {
         let profile = GGUFGenerationProfile.compact
         XCTAssertEqual(profile.contextTokens, 512)
         XCTAssertEqual(profile.inputBudget(requestedOutputTokens: 2_048), 320)
-        XCTAssertEqual(profile.clampedOutputTokens(2_048), 128)
+        // Recurrent state does not grow during decode: the user's setting is
+        // honored up to the runaway guard, never cut at a fixed 128.
+        XCTAssertEqual(profile.clampedOutputTokens(2_048), 2_048)
+        XCTAssertEqual(profile.clampedOutputTokens(8_192), 4_096)
     }
 
     func test_standardProfile_allowsFullUserOutputSetting() {
@@ -108,8 +111,8 @@ final class GGUFGenerationProfileTests: XCTestCase {
         let profile = GGUFGenerationProfile.standard
         // Default 2048-token reply setting: prompt gets the other half.
         XCTAssertEqual(profile.inputBudget(requestedOutputTokens: 2_048), 2_032)
-        // Output reserve never exceeds half the window.
-        XCTAssertEqual(profile.inputBudget(requestedOutputTokens: 8_192), 2_032)
+        // Huge requests adaptively leave the reserved prompt space.
+        XCTAssertEqual(profile.inputBudget(requestedOutputTokens: 8_192), 512)
         // Small requests leave more room for the prompt.
         XCTAssertEqual(profile.inputBudget(requestedOutputTokens: 512), 3_568)
     }
@@ -119,10 +122,10 @@ final class GGUFGenerationProfileTests: XCTestCase {
             GGUFGenerationProfile.outputTokenCap(
                 isGGUF: true,
                 profile: .compact,
-                requested: 2_048,
-                thermalCap: 4_096
+                requested: 8_192,
+                thermalCap: 8_192
             ),
-            128
+            4_096
         )
     }
 
@@ -331,7 +334,14 @@ final class GGUFGenerationProfileTests: XCTestCase {
                 runtime: .llamaCpp,
                 requested: 2_048,
                 thermalCap: 4_096,
-                backendCap: 256
+                profile: MLXAssistantExecutionProfile(
+                    maxContextTokens: 4_096,
+                    maxOutputTokens: 256,
+                    maxKVSize: 4_096,
+                    kvBits: 4,
+                    prefillStepSize: 128,
+                    cacheLimitBytes: 0
+                )
             ),
             2_048
         )
@@ -340,9 +350,62 @@ final class GGUFGenerationProfileTests: XCTestCase {
                 runtime: .mlx,
                 requested: 2_048,
                 thermalCap: 4_096,
-                backendCap: 256
+                profile: MLXAssistantExecutionProfile(
+                    maxContextTokens: 4_096,
+                    maxOutputTokens: 256,
+                    maxKVSize: 4_096,
+                    kvBits: 4,
+                    prefillStepSize: 128,
+                    cacheLimitBytes: 0
+                )
             ),
             256
+        )
+    }
+
+    func test_rotatingKVProfileFollowsUserSetting() {
+        // Rotating-KV profiles (Ornith, Bonsai 27B, Qwen 3.5) bound memory by
+        // cache rotation, not by reply length: no output cut-off.
+        let rotating = MLXAssistantExecutionProfile(
+            maxContextTokens: 2_048,
+            maxOutputTokens: nil,
+            maxKVSize: 2_048,
+            kvBits: 4,
+            prefillStepSize: 128,
+            cacheLimitBytes: 0
+        )
+        XCTAssertEqual(
+            AssistantGenerationBudget.maxTokens(
+                runtime: .mlx,
+                requested: 8_192,
+                thermalCap: 8_192,
+                profile: rotating,
+                contextWindowTokens: 2_048
+            ),
+            8_192
+        )
+    }
+
+    func test_growingKVProfileAdaptsToContextWindow() {
+        // Growing-KV profiles can never emit more than fits next to the
+        // reserved prompt space inside the model's own window.
+        let growing = MLXAssistantExecutionProfile(
+            maxContextTokens: .max,
+            maxOutputTokens: nil,
+            maxKVSize: nil,
+            kvBits: 8,
+            prefillStepSize: 512,
+            cacheLimitBytes: 0
+        )
+        XCTAssertEqual(
+            AssistantGenerationBudget.maxTokens(
+                runtime: .mlx,
+                requested: 16_384,
+                thermalCap: 16_384,
+                profile: growing,
+                contextWindowTokens: 8_192
+            ),
+            8_192 - AssistantGenerationBudget.reservedInputTokens
         )
     }
 
@@ -357,8 +420,8 @@ final class GGUFGenerationProfileTests: XCTestCase {
             outputTokens: output
         )
 
-        XCTAssertEqual(output, 320)
-        XCTAssertEqual(input, 640)
+        XCTAssertEqual(output, 512)
+        XCTAssertEqual(input, 448)
         XCTAssertLessThanOrEqual(input + output + 64, 1_024)
     }
 

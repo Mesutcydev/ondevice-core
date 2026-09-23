@@ -129,6 +129,10 @@ targets:
       # redistributed. The downloaded model must provide its own metadata.
       - path: IOSLocalLLM/PrivacyInfo.xcprivacy
       - path: IOSLocalLLM/Resources/Localization/WebTriggerKeywords.json
+      # Ship redistribution notices and license texts inside the binary, not
+      # only in the source tree.
+      - path: THIRD_PARTY_NOTICES.md
+      - path: LICENSES
       # CMU Pronouncing Dictionary — trimmed (primary pronunciations only,
       # 126K entries, 3.2 MB plain text). Used by PhonemizerEN to convert
       # English text to IPA phonemes for the neural TTS engines (Kokoro,
@@ -165,9 +169,6 @@ targets:
         NSMicrophoneUsageDescription: "OnDevice Core uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control."
         NSLocalNetworkUsageDescription: "OnDevice can expose your on-device language model to computers on your local network when you enable the Local API Server."
         NSSpeechRecognitionUsageDescription: "OnDevice Core uses speech recognition to turn your speech into text for voice conversations and dictation."
-        UIRequiresFullScreen: true
-        UIStatusBarStyle: UIStatusBarStyleDarkContent
-        UIViewControllerBasedStatusBarAppearance: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UILaunchScreen:
@@ -193,7 +194,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLM/IOSLocalLLM.entitlements
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "56"
+        CURRENT_PROJECT_VERSION: "59"
         # PCC symbols exist only in the iOS 27 SDK. Enable the implementation
         # and its capability automatically for iOS 27 device/simulator builds;
         # Xcode 26 and iOS 18–26 builds keep the existing local-only binary.
@@ -228,12 +229,6 @@ targets:
         # alternate icons to be compiled into the bundle.
         ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
         SWIFT_EMIT_LOC_STRINGS: YES
-        # IOSLocalLLMTests uses `@testable import IOSLocalLLM`, and the scheme
-        # builds the tests for both Debug and Release configs. Without
-        # ENABLE_TESTABILITY on Release, the test module dependency
-        # can't resolve and `xcodebuild -configuration Release build`
-        # fails. Cost is a small loss of dead-code stripping in Release.
-        ENABLE_TESTABILITY: YES
         # ── llama.cpp + mtmd integration ────────────────────────
         # Bridging header exposes llama.h / mtmd.h / mtmd-helper.h
         # to Swift via LlamaCppBridge.swift.
@@ -250,6 +245,13 @@ targets:
           # include dir makes the bridging header importable without
           # full module-map gymnastics.
           - "$(SRCROOT)/ThirdParty/whisper.cpp/include"
+      configs:
+        Debug:
+          ENABLE_TESTABILITY: YES
+        Release:
+          # Production builds keep internal symbols and optimisation barriers
+          # introduced by @testable import out of the shipped binary.
+          ENABLE_TESTABILITY: NO
     dependencies:
       - package: VoiceAgentOrb
         product: VoiceAgentOrb
@@ -422,7 +424,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "56"
+        CURRENT_PROJECT_VERSION: "59"
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_EMIT_LOC_STRINGS: YES
 

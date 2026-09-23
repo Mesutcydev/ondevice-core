@@ -14,6 +14,16 @@ final class URLSafetyValidatorTests: XCTestCase {
         XCTAssertTrue(URLSafetyValidator.isPrivateOrReserved("::1"))
         XCTAssertTrue(URLSafetyValidator.isPrivateOrReserved("fe80::1"))
         XCTAssertTrue(URLSafetyValidator.isPrivateOrReserved("fd12:3456:789a:1::1"))
+        XCTAssertTrue(URLSafetyValidator.isPrivateOrReserved("2001:db8::1"))
+        XCTAssertTrue(URLSafetyValidator.isPrivateOrReserved("::ffff:10.0.0.1"))
+        XCTAssertTrue(URLSafetyValidator.isPrivateOrReserved("64:ff9b::192.168.1.1"))
+        XCTAssertTrue(URLSafetyValidator.isPrivateOrReserved("2002:7f00:1::"))
+        XCTAssertTrue(URLSafetyValidator.isPrivateOrReserved("not-an-ipv6::literal"))
+    }
+
+    func test_isPrivateOrReserved_allowsPublicIPv6() {
+        XCTAssertFalse(URLSafetyValidator.isPrivateOrReserved("2606:4700:4700::1111"))
+        XCTAssertFalse(URLSafetyValidator.isPrivateOrReserved("2001:4860:4860::8888"))
     }
 
     func test_isPrivateOrReserved_allowsPublicIPv4() {
@@ -44,5 +54,14 @@ final class URLSafetyValidatorTests: XCTestCase {
         if single.isSafe {
             XCTAssertEqual(Set(single.resolvedIPs), Set(stable.resolvedIPs))
         }
+    }
+
+    func testRedirectGuardRejectsRedirectToLoopback() async {
+        let guardDelegate = WebRedirectGuard(validator: URLSafetyValidator())
+        let request = URLRequest(url: URL(string: "http://127.0.0.1/admin")!)
+
+        let accepted = await guardDelegate.validatedRedirectRequest(request)
+
+        XCTAssertNil(accepted)
     }
 }

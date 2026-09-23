@@ -226,6 +226,9 @@ struct CodingAssistantView: View {
     private let conversationBottomAnchorID = "conversation-bottom-anchor"
 
     var body: some View {
+        // Snapshot actor-isolated environment state before entering the
+        // Sendable scroll-transition closure.
+        let reduceMotion = chatReduceMotion
         // Backdrop is owned by ContentView (LiquidPinkBackdrop for the assistant
         // tab, Color.black for the camera tab). Painting a full-bleed T.bg here
         // used to leak as a cream-colored vertical strip on the lens tab when
@@ -383,9 +386,9 @@ struct CodingAssistantView: View {
                                     // animated zone.
                                     .scrollTransition(.animated.threshold(.visible(0.05))) { content, phase in
                                         content
-                                            .opacity(chatReduceMotion || phase.isIdentity ? 1 : 0)
-                                            .offset(y: chatReduceMotion || phase.isIdentity ? 0 : 8)
-                                            .scaleEffect(chatReduceMotion || phase.isIdentity ? 1 : 0.985,
+                                            .opacity(reduceMotion || phase.isIdentity ? 1 : 0)
+                                            .offset(y: reduceMotion || phase.isIdentity ? 0 : 8)
+                                            .scaleEffect(reduceMotion || phase.isIdentity ? 1 : 0.985,
                                                          anchor: .topLeading)
                                     }
                                 }
@@ -862,7 +865,12 @@ struct CodingAssistantView: View {
                                 ? "The user did not choose a readable file."
                                 : "File read failed:\n" + errors.joined(separator: "\n")
                         } else {
-                            result = FileAttachmentService.renderForPrompt(added)
+                            result = FileAttachmentService.renderForPrompt(
+                                added,
+                                byteBudget: FileAttachmentService.promptByteBudget(
+                                    forInputTokens: assistant.currentInputBudget
+                                )
+                            )
                         }
                         let depth = pendingToolFile?.depth ?? 0
                         pendingToolFile = nil
@@ -2688,6 +2696,10 @@ struct CodingAssistantView: View {
                 canSend: canSendMessage,
                 isGenerating: isGenerating,
                 hasCustomSampling: samplerOverrideActive,
+                modelName: assistant.activeDisplayName,
+                hasAttachments: !pendingAttachments.isEmpty || !pendingImageThumbnails.isEmpty || pendingImageThumbnail != nil,
+                onModel: { inputFocused = false; showModelPicker = true },
+                onVoice: { inputFocused = false; showVoiceMode = true },
                 onAdd: { showSnippetPicker = true },
                 onPhoto: { showPhotoPicker = true },
                 onFile: { showFilePicker = true },
@@ -2696,29 +2708,18 @@ struct CodingAssistantView: View {
                 onStop: stopGeneration
             )
         }
-        .kClearGlass(
-            in: RoundedRectangle(cornerRadius: AssistantRadius.composer, style: .continuous),
-            fallbackFill: T.surface,
-            fallbackStroke: T.rule2
-        )
-        // Clear glass alone lets the scroll view's final answer remain legible
-        // underneath the field and toolbar. Use the page color as a nearly
-        // opaque optical backing so the composer is still glass-edged, but is
-        // also a real visual boundary when it is pinned above the keyboard.
         .background(
-            T.bg.opacity(inputFocused ? 0.99 : 0.96),
-            in: RoundedRectangle(cornerRadius: AssistantRadius.composer, style: .continuous)
+            T.isDark ? Color(white: T.isOLED ? 0.10 : 0.16) : Color.white,
+            in: RoundedRectangle(cornerRadius: 28, style: .continuous)
         )
-        .overlay(alignment: .top) {
-            Capsule()
-                .fill(Color.white.opacity(T.isDark ? 0.12 : 0.42))
-                .frame(height: AppStroke.hairline)
-                .padding(.horizontal, AssistantSpacing.medium)
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .strokeBorder(T.isDark ? Color.white.opacity(0.12) : Color.black.opacity(0.12), lineWidth: 1)
                 .allowsHitTesting(false)
         }
-        .clipShape(RoundedRectangle(cornerRadius: AssistantRadius.composer, style: .continuous))
-        .shadow(color: Color.black.opacity(T.isDark ? 0.16 : 0.08), radius: 12, y: 5)
-        .contentShape(RoundedRectangle(cornerRadius: AssistantRadius.composer, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .shadow(color: Color.black.opacity(T.isDark ? 0 : 0.06), radius: 16, y: 5)
+        .contentShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
         .zIndex(20)
         .animation(.easeOut(duration: 0.18), value: inputFocused)
     }
@@ -3436,7 +3437,16 @@ struct CodingAssistantView: View {
     private func sendOfflinePrepared(text: String, visualContext: String?, kb: (block: String, sources: [ChatMessage.DocumentSource])?) {
         userAbortedToolTurn = false
         let attachments = pendingAttachments
-        let attachmentBlock = FileAttachmentService.renderForPrompt(attachments)
+        // Clamp the block to what the ACTIVE model can actually admit. The
+        // 35B's window is 4096 input tokens, so the old 128 KB ceiling could
+        // ask it for a ~32K-token prefill — the pool plan and KV reserve are
+        // sized for a fraction of that.
+        let attachmentBlock = FileAttachmentService.renderForPrompt(
+            attachments,
+            byteBudget: FileAttachmentService.promptByteBudget(
+                forInputTokens: assistant.currentInputBudget
+            )
+        )
         // On-device RAG: pull the most relevant excerpts from the Knowledge
         // Base for THIS query (cosine over locally-embedded chunks, nothing
         // leaves the device). nil when the KB is disabled/empty or nothing is

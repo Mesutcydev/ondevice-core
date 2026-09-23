@@ -48,7 +48,7 @@ final class DeviceTierAdvisorTests: XCTestCase {
     func test_recommendedMaxTokens_isInSensibleRange() {
         let tokens = DeviceTierAdvisor.recommendedMaxTokens
         XCTAssertGreaterThanOrEqual(tokens, 256, "Min tokens too low")
-        XCTAssertLessThanOrEqual(tokens, 4096, "Max tokens too high")
+        XCTAssertLessThanOrEqual(tokens, 8_192, "Max tokens too high")
     }
 
     // MARK: - RAM budget is positive

@@ -15,7 +15,7 @@ enum LegalDocuments {
     // MARK: - Versioning
     // Bump this whenever any legal text materially changes. Existing users
     // will be re-prompted to accept on app launch.
-    static let currentVersion = 4
+    static let currentVersion = 5
 
     // MARK: - Public URLs
     static let privacyPolicyURL = "https://github.com/Mesutcydev/ondevice-core/blob/main/PRIVACY_POLICY.md"
@@ -29,7 +29,7 @@ enum LegalDocuments {
 
     **Last updated:** \(currentVersionDate)
 
-    OnDevice ("we", "the app") is designed with privacy as the core principle. All AI processing happens entirely on your device. We do not operate any servers and we do not collect, store, transmit, or sell your personal data.
+    OnDevice ("we", "the app") is designed with privacy as a core principle. AI processing is local by default. If you explicitly select Apple Private Cloud, the request content described below is sent to Apple's Private Cloud Compute service. We do not operate an OnDevice account, analytics, advertising, telemetry, or inference server, and we do not collect, store, or sell your personal data.
 
     ## 1. What we do NOT collect
     - We do **not** collect images, video, or photos captured by the camera.
@@ -41,7 +41,7 @@ enum LegalDocuments {
     ## 2. What stays on your device
     - **Camera frames** captured for analysis are processed in-memory and discarded immediately. They are never written to disk by the app unless you explicitly save them via the iOS share sheet.
     - **Photos** you import from your Photo Library are read into memory, analysed, and discarded.
-    - **Chat conversations** with the Assistant are stored locally in the app's sandbox (Documents folder). You can delete them at any time. They are never uploaded.
+    - **Chat conversations** with the Assistant are stored locally in the app's sandbox (Documents folder). They leave the device only when you explicitly enable iCloud conversation sync or select Apple Private Cloud for a request.
     - **Downloaded AI models** (e.g. Qwen3, FastVLM, KittenTTS) are stored in the app's sandbox. They are downloaded directly from Hugging Face on first use and used entirely locally afterwards.
 
     ## 3. Network usage
@@ -50,6 +50,7 @@ enum LegalDocuments {
     - **Web search:** When you enable web search and submit a query, the configured provider receives that query under its own terms.
     - **Mac Bridge and Local API Server:** When enabled, paired clients communicate with the app over your local network.
     - **iCloud sync:** When enabled, Apple stores conversations in your private CloudKit database.
+    - **Apple Private Cloud:** When you select this optional model and accept its separate disclosure, the conversation content needed for the request is sent to Apple Private Cloud Compute. It can include recent messages, system instructions, and text extracted from files, web pages, or images. A network connection is required. You can switch back to a downloaded local model at any time.
     - **External documentation and links:** These open only after your action.
 
     There is no OnDevice telemetry channel, remote configuration service, analytics SDK, or advertising SDK.
@@ -68,7 +69,7 @@ enum LegalDocuments {
     When you tap "download" on a Hugging Face model, your device makes HTTPS requests to `huggingface.co`. We do not control Hugging Face. Their privacy policy and terms of service apply. If you save a Hugging Face token for a gated repository, the app stores it in the Keychain and sends it to Hugging Face for authorized requests; OnDevice does not receive it.
 
     ## 8. Apple frameworks
-    The app uses Apple-provided iOS frameworks (Vision, Speech, Core ML, MetricKit, ActivityKit, CloudKit when iCloud sync is enabled). These frameworks operate under Apple's privacy practices. **Speech recognition is forced on-device** wherever the device supports it (recent iPhones). CloudKit sync, if you enable it, stores conversations in **your** private iCloud database — Apple, not us, controls that storage.
+    The app uses Apple-provided iOS frameworks (Vision, Speech, Core ML, MetricKit, ActivityKit, CloudKit when iCloud sync is enabled, and Private Cloud Compute when you explicitly select it). These frameworks operate under Apple's privacy practices. **Speech recognition is forced on-device** wherever the device supports it (recent iPhones). CloudKit sync, if you enable it, stores conversations in **your** private iCloud database — Apple, not us, controls that storage.
 
     ## 9. MetricKit diagnostics
     iOS periodically sends MetricKit reports (crash, hang, CPU usage) to the app for the user's own diagnostic use. These reports stay on the device — we do not collect or transmit them. You can view and delete them in **Settings → Diagnostics**.
@@ -77,10 +78,10 @@ enum LegalDocuments {
     A live indicator in the assistant tab reports requests made through the app's monitored networking layer. It is a useful diagnostic, not a system-wide packet monitor.
 
     ## 11. Data retention
-    All app data is stored in the app's iOS sandbox. Conversations are stored encrypted-at-rest (`completeFileProtectionUnlessOpen`). You can wipe all on-device data at any time via **Settings → Privacy & Reset → Wipe all on-device data**. Uninstalling the app also removes everything we've stored on the device.
+    Local app data is stored in the app's iOS sandbox. Conversations are stored encrypted-at-rest (`completeFileProtectionUnlessOpen`). You can wipe local data and any configured private-CloudKit conversation copy via **Settings → Privacy & Reset → Wipe all app data**. If iCloud is unavailable, the app reports that the cloud copy may remain so you can sign in and retry. Uninstalling removes local data but does not itself guarantee deletion of CloudKit records.
 
     ## 12. Your rights
-    Because we do not collect personal data, there is nothing for us to access, correct, port, or delete on your behalf. All of your data is on your device, under your control. If you believe we have nevertheless processed your personal data, contact us via the Support link.
+    Because we do not collect personal data into an OnDevice-operated service, there is nothing for us to access, correct, port, or delete on your behalf. Local and optional private-CloudKit data remain under your controls in the app and your Apple account. If you believe we have nevertheless processed your personal data, contact us via the Support link.
 
     ## 13. Changes
     If we change this policy we will update the "Last updated" date and re-prompt for acceptance inside the app.
@@ -186,14 +187,15 @@ enum LegalDocuments {
     - Anything you share with another person.
 
     ## 6. On-device privacy (not anonymity)
-    All AI inference happens on your device. The app makes no telemetry calls and does not transmit your prompts, images, or audio. The only outbound network requests are:
+    AI inference is on-device by default. The app makes no OnDevice telemetry calls. The outbound network requests are:
     - Searches and downloads from `huggingface.co` when you explicitly request them; gated repositories may include a token you saved.
     - Web search when you enable it and submit a query.
     - Mac Bridge or Local API communication on your local network when enabled.
     - iCloud synchronization when enabled.
+    - Apple Private Cloud requests when you explicitly select that model and accept its disclosure; required conversation content is sent to Apple Private Cloud Compute.
     - External documentation and links when you choose them.
 
-    A live indicator in the assistant tab lights up whenever ANY network request is in flight. On-device processing protects you from cloud-side data retention but does **not** make your use anonymous to your network provider, your device-management policies, or anyone with physical access to your unlocked device.
+    A live indicator in the assistant tab reports requests made through the app's monitored networking layer; it is not a system-wide packet monitor. On-device processing protects you from cloud-side data retention but does **not** make your use anonymous to your network provider, your device-management policies, or anyone with physical access to your unlocked device.
 
     ## 7. Device thermals and battery
     Running large models is computationally intensive. Your device will warm up, occasionally significantly, and battery will drain faster than during normal use. iOS may throttle performance to protect the device, and we apply additional protections (token-cap reduction, generation refusal, mid-stream halts) when iOS reports a "serious" or "critical" thermal state. **Do not place the device on flammable surfaces, do not charge in an enclosed space while running heavy generation, and stop using the app if the device becomes uncomfortably hot.**
@@ -345,6 +347,26 @@ enum LegalDocuments {
             category: "Framework"
         ),
         Attribution(
+            name: "Apple Core AI Models runtime",
+            author: "Apple Inc.",
+            license: "BSD-3-Clause",
+            licenseURL: "https://github.com/apple/coreai-models/blob/main/LICENSE",
+            sourceURL: "https://github.com/apple/coreai-models",
+            paperURL: nil,
+            note: "Vendored Swift runtime utilities for Apple Core AI resource packs; pinned source revision and local compatibility patch are recorded in Packages/coreai-models/COREAI_PIN_PATCH.md.",
+            category: "Framework"
+        ),
+        Attribution(
+            name: "XGrammar",
+            author: "MLC contributors",
+            license: "Apache-2.0",
+            licenseURL: "https://github.com/mlc-ai/xgrammar/blob/main/LICENSE",
+            sourceURL: "https://github.com/mlc-ai/xgrammar",
+            paperURL: nil,
+            note: "Grammar-constrained generation dependency used by the Core AI language-model runtime.",
+            category: "Framework"
+        ),
+        Attribution(
             name: "thinking-orbs",
             author: "Jakub Antalik",
             license: "MIT",
@@ -384,7 +406,7 @@ enum LegalDocuments {
         let f = DateFormatter()
         f.dateStyle = .long
         f.timeStyle = .none
-        return f.string(from: Date(timeIntervalSinceReferenceDate: 806_976_000)) // 2026-07-29
+        return f.string(from: Date(timeIntervalSince1970: 1_789_819_200)) // 2026-09-19 noon UTC
     }
 }
 

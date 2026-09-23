@@ -1,325 +1,247 @@
 import SwiftUI
-import UIKit
 
-/// Cold-start splash — "first light".
-///
-/// The first frame is exactly `LaunchBackground` (the static launch screen
-/// color), so the hand-off from UIKit is seamless. The sequence is one
-/// restrained beat built around the mark: the tile settles out of a blur
-/// while a soft halo wakes behind it, a single hairline of light sweeps the
-/// aperture once, and the wordmark rises into place. Total run ≈ 1.9 s.
-///
-/// Reduce Motion collapses the sequence to a quiet fade.
 struct PlumDuskSplashView: View {
     let onFinished: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    // Entrance flags — each element reads the flag it needs and animates
-    // itself, so the beats overlap instead of stepping.
-    @State private var appeared = false   // tile + halo + backdrop glow
-    @State private var sweepIn = false    // aperture ring: fade in + rotate
-    @State private var sweepOut = false   // aperture ring: fade out
-    @State private var typed = false      // wordmark
-    @State private var dismissing = false // outro
-
-    /// Task-driven beats, seconds from first layout. Per-element delays live
-    /// on the elements; these keep the timeline in one place.
-    private enum Beat {
-        static let sweep = 0.42         // ring starts drawing
-        static let haptic = 0.55        // the tile has just settled
-        static let type = 0.78          // wordmark rises
-        static let sweepFade = 1.16     // ring hands off
-        static let outro = 1.55
-        static let outroDuration = 0.40
-    }
+    @State private var startDate = Date.now
 
     var body: some View {
-        GeometryReader { proxy in
-            let markSize = min(proxy.size.width * 0.44, 196)
-
-            ZStack {
-                SplashBackdrop(appeared: appeared,
-                               dismissing: dismissing,
-                               reduceMotion: reduceMotion)
-
-                VStack(spacing: 30) {
-                    SplashMark(size: markSize,
-                               appeared: appeared,
-                               sweepIn: sweepIn,
-                               sweepOut: sweepOut,
-                               dismissing: dismissing,
-                               reduceMotion: reduceMotion)
-                        .accessibilityHidden(true)
-
-                    SplashWordmark(typed: typed,
-                                   dismissing: dismissing,
-                                   reduceMotion: reduceMotion)
-                }
-                .padding(.horizontal, 24)
-                // Sit the mark + type a touch above true center — the classic
-                // splash weighting.
-                .offset(y: -proxy.size.height * 0.02)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
+        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: reduceMotion)) { context in
+            SplashFrame(
+                time: reduceMotion
+                    ? 6.0
+                    : min(7.0, context.date.timeIntervalSince(startDate))
+            )
         }
         .ignoresSafeArea()
-        .task { await runEntrance() }
-    }
-
-    @MainActor
-    private func runEntrance() async {
-        appeared = true
-
-        guard !reduceMotion else {
-            try? await Task.sleep(for: .seconds(0.35))
-            guard !Task.isCancelled else { return }
-            typed = true
-            try? await Task.sleep(for: .seconds(0.85))
-            guard !Task.isCancelled else { return }
-            withAnimation(.easeInOut(duration: 0.3)) { dismissing = true }
-            try? await Task.sleep(for: .seconds(0.32))
+        .allowsHitTesting(true)
+        .task(id: reduceMotion) {
+            let duration = reduceMotion ? 1.2 : 7.0
+            try? await Task.sleep(for: .seconds(duration))
             guard !Task.isCancelled else { return }
             onFinished()
-            return
         }
-
-        try? await Task.sleep(for: .seconds(Beat.sweep))
-        guard !Task.isCancelled else { return }
-        sweepIn = true
-
-        // Soft landing tick as the tile reaches its resting size.
-        try? await Task.sleep(for: .seconds(Beat.haptic - Beat.sweep))
-        guard !Task.isCancelled else { return }
-        UIImpactFeedbackGenerator(style: .soft).impactOccurred(intensity: 0.6)
-
-        try? await Task.sleep(for: .seconds(Beat.type - Beat.haptic))
-        guard !Task.isCancelled else { return }
-        typed = true
-
-        try? await Task.sleep(for: .seconds(Beat.sweepFade - Beat.type))
-        guard !Task.isCancelled else { return }
-        sweepOut = true
-
-        try? await Task.sleep(for: .seconds(Beat.outro - Beat.sweepFade))
-        guard !Task.isCancelled else { return }
-        withAnimation(.easeInOut(duration: Beat.outroDuration)) { dismissing = true }
-
-        try? await Task.sleep(for: .seconds(Beat.outroDuration + 0.05))
-        guard !Task.isCancelled else { return }
-        onFinished()
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Ondevice LLM. Local AI workbench. Private. No account required.")
     }
 }
 
-// MARK: - Backdrop
-
-/// Static base color plus one quiet glow. The base stays put for the whole
-/// sequence so the very first frame matches the native launch screen.
-private struct SplashBackdrop: View {
-    let appeared: Bool
-    let dismissing: Bool
-    let reduceMotion: Bool
+private struct SplashFrame: View {
+    let time: Double
 
     var body: some View {
         GeometryReader { proxy in
-            let w = proxy.size.width
-            let h = proxy.size.height
+            let size = proxy.size
+            let lift = SplashMotion.animate(time, from: 3.6, to: 4.4, easing: SplashMotion.easeInOutCubic)
+            let titleIn = SplashMotion.animate(time, from: 3.9, to: 4.5, easing: SplashMotion.easeOutCubic)
+            let subtitleIn = SplashMotion.animate(time, from: 4.25, to: 4.85, easing: SplashMotion.easeOutCubic)
+            let taglineIn = SplashMotion.animate(time, from: 5.0, to: 5.7, easing: SplashMotion.easeOutCubic)
+            let eyeWidth = size.width * (620.0 / 1080.0)
+            let eyeHeight = eyeWidth * 0.6
+            let logoTop = size.height * CGFloat((830.0 - lift * 210.0) / 1920.0)
+            let logoScale = CGFloat(1.0 - lift * 0.14)
+            let glowIn = SplashMotion.animate(time, from: 0.4, to: 1.6, easing: SplashMotion.easeOutQuad)
+            let glowSize = size.width * CGFloat((620.0 + sin(time * 1.3) * 40.0) / 1080.0)
 
             ZStack {
-                Color("LaunchBackground")
-
-                RadialGradient(
-                    colors: [Color.white.opacity(0.80), Color.white.opacity(0)],
-                    center: UnitPoint(x: 0.5, y: 0.36),
-                    startRadius: 12,
-                    endRadius: max(w, h) * 0.60
-                )
-                .opacity(appeared ? 1 : 0)
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.9), value: appeared)
-
-                // Barely-there vignette keeps the weight on the mark.
-                RadialGradient(
-                    colors: [.clear, Color.black.opacity(0.06)],
-                    center: .center,
-                    startRadius: min(w, h) * 0.44,
-                    endRadius: max(w, h) * 0.80
-                )
-                .opacity(appeared ? 1 : 0)
-                .animation(reduceMotion ? nil : .easeInOut(duration: 1.0), value: appeared)
-            }
-            .opacity(dismissing ? 0 : 1)
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.36), value: dismissing)
-        }
-        .ignoresSafeArea()
-        .allowsHitTesting(false)
-    }
-}
-
-// MARK: - Mark
-
-/// The app icon as a free-standing glass tile: a focus-pull settle, one soft
-/// halo, and a single hairline of light drawing around the aperture.
-private struct SplashMark: View {
-    let size: CGFloat
-    let appeared: Bool
-    let sweepIn: Bool
-    let sweepOut: Bool
-    let dismissing: Bool
-    let reduceMotion: Bool
-
-    private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: size * 0.2237, style: .continuous)
-    }
-
-    var body: some View {
-        ZStack {
-            halo
-            apertureSweep
-            tile
-        }
-        .frame(width: size, height: size)
-    }
-
-    /// Wide, soft light that wakes behind the tile and swells at the outro.
-    private var halo: some View {
-        Circle()
-            .fill(
+                SplashPalette.silverEdge
                 RadialGradient(
                     colors: [
-                        Color.white.opacity(0.92),
-                        Color(red: 0.64, green: 0.77, blue: 1.00).opacity(0.28),
-                        Color.clear,
+                        SplashPalette.silverHighlight,
+                        SplashPalette.silverMid,
+                        SplashPalette.silverEdge,
                     ],
-                    center: .center,
+                    center: UnitPoint(x: 0.5, y: 0.28),
                     startRadius: 0,
-                    endRadius: size * 0.80
+                    endRadius: size.height * 0.9
                 )
-            )
-            .frame(width: size * 2.0, height: size * 2.0)
-            .blur(radius: 34)
-            .scaleEffect(appeared ? (dismissing ? 1.06 : 1.0) : 0.72)
-            .opacity(appeared ? (dismissing ? 0 : 1) : 0)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.9), value: appeared)
-            .animation(.easeInOut(duration: 0.38), value: dismissing)
-    }
 
-    /// One hairline of light drawing around the aperture — in, around, gone.
-    private var apertureSweep: some View {
-        Circle()
-            .trim(from: 0.00, to: 0.72)
-            .stroke(
-                AngularGradient(
-                    gradient: Gradient(stops: [
-                        .init(color: .clear, location: 0.00),
-                        .init(color: Color.white.opacity(0.10), location: 0.30),
-                        .init(color: Color.white.opacity(0.85), location: 0.86),
-                        .init(color: Color.white.opacity(0.95), location: 1.00),
-                    ]),
-                    center: .center,
-                    startAngle: .degrees(0),
-                    endAngle: .degrees(259)
-                ),
-                style: StrokeStyle(lineWidth: 1.2, lineCap: .round)
-            )
-            .frame(width: size * 1.46, height: size * 1.46)
-            .rotationEffect(.degrees(sweepIn ? 208 : -52))
-            .opacity(sweepOut ? 0 : (sweepIn ? 0.9 : 0))
-            .animation(reduceMotion ? nil
-                : .timingCurve(0.32, 0.72, 0.24, 1.0, duration: 0.95), value: sweepIn)
-            .animation(.easeIn(duration: 0.28), value: sweepOut)
-            .blur(radius: 0.3)
-            .allowsHitTesting(false)
-    }
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [.white.opacity(0.14), .clear],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: glowSize * 0.5
+                        )
+                    )
+                    .frame(width: glowSize, height: glowSize)
+                    .opacity(glowIn)
+                    .position(x: size.width * 0.5, y: logoTop + size.height * (120.0 / 1920.0))
 
-    private var tile: some View {
-        Image("AppLogo")
-            .resizable()
-            .scaledToFit()
-            .frame(width: size, height: size)
-            // Slightly overscan so the artwork's own dark surround and baked
-            // rim fall outside the mask — the crystal edge below is ours.
-            .scaleEffect(1.08)
-            .frame(width: size, height: size)
-            .clipShape(shape)
-            .overlay {
-                shape.strokeBorder(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.95),
-                            Color.white.opacity(0.18),
-                            Color.white.opacity(0.70),
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1.1
-                )
+                AnimatedEyeMark(time: time)
+                    .frame(width: eyeWidth, height: eyeHeight)
+                    .scaleEffect(logoScale, anchor: .top)
+                    .position(x: size.width * 0.5, y: logoTop + eyeHeight * 0.5)
+
+                Text("Ondevice LLM")
+                    .font(.system(size: size.width * (96.0 / 1080.0), weight: .semibold))
+                    .tracking(-0.7)
+                    .foregroundStyle(SplashPalette.ink)
+                    .opacity(titleIn)
+                    .offset(y: CGFloat((1.0 - titleIn) * 13.0))
+                    .position(x: size.width * 0.5, y: size.height * (1135.0 / 1920.0))
+
+                Text("LOCAL AI WORKBENCH")
+                    .font(.system(size: size.width * (40.0 / 1080.0), weight: .regular, design: .monospaced))
+                    .tracking(size.width * (12.8 / 1080.0))
+                    .foregroundStyle(SplashPalette.ink.opacity(0.78))
+                    .opacity(subtitleIn)
+                    .offset(y: CGFloat((1.0 - subtitleIn) * 9.0))
+                    .position(x: size.width * 0.5, y: size.height * (1250.0 / 1920.0))
+
+                Text("Private. No account required.")
+                    .font(.system(size: size.width * (30.0 / 1080.0), weight: .regular, design: .monospaced))
+                    .foregroundStyle(SplashPalette.ink.opacity(0.68))
+                    .opacity(taglineIn)
+                    .position(x: size.width * 0.5, y: size.height * (1680.0 / 1920.0))
             }
-            .compositingGroup()
-            .shadow(color: .black.opacity(0.18), radius: 26, y: 16)
-            .shadow(color: .black.opacity(0.08), radius: 5, y: 2)
-            .scaleEffect(appeared ? 1.0 : 0.93)
-            .opacity(appeared ? (dismissing ? 0 : 1) : 0)
-            .blur(radius: appeared ? (dismissing ? 6 : 0) : 14)
-            .offset(y: appeared ? 0 : 10)
-            .animation(reduceMotion ? nil
-                : .spring(response: 0.62, dampingFraction: 0.86).delay(0.04),
-                value: appeared)
-            .animation(.easeInOut(duration: 0.38), value: dismissing)
+        }
     }
 }
 
-// MARK: - Wordmark
-
-/// Title and tagline rising into place — a blur-out and settle rather than a
-/// masked reveal. Type is pinned to the system faces instead of the theme
-/// helpers: those probe for an optional custom family and fall back to
-/// `Font.custom` with a generated system name, a path whose result varies by
-/// build. The explicit faces keep the splash deterministic and match the
-/// app's rendered chrome.
-private struct SplashWordmark: View {
-    let typed: Bool
-    let dismissing: Bool
-    let reduceMotion: Bool
+private struct AnimatedEyeMark: View {
+    let time: Double
 
     var body: some View {
-        VStack(spacing: 11) {
-            Text("OnDevice Core")
-                .font(.system(size: 30, weight: .semibold))
-                .tracking(-0.6)
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color(white: 0.10), Color(white: 0.32)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-                .opacity(typed ? 1 : 0)
-                .blur(radius: typed ? 0 : 5)
-                .offset(y: typed ? 0 : 7)
-                .animation(reduceMotion ? nil
-                    : .easeOut(duration: 0.5).delay(0.02),
-                    value: typed)
+        GeometryReader { proxy in
+            let size = proxy.size
+            let draw = SplashMotion.animate(time, from: 0.15, to: 1.15, easing: SplashMotion.easeInOutCubic)
+            let pop = SplashMotion.animate(time, from: 1.05, to: 1.55, easing: SplashMotion.easeOutBack)
+            let look = SplashMotion.interpolate(
+                time,
+                times: [1.7, 2.05, 2.35, 2.65, 3.0],
+                values: [0, -13, -13, 13, 0],
+                easing: SplashMotion.easeInOutCubic
+            )
+            let fullBlink = SplashMotion.interpolate(
+                time,
+                times: [3.13, 3.28, 3.34, 3.52],
+                values: [0, 1, 1, 0],
+                easing: SplashMotion.easeInOutQuad
+            )
+            let halfBlink = SplashMotion.interpolate(
+                time,
+                times: [6.2, 6.32, 6.38, 6.52],
+                values: [0, 0.55, 0.55, 0],
+                easing: SplashMotion.easeInOutQuad
+            )
+            let blink = max(fullBlink, halfBlink)
+            let idle = 1.0 + sin(time * 1.7) * 0.008
 
-            Text("LOCAL AI STUDIO")
-                .font(.system(size: 11.5, weight: .medium, design: .monospaced))
-                // Letters condense into place as the line arrives.
-                .tracking(typed ? 3.0 : 5.4)
-                // Balance the tracking that trails the last glyph so the line
-                // stays optically centered.
-                .padding(.leading, typed ? 3.0 : 5.4)
-                .foregroundStyle(Color(white: 0.42))
-                .opacity(typed ? 1 : 0)
-                .blur(radius: typed ? 0 : 4)
-                .offset(y: typed ? 0 : 5)
-                .animation(reduceMotion ? nil
-                    : .easeOut(duration: 0.55).delay(0.12),
-                    value: typed)
+            ZStack {
+                ZStack {
+                    Circle()
+                        .fill(Color(white: 0.97))
+                        .overlay(Circle().stroke(SplashPalette.ink.opacity(0.18), lineWidth: 1.5))
+                        .frame(width: size.width * 0.36, height: size.width * 0.36)
+                        .position(
+                            x: size.width * CGFloat((100.0 + look * 0.25) / 200.0),
+                            y: size.height * (58.0 / 120.0)
+                        )
+
+                    Circle()
+                        .fill(SplashPalette.ink)
+                        .frame(width: size.width * 0.17, height: size.width * 0.17)
+                        .position(
+                            x: size.width * CGFloat((100.0 + look * 1.25) / 200.0),
+                            y: size.height * (58.0 / 120.0)
+                        )
+
+                    Circle()
+                        .fill(.white)
+                        .frame(width: size.width * 0.045, height: size.width * 0.045)
+                        .position(
+                            x: size.width * CGFloat((93.0 + look * 1.25) / 200.0),
+                            y: size.height * (51.0 / 120.0)
+                        )
+                }
+                .scaleEffect(CGFloat(pop))
+                .clipShape(EyeLidShape(blink: blink))
+
+                EyeLidShape(blink: blink)
+                    .trim(from: 0, to: CGFloat(draw))
+                    .stroke(.white, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+            }
+            .scaleEffect(CGFloat(idle))
         }
-        .multilineTextAlignment(.center)
-        .opacity(dismissing ? 0 : 1)
-        .offset(y: dismissing ? -5 : 0)
-        .animation(.easeInOut(duration: 0.26), value: dismissing)
-        .accessibilityElement(children: .combine)
     }
+}
+
+private struct EyeLidShape: Shape {
+    var blink: Double
+
+    var animatableData: Double {
+        get { blink }
+        set { blink = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        let topY = -8.0 + (58.0 + 8.0) * blink
+        let bottomY = 128.0 + (58.0 - 128.0) * blink
+        func point(_ x: Double, _ y: Double) -> CGPoint {
+            CGPoint(x: rect.width * CGFloat(x / 200.0), y: rect.height * CGFloat(y / 120.0))
+        }
+
+        var path = Path()
+        path.move(to: point(12, 58))
+        path.addQuadCurve(to: point(188, 58), control: point(100, topY))
+        path.addQuadCurve(to: point(12, 58), control: point(100, bottomY))
+        return path
+    }
+}
+
+private enum SplashMotion {
+    static func animate(
+        _ time: Double,
+        from start: Double,
+        to end: Double,
+        easing: (Double) -> Double
+    ) -> Double {
+        easing(min(1, max(0, (time - start) / (end - start))))
+    }
+
+    static func interpolate(
+        _ time: Double,
+        times: [Double],
+        values: [Double],
+        easing: (Double) -> Double
+    ) -> Double {
+        guard let firstTime = times.first, let firstValue = values.first else { return 0 }
+        if time <= firstTime { return firstValue }
+        guard let lastTime = times.last, let lastValue = values.last, time < lastTime else {
+            return values.last ?? 0
+        }
+
+        for index in 0..<(times.count - 1) where time <= times[index + 1] {
+            let progress = (time - times[index]) / (times[index + 1] - times[index])
+            let eased = easing(progress)
+            return values[index] + (values[index + 1] - values[index]) * eased
+        }
+        return lastValue
+    }
+
+    static func easeInOutCubic(_ value: Double) -> Double {
+        value < 0.5 ? 4 * value * value * value : 1 - pow(-2 * value + 2, 3) / 2
+    }
+
+    static func easeOutCubic(_ value: Double) -> Double { 1 - pow(1 - value, 3) }
+    static func easeOutQuad(_ value: Double) -> Double { 1 - (1 - value) * (1 - value) }
+    static func easeInOutQuad(_ value: Double) -> Double {
+        value < 0.5 ? 2 * value * value : 1 - pow(-2 * value + 2, 2) / 2
+    }
+
+    static func easeOutBack(_ value: Double) -> Double {
+        let c1 = 1.70158
+        let c3 = c1 + 1
+        return 1 + c3 * pow(value - 1, 3) + c1 * pow(value - 1, 2)
+    }
+}
+
+private enum SplashPalette {
+    static let silverHighlight = Color(white: 0.84)
+    static let silverMid = Color(white: 0.75)
+    static let silverEdge = Color(white: 0.66)
+    static let ink = Color(white: 0.10)
 }

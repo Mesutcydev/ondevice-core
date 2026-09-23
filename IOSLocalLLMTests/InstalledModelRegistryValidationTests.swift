@@ -82,8 +82,9 @@ final class InstalledModelRegistryValidationTests: XCTestCase {
         let modelDir = tempDir.appendingPathComponent("partial", isDirectory: true)
         try FileManager.default.createDirectory(
             at: modelDir, withIntermediateDirectories: true)
-        // config.json present but no weights.
+        // A tokenizer and config are present, but weights are incomplete.
         try write("config.json", contents: Data(#"{"architectures":["Qwen2ForCausalLM"]}"#.utf8), in: modelDir)
+        try write("tokenizer.json", contents: Data("{}".utf8), in: modelDir)
 
         let record = InstalledModelRegistry.validateDirectory(modelDir, repoID: "partial")
 

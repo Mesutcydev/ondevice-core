@@ -7,7 +7,7 @@ import MLX
 // Compares the Swift MLA port against fixtures produced by upstream
 // `BailingMLA` (scripts/edge0_reference_dump.py). Skips when fixtures absent.
 
-final class Edge0MLAParityTests: XCTestCase {
+final class Edge0MLAParityTests: Edge0MLXTestCase {
 
     private struct Tiny {
         static let hiddenSize = 64

@@ -8,7 +8,7 @@ Core ML. No account. No telemetry. No cloud inference by default.
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Mesutcydev/ondevice-core/badge)](https://scorecard.dev/viewer/?uri=github.com/Mesutcydev/ondevice-core)
 [![License: MIT](https://img.shields.io/badge/original%20code-MIT-2ea44f.svg)](LICENSE)
 [![Swift](https://img.shields.io/badge/Swift-5.10-F05138.svg)](https://www.swift.org/)
-[![Platform](https://img.shields.io/badge/platform-iOS%2018%2B%20%7C%20Mac%20Catalyst-blue.svg)](SETUP_INSTRUCTIONS.md)
+[![Platform](https://img.shields.io/badge/platform-iOS%2027%2B%20%7C%20macOS%2027%2B%20Catalyst-blue.svg)](SETUP_INSTRUCTIONS.md)
 [![Website](https://img.shields.io/badge/website-GitHub%20Pages-0A66C2.svg)](https://mesutcydev.github.io/ios-local-llm/)
 
 > Part of the **OnDevice** product line. Independent open-source project — not
@@ -120,8 +120,8 @@ setup, tests, accessibility, and documentation are especially welcome.
 ## Requirements
 
 - macOS with Apple silicon
-- Xcode 26 or newer
-- iOS 18 or newer
+- Xcode 27 or newer
+- iOS 27 or newer
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 - [CocoaPods](https://cocoapods.org/)
 - CMake
@@ -160,11 +160,13 @@ Generate the Xcode project and install CocoaPods:
 ```bash
 xcodegen generate
 pod install
-open IOSLocalLLM.xcworkspace
+open OnDeviceCoreAIStudio.xcworkspace
 ```
 
-Select the `IOSLocalLLM` scheme and an iOS Simulator. For a physical device,
-change the bundle identifiers and select your own development team in Xcode.
+For Simulator, generate `project-simcompat.yml` and open
+`OnDeviceSimCompat.xcworkspace`; the production project includes a device-only
+Core AI package. Select the `OnDeviceCoreAIStudio` scheme. For a physical
+device, change the bundle identifiers and select your own development team in Xcode.
 See [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md) and
 [fork configuration](Docs/FORK_CONFIGURATION.md) for every identifier,
 capability, and optional model step.

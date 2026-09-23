@@ -87,6 +87,30 @@ and intends to use semantic version tags for source releases.
 
 ### Fixed
 
+- Sending a message with an attached file took the app down on the Edge0
+  runtimes while plain text chat was fine. Two defects stacked in the
+  attachment path: `FileAttachmentService` read the *whole* file into memory
+  (`Data(contentsOf:)` + `String(data:)`) before truncating it to 64 KB — on
+  the main actor, since the service is `@MainActor` and the picker reads
+  inside `Task { @MainActor }` — and then trimmed by removing characters one
+  at a time; and the rendered attachment block (up to 128 KB ≈ 32K tokens)
+  was prepended to the user turn while `generateWithEdge0` never trimmed the
+  prompt to the model's admitted input window. The 35B admits 4,096 input
+  tokens, so a file send asked it for a prefill roughly 8× past what the
+  expert pool and the MLA KV reserve were sized for — pool thrashing on a
+  frozen screen rather than a reply, which the system then terminated with no
+  catchable signal (no crash report, no JetsamEvent). Reads are now bounded
+  (`FileHandle.read(upToCount: cap + 16 KB)`, never the whole file), the
+  extraction helpers are `nonisolated` so the I/O leaves the main actor,
+  truncation is a single UTF-8 pass that never splits a scalar, PDFs are
+  refused above 32 MB and capped at the first 200 pages, the block is clamped
+  to half the active model's input budget via
+  `promptByteBudget(forInputTokens:)` (each file trimmed to an equal share,
+  with the trimming disclosed in the block), and the Edge0 generate path
+  hard-trims with `trimToInputBudget` like every other runtime. Measured on
+  the fix: a 256 MB file yields its 64 KB excerpt in 3 ms at a 16 MB peak
+  RSS.
+
 - Apple Private Cloud (PCC) crashed the app on any install whose signing
   profile does not grant `com.apple.developer.private-cloud-compute` — which
   includes every sideloaded build. `PrivateCloudComputeLanguageModel` traps with

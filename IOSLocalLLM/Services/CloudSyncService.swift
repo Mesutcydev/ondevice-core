@@ -22,6 +22,7 @@ final class CloudSyncService: ObservableObject {
     @Published private(set) var lastSyncAt: Date?
     @Published private(set) var isSyncing = false
     @Published private(set) var lastError: String?
+    private var idleWaiters: [CheckedContinuation<Void, Never>] = []
 
     private let container = CKContainer(identifier: "iCloud.com.mesutcydev.ondevicecore")
     private var privateDB: CKDatabase { container.privateCloudDatabase }
@@ -46,10 +47,11 @@ final class CloudSyncService: ObservableObject {
             lastError = "iCloud not available — sign in via Settings."
             return
         }
+        guard !isSyncing, AppSettings.shared.iCloudSyncEnabled else { return }
 
         isSyncing = true
         lastError = nil
-        defer { isSyncing = false }
+        defer { finishOperation() }
 
         do {
             try await pullThenPush()
@@ -60,6 +62,72 @@ final class CloudSyncService: ObservableObject {
             ToastCenter.shared.error("iCloud sync failed",
                                       detail: error.localizedDescription)
         }
+    }
+
+    /// Permanently removes every conversation record from the user's private
+    /// CloudKit database. The privacy reset calls this before clearing local
+    /// state so a later sync cannot resurrect remote conversations.
+    func deleteAllConversationsFromCloud() async throws -> Int {
+        guard !isSyncing else { throw CloudSyncError.operationInProgress }
+        guard await iCloudAvailable() else { throw CloudSyncError.iCloudUnavailable }
+        guard !isSyncing else { throw CloudSyncError.operationInProgress }
+
+        isSyncing = true
+        lastError = nil
+        defer { finishOperation() }
+
+        do {
+            let recordIDs = try await allConversationRecordIDs()
+            var deleted = 0
+
+            // CloudKit modify operations have server-side batch ceilings.
+            // Keep batches conservative and non-atomic so one stale record
+            // cannot prevent unrelated conversations from being removed.
+            for start in stride(from: 0, to: recordIDs.count, by: 200) {
+                let end = min(start + 200, recordIDs.count)
+                let batch = Array(recordIDs[start..<end])
+                let result = try await privateDB.modifyRecords(
+                    saving: [],
+                    deleting: batch,
+                    atomically: false
+                )
+                let failures = result.deleteResults.values.compactMap { item -> Error? in
+                    if case .failure(let error) = item { return error }
+                    return nil
+                }
+                deleted += result.deleteResults.values.filter {
+                    if case .success = $0 { return true }
+                    return false
+                }.count
+                if !failures.isEmpty {
+                    throw CloudSyncError.partialDelete(
+                        deleted: deleted,
+                        total: recordIDs.count
+                    )
+                }
+            }
+
+            CloudSyncTombstones.clearAll()
+            lastSyncAt = .now
+            return deleted
+        } catch {
+            lastError = error.localizedDescription
+            throw error
+        }
+    }
+
+    /// A privacy reset waits for an in-flight sync to finish before removing
+    /// local and cloud copies, so that sync cannot write them back afterward.
+    func waitUntilIdle() async {
+        guard isSyncing else { return }
+        await withCheckedContinuation { idleWaiters.append($0) }
+    }
+
+    private func finishOperation() {
+        isSyncing = false
+        let waiters = idleWaiters
+        idleWaiters.removeAll()
+        waiters.forEach { $0.resume() }
     }
 
     // MARK: - Internals
@@ -74,37 +142,41 @@ final class CloudSyncService: ObservableObject {
         query.sortDescriptors = [NSSortDescriptor(key: "updatedAt", ascending: false)]
 
         // Pull
-        let (matchResults, _) = try await privateDB.records(matching: query, resultsLimit: 500)
+        var page = try await privateDB.records(matching: query, resultsLimit: 200)
         var remoteByID: [String: (record: CKRecord, conv: StoredConversation)] = [:]
-        for (_, result) in matchResults {
-            switch result {
-            case .success(let record):
-                guard let blob = record["jsonBlob"] as? String,
-                      let data = blob.data(using: .utf8) else {
-                    Diagnostics.shared.warning(
-                        "cloud record \(record.recordID.recordName) has no valid JSON payload",
-                        category: "cloudSync"
-                    )
-                    continue
+        while true {
+            for (_, result) in page.matchResults {
+                switch result {
+                case .success(let record):
+                    guard let blob = record["jsonBlob"] as? String,
+                          let data = blob.data(using: .utf8) else {
+                        Diagnostics.shared.warning(
+                            "cloud record \(record.recordID.recordName) has no valid JSON payload",
+                            category: "cloudSync"
+                        )
+                        continue
+                    }
+                    do {
+                        let conv = try JSONDecoder.iso8601.decode(
+                            StoredConversation.self,
+                            from: data
+                        )
+                        remoteByID[conv.id.uuidString] = (record, conv)
+                    } catch {
+                        Diagnostics.shared.warning(
+                            "cloud record \(record.recordID.recordName) decode failed: \(error.localizedDescription)",
+                            category: "cloudSync"
+                        )
+                    }
+                case .failure(let error):
+                    throw error
                 }
-                do {
-                    let conv = try JSONDecoder.iso8601.decode(
-                        StoredConversation.self,
-                        from: data
-                    )
-                    remoteByID[conv.id.uuidString] = (record, conv)
-                } catch {
-                    Diagnostics.shared.warning(
-                        "cloud record \(record.recordID.recordName) decode failed: \(error.localizedDescription)",
-                        category: "cloudSync"
-                    )
-                }
-            case .failure(let error):
-                Diagnostics.shared.warning(
-                    "cloud record fetch failed: \(error.localizedDescription)",
-                    category: "cloudSync"
-                )
             }
+            guard let cursor = page.queryCursor else { break }
+            page = try await privateDB.records(
+                continuingMatchFrom: cursor,
+                resultsLimit: 200
+            )
         }
 
         // Merge into local — last write wins by updatedAt
@@ -189,20 +261,59 @@ final class CloudSyncService: ObservableObject {
             throw CloudSyncError.partialPush(failed: pushFailures, total: pushTotal)
         }
     }
+
+    private func allConversationRecordIDs() async throws -> [CKRecord.ID] {
+        let query = CKQuery(
+            recordType: "Conversation",
+            predicate: NSPredicate(value: true)
+        )
+        var ids: [CKRecord.ID] = []
+        var page = try await privateDB.records(
+            matching: query,
+            desiredKeys: [],
+            resultsLimit: 200
+        )
+
+        while true {
+            for (recordID, result) in page.matchResults {
+                switch result {
+                case .success:
+                    ids.append(recordID)
+                case .failure(let error):
+                    throw error
+                }
+            }
+            guard let cursor = page.queryCursor else { return ids }
+            page = try await privateDB.records(
+                continuingMatchFrom: cursor,
+                desiredKeys: [],
+                resultsLimit: 200
+            )
+        }
+    }
 }
 
 // MARK: - Errors
 
 enum CloudSyncError: LocalizedError {
     case partialPush(failed: Int, total: Int)
+    case partialDelete(deleted: Int, total: Int)
     case invalidEncodedPayload
+    case iCloudUnavailable
+    case operationInProgress
 
     var errorDescription: String? {
         switch self {
         case .partialPush(let failed, let total):
             return "iCloud sync incomplete — \(failed) of \(total) conversations failed to upload."
+        case .partialDelete(let deleted, let total):
+            return "iCloud wipe incomplete — deleted \(deleted) of \(total) conversations. Retry the wipe before enabling sync."
         case .invalidEncodedPayload:
             return "Conversation payload couldn't be encoded as UTF-8."
+        case .iCloudUnavailable:
+            return "iCloud is unavailable. Sign in and retry the wipe to remove the cloud copy."
+        case .operationInProgress:
+            return "An iCloud sync is already in progress. Wait for it to finish, then retry the wipe."
         }
     }
 }
@@ -264,5 +375,10 @@ enum CloudSyncTombstones {
         if kept.count != t.count {
             UserDefaults.standard.set(kept, forKey: key)
         }
+    }
+
+
+    static func clearAll() {
+        UserDefaults.standard.removeObject(forKey: key)
     }
 }

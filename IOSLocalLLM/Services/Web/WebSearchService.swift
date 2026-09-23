@@ -10,6 +10,7 @@ public actor WebSearchService {
 
     private let session: URLSession
     private let validator: URLSafetyValidator
+    private let redirectGuard: WebRedirectGuard
 
     public init(validator: URLSafetyValidator) {
         self.validator = validator
@@ -19,7 +20,15 @@ public actor WebSearchService {
         cfg.httpAdditionalHeaders = [
             "User-Agent": "ondevice-core/1.0 (Web Tool; +on-device)"
         ]
-        self.session = URLSession(configuration: cfg)
+        cfg.httpMaximumConnectionsPerHost = 2
+        cfg.waitsForConnectivity = false
+        let redirectGuard = WebRedirectGuard(validator: validator)
+        self.redirectGuard = redirectGuard
+        self.session = URLSession(
+            configuration: cfg,
+            delegate: redirectGuard,
+            delegateQueue: nil
+        )
     }
 
     public func search(query: String, settings: WebToolSettings) async throws -> [WebSearchResult] {
@@ -206,7 +215,7 @@ public actor WebSearchService {
     // MARK: - SearXNG (user-hosted)
 
     private func searchSearXNG(endpoint: URL, query: String, max: Int) async throws -> [WebSearchResult] {
-        let verdict = await validator.validate(endpoint)
+        let verdict = await validator.validateStable(endpoint)
         if !verdict.isSafe { throw WebToolError.blockedByURLValidator(reason: verdict.reason) }
         guard var comps = URLComponents(url: endpoint, resolvingAgainstBaseURL: false) else {
             throw WebToolError.providerEndpointMissing
@@ -217,6 +226,7 @@ public actor WebSearchService {
                             URLQueryItem(name: "format", value: "json")]
         guard let url = comps.url else { throw WebToolError.providerEndpointMissing }
         let (data, response) = try await session.data(from: url)
+        try await validateFinalURL(response, originalURL: url)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw WebToolError.searchParsingFailed
         }
@@ -237,7 +247,7 @@ public actor WebSearchService {
     // MARK: - Custom
     /// Expected JSON: `{ "results": [{ "title", "url", "snippet" }] }`.
     private func searchCustom(endpoint: URL, query: String, max: Int) async throws -> [WebSearchResult] {
-        let verdict = await validator.validate(endpoint)
+        let verdict = await validator.validateStable(endpoint)
         if !verdict.isSafe { throw WebToolError.blockedByURLValidator(reason: verdict.reason) }
         var comps = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)
         var items = comps?.queryItems ?? []
@@ -245,6 +255,7 @@ public actor WebSearchService {
         comps?.queryItems = items
         guard let url = comps?.url else { throw WebToolError.providerEndpointMissing }
         let (data, response) = try await session.data(from: url)
+        try await validateFinalURL(response, originalURL: url)
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw WebToolError.searchParsingFailed
         }
@@ -259,6 +270,16 @@ public actor WebSearchService {
             guard let u = URL(string: r.url) else { return nil }
             return WebSearchResult(title: r.title ?? u.host ?? "", url: u,
                                    snippet: r.snippet ?? "", provider: .custom)
+        }
+    }
+
+    private func validateFinalURL(_ response: URLResponse, originalURL: URL) async throws {
+        let finalURL = response.url ?? originalURL
+        let verdict = await validator.validateStable(finalURL)
+        guard verdict.isSafe else {
+            throw WebToolError.blockedByURLValidator(
+                reason: "final URL blocked: \(verdict.reason)"
+            )
         }
     }
 

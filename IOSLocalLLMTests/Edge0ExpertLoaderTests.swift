@@ -9,16 +9,18 @@ import MLX
 // bounded pool → gathered quantized math. Uses the tiny 4-bit group-64 spec
 // so every byte is generated in the test.
 
-final class Edge0ExpertLoaderTests: XCTestCase {
+final class Edge0ExpertLoaderTests: Edge0MLXTestCase {
     private let spec = Edge0TestFixtures.tinySpec
     private var directory: URL!
 
     override func setUpWithError() throws {
+        try super.setUpWithError()
         directory = try Edge0TestFixtures.makeTemporaryDirectory("loader")
     }
 
     override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: directory)
+        if let directory { try? FileManager.default.removeItem(at: directory) }
+        try super.tearDownWithError()
     }
 
     func testLoaderReadsExactPerExpertSlices() async throws {

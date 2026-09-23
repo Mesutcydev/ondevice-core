@@ -72,15 +72,16 @@ enum DeviceTierAdvisor {
         }
     }
 
-    /// Tier-appropriate response length cap (max tokens). Conservative on
-    /// low-RAM devices so the KV cache doesn't stress limited GPU memory.
+    /// Tier-appropriate response length cap (max tokens). Generous on every
+    /// tier — replies must never feel cut off. Low-RAM devices stay lower
+    /// only so the KV cache doesn't stress limited GPU memory.
     static var recommendedMaxTokens: Int {
         switch current {
-        case .lite:  return 512    // XR / SE — short replies to stay safe
-        case .entry: return 768    // iPhone 11/12 — normal length
-        case .mid:   return 1024   // iPhone 13/14/15 — comfortable
-        case .pro:   return 2048   // Pro devices — enough room for Qwen reasoning
-        case .max:   return 3072   // Max devices — long replies without crowding KV
+        case .lite:  return 1_024  // XR / SE — bounded, but full answers
+        case .entry: return 2_048  // iPhone 11/12 — long replies
+        case .mid:   return 4_096  // iPhone 13/14/15 — comfortable
+        case .pro:   return 8_192  // Pro devices — long-form answers
+        case .max:   return 8_192  // Max devices — long-form answers
         }
     }
 

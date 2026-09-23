@@ -600,7 +600,7 @@ final class ImageGenerationService: ObservableObject {
                             lastXt = xt
                             i += 1
                             let frac = Double(i) / Double(max(totalSteps, 1))
-                            Task { @MainActor [weak self] in
+                            Task { @MainActor [weak self = self] in
                                 self?.state = .generating(frac)
                             }
                         }

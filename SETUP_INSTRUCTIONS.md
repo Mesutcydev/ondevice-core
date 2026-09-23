@@ -6,7 +6,7 @@ frameworks, CocoaPods, and signing profiles are not stored in Git.
 ## Prerequisites
 
 - Apple-silicon Mac
-- Xcode 26 or newer
+- Xcode 27 or newer
 - Xcode command-line tools
 - Homebrew
 - At least 15 GB of free space for native framework builds and package caches
@@ -61,22 +61,33 @@ These outputs are generated files and must not be committed.
 ```bash
 xcodegen generate
 pod install
-open IOSLocalLLM.xcworkspace
+open OnDeviceCoreAIStudio.xcworkspace
 ```
 
 Open the workspace, not the `.xcodeproj`, so the ONNX Runtime pods are
 available.
 
-SwiftPM may report a conflicting `mlx-swift` identity because the project pins
-the PrismML fork for one-bit model kernels while another package declares the
-upstream repository transitively. This is a documented forward-compatibility
-risk in [Docs/XCODE_SECURITY_SETTINGS.md](Docs/XCODE_SECURITY_SETTINGS.md), not
-a missing package in the current lockfile.
+The shared SwiftPM workspace configuration mirrors the transitive upstream
+`mlx-swift` URL to the pinned PrismML fork required by one-bit model kernels.
+Keep `xcshareddata/swiftpm/configuration/mirrors.json` with the workspace; it
+prevents duplicate package identities and makes direct and transitive MLX
+dependencies resolve to the same audited revision.
 
 ## Run in Simulator
 
-Select the `IOSLocalLLM` scheme and an iOS 18 or newer Simulator. Simulator builds
-do not require a paid Apple Developer Program membership.
+The production `project.yml` includes the device-only Core AI package. The
+Simulator SDK does not include `CoreAI.framework`, so generate and open the
+separate Simulator-compatible project instead:
+
+```bash
+xcodegen generate --spec project-simcompat.yml
+open OnDeviceSimCompat.xcworkspace
+```
+
+Select the `OnDeviceCoreAIStudio` scheme and an iOS 27 or newer Simulator.
+The Simulator build uses the app's Core AI availability fallback; use a signed
+physical device to exercise Core AI inference. Simulator builds do not require
+a paid Apple Developer Program membership.
 
 The source-only build starts without bundled AI weights. Features that depend
 on a model become available after the user downloads a compatible model from
@@ -86,7 +97,7 @@ the app's model catalog.
 
 Use your own signing identity:
 
-1. Select the IOSLocalLLM project in Xcode.
+1. Select the OnDeviceCoreAIStudio project in Xcode.
 2. For the app, share extension, unit-test, and UI-test targets, select your
    development team.
 3. Replace the app, extension, App Group, and CloudKit identifiers with values
@@ -137,8 +148,8 @@ Run app unit tests from Xcode or with a Simulator destination:
 
 ```bash
 xcodebuild test \
-  -workspace IOSLocalLLM.xcworkspace \
-  -scheme IOSLocalLLM \
+  -workspace OnDeviceSimCompat.xcworkspace \
+  -scheme OnDeviceCoreAIStudio \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
 ```
 

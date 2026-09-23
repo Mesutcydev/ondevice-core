@@ -12,6 +12,7 @@ does not replace the licenses of the components below.
 | CMU Pronouncing Dictionary | `IOSLocalLLM/Resources/Voice/cmudict.txt` | [CMUdict license](IOSLocalLLM/Resources/Voice/LICENSE) |
 | thinking-orbs adaptations | `Packages/VoiceAgentOrb/` | [MIT](ThirdParty/thinking-orbs/LICENSE) |
 | Edge0 native foundation | `IOSLocalLLM/Services/Runtime/Edge0/` | MIT (original Swift implementation) |
+| Apple Core AI model runtime | `Packages/coreai-models/` | [BSD-3-Clause](LICENSES/CoreAI-Models-BSD-3-Clause.txt) |
 
 The MIT license for iOS Local LLM applies only to the original changes and
 integration around these components.
@@ -51,11 +52,17 @@ CocoaPods. Their source and license files are not copied into this repository.
 | MLX Swift (PrismML fork) | <https://github.com/PrismML-Eng/mlx-swift> | MIT |
 | MLX Swift LM | <https://github.com/ml-explore/mlx-swift-lm> | MIT |
 | swift-transformers-mlx | <https://github.com/DePasqualeOrg/swift-transformers-mlx> | MIT |
+| Swift Transformers | <https://github.com/huggingface/swift-transformers> | [Apache-2.0](LICENSES/Apache-2.0.txt) |
+| XGrammar | <https://github.com/mlc-ai/xgrammar> | [Apache-2.0](LICENSES/Apache-2.0.txt) ([NOTICE](LICENSES/XGrammar-NOTICE.txt)) |
+| Swift Argument Parser | <https://github.com/apple/swift-argument-parser> | [Apache-2.0](LICENSES/Apache-2.0.txt) |
 | ONNX Runtime | <https://github.com/microsoft/onnxruntime> | MIT |
 
 Transitive packages are recorded in `Package.resolved` and retain their own
 licenses in their source distributions. The source-distribution inventory is
-also recorded in [SBOM.spdx.json](SBOM.spdx.json).
+also recorded in [SBOM.spdx.json](SBOM.spdx.json). The shared Apache-2.0 text
+and required notices for SwiftASN1, SwiftCrypto, SwiftNIO, and XGrammar are in
+`LICENSES/`; `project.yml` bundles this notice file and that directory into the
+release app.
 
 ## Models and generated artifacts not included
 

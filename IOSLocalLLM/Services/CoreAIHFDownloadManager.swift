@@ -170,8 +170,10 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
             // Fail before the next byte rather than after several gigabytes.
             // Credit a resumable partial tree already on disk; the remaining
             // transfer plus install headroom is the real requirement.
-            let partialRoot = CoreAIModelStore.shared.modelDirectory
-                .appendingPathComponent(".download-\(id)/resources", isDirectory: true)
+            let partialRoot = Self.stagingRootURL(
+                in: CoreAIModelStore.shared.modelDirectory,
+                id: id
+            ).appendingPathComponent("resources", isDirectory: true)
             let remainingBytes = max(
                 0,
                 totalBytes - Self.allocatedBytes(in: partialRoot)
@@ -211,19 +213,22 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
         lastSampleBytes = downloadedBytes
         lastSampleAt = Date()
 
-        committedBytes = 0
-        for file in files {
-            let destination = stagingRoot
-                .appendingPathComponent("resources", isDirectory: true)
-                .appendingPathComponent(file.localPath)
-            if fileAlreadyComplete(at: destination, expectedSize: file.size) {
-                committedBytes += max(file.size, 0)
-            }
-        }
-        downloadedBytes = committedBytes
-        recalculateProgress()
-
         do {
+            let resourcesRoot = stagingRoot
+                .appendingPathComponent("resources", isDirectory: true)
+            committedBytes = 0
+            for file in files {
+                let destination = try Self.destinationURL(
+                    root: resourcesRoot,
+                    relativePath: file.localPath
+                )
+                if fileAlreadyComplete(at: destination, expectedSize: file.size) {
+                    committedBytes += max(file.size, 0)
+                }
+            }
+            downloadedBytes = committedBytes
+            recalculateProgress()
+
             for (index, file) in files.enumerated() {
                 try Task.checkCancellation()
                 if pauseRequested {
@@ -231,9 +236,10 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
                     runTask = nil
                     return
                 }
-                let destination = stagingRoot
-                    .appendingPathComponent("resources", isDirectory: true)
-                    .appendingPathComponent(file.localPath)
+                let destination = try Self.destinationURL(
+                    root: resourcesRoot,
+                    relativePath: file.localPath
+                )
                 if fileAlreadyComplete(at: destination, expectedSize: file.size) {
                     filesDone = index + 1
                     recalculateProgress()
@@ -255,10 +261,11 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
             for file in files {
                 try Task.checkCancellation()
                 guard let expected = file.sha256 else { continue }
-                let destination = stagingRoot
-                    .appendingPathComponent("resources", isDirectory: true)
-                    .appendingPathComponent(file.localPath)
-                let actual = try Self.sha256(of: destination)
+                let destination = try Self.destinationURL(
+                    root: resourcesRoot,
+                    relativePath: file.localPath
+                )
+                let actual = try await Self.sha256(of: destination)
                 guard actual == expected else {
                     try? FileManager.default.removeItem(at: destination)
                     throw CoreAIDownloadError.checksumMismatch(file.remotePath)
@@ -278,7 +285,7 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
                 await assistant.unloadAndWaitForCleanup()
             }
             let resources = stagingRoot.appendingPathComponent("resources", isDirectory: true)
-            try CoreAIModelStore.shared.importModel(
+            try CoreAIModelStore.shared.installDownloadedModel(
                 from: resources,
                 preferredID: id,
                 preferredDisplayName: displayName
@@ -323,17 +330,78 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
     }
 
     private func prepareStaging() throws -> URL {
-        let root = CoreAIModelStore.shared.modelDirectory
-            .appendingPathComponent(".download-\(id)", isDirectory: true)
+        let root = Self.stagingRootURL(
+            in: CoreAIModelStore.shared.modelDirectory,
+            id: id
+        )
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let resources = root.appendingPathComponent("resources", isDirectory: true)
         try FileManager.default.createDirectory(at: resources, withIntermediateDirectories: true)
         return root
     }
 
-    /// Reserve for the OS plus the temporary duplication the install move can
-    /// incur. Without this a 5 GB pack on a nearly-full device downloads for
-    /// twenty minutes and then fails at the last step with a write error.
+    /// Opaque, filesystem-safe staging name. Custom Hub ids contain `/`, and
+    /// must never become path syntax under the model-store root.
+    static nonisolated func stagingDirectoryName(for id: String) -> String {
+        let digest = SHA256.hash(data: Data(id.utf8))
+            .prefix(16)
+            .map { String(format: "%02x", $0) }
+            .joined()
+        return ".download-\(digest)"
+    }
+
+    private static nonisolated func stagingRootURL(in root: URL, id: String) -> URL {
+        root.appendingPathComponent(stagingDirectoryName(for: id), isDirectory: true)
+    }
+
+    /// Normalises a Hub tree path and rejects absolute paths, dot segments,
+    /// separators with platform-dependent meaning, and control characters.
+    static nonisolated func validatedRelativePath(_ path: String) throws -> String {
+        guard !path.isEmpty,
+              !path.hasPrefix("/"),
+              !path.hasPrefix("~"),
+              !path.contains("\\"),
+              !path.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) })
+        else { throw CoreAIDownloadError.unsafePath(path) }
+
+        let parts = path.split(separator: "/", omittingEmptySubsequences: false)
+        guard !parts.isEmpty,
+              parts.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." })
+        else { throw CoreAIDownloadError.unsafePath(path) }
+        return parts.joined(separator: "/")
+    }
+
+    static nonisolated func destinationURL(root: URL, relativePath: String) throws -> URL {
+        let relative = try validatedRelativePath(relativePath)
+        let canonicalRoot = root.standardizedFileURL.resolvingSymlinksInPath()
+        let candidate = canonicalRoot
+            .appendingPathComponent(relative, isDirectory: false)
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
+        let rootPath = canonicalRoot.path
+        guard candidate.path.hasPrefix(rootPath + "/") else {
+            throw CoreAIDownloadError.unsafePath(relativePath)
+        }
+        return candidate
+    }
+
+    static nonisolated func validatedRepoID(_ value: String) throws -> String {
+        let parts = value.split(separator: "/", omittingEmptySubsequences: false)
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_."))
+        guard parts.count == 2,
+              parts.allSatisfy({ part in
+                  !part.isEmpty
+                      && part != "."
+                      && part != ".."
+                      && part.unicodeScalars.allSatisfy(allowed.contains)
+              })
+        else { throw CoreAIDownloadError.invalidRepoID(value) }
+        return value
+    }
+
+    /// Reserve working space for the OS, filesystem metadata, and final model
+    /// validation. Without this a 5 GB pack on a nearly-full device downloads
+    /// for twenty minutes and then fails at the last step with a write error.
     private static let storageHeadroom: Int64 = 1_500_000_000
 
     private static func allocatedBytes(in root: URL) -> Int64 {
@@ -378,12 +446,13 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
     private func listRemoteFiles() async throws -> [RemoteFile] {
         var collected: [RemoteFile] = []
         var cursor: String?
+        let safeRepoID = try Self.validatedRepoID(repoID)
         repeat {
             // The repo id comes from a free-text field; anything URL-hostile
             // (spaces, emoji, `#`) must fail with a friendly error instead of
             // trapping on the force-unwrap this replaced.
             guard var components = URLComponents(
-                string: "https://huggingface.co/api/models/\(repoID)/tree/\(revision)"
+                string: "https://huggingface.co/api/models/\(safeRepoID)/tree/\(revision)"
             ) else {
                 throw CoreAIDownloadError.invalidRepoID(repoID)
             }
@@ -426,7 +495,7 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
                 collected.append(
                     RemoteFile(
                         remotePath: entry.path,
-                        localPath: stripPrefix(entry.path),
+                        localPath: try Self.validatedRelativePath(stripPrefix(entry.path)),
                         size: size,
                         sha256: entry.lfs?.oid.flatMap(HFHubMetadata.normalizedSHA256)
                     )
@@ -524,19 +593,28 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
     }
 
     /// Incremental hashing keeps the memory envelope flat for 1–5 GB model
-    /// files. Reading `Data(contentsOf:)` here would briefly duplicate the
-    /// entire pack in RAM just before Core AI specialization.
-    private static func sha256(of url: URL) throws -> String {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-        var hasher = SHA256()
-        while true {
-            try Task.checkCancellation()
-            guard let chunk = try handle.read(upToCount: 8 * 1_024 * 1_024),
-                  !chunk.isEmpty else { break }
-            hasher.update(data: chunk)
+    /// files. It must also run away from MainActor: this manager is
+    /// MainActor-isolated, and hashing a multi-GB pack synchronously there
+    /// freezes every frame long enough for iOS to watchdog-kill the app at the
+    /// apparent end of the download.
+    static nonisolated func sha256(of url: URL) async throws -> String {
+        let task = Task.detached(priority: .utility) {
+            let handle = try FileHandle(forReadingFrom: url)
+            defer { try? handle.close() }
+            var hasher = SHA256()
+            while true {
+                try Task.checkCancellation()
+                guard let chunk = try handle.read(upToCount: 8 * 1_024 * 1_024),
+                      !chunk.isEmpty else { break }
+                hasher.update(data: chunk)
+            }
+            return hasher.finalize().map { String(format: "%02x", $0) }.joined()
         }
-        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+        return try await withTaskCancellationHandler {
+            try await task.value
+        } onCancel: {
+            task.cancel()
+        }
     }
 
     private func recalculateProgress() {
@@ -818,6 +896,7 @@ enum CoreAIDownloadError: LocalizedError {
     case invalidRepoID(String)
     case insufficientStorage(required: Int64, available: Int64)
     case checksumMismatch(String)
+    case unsafePath(String)
 
     var errorDescription: String? {
         switch self {
@@ -835,6 +914,8 @@ enum CoreAIDownloadError: LocalizedError {
             return "Not enough storage: this pack needs about \(need) (including install headroom) but only \(have) is free."
         case .checksumMismatch(let path):
             return "The downloaded file failed its Hugging Face LFS SHA-256 check: \(path). The bad file was removed; retry the download."
+        case .unsafePath(let path):
+            return "Hugging Face returned an unsafe file path (\(path)). The download was stopped before writing it."
         }
     }
 }

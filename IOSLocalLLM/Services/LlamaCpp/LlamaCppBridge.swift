@@ -630,10 +630,14 @@ final class LlamaCppVLM: @unchecked Sendable {
             generatedIDs.append(tokenID)
             batch.n_tokens = 1
             batch.token[0] = tokenID
+            // `tokensGenerated` was just incremented, so it already counts the
+            // token being decoded; the position is the count of tokens that
+            // precede it (matches the continueText path's `… - 1` above and
+            // the prefill's absolute 0…count-1 positions).
             batch.pos[0] = llama_pos(
                 GGUFPrefixCache.continuationDecodePosition(
                     cachedTokenCount: promptTokenCount,
-                    generatedSinceResume: tokensGenerated
+                    generatedSinceResume: tokensGenerated - 1
                 )
             )
             batch.n_seq_id[0] = 1

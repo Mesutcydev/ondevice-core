@@ -44,7 +44,7 @@ final class AppSettings: ObservableObject {
 
     // Assistant
     @AppStorage("assistantThinking")       var assistantThinking: Bool = false  // Qwen3 /think mode
-    @AppStorage("assistantMaxTokens")      var assistantMaxTokens: Int = 2048
+    @AppStorage("assistantMaxTokens")      var assistantMaxTokens: Int = 4096
     @AppStorage("assistantTemperature")    var assistantTemperature: Double = 0.6
 
     // MARK: - Full Sampler Control (Feature #1)

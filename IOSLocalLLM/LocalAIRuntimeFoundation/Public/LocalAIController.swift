@@ -125,7 +125,7 @@ public final class LocalAIController {
                                             inputTokens: nil,
                                             outputTokens: nil
                                         ))
-                                        Task { @MainActor [weak self] in
+                                        Task { @MainActor [weak self = self] in
                                             self?.tokenRate = rate
                                         }
                                         completion.fire()
@@ -164,7 +164,7 @@ public final class LocalAIController {
 
             continuation.onTermination = { @Sendable _ in
                 task.cancel()
-                Task { @MainActor [weak self] in
+                Task { @MainActor [weak self = self] in
                     self?.cancelGeneration()
                 }
             }
@@ -259,7 +259,7 @@ public final class LocalAIController {
 
             continuation.onTermination = { @Sendable _ in
                 task.cancel()
-                Task { @MainActor [weak self] in
+                Task { @MainActor [weak self = self] in
                     self?.cancelGeneration()
                 }
             }

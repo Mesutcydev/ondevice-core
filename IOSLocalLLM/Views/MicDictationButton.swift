@@ -18,6 +18,8 @@ struct MicDictationButton: View {
 
     /// When true, show the recording state inline as a chip; otherwise toggle the icon only.
     var compact: Bool = false
+    /// Unboxed microphone for the two-row chat composer.
+    var composerStyle: Bool = false
 
     var body: some View {
         Button {
@@ -68,6 +70,12 @@ struct MicDictationButton: View {
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(T.bad.opacity(0.4), lineWidth: 1)
             )
+        } else if composerStyle {
+            Image(systemName: "mic")
+                .font(.system(size: 23))
+                .foregroundStyle(T.ink)
+                .frame(width: 44, height: 44)
+                .contentShape(Circle())
         } else {
             // Idle: standard mic icon button
             Image(systemName: "mic")

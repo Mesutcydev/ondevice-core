@@ -9,7 +9,7 @@ import MLX
 // one-token prefill, and cross-checks between prefill-final and
 // sequential-final state.
 
-final class Edge0MLAStateParityTests: XCTestCase {
+final class Edge0MLAStateParityTests: Edge0MLXTestCase {
 
     private struct Tiny {
         static let heads = 2

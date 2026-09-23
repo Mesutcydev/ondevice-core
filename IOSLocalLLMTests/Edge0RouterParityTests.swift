@@ -11,7 +11,7 @@ import MLX
 // Fixtures are development artifacts; set EDGE0_FIXTURE_DIR or generate
 // /tmp/edge0-fixtures with the oracle script. Tests skip when absent.
 
-final class Edge0RouterParityTests: XCTestCase {
+final class Edge0RouterParityTests: Edge0MLXTestCase {
 
     private struct Fixture: Decodable {
         let reference_sha: String

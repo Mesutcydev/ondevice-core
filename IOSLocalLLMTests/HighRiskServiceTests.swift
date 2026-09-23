@@ -101,4 +101,16 @@ final class CloudSyncServiceTests: XCTestCase {
         CloudSyncTombstones.clear(id.uuidString)
         XCTAssertNil(CloudSyncTombstones.deletionDate(id.uuidString))
     }
+
+    func testDeletionTombstonesCanBeClearedAfterCloudWipe() {
+        let first = UUID()
+        let second = UUID()
+        CloudSyncTombstones.mark(first)
+        CloudSyncTombstones.mark(second)
+
+        CloudSyncTombstones.clearAll()
+
+        XCTAssertNil(CloudSyncTombstones.deletionDate(first.uuidString))
+        XCTAssertNil(CloudSyncTombstones.deletionDate(second.uuidString))
+    }
 }

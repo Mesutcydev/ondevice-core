@@ -7,7 +7,7 @@ import MLX
 // Executable runtime lifecycle over the real checkpoint: load, generate,
 // cancel mid-generation, generate again, unload, double unload, load again.
 
-final class Edge0EngineLifecycleTests: XCTestCase {
+final class Edge0EngineLifecycleTests: Edge0MLXTestCase {
 
     private final class EventCollector: @unchecked Sendable {
         private let lock = NSLock()

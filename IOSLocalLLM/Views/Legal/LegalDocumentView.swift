@@ -38,26 +38,28 @@ struct LegalDocumentView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.koduTheme) private var T
-    /// Flips true once the bottom sentinel scrolls into view (or immediately
-    /// for documents short enough to fit without scrolling).
+    /// Flips true once ScrollView geometry proves the visible viewport reaches
+    /// the actual content end (or immediately for a document that fits).
     @State private var scrolledToEnd = false
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 ScrollView {
-                    // LazyVStack so the bottom sentinel's onAppear fires only
-                    // when it actually scrolls into view (a plain VStack would
-                    // fire every child's onAppear up front, defeating the gate).
-                    LazyVStack(spacing: 0) {
-                        MarkdownTextView(markdown: markdown)
-                            .padding(.horizontal, 18)
-                            .padding(.top, 12)
-                            .padding(.bottom, 32)
-                        Color.clear
-                            .frame(height: 1)
-                            .onAppear { scrolledToEnd = true }
-                    }
+                    MarkdownTextView(markdown: markdown)
+                        .padding(.horizontal, 18)
+                        .padding(.top, 12)
+                        .padding(.bottom, 32)
+                }
+                .onScrollGeometryChange(for: Bool.self) { geometry in
+                    LegalDocumentScrollGate.hasReachedEnd(
+                        visibleMaxY: geometry.visibleRect.maxY,
+                        contentHeight: geometry.contentSize.height
+                    )
+                } action: { _, reachedEnd in
+                    // Once reviewed, rotating or changing Dynamic Type must not
+                    // revoke the acknowledgement in the same presentation.
+                    if reachedEnd { scrolledToEnd = true }
                 }
 
                 if primaryAction != nil || secondaryAction != nil || onReadConfirmed != nil {
@@ -148,5 +150,18 @@ struct LegalDocumentView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+}
+
+/// Pure geometry policy kept separate so the legal-consent boundary has
+/// deterministic regression coverage without relying on lazy-stack prefetch.
+enum LegalDocumentScrollGate {
+    static func hasReachedEnd(
+        visibleMaxY: CGFloat,
+        contentHeight: CGFloat,
+        tolerance: CGFloat = 1
+    ) -> Bool {
+        guard contentHeight > 0 else { return false }
+        return visibleMaxY + tolerance >= contentHeight
     }
 }

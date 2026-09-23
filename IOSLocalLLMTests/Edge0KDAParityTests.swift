@@ -12,7 +12,7 @@ import MLX
 // delta-rule prefill, sequential single-token decode, and final state
 // equality between the two execution modes.
 
-final class Edge0KDAParityTests: XCTestCase {
+final class Edge0KDAParityTests: Edge0MLXTestCase {
 
     private struct Tiny {
         static let heads = 2

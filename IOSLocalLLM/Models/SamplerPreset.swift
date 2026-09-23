@@ -132,7 +132,7 @@ struct AssistantModelGenerationSettings: Codable, Equatable, Sendable {
     var thinkingEnabled: Bool
 
     static let standard = AssistantModelGenerationSettings(
-        maxTokens: 2_048,
+        maxTokens: 4_096,
         temperature: 0.6,
         topP: 0.95,
         topK: 50,
@@ -158,7 +158,7 @@ struct AssistantModelGenerationSettings: Codable, Equatable, Sendable {
 
     func clamped(supportsThinking: Bool) -> Self {
         AssistantModelGenerationSettings(
-            maxTokens: min(4_096, max(128, maxTokens)),
+            maxTokens: min(16_384, max(128, maxTokens)),
             temperature: min(1.5, max(0, temperature)),
             topP: min(1, max(0.05, topP)),
             topK: min(100, max(0, topK)),

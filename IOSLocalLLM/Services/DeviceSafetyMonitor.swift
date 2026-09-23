@@ -190,19 +190,19 @@ final class DeviceSafetyMonitor: ObservableObject {
     /// mode" badge so the user knows clocks are reduced.
     var recommendedMaxTokens: Int {
         // Device-tier ceiling, folded in so a low-RAM device can't exceed its
-        // safe KV-cache budget even with thermal warnings off. Uses a generous
-        // 3× of DeviceTierAdvisor's per-tier value so the SHIPPING tiers don't
-        // regress: .max (1536×3=4608)→4096, .pro (1280×3=3840)→3840 ≈ no change;
-        // only hypothetical low-RAM tiers (lite 512×3=1536) get clamped down.
+        // safe KV-cache budget even with thermal warnings off. Uses 3× of
+        // DeviceTierAdvisor's per-tier value so the tier default is never
+        // clamped on a healthy device; only low-RAM tiers sit below the
+        // absolute ceiling.
         let tierCeiling = DeviceTierAdvisor.recommendedMaxTokens * 3
         // The .critical clamp is a safety measure and applies even when
         // the user opted out of thermal warnings; only the softer
         // .serious clamp is gated by the setting.
-        if effectiveThermalState == .critical { return min(512, tierCeiling) }
-        guard AppSettings.shared.thermalWarningsEnabled else { return min(4096, tierCeiling) }
+        if effectiveThermalState == .critical { return min(1_024, tierCeiling) }
+        guard AppSettings.shared.thermalWarningsEnabled else { return min(8_192, tierCeiling) }
         switch effectiveThermalState {
-        case .serious:  return min(1536, tierCeiling)
-        default:        return min(4096, tierCeiling)   // .nominal, .fair, low-power
+        case .serious:  return min(4_096, tierCeiling)
+        default:        return min(8_192, tierCeiling)   // .nominal, .fair, low-power
         }
     }
 

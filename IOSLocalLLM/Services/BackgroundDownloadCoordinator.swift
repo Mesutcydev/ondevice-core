@@ -68,6 +68,27 @@ final class BackgroundDownloadCoordinator: NSObject {
         let continuation: CheckedContinuation<URL, Error>
     }
     private var pendingByTaskID: [Int: Pending] = [:]
+    private static let generationKey = "ondevice.downloadGeneration"
+    private nonisolated static let taskDescriptionPrefix = "odc-generation:"
+
+    private var downloadGeneration: String {
+        UserDefaults.standard.string(forKey: Self.generationKey) ?? "legacy"
+    }
+
+    /// A generation survives app relaunches, so a transfer queued before a
+    /// privacy wipe can never restore its destination after the wipe.
+    nonisolated static func destinationPath(for description: String?, currentGeneration: String) -> String? {
+        guard let description, !description.isEmpty else { return nil }
+        guard description.hasPrefix(taskDescriptionPrefix) else {
+            return currentGeneration == "legacy" ? description : nil
+        }
+        let payload = description.dropFirst(taskDescriptionPrefix.count)
+        guard let separator = payload.firstIndex(of: ":") else { return nil }
+        let generation = payload[..<separator]
+        let path = payload[payload.index(after: separator)...]
+        guard generation == currentGeneration, !path.isEmpty else { return nil }
+        return String(path)
+    }
 
     // MARK: - Public API
 
@@ -128,7 +149,7 @@ final class BackgroundDownloadCoordinator: NSObject {
             // The destination rides on the task itself so it survives an app
             // relaunch — pendingByTaskID is in-memory only, and without this
             // a download finishing after relaunch was deleted as untracked.
-            task.taskDescription = destination.path
+            task.taskDescription = "\(Self.taskDescriptionPrefix)\(downloadGeneration):\(destination.path)"
             self.pendingByTaskID[task.taskIdentifier] = Pending(
                 destination: destination,
                 expectedSize: expectedSize,
@@ -215,6 +236,19 @@ final class BackgroundDownloadCoordinator: NSObject {
         }
     }
 
+    func cancelAllForWipe() async {
+        // Rotate before requesting cancellation: a completion already queued
+        // on the delegate queue must still be rejected after this point.
+        UserDefaults.standard.set(UUID().uuidString, forKey: Self.generationKey)
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            session.getAllTasks { tasks in
+                tasks.forEach { $0.cancel() }
+                continuation.resume()
+            }
+        }
+        _ = Self.clearAllResumeData()
+    }
+
     /// Cancels in-flight tasks whose pending destination path begins with the
     /// given root. Used to abort one repo's downloads without stomping others.
     func cancelTasks(matching destinationPrefix: String) async {
@@ -260,14 +294,20 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
         // destination was stored on the task itself (taskDescription) at
         // enqueue time — recover it so the completed bytes are kept instead
         // of deleted. Only delete when even that is absent.
+        let currentGeneration = MainActor.assumeIsolated { self.downloadGeneration }
+        guard let path = Self.destinationPath(
+            for: downloadTask.taskDescription,
+            currentGeneration: currentGeneration
+        ) else {
+            try? fm.removeItem(at: location)
+            pending?.continuation.resume(throwing: CancellationError())
+            return
+        }
         let destination: URL
         if let p = pending {
             destination = p.destination
-        } else if let path = downloadTask.taskDescription, !path.isEmpty {
-            destination = URL(fileURLWithPath: path)
         } else {
-            try? fm.removeItem(at: location)
-            return
+            destination = URL(fileURLWithPath: path)
         }
 
         // Validate HTTP status — URLSession "succeeds" even on 4xx/5xx,
@@ -346,9 +386,15 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
                                 task: URLSessionTask,
                                 didCompleteWithError error: Error?) {
         guard let error else { return }   // success path handled in didFinishDownloadingTo
+        let isCurrentDownload = MainActor.assumeIsolated {
+            Self.destinationPath(
+                for: task.taskDescription,
+                currentGeneration: self.downloadGeneration
+            ) != nil
+        }
         // Persist URLSession's resume data so the next attempt for this URL
         // continues where the transfer broke instead of restarting at byte 0.
-        if let resumeData = (error as NSError)
+        if isCurrentDownload, let resumeData = (error as NSError)
             .userInfo[NSURLSessionDownloadTaskResumeData] as? Data {
             Self.storeResumeData(resumeData,
                                  for: task.originalRequest?.url ?? task.currentRequest?.url)

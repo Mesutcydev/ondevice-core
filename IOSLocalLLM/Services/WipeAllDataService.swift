@@ -21,13 +21,51 @@ enum WipeAllDataService {
         var memoriesDeleted: Int = 0
         var settingsCleared: Bool = false
         var keychainItemsCleared: Int = 0
+        var cloudRecordsDeleted: Int = 0
+        var cloudWipeError: String?
     }
 
-    static func wipeAll() -> Receipt {
+    static func wipeAll(includeCloud: Bool = true) async -> Receipt {
         var r = Receipt()
         let fm = FileManager.default
         let docs = fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let caches = fm.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        let defaults = UserDefaults.standard
+        let hadCloudSyncSetting = defaults.object(forKey: "iCloudSyncEnabled") != nil
+
+        // Prevent any new sync from starting, then wait for one already in
+        // flight before clearing files or deleting their cloud counterparts.
+        AppSettings.shared.iCloudSyncEnabled = false
+        await CloudSyncService.shared.waitUntilIdle()
+
+        // Quiesce producers before deleting their files. Background URLSession
+        // transfers can otherwise recreate model directories after the wipe.
+        for model in ModelDownloadCenter.shared.models where model.state.isActive {
+            model.cancel()
+        }
+        for download in CoreAIDownloadCenter.shared.downloads
+            where download.state.isActive || download.state == .paused {
+            download.cancel()
+        }
+        await BackgroundDownloadCoordinator.shared.cancelAllForWipe()
+        await LocalAPIManager.shared.stop()
+        await BridgeManager.shared.stop()
+        AppSettings.shared.localAPIEnabled = false
+
+        // A false value can still mean the user previously enabled sync and
+        // then turned it off, leaving records in CloudKit. Presence of the
+        // persisted setting therefore triggers a best-effort cloud wipe too.
+        if includeCloud, hadCloudSyncSetting {
+            do {
+                r.cloudRecordsDeleted = try await CloudSyncService.shared
+                    .deleteAllConversationsFromCloud()
+            } catch {
+                // Continue clearing local state, but surface the cloud failure
+                // explicitly so the user can sign in/retry. Never report a
+                // complete privacy wipe while remote records may remain.
+                r.cloudWipeError = error.localizedDescription
+            }
+        }
 
         // 1. Models (HF + FastVLM + Voice + GGUF)
         for sub in ["HFModels", "FastVLMModels", "LLMModels", "VoiceModels", "GGUFModels"] {
@@ -97,7 +135,6 @@ enum WipeAllDataService {
         ConversationStore.shared.clearAllForWipe()
 
         // 4. Snippets, memory, benchmark history, metrickit entries
-        let defaults = UserDefaults.standard
         let keysToWipe = [
             "ioslocalllm.snippets.v1",
             "ioslocalllm.memory.v1",
@@ -115,6 +152,8 @@ enum WipeAllDataService {
             r.memoriesDeleted = mems.count
         }
         for k in keysToWipe { defaults.removeObject(forKey: k) }
+        // This log stores the user's search queries and visited URLs.
+        WebActivityLogger.shared.clear()
 
         // 5. Reset onboarding + model-pick flags so the next launch feels
         //    like a fresh install.
@@ -126,19 +165,24 @@ enum WipeAllDataService {
             "CoreAI.installedVersion",
             "cameraVisualModelID",
             "sttProvider",
-            "iCloudSyncEnabled",
             "userPersonas.v1",
             "activePersonaID",
             "knowledgeBase.enabled",
         ]
         for k in settingsKeys { defaults.removeObject(forKey: k) }
+        // Retain the disabled marker only when the cloud copy may remain, so
+        // another wipe can retry. Once deletion succeeds, remove the key to
+        // restore the fresh-install default without false cloud warnings.
+        if includeCloud, r.cloudWipeError == nil {
+            defaults.removeObject(forKey: "iCloudSyncEnabled")
+        }
         r.settingsCleared = true
 
         // 6. CoreSpotlight index. Chats were indexed (title + first ~200 chars
         //    of the first message). Deleting conversations.json does NOT remove
         //    them from system Spotlight, so wiped chats stayed searchable from
         //    the home screen — defeating the privacy purpose of this button.
-        CSSearchableIndex.default().deleteAllSearchableItems { _ in }
+        try? await CSSearchableIndex.default().deleteAllSearchableItems()
 
         // 7. App Group staged share files (SharedImages / SharedText) the share
         //    extension wrote but the app may not have consumed — otherwise this
@@ -157,6 +201,7 @@ enum WipeAllDataService {
         let webKeysBefore = ["brave.apiKey", "tavily.apiKey", "exa.apiKey"]
             .filter { KeychainStore.has(account: $0) }.count
         KeychainStore.deleteAll()
+        LocalAPIManager.shared.clearKeyForWipe()
         r.keychainItemsCleared += webKeysBefore
         let bridgeClients = BridgePairingStore.shared.clients().count
         BridgePairingStore.shared.deleteAll()

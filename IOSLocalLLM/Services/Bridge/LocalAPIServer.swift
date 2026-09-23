@@ -1171,13 +1171,17 @@ actor LocalAPIServer {
     private let maxRequestBytes = 4 * 1024 * 1024
     private let requestTimeout: TimeInterval = 15
 
-    /// Brute-force guard on bearer authentication, mirroring the
-    /// `/v1/pair` lockout in BridgeServer.
-    private var failedAuthAttempts: [Date] = []
-    private var authLockedUntil: Date?
+    /// Brute-force state is scoped to the remote peer. A single unauthenticated
+    /// LAN device must not be able to lock every legitimate client out.
+    private struct PeerAuthState {
+        var failedAttempts: [Date] = []
+        var lockedUntil: Date?
+    }
+    private var peerAuthStates: [String: PeerAuthState] = [:]
     private static let maxFailedAuthAttempts = 5
     private static let authAttemptWindow: TimeInterval = 60
     private static let authLockoutDuration: TimeInterval = 60
+    private static let maximumConcurrentConnections = 16
 
     private var connections: [NWConnection] = []
 
@@ -1218,6 +1222,7 @@ actor LocalAPIServer {
             connection.cancel()
         }
         connections.removeAll()
+        peerAuthStates.removeAll()
         if let inference = activeInference {
             inference.signal.finish()
             activeInference = nil
@@ -1241,6 +1246,14 @@ actor LocalAPIServer {
     }
 
     private func handle(_ connection: NWConnection) async {
+        guard connections.count < Self.maximumConcurrentConnections else {
+            Diagnostics.shared.warning(
+                "Local API connection refused at concurrency limit",
+                category: "localAPI"
+            )
+            connection.cancel()
+            return
+        }
         connections.append(connection)
         connection.start(queue: .global(qos: .userInitiated))
         defer {
@@ -1293,6 +1306,7 @@ actor LocalAPIServer {
     }
 
     private func route(_ request: HTTPRequest, connection: NWConnection) async {
+        let peer = peerKey(for: connection)
         let corsOrigin = LocalAPIValidation.allowedCORSOrigin(
             origin: request.headers["origin"],
             settingValue: AppSettings.shared.localAPICORSOrigins
@@ -1311,7 +1325,7 @@ actor LocalAPIServer {
             )
             return
         }
-        if let locked = authLockedUntil, locked > Date() {
+        if let locked = peerAuthStates[peer]?.lockedUntil, locked > Date() {
             await error(connection, status: 429, message: "Too many failed attempts; retry later", dialect: request.path == "/v1/messages" ? .anthropic : .openAIChat, corsOrigin: corsOrigin)
             return
         }
@@ -1322,12 +1336,11 @@ actor LocalAPIServer {
         let authorized = (presentedBearer.map { Self.tokensMatch($0, key) } ?? false)
             || (request.headers["x-api-key"].map { Self.tokensMatch($0, key) } ?? false)
         guard authorized else {
-            recordFailedAuthAttempt()
+            recordFailedAuthAttempt(for: peer)
             await error(connection, status: 401, message: "Invalid or missing API key", dialect: request.path == "/v1/messages" ? .anthropic : .openAIChat, corsOrigin: corsOrigin)
             return
         }
-        failedAuthAttempts.removeAll()
-        authLockedUntil = nil
+        peerAuthStates.removeValue(forKey: peer)
         switch (request.method, request.path) {
         case ("GET", "/v1/models"):
             await listOpenAIModels(connection, corsOrigin: corsOrigin)
@@ -1365,13 +1378,31 @@ actor LocalAPIServer {
         return diff == 0
     }
 
-    private func recordFailedAuthAttempt() {
+    private func peerKey(for connection: NWConnection) -> String {
+        switch connection.endpoint {
+        case .hostPort(let host, _):
+            return String(describing: host)
+        default:
+            return String(describing: connection.endpoint)
+        }
+    }
+
+    private func recordFailedAuthAttempt(for peer: String) {
+        let now = Date()
         let cutoff = Date().addingTimeInterval(-Self.authAttemptWindow)
-        failedAuthAttempts.removeAll { $0 < cutoff }
-        failedAuthAttempts.append(Date())
-        if failedAuthAttempts.count >= Self.maxFailedAuthAttempts {
-            authLockedUntil = Date().addingTimeInterval(Self.authLockoutDuration)
-            failedAuthAttempts.removeAll()
+        var state = peerAuthStates[peer] ?? PeerAuthState()
+        state.failedAttempts.removeAll { $0 < cutoff }
+        state.failedAttempts.append(now)
+        if state.failedAttempts.count >= Self.maxFailedAuthAttempts {
+            state.lockedUntil = now.addingTimeInterval(Self.authLockoutDuration)
+            state.failedAttempts.removeAll()
+        }
+        peerAuthStates[peer] = state
+
+        // Bound bookkeeping even under a scan that rotates source addresses.
+        peerAuthStates = peerAuthStates.filter { _, value in
+            value.lockedUntil.map { $0 > now } == true
+                || value.failedAttempts.contains(where: { $0 >= cutoff })
         }
     }
 
@@ -2476,6 +2507,7 @@ final class LocalAPIManager: ObservableObject {
             state = .failed("Port must be between 1024 and 65535.")
             return
         }
+        apiKey = LocalAPIKeyStore.key()
         startEpoch &+= 1
         let epoch = startEpoch
         updateIdleTimer(running: true)
@@ -2529,6 +2561,10 @@ final class LocalAPIManager: ObservableObject {
 
     func rotateKey() {
         apiKey = LocalAPIKeyStore.rotate()
+    }
+
+    func clearKeyForWipe() {
+        apiKey = ""
     }
 
     func refreshAddresses() {

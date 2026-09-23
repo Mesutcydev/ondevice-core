@@ -13,7 +13,7 @@ import MLX
 // geometry mirrors the Phase 5A contract (gate/up 512×2048, down 2048×512,
 // 4-bit affine group 64) scaled down so a fixture is a few KB.
 
-final class Edge0_35BExpertLoaderTests: XCTestCase {
+final class Edge0_35BExpertLoaderTests: Edge0MLXTestCase {
     private var directory: URL!
 
     private let expertCount = 4
@@ -29,11 +29,13 @@ final class Edge0_35BExpertLoaderTests: XCTestCase {
     )
 
     override func setUpWithError() throws {
+        try super.setUpWithError()
         directory = try Edge0TestFixtures.makeTemporaryDirectory("edge0-35b-loader")
     }
 
     override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: directory)
+        if let directory { try? FileManager.default.removeItem(at: directory) }
+        try super.tearDownWithError()
     }
 
     // MARK: - Read plan

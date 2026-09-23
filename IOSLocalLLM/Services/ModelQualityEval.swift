@@ -228,7 +228,7 @@ final class ModelQualityEval: ObservableObject {
                 temperatureOverride: 0.2,
                 onToken: { token in
                     box.text += token
-                    _Concurrency.Task { @MainActor [weak self] in
+                    _Concurrency.Task { @MainActor [weak self = self] in
                         self?.liveOutput += token
                     }
                 },

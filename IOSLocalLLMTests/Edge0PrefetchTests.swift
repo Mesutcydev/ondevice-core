@@ -9,7 +9,7 @@ import MLX
 // and survive cancel/reload. Also records a macOS A/B timing smoke (the
 // physical-device A/B happens on iPhone18,2).
 
-final class Edge0PrefetchTests: XCTestCase {
+final class Edge0PrefetchTests: Edge0MLXTestCase {
 
     // MARK: Model-level parity + timing
 

@@ -29,6 +29,16 @@ enum Edge0TestDevice {
     }
 }
 
+/// Base class for every test suite that imports MLX. Keeping the simulator
+/// capability gate in one inherited setup prevents a newly added MLX test from
+/// hard-aborting the entire XCTest process before an individual test can skip.
+class Edge0MLXTestCase: XCTestCase {
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        try Edge0TestDevice.requireSimulatorMLXSupport()
+    }
+}
+
 enum Edge0TestFixtures {
     /// Tiny spec with Edge0-8B's quantization (4-bit affine, group 64) and
     /// the same projection layout, scaled down so fixtures are bytes.

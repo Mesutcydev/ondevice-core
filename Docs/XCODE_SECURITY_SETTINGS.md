@@ -17,9 +17,14 @@ of truth; generated Xcode project files mirror it.
 
 These checks are high-confidence and have no runtime cost.
 
-## Disabled settings
+## Accepted build constraints
 
-None are explicitly disabled as a project policy.
+- `ENABLE_USER_SCRIPT_SANDBOXING` is disabled because the model-bundling build
+  phases mirror variable directory trees into `TARGET_BUILD_DIR`; XcodeGen
+  cannot declare that changing output set per script. Release artifacts are
+  still produced only from reviewed, repository-local scripts and inputs.
+- `ENABLE_TESTABILITY` is enabled only for Debug. Release and archive builds
+  explicitly disable it.
 
 ## Deferred
 
@@ -38,11 +43,11 @@ None are explicitly disabled as a project policy.
 - Higher-noise conversion, enum, sign-compare, and experimental buffer
   diagnostics: evaluate after the baseline warnings remain clean.
 
-## Dependency compatibility risk
+## Dependency identity alignment
 
-SwiftPM currently warns that the direct `PrismML-Eng/mlx-swift` fork and the
-upstream `ml-explore/mlx-swift` dependency requested transitively share one
-package identity. The fork is intentionally pinned for the one-bit kernels
-used by catalog presets. SwiftPM states that this warning may become an error
-in a future release. Resolve it by aligning all MLX-dependent packages on one
-upstream/fork lineage; do not suppress or misrepresent the warning.
+`mlx-swift-lm` requests the upstream MLX URL transitively, while catalog
+presets require the pinned PrismML fork for one-bit kernels. Each shared Xcode
+workspace includes a SwiftPM mirror configuration that maps the upstream URL
+to the PrismML fork. This removes the duplicate-identity warning and keeps all
+direct and transitive MLX products on one audited revision. Do not remove the
+workspace mirror without first removing the one-bit dependency.

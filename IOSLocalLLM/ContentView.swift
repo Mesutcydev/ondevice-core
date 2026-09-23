@@ -33,8 +33,10 @@ struct ContentView: View {
     }
 
     var body: some View {
-        // Native tab bar only — it renders Apple's Liquid Glass on iOS 26.
-        TabView(selection: $selectedTab) {
+        ZStack {
+            if !mandatoryGateIsPresented {
+                // Native tab bar only — it renders Apple's Liquid Glass on iOS 26.
+                TabView(selection: $selectedTab) {
             // Order: home → assistant → lens → voice → models. Home is the
             // landing dashboard (on-device status, recents, gateway to Settings
             // + Mac). Assistant and Lens are the two most-used surfaces. Voice
@@ -244,22 +246,6 @@ struct ContentView: View {
         .sheet(isPresented: $showImageGeneration) {
             ImageGenerationView()
         }
-        // Legal acceptance is the FIRST gate — must accept before anything else.
-        // Gate on ANY outstanding acceptance (EULA version, AI disclaimer, or
-        // device-safety notice), not just the version, so each can re-prompt.
-        .fullScreenCover(isPresented: Binding(
-            get: { legal.needsAnyAcceptance && splashFinished },
-            set: { _ in }
-        )) {
-            LegalAcceptanceView { /* dismiss when accepted */ }
-        }
-        // Onboarding full-screen cover on first launch (after legal accepted)
-        .fullScreenCover(isPresented: Binding(
-            get: { splashFinished && !legal.needsAnyAcceptance && !settings.hasSeenOnboarding },
-            set: { if !$0 { settings.hasSeenOnboarding = true } }
-        )) {
-            OnboardingView()
-        }
         // Rate-the-app pre-prompt — service decides when (≥5 turns,
         // ≥3 days installed, ≥30 days cooldown). Mounted at the root so
         // it surfaces regardless of which tab is active when the
@@ -275,6 +261,24 @@ struct ContentView: View {
         )) {
             ReviewPromptSheet()
         }
+            }
+
+            // Legal acceptance is the FIRST gate. It is rendered as a true
+            // sibling branch. The main TabView is not mounted while either
+            // mandatory gate is active, so background controls cannot leak
+            // into VoiceOver or XCUI's accessibility hierarchy.
+            if legal.needsAnyAcceptance && splashFinished {
+                LegalAcceptanceView { /* state change removes this overlay */ }
+                    .zIndex(100)
+            } else if splashFinished && !settings.hasSeenOnboarding {
+                OnboardingView()
+                    .zIndex(100)
+            }
+        }
+    }
+
+    private var mandatoryGateIsPresented: Bool {
+        splashFinished && (legal.needsAnyAcceptance || !settings.hasSeenOnboarding)
     }
 
     /// Applies a tab navigation request (from the camera bridge, share

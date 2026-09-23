@@ -8,7 +8,7 @@ import MLX
 // must match the upstream MLX implementation (`PrerouterHead` +
 // `group_select_from_logits`) before predictions are used for any I/O.
 
-final class Edge0PrerouterParityTests: XCTestCase {
+final class Edge0PrerouterParityTests: Edge0MLXTestCase {
 
     func testPrerouterHeadsMatchUpstreamFixture() async throws {
         guard let modelDirectory = ProcessInfo.processInfo.environment[

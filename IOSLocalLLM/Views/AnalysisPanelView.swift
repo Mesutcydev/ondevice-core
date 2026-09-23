@@ -698,34 +698,34 @@ struct MarkdownTextView: View {
     @ViewBuilder
     private func renderLine(_ line: String) -> some View {
         if line.hasPrefix("# ") {
-            Text(String(line.dropFirst(2)))
+            inlineText(String(line.dropFirst(2)))
                 .font(T.display(20, .semibold))
                 .tracking(-0.5)
                 .foregroundColor(T.ink)
                 .padding(.top, 8)
         } else if line.hasPrefix("## ") {
-            Text(String(line.dropFirst(3)))
+            inlineText(String(line.dropFirst(3)))
                 .font(T.display(16, .semibold))
                 .foregroundColor(T.ink)
                 .padding(.top, 6)
         } else if line.hasPrefix("### ") {
-            Text(String(line.dropFirst(4)))
+            inlineText(String(line.dropFirst(4)))
                 .font(T.sans(13, .semibold))
                 .foregroundColor(T.ink)
         } else if line.hasPrefix("**") && line.hasSuffix("**") && line.count > 4 {
-            Text(String(line.dropFirst(2).dropLast(2)))
+            inlineText(String(line.dropFirst(2).dropLast(2)))
                 .font(T.sans(13, .semibold))
                 .foregroundColor(T.ink)
         } else if line.hasPrefix("- ") {
             HStack(alignment: .top, spacing: 6) {
                 Text("·").foregroundColor(T.ink3)
-                Text(String(line.dropFirst(2)))
+                inlineText(String(line.dropFirst(2)))
                     .font(T.sans(13))
                     .foregroundColor(T.ink2)
                     .fixedSize(horizontal: false, vertical: true)
             }
         } else if line.hasPrefix("> ") {
-            Text(String(line.dropFirst(2)))
+            inlineText(String(line.dropFirst(2)))
                 .font(T.mono(11))
                 .foregroundColor(T.ink2)
                 .padding(.leading, 10)
@@ -733,11 +733,24 @@ struct MarkdownTextView: View {
         } else if line.isEmpty {
             Spacer().frame(height: 4)
         } else {
-            Text(line)
+            inlineText(line)
                 .font(T.sans(13))
                 .foregroundColor(T.ink2)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    /// Parse emphasis, inline code, and links inside every prose line. The old
+    /// renderer only recognised a line wrapped entirely in `**`, so legal copy
+    /// exposed raw Markdown such as `do **not** collect` to users.
+    private func inlineText(_ source: String) -> Text {
+        let options = AttributedString.MarkdownParsingOptions(
+            interpretedSyntax: .inlineOnlyPreservingWhitespace,
+            failurePolicy: .returnPartiallyParsedIfPossible
+        )
+        let attributed = (try? AttributedString(markdown: source, options: options))
+            ?? AttributedString(source)
+        return Text(attributed)
     }
 }

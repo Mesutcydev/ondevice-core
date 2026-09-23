@@ -148,7 +148,6 @@
       "kind": "remoteSourceControl",
       "location": "https://github.com/mlc-ai/xgrammar",
       "state": {
-        "branch": "main",
         "revision": "4d145cc13d878c751ebeed36af1c013074be76bc"
       }
     },

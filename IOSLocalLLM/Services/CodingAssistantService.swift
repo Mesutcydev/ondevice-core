@@ -52,11 +52,12 @@ struct MLXAssistantExecutionProfile: Equatable, Sendable {
         if identity.contains("ornith") {
             // Ornith 9B fits the 12 GB Pro Max load envelope, but an unbounded
             // 16K 8-bit KV cache can push it back over the process budget on
-            // the first long chat. Keep useful context while bounding both
-            // cache growth and transient prefill allocations.
+            // the first long chat. The rotating 4K cache bounds memory
+            // regardless of reply length, so — like Qwen 3.5 — output follows
+            // the user's response-length setting instead of a fixed cap.
             return .init(
                 maxContextTokens: 4_096,
-                maxOutputTokens: 256,
+                maxOutputTokens: nil,
                 maxKVSize: 4_096,
                 kvBits: 4,
                 prefillStepSize: 128,
@@ -67,10 +68,12 @@ struct MLXAssistantExecutionProfile: Equatable, Sendable {
             // Bonsai 27B fits as a tightly-bounded text model on high-memory
             // iPhones, but its vision activations do not. A rotating 2K cache,
             // 4-bit KV, and small prefill chunks keep chat below the process
-            // watermark while Lens independently chooses a smaller VLM.
+            // watermark while Lens independently chooses a smaller VLM. The
+            // rotating cache bounds memory at any reply length, so output
+            // follows the user's setting instead of a fixed cap.
             return .init(
                 maxContextTokens: 2_048,
-                maxOutputTokens: 128,
+                maxOutputTokens: nil,
                 maxKVSize: 2_048,
                 kvBits: 4,
                 prefillStepSize: 128,
@@ -217,19 +220,33 @@ enum GGUFPrefixCache {
     }
 }
 
-/// Applies only the cap owned by the selected backend. MLX family profiles
-/// describe MLX allocator/KV behavior; they must never silently shorten a
-/// llama.cpp GGUF request merely because both models share a display name.
+/// Adaptive per-model output budget. One resolver for every runtime so no
+/// model is silently cut off by a stale constant: the user's response-length
+/// setting is honored up to what the active model, runtime, and device can
+/// actually sustain, and each constraint is derived from the model's own
+/// metadata (context window, KV behavior) instead of a global fixed number.
 enum AssistantGenerationBudget {
     /// Current iOS Core AI S=1 pipelined bundles have a verified correctness
     /// cliff when their dynamic KV binding grows to 2048. Keep the app within
     /// the token-exact 1024-state regime until the platform/runtime issue is
     /// resolved. The package engine enforces the same boundary defensively.
     static let coreAIStableContextTokens = 1_024
-    /// Favor multi-turn continuity inside the verified 1K state. A 512-token
-    /// reply left only 448 estimated input tokens; after system instructions,
-    /// even the immediately preceding answer was routinely discarded.
-    static let coreAIStableOutputTokens = 320
+    /// Prompt space preserved inside the stable Core AI state. Output gets
+    /// whatever remains, so Core AI replies scale with the user's setting
+    /// instead of being pinned to a fixed slice.
+    static let coreAIReservedInputTokens = 448
+    /// Largest Core AI reply that still fits the verified stable state next
+    /// to the reserved input and the template/EOS margin.
+    static var coreAIStableOutputTokens: Int {
+        coreAIStableContextTokens - coreAIReservedInputTokens - 64
+    }
+
+    /// Absolute runaway guard for a single reply, applied after every other
+    /// constraint. Well above any on-device context window.
+    static let absoluteOutputCeiling = 16_384
+    /// Prompt space a growing-KV conversation must always keep. Rotating-KV
+    /// profiles are exempt — their decode length does not grow the cache.
+    static let reservedInputTokens = 512
 
     static func coreAIOutputTokens(
         requested: Int,
@@ -253,15 +270,34 @@ enum AssistantGenerationBudget {
         return max(256, stableContext - max(1, outputTokens) - 64)
     }
 
+    /// Resolves the effective output budget for one generation.
+    ///
+    /// - `requested` is the user's response-length setting — the ceiling
+    ///   every runtime starts from.
+    /// - `thermalCap` is the device's genuine safety cap (thermal/memory).
+    /// - `profile` is the MLX family execution profile when the runtime is
+    ///   MLX. Profiles with a rotating KV cache (`maxKVSize != nil`) impose
+    ///   no output cap of their own: decode length does not grow their
+    ///   memory envelope, so the user's setting stands.
+    /// - `contextWindowTokens` is the active model's own context window. For
+    ///   growing-KV backends a reply can never exceed what fits next to the
+    ///   prompt, so the budget adapts to the window instead of cutting off.
     static func maxTokens(
         runtime: ModelRuntime,
         requested: Int,
         thermalCap: Int,
-        backendCap: Int?
+        profile: MLXAssistantExecutionProfile? = nil,
+        contextWindowTokens: Int = 0
     ) -> Int {
-        let thermalLimited = min(max(1, requested), max(1, thermalCap))
-        guard runtime == .mlx, let backendCap else { return thermalLimited }
-        return min(thermalLimited, max(1, backendCap))
+        var cap = min(max(1, requested), max(1, thermalCap), absoluteOutputCeiling)
+        guard runtime == .mlx, let profile else { return cap }
+        if let backendCap = profile.maxOutputTokens {
+            cap = min(cap, max(1, backendCap))
+        }
+        if profile.maxKVSize == nil, contextWindowTokens > 0 {
+            cap = min(cap, max(1, contextWindowTokens - reservedInputTokens))
+        }
+        return cap
     }
 }
 
@@ -270,11 +306,18 @@ enum GGUFGenerationProfile: Equatable, Sendable {
     case standard  // every other imported GGUF
 
     static let compactContextTokens = 512
-    static let compactMaxOutputTokens = 128
+    /// Recurrent / sliding-window Gemma decodes with a fixed-size state, so
+    /// reply length does not grow memory. The cap is only a runaway guard,
+    /// not a cut-off — long answers are allowed.
+    static let compactMaxOutputTokens = 4_096
     static let compactInputBudget = 320
     /// Bounded window for standard imports: large enough for real
     /// conversations, small enough to keep the KV cache modest on iOS.
     static let standardContextTokens = 4_096
+    /// A standard GGUF conversation lives entirely inside one llama.cpp
+    /// context, so prompt + reply can never exceed the window. Reserve this
+    /// much prompt space and adaptively give the rest to the reply.
+    static let standardReservedInputTokens = 512
 
     /// Picks the profile from the imported model's identity (repo ID or
     /// display name) so `local_gemma-4-e4b-…`-style imports are covered
@@ -311,7 +354,12 @@ enum GGUFGenerationProfile: Equatable, Sendable {
         case .compact:
             return Self.compactInputBudget
         case .standard:
-            let outputReserve = min(requestedOutputTokens, Self.standardContextTokens / 2)
+            // Adaptive split: the reply may grow up to the window minus the
+            // reserved prompt space, and the prompt keeps whatever remains.
+            let outputReserve = min(
+                max(1, requestedOutputTokens),
+                Self.standardContextTokens - Self.standardReservedInputTokens - 16
+            )
             return max(256, Self.standardContextTokens - outputReserve - 16)
         }
     }
@@ -320,7 +368,11 @@ enum GGUFGenerationProfile: Equatable, Sendable {
     func clampedOutputTokens(_ requested: Int) -> Int {
         switch self {
         case .compact:  return min(requested, Self.compactMaxOutputTokens)
-        case .standard: return requested
+        case .standard:
+            return min(
+                requested,
+                Self.standardContextTokens - Self.standardReservedInputTokens - 16
+            )
         }
     }
 
@@ -454,13 +506,17 @@ final class CodingAssistantService: ObservableObject {
     /// instead of guessing from streamed pieces or tok/s × elapsed.
     @Published private(set) var lastPromptTokens: Int = 0
     @Published private(set) var lastOutputTokens: Int = 0
-    /// Output budget the chrome should advertise: user setting, thermal
-    /// advisor, and (for imported GGUF) the compact-profile 128-token cap.
+    /// Output budget the chrome should advertise. Resolved adaptively from
+    /// the user's response-length setting, the device safety advisor, and
+    /// the active model's own runtime/profile/context metadata — the same
+    /// computation the generate paths apply, so the UI never promises a
+    /// length the backend would cut off (or vice versa).
     var effectiveOutputTokenCap: Int {
         if isEdge0Execution {
             return min(
                 max(1, effectiveGenerationSettings.maxTokens),
-                max(1, DeviceSafetyMonitor.shared.recommendedMaxTokens)
+                max(1, DeviceSafetyMonitor.shared.recommendedMaxTokens),
+                AssistantGenerationBudget.absoluteOutputCeiling
             )
         }
         if activeExecutionLocation == .localCoreAI {
@@ -468,6 +524,15 @@ final class CodingAssistantService: ObservableObject {
                 requested: effectiveGenerationSettings.maxTokens,
                 thermalCap: DeviceSafetyMonitor.shared.recommendedMaxTokens,
                 manifestCap: CoreAIModelStore.shared.manifest?.maximumOutputTokens ?? 2_048
+            )
+        }
+        if isMLXExecution {
+            return AssistantGenerationBudget.maxTokens(
+                runtime: .mlx,
+                requested: effectiveGenerationSettings.maxTokens,
+                thermalCap: DeviceSafetyMonitor.shared.recommendedMaxTokens,
+                profile: MLXAssistantExecutionProfile.resolve(repoID: activeModel.repoID),
+                contextWindowTokens: activeModel.contextWindowTokens
             )
         }
         return GGUFGenerationProfile.outputTokenCap(
@@ -1247,11 +1312,20 @@ final class CodingAssistantService: ObservableObject {
             model: activeModel,
             loadedEdge0Family: Edge0ModelFamily.resolve(repoID: activeModel.repoID)
         )
+        // Edge0 admits a fixed input window (4096 tokens for the 35B). Every
+        // other runtime hard-trims to its budget before generating; this path
+        // did not, so an oversized prompt (attachments, a long thread) was
+        // prefilled in full — far past what the expert pool and the MLA KV
+        // reserve were sized for.
+        let trimmedMessages = Self.trimToInputBudget(
+            identifiedMessages,
+            maxTokens: currentInputBudget
+        )
 
         generateTask = Task { [weak self] in
             do {
                 let stream = await engine.generate(
-                    messages: identifiedMessages,
+                    messages: trimmedMessages,
                     options: options
                 )
                 for try await event in stream {
@@ -2201,7 +2275,8 @@ final class CodingAssistantService: ObservableObject {
             runtime: activeModel.runtime,
             requested: requestedMaxTokens,
             thermalCap: safety.recommendedMaxTokens,
-            backendCap: executionProfile.maxOutputTokens
+            profile: executionProfile,
+            contextWindowTokens: activeModel.contextWindowTokens
         )
 
         // --- Full Sampler Control (Feature #1) ---
@@ -2551,7 +2626,7 @@ final class CodingAssistantService: ObservableObject {
         generateTask = Task {
             // Watch for iOS memory warnings — bail out gracefully instead of
             // getting Jetsam-killed silently.
-            let memoryWarningTask = Task { @MainActor [weak self] in
+            let memoryWarningTask = Task { @MainActor [weak self = self] in
                 let center = NotificationCenter.default
                 for await _ in center.notifications(
                     named: UIApplication.didReceiveMemoryWarningNotification
@@ -2586,7 +2661,7 @@ final class CodingAssistantService: ObservableObject {
             // stopping on it produced spurious "device too hot" interruptions
             // mid-reply. Matches DeviceSafetyMonitor's throttle-at-serious,
             // stop-at-critical schedule.
-            let thermalTask = Task { @MainActor [weak self] in
+            let thermalTask = Task { @MainActor [weak self = self] in
                 let center = NotificationCenter.default
                 for await _ in center.notifications(
                     named: ProcessInfo.thermalStateDidChangeNotification
@@ -2724,7 +2799,7 @@ final class CodingAssistantService: ObservableObject {
                                         hitLimit: hitLimit
                                     )
                                 }
-                                Task { @MainActor [weak self] in self?.tokenRate = rate }
+                                Task { @MainActor [weak self = self] in self?.tokenRate = rate }
                             }
                         }
 
@@ -3282,7 +3357,7 @@ final class CodingAssistantService: ObservableObject {
             return .unavailable("This device isn't eligible for Apple Private Cloud.")
         case .appleIntelligenceUnavailable:
             return .unavailable("Apple Intelligence isn't ready. Check Settings and try again.")
-        case .temporarilyUnavailable, .entitlementUnavailable, .unknown:
+        case .temporarilyUnavailable, .unknown:
             return .temporary("")
         case .ready, .approachingLimit:
             return .unknown("")

@@ -978,6 +978,7 @@ struct SettingsView: View {
 
     @State private var showWipeConfirm = false
     @State private var lastWipeReceipt: WipeAllDataService.Receipt?
+    @State private var isWipingAllData = false
 
     private var privacyResetSection: some View {
         SettingsCard(title: "Reset data") {
@@ -990,7 +991,7 @@ struct SettingsView: View {
                         Image(systemName: "trash.slash")
                             .font(.system(size: 14))
                             .foregroundColor(T.bad)
-                        KMono(text: "Wipe all on-device data", size: 14, color: T.bad, mono: false)
+                        KMono(text: isWipingAllData ? "Wiping app data…" : "Wipe all app data", size: 14, color: T.bad, mono: false)
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.system(size: 14))
@@ -1000,14 +1001,21 @@ struct SettingsView: View {
                     .padding(.vertical, 10)
                 }
                 .buttonStyle(.plain)
+                .disabled(isWipingAllData)
                 if let r = lastWipeReceipt {
                     Rectangle().fill(T.rule).frame(height: 1)
                     VStack(alignment: .leading, spacing: 4) {
                         KMono(text: "wiped", size: 14, color: T.ink3, mono: false)
-                        Text("\(r.modelsDeleted) models · \(r.conversationsDeleted) conversations · \(r.snippetsDeleted) snippets · \(r.memoriesDeleted) memories · \(r.keychainItemsCleared) credentials · freed \(r.bytesFreed.formattedBytes)")
+                        Text("\(r.modelsDeleted) models · \(r.conversationsDeleted) local conversations · \(r.cloudRecordsDeleted) iCloud conversations · \(r.snippetsDeleted) snippets · \(r.memoriesDeleted) memories · \(r.keychainItemsCleared) credentials · freed \(r.bytesFreed.formattedBytes)")
                             .font(T.mono(14))
                             .foregroundColor(T.ink2)
                             .fixedSize(horizontal: false, vertical: true)
+                        if let cloudError = r.cloudWipeError {
+                            Text("iCloud copy may remain: \(cloudError)")
+                                .font(T.sans(12))
+                                .foregroundColor(T.bad)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 14).padding(.vertical, 10)
@@ -1015,20 +1023,32 @@ struct SettingsView: View {
             }
         }
         .confirmationDialog(
-            "Wipe all on-device data?",
+            "Wipe all app data?",
             isPresented: $showWipeConfirm,
             titleVisibility: .visible
         ) {
             Button("Wipe everything", role: .destructive) {
-                lastWipeReceipt = WipeAllDataService.wipeAll()
-                ToastCenter.shared.success(
-                    "Wiped",
-                    detail: "Restart the app for a completely fresh state."
-                )
+                isWipingAllData = true
+                Task { @MainActor in
+                    let receipt = await WipeAllDataService.wipeAll()
+                    lastWipeReceipt = receipt
+                    isWipingAllData = false
+                    if let cloudError = receipt.cloudWipeError {
+                        ToastCenter.shared.error(
+                            "Local data wiped; iCloud needs attention",
+                            detail: cloudError
+                        )
+                    } else {
+                        ToastCenter.shared.success(
+                            "Wiped",
+                            detail: "Local data and any configured iCloud conversation copy were removed."
+                        )
+                    }
+                }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Deletes downloaded models, conversations, snippets, memories, saved API keys, Mac Bridge pairings, cache, and resets onboarding. Cannot be undone.")
+            Text("Deletes downloaded models, local conversations, any configured iCloud conversation copy, snippets, memories, saved API keys, Mac Bridge pairings, cache, and resets onboarding. Cannot be undone.")
         }
     }
 
@@ -1333,7 +1353,7 @@ private enum ResponseLength: String, CaseIterable, Hashable {
     case full     = "Full"
 
     var maxTokens: Int {
-        switch self { case .short: 512; case .normal: 1024; case .detailed: 2048; case .full: 4096 }
+        switch self { case .short: 1_024; case .normal: 2_048; case .detailed: 4_096; case .full: 8_192 }
     }
 
     var hint: String {
@@ -1346,9 +1366,9 @@ private enum ResponseLength: String, CaseIterable, Hashable {
     }
 
     static func nearest(_ tokens: Int) -> Self {
-        if tokens <= 512  { return .short }
-        if tokens <= 768  { return .normal }
-        if tokens <= 1280 { return .detailed }
+        if tokens <= 1_024 { return .short }
+        if tokens <= 2_048 { return .normal }
+        if tokens <= 4_096 { return .detailed }
         return .full
     }
 }

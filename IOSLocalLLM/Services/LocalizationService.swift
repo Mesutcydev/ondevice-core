@@ -108,10 +108,14 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     /// language. Backed by AppSettings.uiLanguage so the choice persists
     /// across launches.
     @Published private(set) var language: AppLanguage
+    private let stateLock = NSLock()
+    private var selectedLanguage: AppLanguage
 
     private init() {
         let raw = UserDefaults.standard.string(forKey: "uiLanguage") ?? AppLanguage.system.rawValue
-        self.language = AppLanguage(rawValue: raw) ?? .system
+        let initial = AppLanguage(rawValue: raw) ?? .system
+        self.language = initial
+        self.selectedLanguage = initial
     }
 
     /// Programmatically change the active language. Persists to
@@ -120,7 +124,13 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     /// hopped onto the main actor so SwiftUI's observation pipeline
     /// receives the change on the thread it expects.
     func setLanguage(_ new: AppLanguage) {
-        guard new != language else { return }
+        stateLock.lock()
+        guard new != selectedLanguage else {
+            stateLock.unlock()
+            return
+        }
+        selectedLanguage = new
+        stateLock.unlock()
         UserDefaults.standard.set(new.rawValue, forKey: "uiLanguage")
         if Thread.isMainThread {
             language = new
@@ -136,25 +146,7 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
     /// so the UI never goes blank for a missing key. Safe to call from
     /// any thread — reads an immutable lookup table.
     func t(_ key: String) -> String {
-        let effective: AppLanguage = {
-            if language != .system { return language }
-            let preferred = Locale.preferredLanguages.first ?? "en"
-            if preferred.hasPrefix("de") { return .german }
-            if preferred.hasPrefix("fr") { return .french }
-            if preferred.hasPrefix("es") { return .spanish }
-            if preferred.hasPrefix("pt") { return .portuguese }
-            if preferred.hasPrefix("it") { return .italian }
-            if preferred.hasPrefix("el") { return .greek }
-            if preferred.hasPrefix("ro") { return .romanian }
-            if preferred.hasPrefix("ru") { return .russian }
-            if preferred.hasPrefix("tr") { return .turkish }
-            if preferred.hasPrefix("ar") { return .arabic }
-            if preferred.hasPrefix("hi") { return .hindi }
-            if preferred.hasPrefix("zh") { return .chinese }
-            if preferred.hasPrefix("ja") { return .japanese }
-            if preferred.hasPrefix("ko") { return .korean }
-            return .english
-        }()
+        let effective = effectiveLanguage
         switch effective {
         case .english, .system: return key
         case .german:           return Self.de[key] ?? key
@@ -172,6 +164,37 @@ final class LocalizationService: ObservableObject, @unchecked Sendable {
         case .japanese:         return Self.ja[key] ?? key
         case .korean:           return Self.ko[key] ?? key
         }
+    }
+
+    /// Drives SwiftUI's semantic layout when Arabic is selected manually or
+    /// inherited from the system. Reads are lock-protected because SwiftUI may
+    /// instantiate view values away from the main thread.
+    var resolvedLayoutDirection: LayoutDirection {
+        effectiveLanguage == .arabic ? .rightToLeft : .leftToRight
+    }
+
+    private var effectiveLanguage: AppLanguage {
+        stateLock.lock()
+        let selected = selectedLanguage
+        stateLock.unlock()
+        if selected != .system { return selected }
+
+        let preferred = Locale.preferredLanguages.first ?? "en"
+        if preferred.hasPrefix("de") { return .german }
+        if preferred.hasPrefix("fr") { return .french }
+        if preferred.hasPrefix("es") { return .spanish }
+        if preferred.hasPrefix("pt") { return .portuguese }
+        if preferred.hasPrefix("it") { return .italian }
+        if preferred.hasPrefix("el") { return .greek }
+        if preferred.hasPrefix("ro") { return .romanian }
+        if preferred.hasPrefix("ru") { return .russian }
+        if preferred.hasPrefix("tr") { return .turkish }
+        if preferred.hasPrefix("ar") { return .arabic }
+        if preferred.hasPrefix("hi") { return .hindi }
+        if preferred.hasPrefix("zh") { return .chinese }
+        if preferred.hasPrefix("ja") { return .japanese }
+        if preferred.hasPrefix("ko") { return .korean }
+        return .english
     }
 
     // MARK: - Turkish translations

@@ -71,8 +71,13 @@ final class ModelCategoryInferenceTests: XCTestCase {
     @MainActor
     func test_installedRegistryModelIsReconciledIntoModelsTabSource() throws {
         let repoID = "Jackrong/test-\(UUID().uuidString)"
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        // Registry records outside Documents are deliberately re-anchored to
+        // the canonical model root. Build the fixture there so this test
+        // exercises the valid installed-model path instead of a stale
+        // previous-container path.
+        let directory = ModelStoragePaths.llmModelDirectory(
+            named: ModelStoragePaths.directoryName(forRepoID: repoID)
+        )
         try FileManager.default.createDirectory(
             at: directory,
             withIntermediateDirectories: true

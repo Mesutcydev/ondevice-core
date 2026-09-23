@@ -12,7 +12,7 @@ import MLX
 // Real-weight tests require EDGE0_8B_MODEL and the oracle fixture
 // (scripts/edge0_reference_dump.py --cases real); they skip otherwise.
 
-final class Edge0QuantizedResidentTests: XCTestCase {
+final class Edge0QuantizedResidentTests: Edge0MLXTestCase {
 
     // MARK: - Synthetic
 

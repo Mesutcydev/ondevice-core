@@ -222,6 +222,35 @@ final class CoreAIModelStore: ObservableObject {
         }
     }
 
+    /// Installs a pack already downloaded into this store's hidden staging
+    /// tree. Unlike `importModel`, this path must not copy the weights: a copy
+    /// briefly needs a second multi-GB allocation and blocks MainActor long
+    /// enough for the watchdog to terminate the app. The pack is validated in
+    /// place, then moved into the normalized installation layout with
+    /// same-volume renames.
+    func installDownloadedModel(
+        from sourceURL: URL,
+        preferredID: String,
+        preferredDisplayName: String
+    ) throws {
+        let previouslySelectedID = manifest?.id
+        state = .validating
+        do {
+            try performStagedInstallation(
+                from: sourceURL,
+                preferredID: preferredID,
+                preferredDisplayName: preferredDisplayName,
+                previouslySelectedID: previouslySelectedID
+            )
+        } catch {
+            refresh()
+            if case .ready = state {} else {
+                state = .failed(error.localizedDescription)
+            }
+            throw error
+        }
+    }
+
     private func performImport(
         from sourceURL: URL,
         preferredID: String?,
@@ -262,6 +291,100 @@ final class CoreAIModelStore: ObservableObject {
         try fileManager.createDirectory(at: modelDirectory, withIntermediateDirectories: true)
         try? fileManager.removeItem(at: destination)
         try fileManager.moveItem(at: staging, to: destination)
+
+        try finishInstallation(
+            manifest: manifest,
+            destination: destination,
+            previouslySelectedID: previouslySelectedID
+        )
+    }
+
+    private func performStagedInstallation(
+        from sourceURL: URL,
+        preferredID: String,
+        preferredDisplayName: String,
+        previouslySelectedID: String?
+    ) throws {
+        let source = sourceURL.standardizedFileURL
+        let storeRoot = modelDirectory.standardizedFileURL
+        let storePath = storeRoot.path
+        guard source.path.hasPrefix(storePath + "/") else {
+            throw CoreAIModelStoreError.invalidStagingLocation
+        }
+
+        let relativePath = String(source.path.dropFirst(storePath.count + 1))
+        guard relativePath.split(separator: "/").first?.hasPrefix(".download-") == true else {
+            throw CoreAIModelStoreError.invalidStagingLocation
+        }
+
+        // Resolve and validate before moving anything so a malformed pack
+        // remains resumable/retryable in its download staging directory.
+        let packRoot = try Self.resolvePackRoot(from: source, fileManager: fileManager)
+        let manifest = try loadOrCreateManifest(
+            in: packRoot,
+            preferredID: preferredID,
+            preferredDisplayName: preferredDisplayName
+        )
+        try validate(manifest: manifest, resourcesAt: packRoot)
+
+        try fileManager.createDirectory(at: storeRoot, withIntermediateDirectories: true)
+        let installStaging = storeRoot.appendingPathComponent(
+            ".installing-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        let normalizedResources = installStaging.appendingPathComponent(
+            "resources",
+            isDirectory: true
+        )
+        let destination = storeRoot.appendingPathComponent(manifest.version, isDirectory: true)
+        var packMoved = false
+        do {
+            try fileManager.createDirectory(at: installStaging, withIntermediateDirectories: true)
+            try fileManager.moveItem(at: packRoot, to: normalizedResources)
+            packMoved = true
+            try? fileManager.removeItem(at: destination)
+            try fileManager.moveItem(at: installStaging, to: destination)
+            packMoved = false
+        } catch {
+            // A failed final rename should not discard a fully downloaded,
+            // already-validated pack. Restore it to its original staging path
+            // when possible so Retry can finish without downloading again.
+            if packMoved,
+               fileManager.fileExists(atPath: normalizedResources.path),
+               !fileManager.fileExists(atPath: packRoot.path) {
+                try? fileManager.createDirectory(
+                    at: packRoot.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+                try? fileManager.moveItem(at: normalizedResources, to: packRoot)
+            }
+            try? fileManager.removeItem(at: installStaging)
+            throw error
+        }
+
+        // Remove the now-empty .download-* wrapper (or any unselected files
+        // left by a broad Hub prefix). The installed weights already live at
+        // `destination`, so this never touches them.
+        let downloadRootName = relativePath.split(separator: "/").first.map(String.init)
+        if let downloadRootName {
+            let downloadRoot = storeRoot.appendingPathComponent(downloadRootName, isDirectory: true)
+            if downloadRoot.standardizedFileURL != destination.standardizedFileURL {
+                try? fileManager.removeItem(at: downloadRoot)
+            }
+        }
+
+        try finishInstallation(
+            manifest: manifest,
+            destination: destination,
+            previouslySelectedID: previouslySelectedID
+        )
+    }
+
+    private func finishInstallation(
+        manifest: CoreAIModelManifest,
+        destination: URL,
+        previouslySelectedID: String?
+    ) throws {
 
         // Reinstalling the same catalog identity replaces only that identity.
         // Other downloaded Core AI packs remain selectable in the library.
@@ -596,6 +719,7 @@ final class CoreAIModelStore: ObservableObject {
 
 enum CoreAIModelStoreError: LocalizedError, Equatable {
     case invalidExtension
+    case invalidStagingLocation
     case notInstalled
     case missingModelResource
     case missingMetadata
@@ -608,6 +732,7 @@ enum CoreAIModelStoreError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .invalidExtension: return "Core AI models must use the .aimodel format."
+        case .invalidStagingLocation: return "The Core AI download staging location is invalid."
         case .notInstalled: return "No Core AI model is installed."
         case .missingModelResource: return "The Core AI asset pack is missing a required model resource."
         case .missingMetadata: return "This is not a complete Core AI language bundle: metadata.json is missing."

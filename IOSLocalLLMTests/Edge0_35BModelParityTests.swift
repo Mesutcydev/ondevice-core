@@ -11,7 +11,7 @@ import MLX
 // Gated on EDGE0_35B_MODEL (full shard directory) and EDGE0_35B_FIXTURES
 // (default /tmp/edge0-35b-fixtures).
 
-final class Edge0_35BModelParityTests: XCTestCase {
+final class Edge0_35BModelParityTests: Edge0MLXTestCase {
 
     private struct Fixture {
         let loader: Edge0ResidentTensorLoader

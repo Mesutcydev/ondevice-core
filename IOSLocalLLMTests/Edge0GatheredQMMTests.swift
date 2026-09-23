@@ -9,7 +9,7 @@ import MLX
 // projection shapes, bit width (4), and group size (64). No model weights
 // involved.
 
-final class Edge0GatheredQMMTests: XCTestCase {
+final class Edge0GatheredQMMTests: Edge0MLXTestCase {
     private let spec = Edge0ExpertSpec.edge0_8B
     /// Small expert count; projection geometry matches the real checkpoint.
     private let syntheticExpertCount = 4

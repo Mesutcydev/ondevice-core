@@ -8,7 +8,7 @@ import MLX
 // streaming MoE) and 3 (MLA + streaming MoE), plus one cached decode step
 // through layer 3. Requires EDGE0_8B_MODEL and the real_layers fixture.
 
-final class Edge0RealLayerParityTests: XCTestCase {
+final class Edge0RealLayerParityTests: Edge0MLXTestCase {
 
     func testRealLayersMatchUpstream() async throws {
         let context = try realContext()

@@ -8,7 +8,7 @@ import MLX
 // gathered quantized up/gate/down through the Phase 2 math, router-weighted
 // aggregation, and the resident shared expert.
 
-final class Edge0MoEParityTests: XCTestCase {
+final class Edge0MoEParityTests: Edge0MLXTestCase {
 
     private struct Tiny {
         static let hiddenSize = 64

@@ -1075,14 +1075,14 @@ extension AnalysisService: CameraServiceDelegate {
                 onToken: { token in
                     acc.value += token
                     let snapshot = acc.value
-                    Task { @MainActor [weak self] in
+                    Task { @MainActor [weak self = self] in
                         self?.updateResult(id: snapID) { r in
                             r.extractedCode = snapshot
                         }
                     }
                 },
                 onComplete: { _ in
-                    Task { @MainActor [weak self] in
+                    Task { @MainActor [weak self = self] in
                         guard let self else { cont.resume(); return }
                         let final = acc.value
                         let review = (mode == .code && !final.isEmpty)
@@ -1187,14 +1187,14 @@ extension AnalysisService: CameraServiceDelegate {
                 onToken: { token in
                     acc.value += token
                     let snapshot = acc.value
-                    Task { @MainActor [weak self] in
+                    Task { @MainActor [weak self = self] in
                         self?.updateResult(id: snapID) { r in
                             r.extractedCode = snapshot
                         }
                     }
                 },
                 onComplete: { _ in
-                    Task { @MainActor [weak self] in
+                    Task { @MainActor [weak self = self] in
                         guard let self else { cont.resume(); return }
                         let final = acc.value
                         if final.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,

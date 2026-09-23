@@ -8,7 +8,7 @@ import MLX
 // mirror of the app's MLX path (`mlx-swift-lm`): penalties -> top-p -> min-p
 // -> top-k -> temperature, with temperature <= 0 as greedy argmax.
 
-final class Edge0SamplerTests: XCTestCase {
+final class Edge0SamplerTests: Edge0MLXTestCase {
 
     private func logits(_ values: [Float]) -> MLXArray {
         MLXArray(values)

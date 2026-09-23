@@ -161,7 +161,13 @@ actor BridgeServer {
         let deviceId = await MainActor.run {
             UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
         }
-        try? BridgePairingStore.shared.save(token: token, clientName: pr.clientName)
+        do {
+            try BridgePairingStore.shared.save(token: token, clientName: pr.clientName)
+        } catch {
+            await MainActor.run { BridgeManager.shared.refreshNonce() }
+            await respond(conn, status: 500, body: "Pairing could not be saved")
+            return
+        }
         await MainActor.run { BridgeManager.shared.onPaired(clientName: pr.clientName) }
 
         guard let data = try? JSONEncoder().encode(PairResponseDTO(bearerToken: token, deviceId: deviceId)) else {

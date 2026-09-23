@@ -4,15 +4,17 @@ import MLX
 
 // MARK: - Edge0ResidentTensorPlanTests
 
-final class Edge0ResidentTensorPlanTests: XCTestCase {
+final class Edge0ResidentTensorPlanTests: Edge0MLXTestCase {
     private var directory: URL!
 
     override func setUpWithError() throws {
+        try super.setUpWithError()
         directory = try Edge0TestFixtures.makeTemporaryDirectory("resident")
     }
 
     override func tearDownWithError() throws {
-        try? FileManager.default.removeItem(at: directory)
+        if let directory { try? FileManager.default.removeItem(at: directory) }
+        try super.tearDownWithError()
     }
 
     func testPlanExcludesRoutedExpertsAndKeepsSharedDenseAndAttention() throws {

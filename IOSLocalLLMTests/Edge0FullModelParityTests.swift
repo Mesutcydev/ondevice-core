@@ -8,7 +8,7 @@ import MLX
 // norm, top-20 logits, prefill states, cached decode, 16-token greedy
 // identity and a 32-step state/cache stress.
 
-final class Edge0FullModelParityTests: XCTestCase {
+final class Edge0FullModelParityTests: Edge0MLXTestCase {
 
     func testFullModelPrefillDecodeAndGreedyMatchUpstream() async throws {
         let context = try realContext()
