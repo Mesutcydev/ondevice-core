@@ -2,8 +2,9 @@ import Foundation
 
 /// A ready-to-download Core AI pack.
 ///
-/// Every entry below was verified against the Hugging Face tree API on
-/// 2026-08-21 (see `scripts/audit_coreai_repos.py`): the recorded subtree
+/// Existing entries were verified against the Hugging Face tree API on
+/// 2026-08-21; the pinned additions were verified on 2026-09-23 (see
+/// `scripts/audit_coreai_repos.py`). The recorded subtree
 /// exists, contains at least one `.aimodel`, and ships the `metadata.json`
 /// the Core AI runtime contract requires. `approxDownloadBytes` is the summed
 /// LFS size of that subtree, not an estimate.
@@ -148,6 +149,20 @@ enum CoreAIZooCatalog {
             licenseNotice: "Apache-2.0 (Qwen). Verify the Hub card before redistribution."
         ),
         CoreAIZooModel(
+            id: "zoo-qwen3-1.7b-official-ios-gpu",
+            displayName: "Qwen3 1.7B · Official iOS GPU",
+            subtitle: "Apple recipe · iPhone 17 Pro GPU bundle",
+            hfRepo: "mlboydaisuke/qwen3-1.7b-CoreAI-official",
+            revision: "ebf5486333ffc59130a6f37c7d208e03ebd3169c",
+            pathPrefix: "ios-gpu",
+            approxDownloadBytes: 1_119_872_856,
+            contextWindow: 1_024,
+            supportsThinking: true,
+            supportsTools: false,
+            category: .officialRecipe,
+            licenseNotice: "Apache-2.0 (Qwen). AOT-compiled for h18p iPhone GPU."
+        ),
+        CoreAIZooModel(
             id: "zoo-qwen3-4b-official-ios",
             displayName: "Qwen3 4B · Official iOS",
             subtitle: "Apple recipe · strongest official iOS tree",
@@ -164,6 +179,34 @@ enum CoreAIZooCatalog {
 
         // MARK: Community chat ports
 
+        CoreAIZooModel(
+            id: "zoo-qwen25-0.5b-instruct",
+            displayName: "Qwen2.5 0.5B Instruct",
+            subtitle: "Small general chat · int8",
+            hfRepo: "kevinqz/Qwen2.5-0.5B-Instruct-CoreAI",
+            revision: "f08c9d63fbfc9bc7aa86388da880b6e8ae339979",
+            pathPrefix: "int8",
+            approxDownloadBytes: 541_238_540,
+            contextWindow: 1_024,
+            supportsThinking: false,
+            supportsTools: false,
+            category: .chat,
+            licenseNotice: "Apache-2.0 (Qwen). Community conversion by kevinqz."
+        ),
+        CoreAIZooModel(
+            id: "zoo-qwen25-coder-0.5b",
+            displayName: "Qwen2.5 Coder 0.5B",
+            subtitle: "Small coding assistant · int8",
+            hfRepo: "kevinqz/Qwen2.5-Coder-0.5B-Instruct-CoreAI",
+            revision: "408f4506b9f4058e054e7bbd58a45189b382ee65",
+            pathPrefix: "int8",
+            approxDownloadBytes: 541_238_633,
+            contextWindow: 1_024,
+            supportsThinking: false,
+            supportsTools: false,
+            category: .chat,
+            licenseNotice: "Apache-2.0 (Qwen). Community conversion by kevinqz."
+        ),
         CoreAIZooModel(
             id: "zoo-minicpm5-1b",
             displayName: "MiniCPM5 1B",
@@ -193,6 +236,20 @@ enum CoreAIZooCatalog {
             licenseNotice: "Apache-2.0 (Qwen)."
         ),
         CoreAIZooModel(
+            id: "zoo-qwen25-math-1.5b",
+            displayName: "Qwen2.5 Math 1.5B",
+            subtitle: "Math-focused instruct model · int8",
+            hfRepo: "kevinqz/Qwen2.5-Math-1.5B-Instruct-CoreAI",
+            revision: "dcbf0826f06f38e5269f830864f33224b57cf6a9",
+            pathPrefix: "int8",
+            approxDownloadBytes: 1_656_659_317,
+            contextWindow: 1_024,
+            supportsThinking: false,
+            supportsTools: false,
+            category: .chat,
+            licenseNotice: "Apache-2.0 (Qwen). Community conversion by kevinqz."
+        ),
+        CoreAIZooModel(
             id: "zoo-qwen25-coder-1.5b",
             displayName: "Qwen2.5 Coder 1.5B",
             subtitle: "Coding-focused · int8 pack",
@@ -205,6 +262,20 @@ enum CoreAIZooCatalog {
             supportsTools: true,
             category: .chat,
             licenseNotice: "Apache-2.0 (Qwen)."
+        ),
+        CoreAIZooModel(
+            id: "zoo-qwen25-1.5b-instruct",
+            displayName: "Qwen2.5 1.5B Instruct",
+            subtitle: "General chat · int8",
+            hfRepo: "kevinqz/Qwen2.5-1.5B-Instruct-CoreAI",
+            revision: "f903417cb9ac4b3c4c53c16aefd7f097cc6b8338",
+            pathPrefix: "int8",
+            approxDownloadBytes: 1_656_659_388,
+            contextWindow: 1_024,
+            supportsThinking: false,
+            supportsTools: false,
+            category: .chat,
+            licenseNotice: "Apache-2.0 (Qwen). Community conversion by kevinqz."
         ),
         CoreAIZooModel(
             id: "zoo-lfm25-1.2b",
@@ -266,6 +337,20 @@ enum CoreAIZooCatalog {
             supportsTools: false,
             category: .chat,
             licenseNotice: "Check the Hub card for the source model's license."
+        ),
+        CoreAIZooModel(
+            id: "zoo-minicpm5-2b",
+            displayName: "MiniCPM5 2B",
+            subtitle: "OpenBMB · hybrid reasoning · iPhone 1K cap",
+            hfRepo: "mlboydaisuke/MiniCPM5-2B-CoreAI",
+            revision: "ac8cbe3d429f2922a1543a0eeecc72125dd10d29",
+            pathPrefix: "int8",
+            approxDownloadBytes: 2_684_881_620,
+            contextWindow: 1_024,
+            supportsThinking: true,
+            supportsTools: false,
+            category: .chat,
+            licenseNotice: "Apache-2.0 (OpenBMB). iPhone runtime caps the int8 bundle at 1K tokens."
         ),
         CoreAIZooModel(
             id: "zoo-qwen35-2b",

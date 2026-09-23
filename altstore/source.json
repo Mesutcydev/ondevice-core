@@ -204,10 +204,20 @@
       "developerName": "Mesutcydev",
       "subtitle": "Local AI studio for iOS 27.",
       "localizedDescription": "The iOS 27 Core edition: local chat, Lens, voice, image generation, and model management. Includes the silver eye identity, improved streaming presentation, cancellable document search, and inspectable source excerpts. Installer re-signing is required; profiles must authorize the requested entitlements.",
-      "iconURL": "https://github.com/Mesutcydev/ios-local-llm/releases/download/ondevice-core-1.0.0-10/OnDeviceCore-AppIcon-1024.png",
+      "iconURL": "https://github.com/Mesutcydev/ondevice-core/releases/download/ondevice-core-1.0.0-60/OnDeviceCore-AppIcon-1024.png",
       "tintColor": "#A8A8AC",
       "category": "developer",
       "versions": [
+        {
+          "version": "1.0.0",
+          "buildVersion": "60",
+          "date": "2026-09-23T19:19:08Z",
+          "localizedDescription": "Adds six verified, revision-pinned Core AI model downloads and keeps the full local workbench, share extension, and sideload entitlements. Installer re-signing is required.",
+          "downloadURL": "https://github.com/Mesutcydev/ondevice-core/releases/download/ondevice-core-1.0.0-60/OnDeviceCoreAIStudio-sideload-entitled-1.0.0-60.ipa",
+          "size": 44022620,
+          "sha256": "0a191447ed87d6937644ac7324891dc2c6717d406df5dbe50a2cdb61ad07838b",
+          "minOSVersion": "27.0"
+        },
         {
           "version": "1.0.0",
           "buildVersion": "10",

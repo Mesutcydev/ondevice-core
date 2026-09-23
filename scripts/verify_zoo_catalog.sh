@@ -63,7 +63,7 @@ func check(_ condition: Bool, _ message: String) {
 
 let catalog = CoreAIZooCatalog.iphoneLanguageModels
 
-check(catalog.count >= 20, "catalog has only \(catalog.count) entries")
+check(catalog.count >= 26, "catalog has only \(catalog.count) entries")
 
 let ids = catalog.map(\.id)
 check(Set(ids).count == ids.count, "duplicate catalog ids")
@@ -83,7 +83,9 @@ for m in catalog {
     check(!m.displayName.isEmpty, "\(m.id): empty display name")
     check(!m.subtitle.isEmpty, "\(m.id): empty subtitle")
     check(!m.licenseNotice.isEmpty, "\(m.id): missing license notice")
-    check(m.revision == "main", "\(m.id): unexpected revision \(m.revision)")
+    let isPinnedSHA = m.revision.count == 40
+        && m.revision.allSatisfy { $0.isHexDigit && !$0.isUppercase }
+    check(m.revision == "main" || isPinnedSHA, "\(m.id): unexpected revision \(m.revision)")
     check(m.contextWindow >= 448, "\(m.id): implausible context window")
 
     let parts = m.hfRepo.split(separator: "/")
@@ -114,7 +116,8 @@ let official = CoreAIZooCatalog.models(in: .officialRecipe)
 check(!official.isEmpty, "no official-recipe entries")
 for m in official {
     check(m.hfRepo.hasSuffix("-official"), "\(m.id): filed official but repo is not")
-    check(m.pathPrefix == "ios", "\(m.id): official recipes ship the ios/ tree")
+    check(m.pathPrefix == "ios" || m.pathPrefix == "ios-gpu",
+          "\(m.id): official recipe does not ship a complete iOS tree")
 }
 
 for m in CoreAIZooCatalog.models(in: .utility) {

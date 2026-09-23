@@ -70,6 +70,19 @@ Downloaded language, vision, speech, and image-generation models are separate
 works. Their license is shown in the model catalog or at the download source.
 Do not assume that a model is open source merely because its loader is.
 
+The Core AI catalog also links to these complete, user-downloaded conversions
+(audited 2026-09-23; exact Hugging Face commit revisions are pinned in
+`IOSLocalLLM/Models/CoreAIZooCatalog.swift`; no weights are included here):
+
+| Conversion source | Upstream model | License |
+| --- | --- | --- |
+| [Qwen3 1.7B official-recipe iOS GPU](https://huggingface.co/mlboydaisuke/qwen3-1.7b-CoreAI-official) | Qwen/Qwen3-1.7B | Apache-2.0 |
+| [Qwen2.5 0.5B Instruct](https://huggingface.co/kevinqz/Qwen2.5-0.5B-Instruct-CoreAI) | Qwen/Qwen2.5-0.5B-Instruct | Apache-2.0 |
+| [Qwen2.5 Coder 0.5B Instruct](https://huggingface.co/kevinqz/Qwen2.5-Coder-0.5B-Instruct-CoreAI) | Qwen/Qwen2.5-Coder-0.5B-Instruct | Apache-2.0 |
+| [Qwen2.5 Math 1.5B Instruct](https://huggingface.co/kevinqz/Qwen2.5-Math-1.5B-Instruct-CoreAI) | Qwen/Qwen2.5-Math-1.5B-Instruct | Apache-2.0 |
+| [Qwen2.5 1.5B Instruct](https://huggingface.co/kevinqz/Qwen2.5-1.5B-Instruct-CoreAI) | Qwen/Qwen2.5-1.5B-Instruct | Apache-2.0 |
+| [MiniCPM5 2B](https://huggingface.co/mlboydaisuke/MiniCPM5-2B-CoreAI) | openbmb/MiniCPM5-2B | Apache-2.0 |
+
 The following are deliberately excluded from Git:
 
 - Apple FastVLM weights and derived Core ML artifacts (Apple Machine Learning

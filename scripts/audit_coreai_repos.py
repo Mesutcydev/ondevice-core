@@ -6,7 +6,7 @@ Used to build/validate `CoreAIZooCatalog`. Read-only: it only calls the public
 Hugging Face tree API.
 
     python3 scripts/audit_coreai_repos.py                 # audit default repo list
-    python3 scripts/audit_coreai_repos.py repo1 repo2 ... # audit specific repos
+    python3 scripts/audit_coreai_repos.py repo1 repo2@revision ...
 """
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ API = "https://huggingface.co/api/models/{repo}/tree/{rev}?recursive=1"
 DEFAULT_REPOS = [
     # Official-recipe conversions (Apple's own export recipes, stock runtime).
     "mlboydaisuke/qwen3-0.6b-CoreAI-official",
+    "mlboydaisuke/qwen3-1.7b-CoreAI-official@ebf5486333ffc59130a6f37c7d208e03ebd3169c",
     "mlboydaisuke/qwen3-4b-CoreAI-official",
     "mlboydaisuke/qwen3-8b-CoreAI-official",
     "mlboydaisuke/gemma-3-4b-it-CoreAI-official",
@@ -37,6 +38,7 @@ DEFAULT_REPOS = [
     "mlboydaisuke/LFM2.5-8B-A1B-CoreAI",
     "mlboydaisuke/granite-4.0-h-CoreAI",
     "mlboydaisuke/MiniCPM5-1B-CoreAI",
+    "mlboydaisuke/MiniCPM5-2B-CoreAI@ac8cbe3d429f2922a1543a0eeecc72125dd10d29",
     "mlboydaisuke/Nanbeige4.1-3B-CoreAI",
     "ukint-vs/Nanbeige4.2-3B-CoreAI",
     "mlboydaisuke/Youtu-LLM-2B-CoreAI",
@@ -58,6 +60,10 @@ DEFAULT_REPOS = [
     "mlboydaisuke/Parakeet-TDT-0.6B-CoreAI",
     # Third-party single-pack repos seen in the wild.
     "kevinqz/Qwen2.5-Coder-1.5B-Instruct-CoreAI",
+    "kevinqz/Qwen2.5-0.5B-Instruct-CoreAI@f08c9d63fbfc9bc7aa86388da880b6e8ae339979",
+    "kevinqz/Qwen2.5-Coder-0.5B-Instruct-CoreAI@408f4506b9f4058e054e7bbd58a45189b382ee65",
+    "kevinqz/Qwen2.5-Math-1.5B-Instruct-CoreAI@dcbf0826f06f38e5269f830864f33224b57cf6a9",
+    "kevinqz/Qwen2.5-1.5B-Instruct-CoreAI@f903417cb9ac4b3c4c53c16aefd7f097cc6b8338",
 ]
 
 
@@ -82,8 +88,8 @@ def size_of(entry: dict) -> int:
     return int(lfs.get("size") or entry.get("size") or 0)
 
 
-def audit(repo: str) -> dict | None:
-    tree = fetch_tree(repo)
+def audit(repo: str, rev: str = "main") -> dict | None:
+    tree = fetch_tree(repo, rev)
     if tree is None:
         return None
     files = [e for e in tree if e.get("type") == "file"]
@@ -98,8 +104,8 @@ def audit(repo: str) -> dict | None:
         parts = f["path"].split("/")
         groups[parts[0] if len(parts) > 1 else "<root>"].append(f)
 
-    print(f"\n=== {repo}")
-    result = {"repo": repo, "groups": {}}
+    print(f"\n=== {repo}@{rev}")
+    result = {"repo": repo, "revision": rev, "groups": {}}
     for name, entries in sorted(groups.items()):
         total = sum(size_of(e) for e in entries)
         paths = [e["path"] for e in entries]
@@ -129,8 +135,9 @@ def audit(repo: str) -> dict | None:
 def main() -> int:
     repos = sys.argv[1:] or DEFAULT_REPOS
     out = []
-    for repo in repos:
-        r = audit(repo)
+    for spec in repos:
+        repo, _, rev = spec.partition("@")
+        r = audit(repo, rev or "main")
         if r:
             out.append(r)
     with open("/tmp/coreai_repo_audit.json", "w", encoding="utf-8") as fh:
