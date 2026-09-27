@@ -52,7 +52,7 @@ enum DeviceTierAdvisor {
         case .lite, .entry: return "qwen2.5-coder-1.5b"  // 900 MB · safe everywhere
         case .mid:          return "llama-3.2-3b"        // 1.8 GB · sweet spot
         case .pro:          return "qwen3-4b-2507"       // 2.3 GB · refreshed flagship
-        case .max:          return "qwen2.5-7b"          // 4.2 GB · best quality
+        case .max:          return "qwen3-4b-2507"       // 2.3 GB · a 12 GB iPhone still grants only ~6.5 GB
         }
     }
 
@@ -68,7 +68,7 @@ enum DeviceTierAdvisor {
         case .pro:
             return "Qwen3-4B 2507 — refreshed flagship, high quality and runs well here."
         case .max:
-            return "Qwen2.5 7B — top quality. Plenty of RAM headroom on this device."
+            return "Qwen3-4B 2507 — refreshed flagship with room to spare. Larger models are in Models."
         }
     }
 

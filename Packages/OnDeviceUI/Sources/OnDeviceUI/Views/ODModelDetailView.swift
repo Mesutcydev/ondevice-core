@@ -11,7 +11,7 @@ struct ODModelDetailView: View {
     private var model: ODModel? { store.models.first { $0.id == modelID } }
     private var canLoad: Bool {
         guard let model else { return false }
-        return model.isInstalled && store.canPerformActions && store.capabilities.canLoadModels
+        return model.isInstalled && model.isSelectable && store.canPerformActions && store.capabilities.canLoadModels
             && !store.modelPhase.isPreparing && !store.isResponding
     }
 
@@ -39,7 +39,7 @@ struct ODModelDetailView: View {
                         }
                         stateSection(model)
                         VStack(spacing: 0) {
-                            ODDetailRow(title: "Capability", value: model.kind.title)
+                            ODDetailRow(title: "Capability", value: model.workspaceLabel)
                             ODDetailRow(title: "Download size", value: model.sizeLabel ?? "Not measured")
                             ODDetailRow(title: "Estimated runtime memory", value: model.estimatedMemoryBytes.map(ODFormat.bytes) ?? "Not provided")
                             ODDetailRow(title: "Availability", value: model.isInstalled ? "Installed" : "Not installed")
@@ -87,11 +87,34 @@ struct ODModelDetailView: View {
     }
 
     @ViewBuilder private func stateSection(_ model: ODModel) -> some View {
-        if let status = model.downloadStatus {
+        if model.isInstalled && !model.isSelectable {
+            VStack(alignment: .leading, spacing: ODLayout.labelGap) {
+                if let reason = model.unavailableReason {
+                    Label("Installed, but unavailable", systemImage: "exclamationmark.circle")
+                        .font(.headline).foregroundStyle(ODPalette.text)
+                    Text(reason)
+                        .font(.subheadline).foregroundStyle(ODPalette.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text("Installed on this device")
+                        .font(.subheadline).foregroundStyle(ODPalette.secondary)
+                    ODPrimaryButton("Manage Core AI pack", symbol: "cpu") {
+                        performAfterDismiss(.openCoreAIPacks)
+                    }
+                }
+            }
+        } else if let status = model.downloadStatus {
             VStack(alignment: .leading, spacing: ODLayout.elementGap) {
                 Text(status).font(.headline)
-                ProgressView(value: model.downloadProgress)
-                    .accessibilityLabel("Model download progress")
+                if status != "Download failed" {
+                    ProgressView(value: model.downloadProgress)
+                        .accessibilityLabel("Model download progress")
+                }
+                if model.isDownloadPaused || status == "Download failed" {
+                    ODPrimaryButton("Resume download", symbol: "arrow.clockwise") {
+                        performAfterDismiss(.modelAction(modelID: model.id, command: .download))
+                    }
+                }
             }
         } else {
         switch store.phase(for: model) {
@@ -121,7 +144,10 @@ struct ODModelDetailView: View {
             VStack(alignment: .leading, spacing: ODLayout.labelGap) {
                 Label("Loaded", systemImage: "checkmark.circle.fill")
                     .font(.subheadline).foregroundStyle(ODPalette.secondary)
-                if model.id == store.selectedModelID {
+                if model.supportedKinds.contains(.language)
+                    && model.supportedKinds.contains(.vision) {
+                    useInBothWorkspaces(model)
+                } else if model.id == store.selectedModelID {
                     ODPrimaryButton(destinationTitle(model), symbol: destinationSymbol(model)) {
                         openDestination(model)
                     }
@@ -136,23 +162,47 @@ struct ODModelDetailView: View {
                     .font(.subheadline).foregroundStyle(ODPalette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if model.isInstalled {
-                    ODPrimaryButton(model.kind == .language ? "Load model" : "Select model", symbol: "arrow.up.circle") { performAfterDismiss(.loadModel(model.id)) }
-                        .disabled(!canLoad)
+                    if model.supportedKinds.contains(.language)
+                        && model.supportedKinds.contains(.vision) {
+                        useInBothWorkspaces(model)
+                    } else {
+                        ODPrimaryButton(model.kind == .language ? "Load model" : "Select model", symbol: "arrow.up.circle") { performAfterDismiss(.loadModel(model.id)) }
+                            .disabled(!canLoad)
+                    }
                     if !store.canPerformActions || !store.capabilities.canLoadModels {
                         Text("Model loading is currently unavailable.")
                             .font(.caption).foregroundStyle(ODPalette.secondary)
                     }
                 } else {
-                    ODPrimaryButton("Open catalog", symbol: "magnifyingglass") { performAfterDismiss(.openDiscovery) }
+                    if (model.availableCommands ?? []).contains(.download) {
+                        ODPrimaryButton("Download model", symbol: "arrow.down.circle") {
+                            performAfterDismiss(.modelAction(modelID: model.id, command: .download))
+                        }
                         .disabled(!store.canPerformActions)
+                    } else {
+                        Text("This model is not available for download.")
+                            .font(.footnote).foregroundStyle(ODPalette.secondary)
+                    }
                 }
             }
         }
         }
     }
 
+    @ViewBuilder private func useInBothWorkspaces(_ model: ODModel) -> some View {
+        ODPrimaryButton("Use in Assistant", symbol: "bubble.left") {
+            performAfterDismiss(.loadModelInWorkspace(model.id, .language))
+        }
+        .disabled(!canLoad)
+        ODPrimaryButton("Use in Lens", symbol: "camera") {
+            performAfterDismiss(.loadModelInWorkspace(model.id, .vision))
+        }
+        .disabled(!canLoad)
+    }
+
     @ViewBuilder private func availableActions(_ model: ODModel) -> some View {
-        let commands = (model.availableCommands ?? store.capabilities.modelCommands).filter { $0 != .details }
+        let commands = (model.availableCommands ?? store.capabilities.modelCommands)
+            .filter { model.isInstalled && [.configure, .export, .delete].contains($0) }
         if !commands.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
                 ODSectionHeader("Manage model")
@@ -188,6 +238,7 @@ struct ODModelDetailView: View {
         case .vision: return "Open Lens"
         case .voice: return "Open Voice"
         case .image: return "Select for Image studio"
+        case .utility: return "Manage pack"
         }
     }
     private func destinationSymbol(_ model: ODModel) -> String {
@@ -196,6 +247,7 @@ struct ODModelDetailView: View {
         case .vision: return "camera"
         case .voice: return "waveform"
         case .image: return "checkmark"
+        case .utility: return "cpu"
         }
     }
     private func openDestination(_ model: ODModel) {
@@ -205,6 +257,9 @@ struct ODModelDetailView: View {
         case .voice: store.selectedTab = .voice
         case .image:
             performAfterDismiss(.loadModel(model.id))
+            return
+        case .utility:
+            performAfterDismiss(.openCoreAIPacks)
             return
         }
         if model.kind != .image { store.secondaryRoute = nil }

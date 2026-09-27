@@ -3,6 +3,8 @@
 # re-signer-ready IPA. MLX, llama.cpp, Lens, Voice, Models, the share extension,
 # Apple Private Cloud and the new Core AI runtime all stay in this product.
 set -euo pipefail
+# CocoaPods aborts (Encoding::CompatibilityError) under a non-UTF-8 locale.
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -29,8 +31,11 @@ xcodegen generate >/dev/null
 pod install >/dev/null
 
 echo "=== 2/8  Verify catalog and all direct model links"
-./scripts/verify_zoo_catalog.sh >/dev/null
-python3 scripts/verify_zoo_downloads.py >/dev/null
+mkdir -p build
+./scripts/verify_zoo_catalog.sh > build/sideload-catalog.log 2>&1 \
+  || { tail -40 build/sideload-catalog.log; die "catalog invariants failed"; }
+python3 scripts/verify_zoo_downloads.py > build/sideload-downloads.log 2>&1 \
+  || { grep -E "FAIL|parsed" build/sideload-downloads.log; die "model link verification failed"; }
 
 echo "=== 3/8  Archive the full workbench unsigned"
 rm -rf "$ARCHIVE"
@@ -97,6 +102,7 @@ codesign -d --entitlements :- "$SIGNED_APP" > "$ACTUAL" 2>/dev/null
 for key in \
   com.apple.developer.kernel.increased-memory-limit \
   com.apple.developer.kernel.extended-virtual-addressing \
+  com.apple.developer.kernel.increased-debugging-memory-limit \
   com.apple.developer.private-cloud-compute \
   com.apple.security.application-groups \
   com.apple.developer.icloud-container-identifiers; do

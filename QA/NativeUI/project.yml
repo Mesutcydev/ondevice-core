@@ -16,10 +16,17 @@ targets:
   NativeUIReview:
     type: application
     platform: iOS
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: NativeUIReview
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
     sources:
       - path: ReviewApp.swift
       - path: HomeConcepts.swift
       - path: ../../IOSLocalLLM/Views/AppearanceSettingsContent.swift
+      - path: ../../IOSLocalLLM/Views/LocalModelImportPicker.swift
       - path: ../../IOSLocalLLM/Assets.xcassets
       - path: HostStubs.swift
       - path: ../../IOSLocalLLM/Views/Bridge/LocalAPIServerView.swift
@@ -36,6 +43,7 @@ targets:
       - path: ../../IOSLocalLLM/Models/ChatMessage.swift
       - path: ../../IOSLocalLLM/Models/TokenLogprob.swift
       - path: ../../IOSLocalLLM/Models/ApplePrivateCloudTypes.swift
+      - path: ../../IOSLocalLLM/Services/EntitlementsProbe.swift
       - path: ../../IOSLocalLLM/Services/FileAttachmentService.swift
       - path: ../../Packages/OnDeviceUI/Example/OnDeviceUIDemo/Resources/studio-example.png
     dependencies:
@@ -44,6 +52,8 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.OnDeviceNativeUIReview
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIFileSharingEnabled: YES
+        INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES
   HostContracts:
     type: bundle.unit-test
     platform: iOS

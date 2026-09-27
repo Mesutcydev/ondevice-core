@@ -24,6 +24,11 @@ extension ApplePrivateCloud {
 
     /// Flattened status for pickers / headers / send button / Settings.
     static func currentStatus() async -> ApplePCCStatus {
+        // Never touch the model without the entitlement: reading
+        // `availability` is safe today, but generation traps and `availability`
+        // itself has been observed to report `.available` in an unentitled
+        // process — the gate must not depend on the framework's own answer.
+        guard isProvisionedForCurrentBuild else { return .entitlementUnavailable }
         #if FM_PCC
         if #available(iOS 27.0, *) {
             return await ApplePrivateCloudRuntime.shared.currentStatus()
@@ -35,6 +40,7 @@ extension ApplePrivateCloud {
     /// Model's context window, fetched from the SDK (`nil` when PCC isn't
     /// usable). Never hardcode — the brief requires reading the real size.
     static func contextSize() async -> Int? {
+        guard isProvisionedForCurrentBuild else { return nil }
         #if FM_PCC
         if #available(iOS 27.0, *) {
             return await ApplePrivateCloudRuntime.shared.contextSize()
@@ -47,6 +53,9 @@ extension ApplePrivateCloud {
     /// straight into the app's existing `onToken: (String) -> Void` contract.
     /// Cancel by cancelling the consuming task or calling `cancel(_:)`.
     static func stream(_ request: ApplePCCRequest) async -> AsyncThrowingStream<String, Error> {
+        guard isProvisionedForCurrentBuild else {
+            return AsyncThrowingStream { $0.finish(throwing: ApplePCCError.notProvisioned) }
+        }
         #if FM_PCC
         if #available(iOS 27.0, *) {
             return await ApplePrivateCloudRuntime.shared.stream(request)
@@ -57,6 +66,7 @@ extension ApplePrivateCloud {
 
     /// One-shot, non-streaming answer (App Intents / tests).
     static func answer(_ request: ApplePCCRequest) async throws -> String {
+        guard isProvisionedForCurrentBuild else { throw ApplePCCError.notProvisioned }
         #if FM_PCC
         if #available(iOS 27.0, *) {
             return try await ApplePrivateCloudRuntime.shared.answer(request)
@@ -67,6 +77,7 @@ extension ApplePrivateCloud {
 
     /// Cancel an in-flight request by id (used by the model-switch coordinator).
     static func cancel(_ requestID: UUID) {
+        guard isProvisionedForCurrentBuild else { return }
         #if FM_PCC
         if #available(iOS 27.0, *) {
             Task { await ApplePrivateCloudRuntime.shared.cancel(requestID: requestID) }
@@ -75,8 +86,10 @@ extension ApplePrivateCloud {
     }
 
     /// Presents Apple's own "increase your limit" UI when the SDK offers one
-    /// (the brief's "Show Options"). No-op when unavailable.
+    /// (the brief's "Show Options"). No-op when unavailable — including when
+    /// this build isn't provisioned, so the button can never reach the model.
     static func showLimitIncreaseOptions() {
+        guard isProvisionedForCurrentBuild else { return }
         #if FM_PCC
         if #available(iOS 27.0, *) {
             Task { await ApplePrivateCloudRuntime.shared.showLimitIncreaseOptions() }
@@ -84,8 +97,14 @@ extension ApplePrivateCloud {
         #endif
     }
 
+    /// The reason PCC cannot be used in this process, most specific first.
+    /// Callers surface this instead of inventing a reason.
     static var unavailableError: ApplePCCError {
-        isCompiledIn ? .unsupportedOS : .notCompiledIn
+        if !isCompiledIn { return .notCompiledIn }
+        if !isSupportedOnCurrentOS { return .unsupportedOS }
+        if !isProvisionedForCurrentBuild { return .notProvisioned }
+        // All gates passed: nothing here is refusing the request.
+        return .unknown("")
     }
 }
 
@@ -116,13 +135,24 @@ actor ApplePrivateCloudRuntime {
 
     // A single model handle. PCC carries no local weights, so this is cheap to
     // hold and never participates in MLX/RAM unload paths.
-    private let model = PrivateCloudComputeLanguageModel()
+    //
+    // Created ONLY when this build carries the PCC entitlement. In an
+    // unentitled process the framework traps with a fatalError the moment the
+    // model is driven (`Process is missing required entitlement:
+    // com.apple.developer.private-cloud-compute`) and a trap cannot be caught,
+    // so the handle stays `nil` and every method below refuses instead of
+    // touching it.
+    private let model: PrivateCloudComputeLanguageModel? =
+        ApplePrivateCloud.isProvisionedForCurrentBuild
+            ? PrivateCloudComputeLanguageModel()
+            : nil
 
     // In-flight generation tasks, keyed by request id, so the switch
     // coordinator can cancel a specific request without touching local models.
     private var tasks: [UUID: Task<Void, Never>] = [:]
 
     func currentStatus() -> ApplePCCStatus {
+        guard let model else { return .entitlementUnavailable }
         switch model.availability {
         case .available:
             let quota = model.quotaUsage
@@ -143,10 +173,12 @@ actor ApplePrivateCloudRuntime {
     }
 
     func contextSize() async -> Int? {
+        guard let model else { return nil }
         do { return try await model.contextSize } catch { return nil }
     }
 
     func showLimitIncreaseOptions() {
+        guard let model else { return }
         model.quotaUsage.limitIncreaseSuggestion?.show()
     }
 
@@ -156,6 +188,7 @@ actor ApplePrivateCloudRuntime {
     }
 
     func answer(_ request: ApplePCCRequest) async throws -> String {
+        guard let model else { throw ApplePCCError.notProvisioned }
         guard currentStatus().canSend else { throw statusError(currentStatus()) }
         let session = LanguageModelSession(model: model, instructions: request.instructions)
         do {
@@ -197,6 +230,13 @@ actor ApplePrivateCloudRuntime {
                      into continuation: AsyncThrowingStream<String, Error>.Continuation) async {
         defer { tasks[request.id] = nil }
 
+        // The entitlement gate comes first: `currentStatus()` alone is not
+        // enough, because an unentitled process can still be told `.available`.
+        guard let model else {
+            continuation.finish(throwing: ApplePCCError.notProvisioned)
+            return
+        }
+
         guard currentStatus().canSend else {
             continuation.finish(throwing: statusError(currentStatus()))
             return
@@ -236,6 +276,7 @@ actor ApplePrivateCloudRuntime {
         case .limitReached:               return .quotaExceeded
         case .unsupportedDevice:          return .unavailable("This device isn't eligible for Apple Private Cloud.")
         case .appleIntelligenceUnavailable: return .unavailable("Apple Intelligence isn't ready yet. Try again shortly.")
+        case .entitlementUnavailable:     return .notProvisioned
         case .offline:                    return .offline
         default:                          return .unknown("")
         }

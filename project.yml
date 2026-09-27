@@ -94,6 +94,9 @@ targets:
     type: application
     platform: iOS
     deploymentTarget: "27.0"
+    configFiles:
+      Debug: "Pods/Target Support Files/Pods-IOSLocalLLM/Pods-IOSLocalLLM.debug.xcconfig"
+      Release: "Pods/Target Support Files/Pods-IOSLocalLLM/Pods-IOSLocalLLM.release.xcconfig"
     sources:
       - path: IOSLocalLLM
         excludes:
@@ -196,7 +199,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLM/IOSLocalLLM.entitlements
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "55"
+        CURRENT_PROJECT_VERSION: "74"
         # PCC symbols exist only in the iOS 27 SDK. Enable the implementation
         # and its capability automatically for iOS 27 device/simulator builds;
         # Xcode 26 and iOS 18–26 builds keep the existing local-only binary.
@@ -311,6 +314,16 @@ targets:
     # before Copy Resources / codesign, so the weights end up signed
     # like any other bundled asset.
     postCompileScripts:
+      - name: Copy third-party notices
+        script: |
+          set -e
+          DEST="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
+          mkdir -p "$DEST/LICENSES"
+          cp "${SRCROOT}/THIRD_PARTY_NOTICES.md" "$DEST/THIRD_PARTY_NOTICES.md"
+          rsync -a --delete "${SRCROOT}/LICENSES/" "$DEST/LICENSES/"
+        runOnlyWhenInstalling: false
+        basedOnDependencyAnalysis: false
+
       - name: Copy bundled VLM (SmolVLM2 GGUF)
         script: |
           set -e
@@ -427,7 +440,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "55"
+        CURRENT_PROJECT_VERSION: "74"
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_EMIT_LOC_STRINGS: YES
 
@@ -435,6 +448,9 @@ targets:
     type: bundle.unit-test
     platform: iOS
     deploymentTarget: "27.0"
+    configFiles:
+      Debug: "Pods/Target Support Files/Pods-IOSLocalLLMTests/Pods-IOSLocalLLMTests.debug.xcconfig"
+      Release: "Pods/Target Support Files/Pods-IOSLocalLLMTests/Pods-IOSLocalLLMTests.release.xcconfig"
     sources:
       - path: IOSLocalLLMTests
     dependencies:

@@ -109,6 +109,16 @@ public struct ChatMessage: Identifiable, Codable, Hashable, Sendable {
         self.hitTokenLimit = hitTokenLimit
     }
 
+    /// Keep image thumbnails in the stored conversation while handing a
+    /// text-only runtime only the prepared model-facing text. The visual
+    /// grounding step has already described the image in `modelContent`.
+    public func withoutImagePayloads() -> ChatMessage {
+        var copy = self
+        copy.imageThumbnailData = nil
+        copy.imageThumbnails = []
+        return copy
+    }
+
     public static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
         lhs.id == rhs.id &&
         lhs.content == rhs.content &&

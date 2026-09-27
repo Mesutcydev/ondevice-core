@@ -38,13 +38,15 @@ final class ModelDownloadCenterServiceTests: XCTestCase {
         XCTAssertEqual(model.progress, 0)
         XCTAssertFalse(model.isReady)
     }
+
 }
 
 final class CodingAssistantServicePolicyTests: XCTestCase {
     func testStorageBackedGGUFPolicyDisablesGPULayersAndBoundsHeadroom() {
         let policy = GGUFLoadPolicy.resolve(
             fileBytes: 8 * 1_024 * 1_024 * 1_024,
-            pagingEnabled: true
+            pagingEnabled: true,
+            metalBudget: 7 * 1_024 * 1_024 * 1_024
         )
 
         XCTAssertTrue(policy.storageBacked)
@@ -55,15 +57,16 @@ final class CodingAssistantServicePolicyTests: XCTestCase {
         )
     }
 
-    func testNormalLargeGGUFPolicyKeepsAcceleratedLayerBudget() {
+    func testGGUFWithinMetalBudgetIsNotChargedForItsWeights() {
         let policy = GGUFLoadPolicy.resolve(
             fileBytes: 4 * 1_024 * 1_024 * 1_024,
-            pagingEnabled: false
+            pagingEnabled: false,
+            metalBudget: 7 * 1_024 * 1_024 * 1_024
         )
 
-        XCTAssertFalse(policy.storageBacked)
-        XCTAssertEqual(policy.gpuLayers, 12)
-        XCTAssertGreaterThan(policy.minimumAvailableBytes, 4_000_000_000)
+        XCTAssertTrue(policy.storageBacked)
+        XCTAssertEqual(policy.gpuLayers, 999)
+        XCTAssertEqual(policy.minimumAvailableBytes, GGUFLoadPolicy.storageBackedHeadroom)
     }
 
     func testDisabledLowMemoryPolicyDoesNotOverrideAllocatorLimits() {

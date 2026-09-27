@@ -51,6 +51,9 @@ performance evidence; see [validation policy](Docs/VALIDATION.md).
 ## Highlights
 
 - On-device chat and code assistance with MLX models
+- Native Edge0 8B and experimental 35B expert-streaming chat models, with
+  bounded memory admission and user-initiated model downloads
+- Core AI model packs through the iOS 27 device runtime
 - Live camera and image analysis
 - Local voice activity detection, transcription, and speech synthesis
 - Local OpenAI-compatible API server and Mac bridge

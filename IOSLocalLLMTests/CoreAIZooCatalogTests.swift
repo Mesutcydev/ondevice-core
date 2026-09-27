@@ -12,7 +12,7 @@ final class CoreAIZooCatalogTests: XCTestCase {
     private var catalog: [CoreAIZooModel] { CoreAIZooCatalog.iphoneLanguageModels }
 
     func testCatalogIsNotEmpty() {
-        XCTAssertGreaterThanOrEqual(catalog.count, 20)
+        XCTAssertGreaterThanOrEqual(catalog.count, 26)
     }
 
     func testIdentifiersAreUnique() {
@@ -73,7 +73,12 @@ final class CoreAIZooCatalogTests: XCTestCase {
             XCTAssertFalse(model.displayName.isEmpty, "\(model.id) needs a display name")
             XCTAssertFalse(model.subtitle.isEmpty, "\(model.id) needs a subtitle")
             XCTAssertFalse(model.licenseNotice.isEmpty, "\(model.id) must carry a license notice")
-            XCTAssertEqual(model.revision, "main", "\(model.id): pin revisions deliberately, not by accident")
+            let isPinnedSHA = model.revision.count == 40
+                && model.revision.allSatisfy { $0.isHexDigit && !$0.isUppercase }
+            XCTAssertTrue(
+                model.revision == "main" || isPinnedSHA,
+                "\(model.id): use main or an audited Git revision"
+            )
             XCTAssertGreaterThanOrEqual(model.contextWindow, 448, "\(model.id) context window looks wrong")
         }
     }
@@ -129,7 +134,7 @@ final class CoreAIZooCatalogTests: XCTestCase {
         }
     }
 
-    func testOfficialRecipeEntriesUseTheIOSTree() {
+    func testOfficialRecipeEntriesUseAnIOSTree() {
         let official = CoreAIZooCatalog.models(in: .officialRecipe)
         XCTAssertFalse(official.isEmpty)
         for model in official {
@@ -137,7 +142,10 @@ final class CoreAIZooCatalogTests: XCTestCase {
                 model.hfRepo.hasSuffix("-official"),
                 "\(model.id) is filed as an official recipe but the repo is not"
             )
-            XCTAssertEqual(model.pathPrefix, "ios", "\(model.id) official recipes ship the ios/ tree")
+            XCTAssertTrue(
+                model.pathPrefix == "ios" || model.pathPrefix == "ios-gpu",
+                "\(model.id) official recipe must ship a complete iOS tree"
+            )
         }
     }
 

@@ -283,7 +283,7 @@ struct StudioPrimaryButton: View {
             .font(.body.weight(.medium))
             .frame(maxWidth: .infinity, minHeight: 44)
             .buttonStyle(.glassProminent)
-            .tint(ODPalette.send).foregroundStyle(ODPalette.onSend)
+            .odInkProminent()
             .controlSize(.large)
     }
 }
@@ -348,7 +348,7 @@ struct StudioCompactPrimaryButton: View {
             .font(.footnote).frame(minHeight: 44)
         }
         .buttonStyle(.glassProminent)
-        .tint(ODPalette.send).foregroundStyle(ODPalette.onSend)
+        .odInkProminent()
         .disabled(!enabled)
     }
 }

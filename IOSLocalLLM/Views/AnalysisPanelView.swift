@@ -249,7 +249,7 @@ struct AnalysisPanelView: View {
                 .padding(12).background(ODPalette.surface, in: RoundedRectangle(cornerRadius: 20))
             Button("Send question", systemImage: "arrow.up", action: submitQuestion)
                 .labelStyle(.iconOnly).buttonStyle(.glassProminent).buttonBorderShape(.circle)
-                .controlSize(.large).tint(ODPalette.send).foregroundStyle(ODPalette.onSend)
+                .controlSize(.large).odInkProminent()
                 .disabled(!canSendQuestion || result.isStreaming)
         }
         .padding(20)

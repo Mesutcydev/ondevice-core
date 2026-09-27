@@ -189,10 +189,13 @@ private final class CoreAIAvailableRuntime: CoreAIRuntime {
                     segments: [.text(Transcript.TextSegment(content: text))]
                 )))
             case .tool(let id, let name, let content):
-                entries.append(.toolOutput(Transcript.ToolOutput(
-                    id: id,
-                    toolName: name,
-                    segments: [.text(Transcript.TextSegment(content: content))]
+                // A stored tool result may not have a matching ToolCall in
+                // this compact history. FoundationModels rejects orphaned
+                // ToolOutput entries, so pass it as a user-visible prompt.
+                entries.append(.prompt(Transcript.Prompt(
+                    segments: [.text(Transcript.TextSegment(
+                        content: "Tool result (\(name), \(id)): \(content)"
+                    ))]
                 )))
             }
         }
@@ -201,55 +204,79 @@ private final class CoreAIAvailableRuntime: CoreAIRuntime {
             model: model.withThinkingEnabled(thinkingEnabled),
             transcript: Transcript(entries: entries)
         )
-        let transcriptCountBefore = session.transcript.count
-
         // The stream only stops through task cancellation (this SDK build
         // has no `stopResponding`), so the generation runs in a tracked
         // child task that `cancel()` can actually reach.
         let generation = Task<Void, Error> {
-            var previous = ""
-            for try await snapshot in session.streamResponse(
-                to: plan.latestUser,
-                options: FoundationModels.GenerationOptions(
-                    temperature: temperature,
-                    maximumResponseTokens: maxTokens
-                )
-            ) {
-                try Task.checkCancellation()
-                let full = snapshot.content
-                let delta = ApplePrivateCloud.streamDelta(previous: previous, full: full)
-                previous = full
-                if !delta.isEmpty { onToken(delta) }
+            var sentVisibleText = false
+            func run(_ session: LanguageModelSession, prompt: String) async throws {
+                let transcriptCountBefore = session.transcript.count
+                var previous = ""
+                for try await snapshot in session.streamResponse(
+                    to: prompt,
+                    options: FoundationModels.GenerationOptions(
+                        temperature: temperature,
+                        maximumResponseTokens: maxTokens
+                    )
+                ) {
+                    try Task.checkCancellation()
+                    let full = snapshot.content
+                    let delta = ApplePrivateCloud.streamDelta(previous: previous, full: full)
+                    previous = full
+                    if !delta.isEmpty {
+                        sentVisibleText = true
+                        onToken(delta)
+                    }
+                }
+                for entry in session.transcript.dropFirst(transcriptCountBefore) {
+                    guard case .toolCalls(let calls) = entry else { continue }
+                    for call in calls {
+                        onToken(Self.hermesEnvelope(
+                            id: call.id,
+                            name: call.toolName,
+                            argumentsJSON: call.arguments.jsonString
+                        ))
+                    }
+                }
+            }
+            do {
+                try await run(session, prompt: plan.latestUser)
+            } catch {
+                guard !sentVisibleText, !plan.history.isEmpty,
+                      let languageError = error as? LanguageModelError else { throw error }
+                switch languageError {
+                case .unsupportedTranscriptContent, .contextSizeExceeded:
+                    Diagnostics.shared.breadcrumb(
+                        "Core AI retrying with compact recent context",
+                        category: "coreai"
+                    )
+                    let recent = plan.history.suffix(4).map { turn -> String in
+                        switch turn {
+                        case .user(let text): return "User: \(text)"
+                        case .assistant(let text):
+                            return "Assistant: \(text.replacingOccurrences(of: "<unk>", with: ""))"
+                        case .tool(_, let name, let content): return "Tool \(name): \(content)"
+                        }
+                    }.joined(separator: "\n")
+                    let compactContext = String(recent.suffix(480))
+                    let fallbackPrompt = "Recent conversation:\n\(compactContext)\n\nLatest user message:\n\(plan.latestUser)"
+                    let systemEntries = entries.filter {
+                        if case .instructions = $0 { return true }
+                        return false
+                    }
+                    let fallback = LanguageModelSession(
+                        model: model.withThinkingEnabled(thinkingEnabled),
+                        transcript: Transcript(entries: systemEntries)
+                    )
+                    try await run(fallback, prompt: fallbackPrompt)
+                default:
+                    throw error
+                }
             }
         }
         task = generation
         defer { task = nil }
         try await generation.value
-
-        // Models whose tokenizer carries tool-call special tokens have the
-        // `<tool_call>` markup routed by the executor into transcript
-        // `ToolCall` entries — it never appears in the streamed text. Re-
-        // encode those calls as Hermes envelopes so the shared HTTP parser
-        // can return them to API clients, matching how the MLX path
-        // re-encodes native tool-call events.
-        var envelopes = ""
-        for entry in session.transcript.dropFirst(transcriptCountBefore) {
-            guard case .toolCalls(let calls) = entry else { continue }
-            for call in calls {
-                envelopes += Self.hermesEnvelope(
-                    id: call.id,
-                    name: call.toolName,
-                    argumentsJSON: call.arguments.jsonString
-                )
-            }
-        }
-        if !envelopes.isEmpty {
-            Diagnostics.shared.breadcrumb(
-                "Core AI surfaced tool calls from the session transcript · \(envelopes.count) characters",
-                category: "coreai"
-            )
-            onToken(envelopes)
-        }
     }
 
     func cancel() {

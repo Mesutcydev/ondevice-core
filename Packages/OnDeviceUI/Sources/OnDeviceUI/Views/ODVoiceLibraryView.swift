@@ -77,7 +77,7 @@ struct ODVoiceLibraryView: View {
                 if destination != .voice { searchFocused = false }
             }
             .navigationTitle("Voices")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 ODWorkspaceBottomBar {
                     if !searchFocused && !store.voiceSessionActive { conversationAction }
@@ -93,10 +93,18 @@ struct ODVoiceLibraryView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu("Voice options", systemImage: "slider.horizontal.3") {
-                        Button("Speech engine: \(store.voiceEngineName)", systemImage: "waveform") { store.send(.selectEngine) }
+                        Section {
+                            Button { store.send(.selectEngine) } label: {
+                                Label("Speech engine", systemImage: "waveform")
+                                Text(store.voiceEngineName)
+                            }
                             .disabled(!store.capabilities.canSelectEngine)
-                        Button("Settings", systemImage: "gearshape") { store.secondaryRoute = .settings }
+                        }
+                        Section {
+                            Button("Settings", systemImage: "gearshape") { store.secondaryRoute = .settings }
+                        }
                     }
+                    .menuOrder(.fixed)
                     .labelStyle(.iconOnly)
                 }
             }

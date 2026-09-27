@@ -14,6 +14,7 @@ flowchart TD
     POLICY[Memory, thermal, lifecycle, and model-residency policy]
     MODELS[Catalog, validation, download, and import]
     MLX[MLX language and vision runtimes]
+    EDGE0[Edge0 native expert streaming runtime]
     LLAMA[llama.cpp GGUF runtime]
     WHISPER[whisper.cpp and voice pipeline]
     STORAGE[Local files, settings, diagnostics, and recovery]
@@ -23,9 +24,11 @@ flowchart TD
     FEATURES --> POLICY
     FEATURES --> MODELS
     POLICY --> MLX
+    POLICY --> EDGE0
     POLICY --> LLAMA
     POLICY --> WHISPER
     MODELS --> MLX
+    MODELS --> EDGE0
     MODELS --> LLAMA
     MODELS --> WHISPER
     FEATURES --> STORAGE
@@ -80,6 +83,7 @@ sequenceDiagram
 | Thermal and runtime safety | `DeviceSafetyMonitor.swift`, `ModelResidency.swift`, `LifecycleController.swift` | safety and high-risk service tests |
 | Model search and download | `HFSearchService.swift`, `HFModelDownloadManager.swift`, `ModelDownloadCenter.swift` | `HighRiskServiceTests.swift` |
 | MLX inference | `CodingAssistantService.swift`, `MLXGenerationGate.swift` | local-runtime and model-category tests |
+| Edge0 inference | `Services/Runtime/Edge0/`, `RuntimeEngineFactory.swift` | `Edge0*Tests.swift`, `RuntimeEngineFactoryTests.swift` |
 | GGUF and llama.cpp | `LlamaCppBridge.swift`, `LlamaCppVLMService.swift` | local-runtime foundation tests |
 | Local API and tools | `Bridge/LocalAPIServer.swift`, `Bridge/ToolRunner.swift` | `LocalAPIServerTests.swift` |
 | Retrieval | `KnowledgeBaseService.swift`, `OnDeviceEmbedder.swift` | local-runtime foundation tests |

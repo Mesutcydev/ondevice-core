@@ -61,7 +61,8 @@ final class ToastCenter: ObservableObject {
         case .success: HapticManager.analysisComplete()
         case .info:    HapticManager.selection()
         }
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+        withAnimation(UIAccessibility.isReduceMotionEnabled ? .easeInOut(duration: 0.18)
+                      : .spring(response: 0.32, dampingFraction: 0.85)) {
             current = toast
         }
         dismissTask = Task { [duration = toast.duration] in
@@ -92,6 +93,7 @@ struct Toast: Identifiable, Equatable {
 struct ToastOverlayView: View {
     @ObservedObject private var center = ToastCenter.shared
     @Environment(\.koduTheme) private var T
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack {
@@ -113,7 +115,9 @@ struct ToastOverlayView: View {
                     // iOS 15.
                     .transition(
                         .asymmetric(
-                            insertion: AnyTransition.move(edge: .top).combined(with: .opacity),
+                            // Reduce Motion: the banner fades in place instead of sliding.
+                            insertion: reduceMotion ? AnyTransition.opacity
+                                : AnyTransition.move(edge: .top).combined(with: .opacity),
                             removal:   AnyTransition.opacity
                         )
                     )
@@ -122,7 +126,8 @@ struct ToastOverlayView: View {
             }
             Spacer()
         }
-        .animation(.spring(response: 0.32, dampingFraction: 0.85), value: center.current)
+        .animation(reduceMotion ? .easeInOut(duration: 0.18) : .spring(response: 0.32, dampingFraction: 0.85),
+                   value: center.current)
         .allowsHitTesting(center.current != nil)
     }
 }

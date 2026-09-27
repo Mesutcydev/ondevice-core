@@ -25,7 +25,7 @@ struct MLXVLMExecutionProfile: Equatable, Sendable {
 
     static func resolve(repoID: String, architecture: String? = nil) -> Self {
         let identity = "\(repoID) \(architecture ?? "")".lowercased()
-        if identity.contains("bonsai-27b") || identity.contains("qwen3_5") {
+        if identity.contains("bonsai-27b") || identity.contains("qwen3_5") || identity.contains("qwen3.5") {
             // Qwen 3.5/Bonsai 27B is a large unified text+vision backbone.
             // Bound Lens activations/KV aggressively; Assistant and Lens may
             // share its one container, but no second model should coexist.

@@ -44,6 +44,8 @@ final class ODBridge: ObservableObject {
         var openModelPicker: () -> Void = {}
         var openModelsTab: () -> Void = {}
         var openDiscovery: () -> Void = {}
+        var importModel: () -> Void = {}
+        var showModelDownloads: () -> Void = {}
         var openCoreAIPacks: () -> Void = {}
         var manageStorage: () -> Void = {}
         var openImageGeneration: () -> Void = {}
@@ -123,6 +125,7 @@ final class ODBridge: ObservableObject {
         let publishers: [ObservableObjectPublisher] = [
             CodingAssistantService.shared.objectWillChange,
             ModelDownloadCenter.shared.objectWillChange,
+            CoreAIModelStore.shared.objectWillChange,
             ConversationStore.shared.objectWillChange,
             VoiceService.shared.objectWillChange,
             VoiceSettingsStore.shared.objectWillChange,
@@ -130,6 +133,7 @@ final class ODBridge: ObservableObject {
             VoiceAudioSessionManager.shared.objectWillChange,
             AppSettings.shared.objectWillChange,
             ImageGenerationService.shared.objectWillChange,
+            PersonaStore.shared.objectWillChange,
         ]
         for publisher in publishers {
             publisher
@@ -153,6 +157,7 @@ final class ODBridge: ObservableObject {
     func refresh() {
         let assistant = CodingAssistantService.shared
         let center = ModelDownloadCenter.shared
+        let coreAIInstallations = CoreAIModelStore.shared.installations
         let loc = LocalizationService.shared
 
         store.appearance = ODAppearancePreference(rawValue: AppSettings.shared.appearance)
@@ -165,26 +170,88 @@ final class ODBridge: ObservableObject {
 
         // ── Models ───────────────────────────────────────────────────────
         let modelsSig = center.models
-            .map { "\($0.id):\($0.state):\($0.progress):\($0.totalBytes)" }
+            .map { "\($0.id):\($0.state):\($0.progress):\($0.totalBytes):\($0.declaredCategories.contains(.assistant)):\($0.declaredCategories.contains(.vlm)):\($0.supportsCategory(.assistant)):\($0.supportsCategory(.vlm))" }
+            .joined(separator: "|") + "#" + coreAIInstallations
+            .map { "\($0.assistantSelectionID):\($0.manifest.version):\($0.manifest.totalDownloadBytes)" }
             .joined(separator: "|") + "#\(assistant.activeSelectionID)#\(AppSettings.shared.assistantModelID)#\(assistant.canGenerateSelectedTarget)"
         if modelsSig != modelsSignature {
             modelsSignature = modelsSig
             store.models = center.models.map { model in
-                ODModel(
+                let interrupted = model.state == .idle
+                    && model.downloader?.hasResumableDownloadReceipt == true
+                let supportedKinds = Self.supportedKinds(for: model)
+                let unsupported = model.isReady && supportedKinds.isEmpty
+                    ? model.downloader.flatMap {
+                        LocalModelRegistry.unsupportedTextRuntimeReason(in: $0.destination)
+                            ?? LocalModelRegistry.unsupportedVisionRuntimeReason(in: $0.destination)
+                    } : nil
+                let unavailable = unsupported
+                    ?? (model.platformCompatibility?.supportsCurrentPlatform == false
+                        ? model.platformCompatibility?.detail : nil)
+                return ODModel(
                     id: model.id,
                     name: model.displayName,
                     metadata: model.subtitle,
                     byteCount: model.totalBytes > 0 ? model.totalBytes : nil,
                     kind: Self.kind(for: model),
+                    supportedKinds: supportedKinds,
+                    declaredKinds: Self.declaredKinds(for: model),
                     isInstalled: model.isReady,
-                    isDefault: model.category == .assistant
+                    isDefault: model.supportsCategory(.assistant)
                         && LocalModelRegistry.assistantSelectionID(for: model) == AppSettings.shared.assistantModelID,
+                    isSelectable: unavailable == nil && !supportedKinds.isEmpty,
+                    unavailableReason: unavailable,
                     availableCommands: [.details, .configure] + (model.isReady ? [.delete] : [])
                         + (model.isReady && model.downloader?.destination != nil ? [.export] : [])
-                        + (!model.isReady && model.downloader != nil ? [.download] : []),
-                    downloadStatus: model.state.isActive ? (model.state == .enumerating ? "Getting file list" : "Downloading") : nil,
-                    downloadProgress: model.state == .downloading ? model.progress : nil,
-                    estimatedMemoryBytes: model.approxRAMBytes.flatMap { $0 > 0 ? $0 : nil }
+                        + (model.state.isActive ? [.pauseDownload, .cancelDownload] : [])
+                        + (model.state == .paused ? [.download, .cancelDownload] : [])
+                        + (!model.isReady && !model.state.isActive && model.state != .paused && model.downloader != nil ? [.download] : []),
+                    downloadStatus: {
+                        switch model.state {
+                        case .paused: return "Paused"
+                        case .enumerating: return "Preparing download"
+                        case .downloading: return "Downloading"
+                        case .failed: return "Download failed"
+                        case .idle:
+                            return interrupted ? "Interrupted" : nil
+                        case .ready: return nil
+                        }
+                    }(),
+                    downloadProgress: model.state == .downloading || model.state == .paused
+                        || interrupted
+                        ? (model.progress.isFinite ? min(1, max(0, model.progress)) : nil)
+                        : nil,
+                    estimatedMemoryBytes: model.approxRAMBytes.flatMap { $0 > 0 ? $0 : nil },
+                    isDownloadPaused: model.state == .paused || interrupted,
+                    summary: model.longDescription ?? Self.modelSummary(for: model),
+                    vendor: model.vendor.rawValue,
+                    badges: Self.modelBadges(for: model),
+                    downloadSizeLabel: model.sizeLabel
+                )
+            }
+            store.models += coreAIInstallations.map { installed in
+                let catalog = CoreAIZooCatalog.model(forSelectionID: installed.assistantSelectionID)
+                let isChatModel = installed.assistantModel != nil
+                let kind: ODModelKind
+                switch catalog?.category {
+                case .vision: kind = .vision
+                case .utility: kind = .utility
+                case .officialRecipe, .chat: kind = .language
+                case nil: kind = isChatModel ? .language : (installed.manifest.capabilities.imageInput ? .vision : .utility)
+                }
+                return ODModel(
+                    id: installed.assistantSelectionID,
+                    name: installed.manifest.displayName,
+                    metadata: "Core AI · installed on this device",
+                    byteCount: installed.manifest.totalDownloadBytes > 0 ? installed.manifest.totalDownloadBytes : nil,
+                    kind: kind,
+                    isDefault: isChatModel && installed.assistantSelectionID == AppSettings.shared.assistantModelID,
+                    isSelectable: isChatModel,
+                    availableCommands: [.details],
+                    estimatedMemoryBytes: installed.assistantModel?.approxRAMBytes,
+                    summary: catalog?.subtitle ?? "On-device Core AI pack",
+                    vendor: installed.manifest.modelFamily,
+                    badges: isChatModel ? ["Core AI"] : ["Core AI", kind.title]
                 )
             }
         }
@@ -193,7 +260,7 @@ final class ODBridge: ObservableObject {
         // They are deliberately different values and the Models screen shows
         // both, so neither may be derived from the other.
         let activePresentationID = center.models.first {
-            $0.category == .assistant && LocalModelRegistry.assistantSelectionID(for: $0) == assistant.activeSelectionID
+            $0.supportsCategory(.assistant) && LocalModelRegistry.assistantSelectionID(for: $0) == assistant.activeSelectionID
         }?.id ?? assistant.activeSelectionID
         if !store.models.contains(where: { $0.id == activePresentationID }) {
             store.models.append(ODModel(id: activePresentationID, name: assistant.activeDisplayName,
@@ -203,6 +270,20 @@ final class ODBridge: ObservableObject {
                 availableCommands: [.configure], isLibraryEntry: false))
         }
         store.selectedModelID = activePresentationID
+        // The composer's reasoning switch exists only when the local model's
+        // own template reads it; the value is the per-model/app preference.
+        store.thinkingEnabled = assistant.activeExecutionLocation != .applePrivateCloud
+            && assistant.activeThinkingSwitch
+            ? assistant.effectiveGenerationSettings.thinkingEnabled : nil
+        // Refresh runs per token while streaming; publish only real changes.
+        let personaStore = PersonaStore.shared
+        let personas = personaStore.personas.map {
+            ODPersona(id: $0.id, name: $0.name, subtitle: $0.subtitle, symbol: $0.icon)
+        }
+        if store.personas != personas { store.personas = personas }
+        if store.selectedPersonaID != personaStore.active.id {
+            store.selectedPersonaID = personaStore.active.id
+        }
         store.loadedModelID = Self.isResident(assistant.state) ? activePresentationID : nil
         store.modelPhase = Self.phase(for: assistant)
 
@@ -210,7 +291,7 @@ final class ODBridge: ObservableObject {
         store.metrics = ODDeviceMetrics(
             memoryLabel: Self.memoryLabel(),
             thermalLabel: Self.thermalLabel(loc),
-            modelStorageBytes: center.totalStorageUsed,
+            modelStorageBytes: center.totalStorageUsed + coreAIInstallations.reduce(0) { $0 + max(0, $1.manifest.totalDownloadBytes) },
             diskFreeBytes: cachedDiskFree(),
             diskTotalBytes: Self.totalDiskBytes
         )
@@ -445,6 +526,12 @@ final class ODBridge: ObservableObject {
         case .openDiscovery:
             routes.openDiscovery()
 
+        case .importModel:
+            routes.importModel()
+
+        case .showModelDownloads:
+            routes.showModelDownloads()
+
         case .openCoreAIPacks:
             routes.openCoreAIPacks()
 
@@ -452,24 +539,30 @@ final class ODBridge: ObservableObject {
             routes.manageStorage()
 
         case .loadModel(let id):
-            guard let model = ModelDownloadCenter.shared.models.first(where: { $0.id == id }) else { routes.openModelPicker(); return }
-            guard model.isReady else { model.start(); return }
-            switch model.category {
-            case .assistant:
-                guard let selection = AssistantModelCatalog.selection(forStoredID: LocalModelRegistry.assistantSelectionID(for: model)) else {
-                    routes.openModelPicker()
-                    return
-                }
-                Task { await CodingAssistantService.shared.switchTo(selection, persistAsDefault: false) }
-            case .vlm:
-                AppSettings.shared.cameraVisualModelID = model.sourceRepoID.isEmpty ? model.id : model.sourceRepoID
-                store.selectedTab = .lens
-            case .voice:
-                routes.selectEngine()
-            case .imageGen:
-                ImageGenerationService.shared.select(model.sourceRepoID.isEmpty ? model.id : model.sourceRepoID)
-                store.secondaryRoute = .imageStudio
+            loadModel(id, in: nil)
+
+        case .selectPersona(let id):
+            // Applies from the next reply: the system prompt is rebuilt per reply.
+            PersonaStore.shared.setActive(id)
+            refresh()
+
+        case .setThinking(let enabled):
+            // Same persistence as the model settings sheet: a saved per-model
+            // profile wins, otherwise the app-wide preference.
+            let assistant = CodingAssistantService.shared
+            let repoID = assistant.activeModel.repoID
+            if var profile = AssistantModelSettingsStore.shared.settings(for: repoID) {
+                profile.thinkingEnabled = enabled
+                AssistantModelSettingsStore.shared.save(
+                    profile, for: repoID, supportsThinking: assistant.activeThinkingSwitch
+                )
+            } else {
+                AppSettings.shared.assistantThinking = enabled
             }
+            refresh()
+
+        case .loadModelInWorkspace(let id, let kind):
+            loadModel(id, in: kind)
 
         case .modelAction(let modelID, let command):
             routes.modelCommand(modelID, command)
@@ -584,6 +677,72 @@ final class ODBridge: ObservableObject {
         }
     }
 
+    private func loadModel(_ id: String, in requestedKind: ODModelKind?) {
+        if let installed = CoreAIModelStore.shared.installedModel(id: id) {
+            guard requestedKind == nil || requestedKind == .language,
+                  let selection = installed.assistantModel else {
+                routes.openCoreAIPacks()
+                return
+            }
+            store.secondaryRoute = nil
+            store.selectedTab = .chat
+            Task { await CodingAssistantService.shared.switchTo(selection, persistAsDefault: true) }
+            return
+        }
+
+        guard let model = ModelDownloadCenter.shared.models.first(where: { $0.id == id }) else {
+            routes.openModelPicker()
+            return
+        }
+        guard model.isReady else { model.start(); return }
+        guard model.platformCompatibility?.supportsCurrentPlatform ?? true else {
+            ToastCenter.shared.error("Model not supported on this device",
+                                     detail: model.platformCompatibility?.detail ?? "")
+            return
+        }
+        let kind = requestedKind ?? Self.kind(for: model)
+        switch kind {
+        case .language:
+            guard model.supportsCategory(.assistant) else { routes.openModelPicker(); return }
+            let presetID = AssistantModelCatalog.presets.first {
+                $0.repoID.caseInsensitiveCompare(model.sourceRepoID) == .orderedSame
+            }?.id
+            guard let selection = AssistantModelCatalog.selection(
+                forStoredID: presetID ?? LocalModelRegistry.assistantSelectionID(for: model)
+            ) else {
+                routes.openModelPicker()
+                return
+            }
+            store.secondaryRoute = nil
+            store.selectedTab = .chat
+            Task { await CodingAssistantService.shared.switchTo(selection, persistAsDefault: true) }
+        case .vision:
+            guard model.supportsCategory(.vlm) else { routes.selectLensModel(); return }
+            if let reason = model.downloader.flatMap({
+                LocalModelRegistry.unsupportedVisionRuntimeReason(in: $0.destination)
+            }) {
+                ToastCenter.shared.error("Model runtime unavailable", detail: reason)
+                return
+            }
+            let repoID = model.sourceRepoID.isEmpty ? model.id : model.sourceRepoID
+            Task { @MainActor in
+                if await VisualModelPickerView.applySelection(repoID) {
+                    store.secondaryRoute = nil
+                    store.selectedTab = .lens
+                }
+            }
+        case .voice:
+            routes.selectEngine()
+        case .image:
+            ImageGenerationService.shared.select(
+                model.sourceRepoID.isEmpty ? model.id : model.sourceRepoID
+            )
+            store.secondaryRoute = .imageStudio
+        case .utility:
+            routes.openCoreAIPacks()
+        }
+    }
+
     // MARK: - Derivations
 
     private static func isResident(_ state: CodingAssistantService.ServiceState) -> Bool {
@@ -624,13 +783,48 @@ final class ODBridge: ObservableObject {
         phase == .listening
     }
 
-    private static func kind(for model: DownloadableModel) -> ODModelKind {
-        switch model.category {
+    /// Chat first. A unified text+vision pack is filed under `.vlm` whenever
+    /// its config.json carries a vision tower, but a pack that can chat is an
+    /// Assistant model that can also see: "Use", "Open Chat" and Chat's
+    /// readiness all key off this kind. Lens stays reachable via
+    /// `supportedKinds`. A pack declaring text it cannot run yet (Bonsai 2)
+    /// still reads as an Assistant model, so it never lands in Lens.
+    static func kind(for model: DownloadableModel) -> ODModelKind {
+        if model.supportsCategory(.assistant) { return .language }
+        if model.supportsCategory(.vlm) { return .vision }
+        if model.declaredCategories.contains(.assistant) { return .language }
+        return kind(for: model.category)
+    }
+
+    private static func kind(for category: DownloadableModel.Category) -> ODModelKind {
+        switch category {
         case .assistant: return .language
         case .vlm:       return .vision
         case .voice:     return .voice
         case .imageGen:  return .image
         }
+    }
+
+    private static func declaredKinds(for model: DownloadableModel) -> Set<ODModelKind> {
+        Set(model.declaredCategories.map(kind(for:)))
+    }
+
+    private static func supportedKinds(for model: DownloadableModel) -> Set<ODModelKind> {
+        Set(model.supportedCategories.map(kind(for:)))
+    }
+
+    private static func modelSummary(for model: DownloadableModel) -> String {
+        switch model.id {
+        case "qwen2.5-coder-1.5b": return "Fast for chat and code. A reliable first model."
+        case "qwen3-4b": return "Stronger reasoning for chat and code."
+        case "llama-3.2-3b": return "A versatile, general-purpose chat model."
+        default: return model.subtitle
+        }
+    }
+
+    private static func modelBadges(for model: DownloadableModel) -> [String] {
+        let priority: [ModelCapability] = [.recommended, .best, .vision, .thinking, .fast, .coder, .multilingual, .newRelease]
+        return priority.filter { model.capabilities.contains($0) }.prefix(2).map(\.label)
     }
 
     private static func memoryLabel() -> String? {

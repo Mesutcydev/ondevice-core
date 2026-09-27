@@ -12,12 +12,8 @@ public struct ODAppearanceChoices: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: ODLayout.groupGap) {
-            Text("Make yourself at home.")
-                .font(.system(.title2, design: .serif))
-                .foregroundStyle(ODPalette.text)
-                .accessibilityAddTraits(.isHeader)
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: typeSize.isAccessibilitySize ? 1 : 3), spacing: 16) {
+        VStack(alignment: .leading, spacing: ODLayout.labelGap) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: ODLayout.elementGap), count: typeSize.isAccessibilitySize ? 1 : 3), spacing: ODLayout.labelGap) {
                 ForEach([ODAppearancePreference.light, .dark, .oled]) { preference in
                     ODAppearanceOption(preference: preference, selected: selection == preference) {
                         selection = preference
@@ -49,17 +45,17 @@ private struct ODAppearanceOption: View {
             Group {
                 if typeSize.isAccessibilitySize {
                     HStack(spacing: 16) {
-                        preview.frame(width: 84, height: 142)
+                        preview.frame(width: 84, height: ODLayout.settingsPreviewHeight)
                         selectionLabel.frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } else {
-                    VStack(spacing: 12) {
-                        preview.frame(height: 142)
+                    VStack(spacing: ODLayout.elementGap) {
+                        preview.frame(height: ODLayout.settingsPreviewHeight)
                         selectionLabel
                     }
                 }
             }
-            .padding(.bottom, 4)
+            .frame(minHeight: ODLayout.settingsRowMinimumHeight)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -98,16 +94,16 @@ private struct ODAppearancePreview: View {
     private var surface: Color { light ? Color(white: 0.90) : Color(white: 0.17) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Image(systemName: "line.3.horizontal")
                 Spacer()
                 Circle().fill(ink.opacity(0.5)).frame(width: 4, height: 4)
             }.font(.system(size: 8))
-            Text("Aa").font(.system(size: 30, design: .serif))
-            VStack(alignment: .leading, spacing: 5) {
-                Capsule().fill(ink.opacity(0.55)).frame(height: 3)
-                Capsule().fill(ink.opacity(0.3)).frame(width: 35, height: 3)
+            Text("Aa").font(.system(size: 23, design: .serif))
+            VStack(alignment: .leading, spacing: 3) {
+                Capsule().fill(ink.opacity(0.55)).frame(height: 2)
+                Capsule().fill(ink.opacity(0.3)).frame(width: 35, height: 2)
             }
             Spacer(minLength: 0)
             HStack {
@@ -115,12 +111,12 @@ private struct ODAppearancePreview: View {
                 Spacer()
                 Image(systemName: "arrow.up.circle.fill")
             }
-            .font(.system(size: 11))
-            .padding(7)
+            .font(.system(size: 9))
+            .padding(5)
             .background(surface, in: RoundedRectangle(cornerRadius: 9))
         }
         .foregroundStyle(ink)
-        .padding(12)
+        .padding(8)
         .background(page)
         .accessibilityHidden(true)
     }

@@ -93,22 +93,25 @@ struct LegalDocumentView: View {
     private var actionBar: some View {
         VStack(spacing: 12) {
             if let confirm = onReadConfirmed {
-                Button(scrolledToEnd ? "I have read this" : "Scroll to the end to continue") {
+                Button {
                     confirm()
                     dismiss()
+                } label: {
+                    Text(scrolledToEnd ? "I have read this" : "Scroll to the end to continue")
+                        .font(.body.weight(.semibold))
+                        .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .buttonStyle(.glassProminent).controlSize(.large)
+                .buttonStyle(.glassProminent).controlSize(.regular)
                 .tint(T.ink).foregroundStyle(T.bg)
                 .disabled(!scrolledToEnd)
             }
             if let secondary = secondaryAction {
                 Button(secondary.label, role: .destructive, action: secondary.run)
-                    .buttonStyle(.glass).controlSize(.large)
+                    .buttonStyle(.glass).controlSize(.regular)
             }
             if let primary = primaryAction {
                 Button(primary.label, action: primary.run)
-                    .buttonStyle(.glassProminent).controlSize(.large)
+                    .buttonStyle(.glassProminent).controlSize(.regular)
                     .tint(T.ink).foregroundStyle(T.bg)
             }
         }

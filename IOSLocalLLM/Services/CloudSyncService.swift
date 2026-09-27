@@ -107,10 +107,15 @@ final class CloudSyncService: ObservableObject {
             }
         }
 
-        // Merge into local — last write wins by updatedAt
+        // Merge into local — last write wins by updatedAt. No `await` may run
+        // between reading the local set and applying the merge: this type is
+        // @MainActor, so a suspension lets the chat save a finished reply or a
+        // new conversation, which `replaceAll` would then overwrite with the
+        // stale snapshot. Remote tombstone deletes therefore run afterwards.
         let store = ConversationStore.shared
         var localByID = Dictionary(uniqueKeysWithValues:
             store.conversations.map { ($0.id.uuidString, $0) })
+        var tombstonedRecords: [(id: String, recordID: CKRecord.ID)] = []
 
         for (id, remote) in remoteByID {
             // Deletion propagation: if we deleted this conversation locally and
@@ -123,14 +128,7 @@ final class CloudSyncService: ObservableObject {
             // revives the conversation.
             if let deletedAt = CloudSyncTombstones.deletionDate(id),
                remote.conv.updatedAt <= deletedAt {
-                do {
-                    _ = try await privateDB.deleteRecord(withID: remote.record.recordID)
-                } catch {
-                    Diagnostics.shared.warning(
-                        "cloud tombstone delete failed for \(id): \(error.localizedDescription)",
-                        category: "cloudSync"
-                    )
-                }
+                tombstonedRecords.append((id, remote.record.recordID))
                 continue
             }
             // Remote is live (or was re-edited after our delete) — clear any
@@ -147,6 +145,17 @@ final class CloudSyncService: ObservableObject {
 
         // Apply merged set back to local store
         store.replaceAll(with: Array(localByID.values))
+
+        for tombstone in tombstonedRecords {
+            do {
+                _ = try await privateDB.deleteRecord(withID: tombstone.recordID)
+            } catch {
+                Diagnostics.shared.warning(
+                    "cloud tombstone delete failed for \(tombstone.id): \(error.localizedDescription)",
+                    category: "cloudSync"
+                )
+            }
+        }
 
         // Push: every local conversation that's newer than (or missing from) remote
         var pushFailures = 0

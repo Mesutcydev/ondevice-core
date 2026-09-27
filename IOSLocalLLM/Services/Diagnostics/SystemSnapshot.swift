@@ -62,6 +62,13 @@ enum SystemSnapshot {
         lines.append("app: \(appVersion())")
         lines.append("device: \(deviceModelIdentifier()) · iOS \(osVersion())")
         lines.append("memory: \(mem.available.formattedBytes) avail of \(mem.total.formattedBytes) total")
+        // The per-app limit iOS enforces is footprint + available; physical RAM
+        // is not the budget. The raised limit needs the entitlement in BOTH the
+        // signature and the provisioning profile, which re-signers can drop.
+        let memoryKey = "com.apple.developer.kernel.increased-memory-limit"
+        let signed = (EntitlementsProbe.current[memoryKey] as? Bool) == true
+        let profiled = (EntitlementsProbe.profile[memoryKey] as? Bool) == true
+        lines.append("app memory limit: \((MemoryAdvisor.physFootprint + mem.available).formattedBytes) (footprint \(MemoryAdvisor.physFootprint.formattedBytes)) · increased-memory-limit: signature \(signed ? "yes" : "no"), profile \(profiled ? "yes" : "no")")
         lines.append("thermal: \(thermalState()) · low-power: \(lowPowerMode())")
         return lines.joined(separator: "\n")
     }

@@ -24,6 +24,7 @@ struct SettingsView: View {
     /// the new picker without uninstalling.
     @State private var showingModelPickerSheet: Bool = false
     @State private var showingKnowledgeBase: Bool = false
+    @State private var selectedCategory: SettingsCategory?
     @ObservedObject private var knowledgeBase = KnowledgeBaseService.shared
 
     private var fastVLMStatus: FastVLMComponentStatus { fastVLM.componentStatus }
@@ -40,32 +41,58 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Preferences") {
-                    ForEach(SettingsCategory.allCases) { category in
-                        NavigationLink {
-                            categoryDestination(category)
+                privacyHero
+                    .listRowInsets(EdgeInsets(top: 16, leading: ODLayout.settingsPageInset, bottom: 8, trailing: ODLayout.settingsPageInset))
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+                Section("WORKSPACE") {
+                    ForEach([SettingsCategory.userGuide, .capture, .modelsAI, .voice]) { category in
+                        Button {
+                            selectedCategory = category
                         } label: {
-                            Label {
-                                VStack(alignment: .leading, spacing: ODLayout.unit) {
-                                    Text(category.title.capitalized).font(.body)
-                                    Text(category.subtitle).font(.footnote).foregroundStyle(.secondary)
-                                }
-                            } icon: {
-                                Image(systemName: category.icon).foregroundStyle(.secondary)
-                            }
-                            .padding(.vertical, ODLayout.unit)
+                            categoryRow(category)
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Opens \(category.title) settings")
+                        .listRowInsets(EdgeInsets(top: 4, leading: ODLayout.settingsPageInset, bottom: 4, trailing: ODLayout.settingsPageInset))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                     }
                 }
-                Section {
-                    aboutSection
+                Section("APP") {
+                    ForEach([SettingsCategory.appearance, .system, .privacyLegal]) { category in
+                        Button {
+                            selectedCategory = category
+                        } label: {
+                            categoryRow(category)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Opens \(category.title) settings")
+                        .listRowInsets(EdgeInsets(top: 4, leading: ODLayout.settingsPageInset, bottom: 4, trailing: ODLayout.settingsPageInset))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                    }
+                }
+                SettingsPageSection(title: "About") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        aboutSection
+                    }
+                    .padding(16)
                 }
             }
-            .listStyle(.insetGrouped)
+            .listStyle(.plain)
+            .listSectionSpacing(16)
             .scrollContentBackground(.hidden)
             .background { ODPageBackground().ignoresSafeArea() }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(item: $selectedCategory) { category in
+                if category == .userGuide {
+                    UserGuideView()
+                } else {
+                    categoryDestination(category)
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
@@ -111,7 +138,7 @@ struct SettingsView: View {
     // 13 sections to 6 rows. The sub-pages render the original KSection
     // bodies inline, so no content was lost — only the firehose.
 
-    enum SettingsCategory: String, CaseIterable, Identifiable {
+    enum SettingsCategory: String, CaseIterable, Identifiable, Hashable {
         case userGuide
         case capture
         case modelsAI
@@ -124,13 +151,13 @@ struct SettingsView: View {
 
         var title: String {
             switch self {
-            case .userGuide:    return "user guide"
-            case .capture:      return "capture & lens"
-            case .modelsAI:     return "models & ai"
-            case .voice:        return "voice"
-            case .appearance:   return "appearance"
-            case .system:       return "system & diagnostics"
-            case .privacyLegal: return "privacy & legal"
+            case .userGuide:    return "User Guide"
+            case .capture:      return "Capture & Lens"
+            case .modelsAI:     return "Models & AI"
+            case .voice:        return "Voice"
+            case .appearance:   return "Appearance"
+            case .system:       return "System & Diagnostics"
+            case .privacyLegal: return "Privacy & Legal"
             }
         }
 
@@ -177,7 +204,7 @@ struct SettingsView: View {
                 Text(loc.t("On-device & private"))
                     .font(S.sans(17, .semibold))
                     .foregroundStyle(S.ink)
-                Text(loc.t("No account. Your data never leaves this iPhone."))
+                Text("Your chats stay here unless you choose a network feature.")
                     .font(S.sans(13))
                     .foregroundStyle(S.ink2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -187,42 +214,43 @@ struct SettingsView: View {
         .padding(StudioSpacing.l)
         .background(
             S.surfaceRaised,
-            in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+            in: RoundedRectangle(cornerRadius: ODLayout.settingsCardCorner, style: .continuous)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
+            RoundedRectangle(cornerRadius: ODLayout.settingsCardCorner, style: .continuous)
                 .strokeBorder(S.strokeRest, lineWidth: 1)
         )
     }
 
     private func categoryRow(_ cat: SettingsCategory) -> some View {
         let S = T.studio
-        return VStack(spacing: 0) {
-            HStack(spacing: StudioSpacing.m) {
+        return HStack(spacing: StudioSpacing.m) {
                 Image(systemName: cat.icon)
-                    .font(.system(size: 14))
-                    .foregroundStyle(S.ink)
-                    .frame(width: 34, height: 34)
-                    .background(S.fillActive,
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(T.accent)
+                .frame(width: ODLayout.settingsIconSize, height: ODLayout.settingsIconSize)
+                    .background(T.accentSoft,
                                 in: RoundedRectangle(cornerRadius: StudioRadius.glyph,
                                                      style: .continuous))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(cat.title.capitalized)
+                    Text(cat.title)
                         .font(S.sans(15, .medium))
                         .foregroundStyle(S.ink)
                     Text(cat.subtitle)
                         .font(S.sans(13))
                         .foregroundStyle(S.ink3)
-                        .lineLimit(1)
+                        .lineLimit(2)
                 }
                 Spacer(minLength: StudioSpacing.s)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12))
-                    .foregroundStyle(S.chevron)
-            }
-            .padding(.vertical, 12)
-            StudioHairline(color: S.rule2)
+        }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 64)
+        .background(S.surfaceRaised,
+                    in: RoundedRectangle(cornerRadius: ODLayout.settingsCardCorner, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: ODLayout.settingsCardCorner, style: .continuous)
+                .strokeBorder(S.strokeRest, lineWidth: 1)
         }
         .contentShape(Rectangle())
     }
@@ -253,10 +281,11 @@ struct SettingsView: View {
                     legalSection
                 }
         }
-        .listStyle(.insetGrouped)
+        .listStyle(.plain)
+        .listSectionSpacing(16)
         .scrollContentBackground(.hidden)
         .background { ODPageBackground().ignoresSafeArea() }
-        .navigationTitle(cat.title.capitalized)
+        .navigationTitle(cat.title)
         .navigationBarTitleDisplayMode(.inline)
 
     }
@@ -266,7 +295,7 @@ struct SettingsView: View {
     // MARK: - Analysis Mode Section
 
     private var analysisModeSection: some View {
-        KSection(title: "analysis_mode") {
+        SettingsPageSection(title: "Analysis mode") {
             VStack(alignment: .leading, spacing: 10) {
                 Picker("Mode", selection: $settings.analysisMode) {
                     ForEach(AnalysisMode.allCases) { mode in
@@ -288,10 +317,11 @@ struct SettingsView: View {
     }
 
     private var modelsSection: some View {
-        KSection(title: "models") {
-            // Download center link — primary entry point
-            NavigationLink {
-                ModelDownloadCenterView()
+        Group {
+        SettingsPageSection(title: "Models") {
+            Button {
+                dismiss()
+                AppBridge.shared.requestTab(.models)
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "arrow.down.circle")
@@ -300,15 +330,17 @@ struct SettingsView: View {
                         .frame(width: 32, height: 32)
                         .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accentSoft))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Download models")
-                            .font(T.sans(13, .semibold))
+                        Text("Models")
+                            .font(T.sans(15, .semibold))
                             .foregroundColor(T.ink)
-                        KMono(text: "FastVLM · Qwen3 · KittenTTS", size: 10, color: T.ink3, mono: false)
+                        Text("Browse, import, and manage models")
+                            .font(T.sans(12))
+                            .foregroundColor(T.ink3)
                     }
                     Spacer()
                     downloadStatusBadge
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10))
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(T.ink3)
                 }
                 .padding(.horizontal, 14)
@@ -334,9 +366,11 @@ struct SettingsView: View {
                         .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accentSoft))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Pick models again")
-                            .font(T.sans(13, .semibold))
+                            .font(T.sans(15, .semibold))
                             .foregroundColor(T.ink)
-                        KMono(text: "Open the guided model picker", size: 10, color: T.ink3, mono: false)
+                        Text("Open the guided model picker")
+                            .font(T.sans(12))
+                            .foregroundColor(T.ink3)
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
@@ -388,7 +422,9 @@ struct SettingsView: View {
                     }
                 }, last: true)
             }
-            Rectangle().fill(T.rule).frame(height: 1)
+        }
+
+        SettingsPageSection(title: "Default choices") {
             // Active assistant model + picker — tap to open the Models tab
             // (the unified hub now owns this flow; the legacy picker sheet
             // is still mounted below for share-extension entry points).
@@ -522,8 +558,6 @@ struct SettingsView: View {
                 }
             }
         }
-        .sheet(isPresented: $showAssistantModelPicker) {
-            AssistantModelPickerView()
         }
         .sheet(isPresented: $showVoiceModelPicker) {
             VoiceModelPickerView()
@@ -576,29 +610,26 @@ struct SettingsView: View {
     private var downloadStatusBadge: some View {
         let center = ModelDownloadCenter.shared
         let readyCount = center.models.filter { $0.isReady }.count
-        let total = center.models.count
         let anyActive = center.models.contains { $0.state.isActive }
 
         if anyActive {
             KStatusBadge(glyph: .download, label: "downloading", color: T.warn)
-        } else if readyCount == total {
-            KStatusBadge(glyph: .ready, label: "all ready", color: T.good)
+        } else if readyCount > 0 {
+            KMono(text: "\(readyCount) on device", size: 10, color: T.ink3, mono: false)
         } else {
-            KMono(text: "\(readyCount)/\(total) ready", size: 10, color: T.ink3, mono: false)
+            KMono(text: "No models yet", size: 10, color: T.ink3, mono: false)
         }
     }
 
     // MARK: - System Status Section
 
     @State private var showSystemStatus = false
-    @State private var showDownloadCenter = false
-    @State private var showAssistantModelPicker = false
     @State private var showVoiceModelPicker = false
     @State private var showPersonaPicker = false
     @State private var showSnippetEditor = false
 
     private var systemStatusSection: some View {
-        KCollapsibleSection(title: "system_status", defaultExpanded: false) {
+        SettingsPageDisclosureSection(title: "System status", symbol: "iphone.gen3", defaultExpanded: false) {
             VStack(spacing: 0) {
                 HStack(spacing: 10) {
                     ZStack {
@@ -670,7 +701,7 @@ struct SettingsView: View {
     // breathe under the title.
 
     private var apiSettingsSection: some View {
-        KSection(title: "api_settings") {
+        SettingsPageSection(title: "API settings") {
             // Token row — description + Set/Update button. The trailing
             // button label flips based on whether a token is already
             // saved, so the row carries that state without a separate
@@ -744,7 +775,7 @@ struct SettingsView: View {
     // MARK: - FastVLM Pipeline Section
 
     private var fastvlmPipelineSection: some View {
-        KCollapsibleSection(title: "fastvlm_pipeline", defaultExpanded: false) {
+        SettingsPageDisclosureSection(title: "FastVLM pipeline", symbol: "camera.aperture", defaultExpanded: false) {
             componentStatusRow("Encoder (FastViT-HD)", state: fastVLMStatus.encoder)
             componentStatusRow("Projector (linear+GELU)", state: fastVLMStatus.projector)
             componentStatusRow("Decoder (Qwen2-0.5B)", state: fastVLMStatus.decoder)
@@ -831,7 +862,6 @@ struct SettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .sheet(isPresented: $showDownloadCenter) { ModelDownloadCenterView() }
     }
 
     // MARK: - Developer Section
@@ -841,7 +871,7 @@ struct SettingsView: View {
     // user escape hatches don't live in the main flow."
 
     private var developerSection: some View {
-        KCollapsibleSection(title: "developer", tinted: true, defaultExpanded: false) {
+        SettingsPageDisclosureSection(title: "Developer", symbol: "hammer", defaultExpanded: false) {
             // Live diagnostics: crash trail, logs, memory/thermal, MetricKit.
             NavigationLink {
                 DiagnosticsView()
@@ -850,11 +880,10 @@ struct SettingsView: View {
                     Image(systemName: "stethoscope")
                         .font(.system(size: 13))
                         .foregroundColor(T.ink)
-                    KMono(text: "Diagnostics & crash log", size: 11.5, color: T.ink, mono: false)
+                    Text("Diagnostics & crash log")
+                        .font(T.sans(15))
+                        .foregroundColor(T.ink)
                     Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10))
-                        .foregroundColor(T.ink3)
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
@@ -985,7 +1014,7 @@ struct SettingsView: View {
     }
 
     private var assistantSection: some View {
-        KSection(title: "assistant") {
+        SettingsPageSection(title: "Assistant") {
             KRow(label: "thinking mode", trailing: {
                 KToggle(isOn: $settings.assistantThinking)
             })
@@ -1064,20 +1093,27 @@ struct SettingsView: View {
 
     // MARK: - Voice Section
 
+    @State private var showVoiceSettings = false
+
     private var voiceSection: some View {
-        KSection(title: "voice") {
-            NavigationLink {
-                VoiceSettingsView()
+        Group {
+        SettingsPageSection(title: "Playback") {
+            Button {
+                showVoiceSettings = true
             } label: {
                 HStack {
                     Image(systemName: "speaker.wave.2")
                         .font(.system(size: 13))
                         .foregroundColor(T.ink)
-                    KMono(text: "Voice settings", size: 11.5, color: T.ink, mono: false)
+                    Text("Voice settings")
+                        .font(T.sans(15, .medium))
+                        .foregroundColor(T.ink)
                     Spacer()
-                    KMono(text: currentEngineLabel.lowercased(), size: 10, color: T.ink3, mono: false)
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 10))
+                    Text(currentEngineLabel)
+                        .font(T.sans(12))
+                        .foregroundColor(T.ink3)
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(T.ink3)
                 }
                 .padding(.horizontal, 14)
@@ -1090,16 +1126,6 @@ struct SettingsView: View {
                 KToggle(isOn: $settings.voiceAutoRead)
             })
 
-            Rectangle().fill(T.rule).frame(height: 1)
-
-            // Speech-to-text provider picker. Whisper option is disabled
-            // when no whisper model is installed on disk so users can't
-            // toggle into a broken state — tapping the segment when
-            // disabled would silently fall back to system anyway, which
-            // is confusing. The row owns its own download affordance so
-            // users can fetch Whisper inline without leaving Settings.
-            WhisperSTTBlock()
-
             if VoiceService.shared.isPlaying {
                 Rectangle().fill(T.rule).frame(height: 1)
                 KSecondaryButton(label: "Stop speaking",
@@ -1111,6 +1137,12 @@ struct SettingsView: View {
                 .padding(10)
             }
         }
+
+        SettingsPageSection(title: "Speech input") {
+            WhisperSTTBlock()
+        }
+        }
+        .sheet(isPresented: $showVoiceSettings) { VoiceSettingsView() }
     }
 
     private var currentEngineLabel: String {
@@ -1205,7 +1237,7 @@ struct SettingsView: View {
     @ObservedObject private var safetyMonitor = DeviceSafetyMonitor.shared
 
     private var thermalProtectionSection: some View {
-        KCollapsibleSection(title: "thermal_protection", defaultExpanded: false) {
+        SettingsPageDisclosureSection(title: "Thermal protection", symbol: "thermometer.medium", defaultExpanded: false) {
             VStack(spacing: 0) {
                 // Live state — both the raw iOS reading AND our debounced
                 // "effective" value. Useful when the user thinks the warning
@@ -1280,7 +1312,7 @@ struct SettingsView: View {
     @State private var lastWipeReceipt: WipeAllDataService.Receipt?
 
     private var privacyResetSection: some View {
-        KSection(title: "privacy_and_reset") {
+        SettingsPageSection(title: "Privacy and reset") {
             VStack(spacing: 0) {
                 Button(role: .destructive) {
                     showWipeConfirm = true
@@ -1290,7 +1322,9 @@ struct SettingsView: View {
                         Image(systemName: "trash.slash").accessibilityLabel("Wipe all data")
                             .font(.system(size: 12))
                             .foregroundColor(T.bad)
-                        KMono(text: "Wipe all on-device data", size: 11.5, color: T.bad, mono: false)
+                        Text("Wipe all on-device data")
+                            .font(T.sans(15, .medium))
+                            .foregroundColor(T.bad)
                         Spacer()
                         Image(systemName: "chevron.right")
                             .font(.system(size: 10))
@@ -1342,12 +1376,12 @@ struct SettingsView: View {
     @State private var showDeviceSafety = false
 
     private var legalSection: some View {
-        KSection(title: "legal") {
-            legalRow(icon: "lock.shield", label: "privacy policy") { showPrivacy = true }
-            legalRow(icon: "doc.text", label: "open-source license & safety") { showEULA = true }
-            legalRow(icon: "exclamationmark.triangle", label: "ai output disclaimer") { showDisclaimer = true }
-            legalRow(icon: "thermometer.medium", label: "device safety notice") { showDeviceSafety = true }
-            legalRow(icon: "heart.text.square", label: "open-source & attributions",
+        SettingsPageSection(title: "Legal") {
+            legalRow(icon: "lock.shield", label: "Privacy Policy") { showPrivacy = true }
+            legalRow(icon: "doc.text", label: "Open-source License & Safety") { showEULA = true }
+            legalRow(icon: "exclamationmark.triangle", label: "AI Output Disclaimer") { showDisclaimer = true }
+            legalRow(icon: "thermometer.medium", label: "Device Safety Notice") { showDeviceSafety = true }
+            legalRow(icon: "heart.text.square", label: "Open-source & Attributions",
                      last: URL(string: LegalDocuments.supportURL) == nil) {
                 showAttributions = true
             }
@@ -1372,7 +1406,9 @@ struct SettingsView: View {
                         Image(systemName: "questionmark.circle")
                             .font(.system(size: 12))
                             .foregroundColor(T.accent)
-                        KMono(text: "Support", size: 11.5, color: T.accent, mono: false)
+                        Text("Support")
+                            .font(T.sans(15, .medium))
+                            .foregroundColor(T.accent)
                         Spacer()
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 10))
@@ -1411,14 +1447,16 @@ struct SettingsView: View {
                 Image(systemName: icon)
                     .font(.system(size: 12))
                     .foregroundColor(T.ink)
-                KMono(text: label, size: 11.5, color: T.ink, mono: false)
+                Text(label)
+                    .font(T.sans(15))
+                    .foregroundColor(T.ink)
                 Spacer()
                 Image(systemName: "chevron.right")
                     .font(.system(size: 10))
                     .foregroundColor(T.ink3)
             }
             .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .frame(minHeight: 54)
             .overlay(alignment: .bottom) {
                 if !last {
                     Rectangle().fill(T.rule).frame(height: 1)
@@ -1556,6 +1594,109 @@ struct SettingsView: View {
     }
 }
 
+/// Settings rows are intentionally composed inside one List row. The old
+/// `KSection` emitted each hand-drawn hairline as its own List row, which
+/// created empty 44-point bands and duplicate system separators on iPhone.
+private struct SettingsPageSection<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: () -> Content
+    @Environment(\.koduTheme) private var T
+
+    var body: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 0) {
+                content()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: ODLayout.settingsCardCorner, style: .continuous)
+                    .fill(T.surface)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: ODLayout.settingsCardCorner, style: .continuous)
+                    .strokeBorder(T.rule, lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: ODLayout.settingsCardCorner, style: .continuous))
+            .listRowInsets(EdgeInsets(top: 0, leading: ODLayout.settingsPageInset, bottom: 0, trailing: ODLayout.settingsPageInset))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        } header: {
+            Text(title.uppercased())
+                .font(T.sans(11, .semibold))
+                .tracking(1.1)
+                .foregroundColor(T.ink3)
+                .textCase(nil)
+                .padding(.horizontal, ODLayout.settingsPageInset)
+        }
+    }
+}
+
+private struct SettingsPageDisclosureSection<Content: View>: View {
+    let title: String
+    let symbol: String
+    @ViewBuilder let content: () -> Content
+    @Environment(\.koduTheme) private var T
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var expanded: Bool
+
+    init(title: String, symbol: String, defaultExpanded: Bool,
+         @ViewBuilder content: @escaping () -> Content) {
+        self.title = title
+        self.symbol = symbol
+        self.content = content
+        _expanded = State(initialValue: defaultExpanded)
+    }
+
+    var body: some View {
+        Section {
+            VStack(spacing: 0) {
+                Button {
+                    if reduceMotion { expanded.toggle() }
+                    else { withAnimation(.easeInOut(duration: 0.22)) { expanded.toggle() } }
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: symbol)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(T.accent)
+                            .frame(width: ODLayout.settingsIconSize, height: ODLayout.settingsIconSize)
+                            .background(T.accentSoft,
+                                        in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        Text(title)
+                            .font(T.sans(15, .semibold))
+                            .foregroundColor(T.ink)
+                        Spacer(minLength: 8)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(T.ink3)
+                            .rotationEffect(.degrees(expanded ? 180 : 0))
+                    }
+                    .padding(.horizontal, 16)
+                    .frame(minHeight: ODLayout.settingsRowMinimumHeight)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityValue(expanded ? "Expanded" : "Collapsed")
+
+                if expanded {
+                    Rectangle().fill(T.rule).frame(height: 1)
+                        .padding(.horizontal, 16)
+                    VStack(alignment: .leading, spacing: 0) { content() }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .background(RoundedRectangle(cornerRadius: ODLayout.settingsCardCorner, style: .continuous).fill(T.surface))
+            .overlay {
+                RoundedRectangle(cornerRadius: ODLayout.settingsCardCorner, style: .continuous)
+                    .strokeBorder(T.rule, lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: ODLayout.settingsCardCorner, style: .continuous))
+            .listRowInsets(EdgeInsets(top: 0, leading: ODLayout.settingsPageInset, bottom: 0, trailing: ODLayout.settingsPageInset))
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+        }
+    }
+}
+
 // MARK: - Response style presets
 
 private enum ResponseStyle: String, CaseIterable, Hashable {
@@ -1628,6 +1769,7 @@ private struct WhisperSTTBlock: View {
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var voiceServiceObs = VoiceService.shared
     @StateObject private var observer: DownloadObserver
+    @State private var confirmCancel = false
     @Environment(\.koduTheme) private var T
 
     private let whisperModel: DownloadableModel?
@@ -1677,6 +1819,13 @@ private struct WhisperSTTBlock: View {
                 downloadCard
             }
         }
+        .confirmationDialog("Cancel Whisper download?", isPresented: $confirmCancel) {
+            Button("Cancel and remove partial files", role: .destructive) {
+                whisperModel?.cancel()
+            }
+        } message: {
+            Text("Pause keeps your progress. Cancel removes the partial download.")
+        }
     }
 
     @ViewBuilder
@@ -1686,7 +1835,7 @@ private struct WhisperSTTBlock: View {
             progressCard
         case .failed(let msg):
             failedCard(message: msg)
-        case .idle, .ready:
+        case .idle, .paused, .ready:
             idleCard
         }
     }
@@ -1697,18 +1846,33 @@ private struct WhisperSTTBlock: View {
                 Image(systemName: "info.circle")
                     .font(.system(size: 11))
                     .foregroundColor(T.ink3)
-                KMono(text: "Install Whisper for on-device, multilingual STT.", size: 10, color: T.ink3, mono: false)
+                Text("English speech recognition on device")
+                    .font(T.sans(12))
+                    .foregroundColor(T.ink3)
                 .fixedSize(horizontal: false, vertical: true)
                 Spacer()
             }
-            KSecondaryButton(
-                label: "Download Whisper base.en (~142 MB)",
-                systemImage: "arrow.down.circle",
-                trailing: nil
-            ) {
+            Button {
                 whisperModel?.start()
                 HapticManager.impact(.medium)
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: observer.state == .paused ? "play.fill" : "arrow.down")
+                        .font(.system(size: 13, weight: .semibold))
+                    Text(observer.state == .paused ? "Resume download" : "Download Whisper")
+                        .font(T.sans(14, .semibold))
+                    Spacer(minLength: 8)
+                    Text("142 MB")
+                        .font(T.sans(12))
+                        .foregroundColor(T.ink2)
+                }
+                .foregroundColor(T.accent)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 48)
+                .background(T.accentSoft,
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
@@ -1728,14 +1892,24 @@ private struct WhisperSTTBlock: View {
                 )
                 Spacer()
                 Button {
-                    whisperModel?.cancel()
+                    whisperModel?.pause()
                     HapticManager.impact(.light)
                 } label: {
-                    Image(systemName: "xmark.circle.fill").accessibilityLabel("Cancel download")
-                        .font(.system(size: 14))
-                        .foregroundColor(T.ink3)
+                    Image(systemName: "pause.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(T.ink)
+                        .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Pause download")
+                Button { confirmCancel = true } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(T.bad)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Cancel download")
             }
             // Thin progress bar mirroring the Download Center.
             GeometryReader { geo in

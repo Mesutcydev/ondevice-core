@@ -42,7 +42,15 @@ final class BackgroundDownloadCoordinator: NSObject {
         cfg.allowsCellularAccess = !wifiOnly
         cfg.allowsExpensiveNetworkAccess = !wifiOnly
         cfg.waitsForConnectivity = true
-        return URLSession(configuration: cfg, delegate: self, delegateQueue: .main)
+        // didFinishDownloadingTo must move/copy the temporary file before its
+        // callback returns. A cross-volume fallback can copy several GB; on
+        // the main queue that blocks UI and can trigger the iOS watchdog at
+        // 100%. Keep callbacks serial, but perform file finalization off-main.
+        let delegateQueue = OperationQueue()
+        delegateQueue.name = "com.mesutcydev.ondevicemax.download-finalization"
+        delegateQueue.maxConcurrentOperationCount = 1
+        delegateQueue.qualityOfService = .utility
+        return URLSession(configuration: cfg, delegate: self, delegateQueue: delegateQueue)
     }()
 
     /// Watches the current network path so enqueue-time checks can tell
@@ -231,6 +239,32 @@ final class BackgroundDownloadCoordinator: NSObject {
             }
         }
     }
+
+    /// Stop matching transfers while retaining URLSession resume data. The
+    /// callback is awaited before a new transfer can consume its sidecar.
+    func pauseTasks(matching destinationPrefix: String) async {
+        let matchingIDs = Set(pendingByTaskID
+            .filter { $0.value.destination.path.hasPrefix(destinationPrefix) }
+            .map(\.key))
+
+        await withCheckedContinuation { continuation in
+            session.getAllTasks { tasks in
+                let group = DispatchGroup()
+                for case let task as URLSessionDownloadTask in tasks
+                    where matchingIDs.contains(task.taskIdentifier) {
+                    group.enter()
+                    let url = task.originalRequest?.url ?? task.currentRequest?.url
+                    task.cancel(byProducingResumeData: { resumeData in
+                        if let resumeData {
+                            Self.storeResumeData(resumeData, for: url)
+                        }
+                        group.leave()
+                    })
+                }
+                group.notify(queue: .main) { continuation.resume() }
+            }
+        }
+    }
 }
 
 // MARK: - URLSessionDownloadDelegate
@@ -250,11 +284,19 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
         let statusCode = response?.statusCode ?? 0
         let urlPath = downloadTask.originalRequest?.url?.path ?? "<unknown>"
 
-        // The URLSession was constructed with `delegateQueue: .main`, so this
-        // method already runs on the main thread. We can use
-        // MainActor.assumeIsolated to access MainActor-isolated state safely.
-        let pending: Pending? = MainActor.assumeIsolated {
-            self.pendingByTaskID.removeValue(forKey: taskID)
+        // Only the tiny pending-map operation crosses to MainActor. The file
+        // move/copy below stays on the dedicated delegate queue.
+        let pending: Pending?
+        if Thread.isMainThread {
+            pending = MainActor.assumeIsolated {
+                self.pendingByTaskID.removeValue(forKey: taskID)
+            }
+        } else {
+            pending = DispatchQueue.main.sync {
+                MainActor.assumeIsolated {
+                    self.pendingByTaskID.removeValue(forKey: taskID)
+                }
+            }
         }
         // After an app relaunch the in-memory Pending map is gone, but the
         // destination was stored on the task itself (taskDescription) at
@@ -309,6 +351,10 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
                 // into a .tmp sidecar then rename so a mid-copy crash can't
                 // leave a half-written file at the final path. If even the
                 // rename is rejected, a plain direct copy is the last resort.
+                Diagnostics.shared.breadcrumb(
+                    "Finalizing downloaded file via copy fallback",
+                    category: "hf-download"
+                )
                 let tmp = URL(fileURLWithPath: destination.path + ".tmp")
                 try? fm.removeItem(at: tmp)
                 do {
@@ -324,6 +370,7 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
             FileManager.excludeFromBackup(destination)
             // The transfer finished — any stale resume data for this URL is
             // now useless.
+            Diagnostics.shared.breadcrumb("Downloaded file finalized", category: "hf-download")
             Self.clearResumeData(for: downloadTask.originalRequest?.url
                                        ?? downloadTask.currentRequest?.url)
             pending?.continuation.resume(returning: destination)

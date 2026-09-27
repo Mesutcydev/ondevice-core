@@ -28,13 +28,19 @@ enum ToolRunner {
     /// advertise tools for curated packs whose complete dialect is supported.
     /// MLX/GGUF keep the app's existing tolerant text protocol so adding Core
     /// AI cannot regress imported or previously working models.
+    ///
+    /// Resolution goes through `RuntimeEngineFactory.capabilities` so a model
+    /// runtime that cannot safely speak the tool protocol (Core AI, future
+    /// Edge0) requires explicit model support.
     static func toolsEnabled(
         settingEnabled: Bool,
         runtime: ModelRuntime,
         modelSupportsTools: Bool
     ) -> Bool {
         guard settingEnabled else { return false }
-        return runtime != .coreAI || modelSupportsTools
+        return RuntimeEngineFactory
+            .capabilities(runtime: runtime, modelTools: modelSupportsTools)
+            .supportsTools
     }
 
     /// Short guardrail for Core AI models whose native tool dialect is not
@@ -81,66 +87,24 @@ enum ToolRunner {
     /// are available and the wire format to invoke them.
     static let systemPromptAddendum = """
 
-    You have access to the following on-device tools. When the user's request
-    can be answered by one, emit a fenced `tool` block containing JSON:
-
-      ```tool
-      {"name": "TOOL_NAME", "args": { ... }}
-      ```
-
-    Then STOP. The runtime will execute the tool and reply with a
-    `tool_result` block; you should produce your final natural-language
-    answer using that result. Only invoke a tool when it directly helps.
-
-    Do not invent a tool result. Never write a `tool_result` block yourself.
-    Do not claim you searched the web, read a file, looked at an image, or
-    generated an image unless a `tool_result` for that call is already in
-    the conversation. If you need current or external data and cannot call
-    a tool, say you do not have it.
-
-    Available tools:
-      • calculator(expression: string)  — evaluates an arithmetic expression
-      • datetime(timezone?: string)     — current date/time, optionally in a tz
-      • unit_convert(value: number, from: string, to: string) — basic SI/imperial conversions
-      • web_search(query: string)       — runs an on-device web search +
-                                          fetch + extract pipeline. Returns
-                                          the compressed text of the top
-                                          results so you can quote from
-                                          them in your answer.
-                                          If query is an http(s) URL, fetches
-                                          that page directly.
-      • file_read(prompt?: string)      — asks the user to pick one or more
-                                          local text/code/PDF files, then
-                                          returns capped file contents.
-                                          Use only when the user's request
-                                          needs a file they have not already
-                                          attached.
-      • describe_image()                — describes the most recently
-                                          attached/imported image with the
-                                          local visual model. Use when the
-                                          user asks about an image.
-      • knowledge_base(query: string)   — semantic search over the user's own
-                                          indexed files (their Knowledge Base),
-                                          fully on-device. Returns the most
-                                          relevant excerpts with their [source].
-                                          Use when the question is about the
-                                          user's documents/code. Returns "No
-                                          relevant passages" if nothing matches.
-      • index_document(text: string, name?: string) — adds text to the user's
-                                          Knowledge Base so it can be retrieved
-                                          later with knowledge_base. Use when the
-                                          user asks you to remember/save a snippet
-                                          or document for future questions.
-      • generate_image(prompt: string, negative_prompt?: string, steps?: number, model?: string)
-                                        — generates an image on-device with the
-                                          selected diffusion model. The image
-                                          appears in the app's Image tab. The
-                                          model must already be downloaded; if it
-                                          isn't, the tool returns an error asking
-                                          the user to install it first.
-
-    You may chain tools: after a `tool_result`, you can emit another `tool`
-    block if you still need more information, or give your final answer.
+    Tools: when one of these on-device tools would help, reply with only a
+    fenced tool block, then stop:
+    ```tool
+    {"name": "calculator", "args": {"expression": "2*(3+4)"}}
+    ```
+    The app runs it and returns a `tool_result`; answer from that result. You
+    may call another tool after a result. Do not invent a tool result.
+    Never write a `tool_result` block yourself, and never claim you searched,
+    read a file, looked at an image, or made an image without one.
+    - calculator(expression): arithmetic
+    - datetime(timezone?): current date and time
+    - unit_convert(value, from, to): unit conversion
+    - web_search(query): search the web, or fetch a page when query is a URL
+    - file_read(prompt?): ask the user to pick files to read, only when they are not attached
+    - describe_image(): describe the latest image with the vision model
+    - knowledge_base(query): search the user's indexed files; cite their [source]
+    - index_document(text, name?): save text to the Knowledge Base when asked to remember it
+    - generate_image(prompt, negative_prompt?, steps?, model?): make an image with the installed image model
     """
 
     // MARK: - Detection
@@ -149,7 +113,17 @@ enum ToolRunner {
     /// Small/local models commonly ignore the requested fence and emit plain
     /// JSON, OpenAI-style `tool_calls`, or Hermes `<tool_call>` wrappers, so
     /// all of those shapes are accepted.
-    static func extractCall(from text: String) -> ToolCall? {
+    static func extractCall(from reply: String) -> ToolCall? {
+        // Reasoning may draft or weigh a call; only the answer after it acts.
+        let normalized = AssistantOutputSanitizer.normalizeReasoningMarkup(reply)
+        let text: String
+        if let close = normalized.range(of: "</think>", options: .backwards) {
+            text = String(normalized[close.upperBound...])
+        } else if normalized.contains("<think>") {
+            return nil
+        } else {
+            text = normalized
+        }
         // Tolerate the closing fence on the same line as the JSON, and the JSON
         // on the same line as the opener — small models routinely emit
         // ```tool\n{json}``` or ```tool {json}``` without the newlines the old

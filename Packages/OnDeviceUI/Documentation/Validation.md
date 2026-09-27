@@ -39,7 +39,7 @@ The script captures `.build/Validation/build.log`. A generic simulator build doe
 | --- | --- |
 | Native shell | One real system tab bar, no custom replacement or root tint override; normal conversation-title header; no overlapping composer or sheet |
 | Composer geometry | One rounded content surface; writing area above footer; attachments inside; LayoutMetrics governs app content; field grows through six lines; Return inserts a newline |
-| Footer controls | Plain plus/model menu on the left; separate supported microphone and Send on the right; Send stays visible but disabled when empty/unavailable and becomes supported Stop while responding |
+| Header and footer controls | Active model picker centered in the chat navigation bar; plain plus on the footer left; separate supported microphone and Send on the right; Send stays visible but disabled when empty/unavailable and becomes supported Stop while responding |
 | Attachment strip | Inside the composer above the writing area; stable name/kind shown; remove is capability-gated; sending snapshots IDs |
 | Draft ownership | Failed or rejected sending preserves the draft; accepted clearing never erases newer or another conversation’s input |
 | Transcript | User bubble cap and text insets scale correctly; assistant remains readable; manually reading older output is not pulled down by a stream |

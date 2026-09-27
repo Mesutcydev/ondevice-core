@@ -166,32 +166,25 @@ final class LlamaCppVLMService: ObservableObject {
 
     // MARK: - Memory estimate
     //
-    // For the ModelResidency dual-residence math. Sums actual file
-    // sizes on disk when staged; falls back to a conservative 600 MB
+    // For the ModelResidency dual-residence math. Sums the LLM + mmproj
+    // files that load when staged; falls back to a conservative 600 MB
     // estimate (covers SmolVLM2-500M-Q8 + mmproj-Q8 at ~520 MB, with
     // a bit of headroom).
 
     nonisolated static func estimatedWeightBytes(repoID: String) -> UInt64 {
+        // Only the pair that loads: folders often hold several quants.
         if let dir = stagedDirectory(for: repoID) {
-            let total = sumGGUFFiles(in: dir)
+            let total = fileBytes(resolveLLMPath(in: dir)) + fileBytes(resolveMmprojPath(in: dir))
             if total > 0 { return total }
         }
         return UInt64(600 * 1024 * 1024)
     }
 
-    private nonisolated static func sumGGUFFiles(in dir: URL) -> UInt64 {
-        guard let enumerator = FileManager.default.enumerator(
-            at: dir, includingPropertiesForKeys: [.fileSizeKey],
-            options: [.skipsHiddenFiles]
-        ) else { return 0 }
-        var total: UInt64 = 0
-        for case let url as URL in enumerator {
-            guard url.lastPathComponent.hasSuffix(".gguf") else { continue }
-            if let size = (try? url.resourceValues(forKeys: [.fileSizeKey]))?.fileSize {
-                total += UInt64(size)
-            }
-        }
-        return total
+    private nonisolated static func fileBytes(_ path: String?) -> UInt64 {
+        guard let path,
+              let size = (try? URL(fileURLWithPath: path).resourceValues(forKeys: [.fileSizeKey]))?.fileSize
+        else { return 0 }
+        return UInt64(size)
     }
 
     // MARK: - Load / unload
@@ -257,15 +250,13 @@ final class LlamaCppVLMService: ObservableObject {
         let shortName = repoID.split(separator: "/").last.map(String.init) ?? repoID
         let profile = LlamaCppVLMExecutionProfile.resolve(repoID: repoID)
 
-        // Memory gate — mirror of LensInferenceLoop.switchTo's pre-flight.
-        // GGUF loads offload everything Metal accepts (n_gpu_layers = 999)
-        // with no other check, so refuse when the estimated load peak
-        // exceeds the live per-process headroom. Recovery first: unload
-        // the chat LLM (the cross-tab model) and re-measure before
-        // giving up.
-        let estimated = Self.estimatedWeightBytes(repoID: repoID)
-        let peak = Int64(Double(estimated) * MemoryAdvisor.loadSpikeMultiplier)
-        let needed = peak + MemoryAdvisor.loadHeadroomReserve
+        // Memory gate. Only the projector is materialized: the language
+        // weights are mmap'd and not charged to the footprint (see
+        // GGUFLoadPolicy), and the bridge falls back to CPU when Metal
+        // cannot hold them. Recovery first: unload the chat LLM (the
+        // cross-tab model) and re-measure before giving up.
+        let peak = Int64(Double(Self.fileBytes(mmprojPath)) * MemoryAdvisor.loadSpikeMultiplier)
+        let needed = peak + GGUFLoadPolicy.storageBackedHeadroom
 
         var available = MemoryAdvisor.availableMemoryForModel
         Diagnostics.shared.breadcrumb(

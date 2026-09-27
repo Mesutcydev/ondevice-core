@@ -281,6 +281,7 @@ struct HFSearchRow: View {
 
     @StateObject private var downloader: HFModelDownloadManager
     @State private var didStartDownload = false
+    @State private var confirmCancelDownload = false
     @Environment(\.koduTheme) private var T
 
     init(model: HFModelSummary) {
@@ -409,6 +410,13 @@ struct HFSearchRow: View {
                 estimatedSize = await HFSearchService.estimatedSize(for: model.id)
             }
         }
+        .confirmationDialog("Cancel download?", isPresented: $confirmCancelDownload) {
+            Button("Cancel and remove partial files", role: .destructive) {
+                downloader.cancel()
+            }
+        } message: {
+            Text("Pause keeps your progress. Cancel removes the partial download.")
+        }
     }
 
     // MARK: - Sub-views
@@ -536,12 +544,39 @@ struct HFSearchRow: View {
                        size: 10, weight: .semibold, color: T.accent)
                     .contentTransition(.numericText())
                     .animation(.easeInOut(duration: 0.18), value: downloader.progress)
-                Button { downloader.cancel() } label: {
-                    Image(systemName: "xmark").accessibilityLabel("Cancel download")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(T.warn)
+                Button { downloader.pause() } label: {
+                    Label("Pause", systemImage: "pause.fill")
+                        .font(T.sans(12, .semibold))
+                        .foregroundColor(T.ink)
+                        .frame(minHeight: 44)
                 }
                 .buttonStyle(.plain)
+                Button { confirmCancelDownload = true } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(T.warn)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Cancel download")
+            }
+        case .paused:
+            HStack(spacing: 4) {
+                Button { downloader.start() } label: {
+                    Label("Resume", systemImage: "play.fill")
+                        .font(T.sans(12, .semibold))
+                        .foregroundColor(T.accent)
+                        .frame(minHeight: 44)
+                }
+                .buttonStyle(.plain)
+                Button { confirmCancelDownload = true } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(T.warn)
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Cancel download")
             }
         case .ready:
             KStatusBadge(glyph: .ready, label: "downloaded", color: T.good)

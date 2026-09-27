@@ -127,6 +127,50 @@ final class LlamaCppVLM: @unchecked Sendable {
 
     // MARK: - Init / deinit
 
+    /// False when the model runs on CPU, including after a Metal fallback.
+    let usesGPU: Bool
+
+    private static func loadModelAndContext(
+        llmPath: String, nThreads: Int32, contextSize: UInt32, gpuLayers: Int32
+    ) throws -> (OpaquePointer, OpaquePointer) {
+        var modelParams = llama_model_default_params()
+        modelParams.load_mode = LLAMA_LOAD_MODE_MMAP
+        modelParams.n_gpu_layers = gpuLayers
+        guard let m = llama_model_load_from_file(llmPath, modelParams) else {
+            throw LlamaCppError.modelLoadFailed(llmPath)
+        }
+        // n_batch is the max tokens per llama_decode call; image embeddings
+        // can arrive in larger batches than typical text, so we bump above
+        // the 32-token default.
+        var ctxParams = llama_context_default_params()
+        ctxParams.n_ctx = contextSize
+        ctxParams.n_batch = 512
+        ctxParams.n_ubatch = 512
+        ctxParams.n_threads = nThreads
+        ctxParams.n_threads_batch = nThreads
+        guard let c = llama_init_from_model(m, ctxParams) else {
+            llama_model_free(m)
+            throw LlamaCppError.contextInitFailed
+        }
+        return (m, c)
+    }
+
+    /// Runs one token through every weight, KV, and compute buffer, which is
+    /// when Metal makes them resident, then clears the cache again. Metal
+    /// reports a residency failure asynchronously: ggml sees it at the next
+    /// synchronize and then fails every later decode on that context, so
+    /// decode, wait, and decode again.
+    private static func decodesOneToken(ctx: OpaquePointer, model: OpaquePointer) -> Bool {
+        var token = max(0, llama_vocab_bos(llama_model_get_vocab(model)))
+        let ok = withUnsafeMutablePointer(to: &token) { token -> Bool in
+            guard llama_decode(ctx, llama_batch_get_one(token, 1)) == 0 else { return false }
+            llama_synchronize(ctx)
+            return llama_decode(ctx, llama_batch_get_one(token, 1)) == 0
+        }
+        llama_memory_clear(llama_get_memory(ctx), true)
+        return ok
+    }
+
     /// Loads LLM + mmproj into RAM/Metal, creates the inference
     /// context, prepares the sampler chain. Heavy — caller should
     /// dispatch on a background Task. Throws and cleans up on any
@@ -142,32 +186,29 @@ final class LlamaCppVLM: @unchecked Sendable {
         self.configuredContextSize = contextSize
         Self.ensureBackendInit()
 
-        // 1. Load the text LLM. Default params enable mmap on iOS
-        //    which lets the OS page weight bytes out under
-        //    pressure — friendly to our memory gate.
-        var modelParams = llama_model_default_params()
-        modelParams.load_mode = LLAMA_LOAD_MODE_MMAP
-        modelParams.n_gpu_layers = gpuLayers
-        guard let m = llama_model_load_from_file(llmPath, modelParams) else {
-            throw LlamaCppError.modelLoadFailed(llmPath)
+        // 1–2. Load the text LLM (mmap: weights stay file-backed and are not
+        //      charged to the app's jetsam footprint on Metal or CPU) and
+        //      create the inference context.
+        var (m, c) = try Self.loadModelAndContext(
+            llmPath: llmPath, nThreads: nThreads,
+            contextSize: contextSize, gpuLayers: gpuLayers
+        )
+        // Metal has its own residency cap (~6.8–7.7 GiB on a 12 GB iPhone,
+        // below `recommendedMaxWorkingSetSize`), enforced only when a command
+        // buffer runs. Prove the placement with one decode; if Metal refuses,
+        // reload on CPU, which is slower but has the same small footprint.
+        if gpuLayers > 0, !Self.decodesOneToken(ctx: c, model: m) {
+            llama_free(c)
+            llama_model_free(m)
+            (m, c) = try Self.loadModelAndContext(
+                llmPath: llmPath, nThreads: nThreads,
+                contextSize: contextSize, gpuLayers: 0
+            )
+            self.usesGPU = false
+        } else {
+            self.usesGPU = gpuLayers > 0
         }
         self.model = m
-
-        // 2. Create the inference context. n_batch is the max
-        //    tokens per llama_decode call; image embeddings can
-        //    arrive in larger batches than typical text, so we
-        //    bump above the 32-token default.
-        var ctxParams = llama_context_default_params()
-        ctxParams.n_ctx = contextSize
-        ctxParams.n_batch = 512
-        ctxParams.n_ubatch = 512
-        ctxParams.n_threads = nThreads
-        ctxParams.n_threads_batch = nThreads
-        guard let c = llama_init_from_model(m, ctxParams) else {
-            llama_model_free(m)
-            self.model = nil
-            throw LlamaCppError.contextInitFailed
-        }
         self.ctx = c
 
         // A standalone text GGUF is complete without an mmproj. Keep the
@@ -630,10 +671,14 @@ final class LlamaCppVLM: @unchecked Sendable {
             generatedIDs.append(tokenID)
             batch.n_tokens = 1
             batch.token[0] = tokenID
+            // `tokensGenerated` was just incremented, so it already counts the
+            // token being decoded; the position is the count of tokens that
+            // precede it (matches the continueText path's `… - 1` above and
+            // the prefill's absolute 0…count-1 positions).
             batch.pos[0] = llama_pos(
                 GGUFPrefixCache.continuationDecodePosition(
                     cachedTokenCount: promptTokenCount,
-                    generatedSinceResume: tokensGenerated
+                    generatedSinceResume: tokensGenerated - 1
                 )
             )
             batch.n_seq_id[0] = 1

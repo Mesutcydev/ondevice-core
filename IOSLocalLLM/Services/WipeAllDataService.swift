@@ -29,8 +29,10 @@ enum WipeAllDataService {
         let docs = fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let caches = fm.urls(for: .cachesDirectory, in: .userDomainMask)[0]
 
-        // 1. Models (HF + FastVLM + Voice + GGUF)
-        for sub in ["HFModels", "FastVLMModels", "LLMModels", "VoiceModels", "GGUFModels"] {
+        // 1. Models (HF + FastVLM + Voice + GGUF, plus the Edge0 and Whisper
+        // folders the runtimes also load user-placed weights from)
+        for sub in ["HFModels", "FastVLMModels", "LLMModels", "VoiceModels", "GGUFModels",
+                    "Edge0Models", "WhisperModels"] {
             let url = docs.appendingPathComponent(sub, isDirectory: true)
             r.bytesFreed += dirSize(at: url)
             if fm.fileExists(atPath: url.path) {
@@ -95,6 +97,9 @@ enum WipeAllDataService {
         // rewrite conversations.json AND re-index the just-wiped chats back
         // into Spotlight from memory, silently undoing steps 3 and 6.
         ConversationStore.shared.clearAllForWipe()
+        // The open chat keeps its transcript in view state; without this it is
+        // re-saved on the next background transition and survives the wipe.
+        NotificationCenter.default.post(name: .onDeviceDataWiped, object: nil)
 
         // 4. Snippets, memory, benchmark history, metrickit entries
         let defaults = UserDefaults.standard
@@ -182,4 +187,10 @@ enum WipeAllDataService {
     private static func dirSize(at url: URL) -> Int64 {
         (try? FileManager.default.allocatedSizeOfDirectory(at: url)) ?? 0
     }
+}
+
+extension Notification.Name {
+    /// Posted after `WipeAllDataService` clears stored data, so views holding
+    /// in-memory copies discard them instead of writing them back.
+    static let onDeviceDataWiped = Notification.Name("onDeviceDataWiped")
 }

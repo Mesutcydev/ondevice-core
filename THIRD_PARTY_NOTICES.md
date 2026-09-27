@@ -11,9 +11,27 @@ does not replace the licenses of the components below.
 | MLX Stable Diffusion implementation | `IOSLocalLLM/Vendor/StableDiffusion/` | [MIT](IOSLocalLLM/Vendor/StableDiffusion/LICENSE) |
 | CMU Pronouncing Dictionary | `IOSLocalLLM/Resources/Voice/cmudict.txt` | [CMUdict license](IOSLocalLLM/Resources/Voice/LICENSE) |
 | thinking-orbs adaptations | `Packages/VoiceAgentOrb/` | [MIT](ThirdParty/thinking-orbs/LICENSE) |
+| Edge0 native foundation | `IOSLocalLLM/Services/Runtime/Edge0/` | MIT (original Swift implementation) |
+| Apple Core AI model runtime | `Packages/coreai-models/` | [BSD-3-Clause](LICENSES/CoreAI-Models-BSD-3-Clause.txt) |
 
 The MIT license for iOS Local LLM applies only to the original changes and
 integration around these components.
+
+## Evaluated upstream reference (no source copied)
+
+The native Edge0 storage/MoE foundation under
+`IOSLocalLLM/Services/Runtime/Edge0/` was written as an original Swift
+implementation after studying the public Edge0 reference. No Python source
+was copied into this repository; the tensor names, quantization constants,
+and math order below are interface facts of the published checkpoint.
+
+| Component | Upstream | Commit | License |
+| --- | --- | --- | --- |
+| Edge0 reference runtime | <https://github.com/Edge0-AI/Edge0> | `0700e6532f45e0d0d99e9c588d7d8cd240538ea0`, `fb4cd2c49ebe22bb230e1451ecb8fb4957ca62e6` | Apache-2.0 |
+| Edge0-8B checkpoint and Recover-LoRA (metadata inspected only; downloaded by the app) | <https://huggingface.co/Edge0/Edge0-8B-A1B-preview> | `cadc35c7059469fad8569a63ce6c851172bbca61` | See model card |
+
+See [Docs/EDGE0_NATIVE_FOUNDATION.md](Docs/EDGE0_NATIVE_FOUNDATION.md) for the
+exact tensor naming, quantization layout, and the MLX primitive used.
 
 ## Git submodules
 
@@ -34,17 +52,36 @@ CocoaPods. Their source and license files are not copied into this repository.
 | MLX Swift (PrismML fork) | <https://github.com/PrismML-Eng/mlx-swift> | MIT |
 | MLX Swift LM | <https://github.com/ml-explore/mlx-swift-lm> | MIT |
 | swift-transformers-mlx | <https://github.com/DePasqualeOrg/swift-transformers-mlx> | MIT |
+| Swift Transformers | <https://github.com/huggingface/swift-transformers> | [Apache-2.0](LICENSES/Apache-2.0.txt) |
+| XGrammar | <https://github.com/mlc-ai/xgrammar> | [Apache-2.0](LICENSES/Apache-2.0.txt) ([NOTICE](LICENSES/XGrammar-NOTICE.txt)) |
+| Swift Argument Parser | <https://github.com/apple/swift-argument-parser> | [Apache-2.0](LICENSES/Apache-2.0.txt) |
 | ONNX Runtime | <https://github.com/microsoft/onnxruntime> | MIT |
 
 Transitive packages are recorded in `Package.resolved` and retain their own
 licenses in their source distributions. The source-distribution inventory is
-also recorded in [SBOM.spdx.json](SBOM.spdx.json).
+also recorded in [SBOM.spdx.json](SBOM.spdx.json). The shared Apache-2.0 text
+and required notices for SwiftASN1, SwiftCrypto, SwiftNIO, and XGrammar are in
+`LICENSES/`; `project.yml` bundles this notice file and that directory into the
+release app.
 
 ## Models and generated artifacts not included
 
 Downloaded language, vision, speech, and image-generation models are separate
 works. Their license is shown in the model catalog or at the download source.
 Do not assume that a model is open source merely because its loader is.
+
+The Core AI catalog also links to these complete, user-downloaded conversions
+(audited 2026-09-23; exact Hugging Face commit revisions are pinned in
+`IOSLocalLLM/Models/CoreAIZooCatalog.swift`; no weights are included here):
+
+| Conversion source | Upstream model | License |
+| --- | --- | --- |
+| [Qwen3 1.7B official-recipe iOS GPU](https://huggingface.co/mlboydaisuke/qwen3-1.7b-CoreAI-official) | Qwen/Qwen3-1.7B | Apache-2.0 |
+| [Qwen2.5 0.5B Instruct](https://huggingface.co/kevinqz/Qwen2.5-0.5B-Instruct-CoreAI) | Qwen/Qwen2.5-0.5B-Instruct | Apache-2.0 |
+| [Qwen2.5 Coder 0.5B Instruct](https://huggingface.co/kevinqz/Qwen2.5-Coder-0.5B-Instruct-CoreAI) | Qwen/Qwen2.5-Coder-0.5B-Instruct | Apache-2.0 |
+| [Qwen2.5 Math 1.5B Instruct](https://huggingface.co/kevinqz/Qwen2.5-Math-1.5B-Instruct-CoreAI) | Qwen/Qwen2.5-Math-1.5B-Instruct | Apache-2.0 |
+| [Qwen2.5 1.5B Instruct](https://huggingface.co/kevinqz/Qwen2.5-1.5B-Instruct-CoreAI) | Qwen/Qwen2.5-1.5B-Instruct | Apache-2.0 |
+| [MiniCPM5 2B](https://huggingface.co/mlboydaisuke/MiniCPM5-2B-CoreAI) | openbmb/MiniCPM5-2B | Apache-2.0 |
 
 The following are deliberately excluded from Git:
 

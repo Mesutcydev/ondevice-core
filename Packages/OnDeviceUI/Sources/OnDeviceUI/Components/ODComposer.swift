@@ -12,7 +12,6 @@ public struct ODComposer: View {
     private let canStop: Bool
     private let canAdd: Bool
     private let canRemove: Bool
-    private let modelMenu: AnyView
     private let microphone: AnyView?
     private let notice: AnyView?
     private let onAdd: () -> Void
@@ -20,16 +19,20 @@ public struct ODComposer: View {
     private let onSend: (String, [String]) -> Void
     private let onStop: () -> Void
     private let onVoice: (() -> Void)?
+    private let thinking: Bool?
+    private let onThinking: ((Bool) -> Void)?
     @Environment(\.dynamicTypeSize) private var dynamicType
     @Environment(\.displayScale) private var displayScale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .body) private var glyphSize = ODLayout.standardIcon
+    @ScaledMetric(relativeTo: .body) private var writingHorizontalInset = ODLayout.textAdditionalHorizontalInset
 
     public init(text: Binding<String>, focus: FocusState<Bool>.Binding,
                 attachments: [ODAttachment], isResponding: Bool,
                 canSend: Bool, canStop: Bool, canAdd: Bool, canRemove: Bool,
-                modelMenu: AnyView, microphone: AnyView? = nil, notice: AnyView? = nil,
+                microphone: AnyView? = nil, notice: AnyView? = nil,
                 onVoice: (() -> Void)? = nil,
+                thinking: Bool? = nil, onThinking: ((Bool) -> Void)? = nil,
                 onAdd: @escaping () -> Void, onRemove: @escaping (String) -> Void,
                 onSend: @escaping (String, [String]) -> Void, onStop: @escaping () -> Void) {
         self._text = text
@@ -40,7 +43,6 @@ public struct ODComposer: View {
         self.canStop = canStop
         self.canAdd = canAdd
         self.canRemove = canRemove
-        self.modelMenu = modelMenu
         self.microphone = microphone
         self.notice = notice
         self.onAdd = onAdd
@@ -48,15 +50,19 @@ public struct ODComposer: View {
         self.onSend = onSend
         self.onStop = onStop
         self.onVoice = onVoice
+        self.thinking = thinking
+        self.onThinking = onThinking
     }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: ODLayout.elementGap) {
-            if let notice { notice }
+            if let notice {
+                notice.padding(.horizontal, ODLayout.panelHorizontalInset)
+            }
             VStack(alignment: .leading, spacing: 0) {
                 if !attachments.isEmpty {
                     attachmentStrip
-                        .padding(.horizontal, ODLayout.textAdditionalHorizontalInset)
+                        .padding(.horizontal, writingHorizontalInset)
                         .padding(.bottom, ODLayout.composerAttachmentGap)
                 }
                 TextField("Message", text: $text, prompt: prompt, axis: .vertical)
@@ -65,7 +71,7 @@ public struct ODComposer: View {
                     .tint(ODPalette.text)
                     .lineLimit(1...6)
                     .submitLabel(.return)
-                    .padding(.horizontal, ODLayout.textAdditionalHorizontalInset)
+                    .padding(.horizontal, writingHorizontalInset)
                     .frame(maxWidth: .infinity, minHeight: ODLayout.composerTextMinimumHeight, alignment: .topLeading)
                     .focused(focus)
                     .accessibilityLabel("Message")
@@ -79,7 +85,6 @@ public struct ODComposer: View {
             .frame(maxWidth: .infinity, minHeight: ODLayout.composerMinimumHeight)
             .background(ODPalette.surface, in: composerShape)
             .overlay { composerShape.strokeBorder(ODPalette.line, lineWidth: ODLayout.hairline(displayScale: displayScale)) }
-            .accessibilityIdentifier("chat.composer.panel")
             .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: text)
             .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: attachments.isEmpty)
         }
@@ -96,55 +101,23 @@ public struct ODComposer: View {
         Text("Message…").foregroundStyle(ODPalette.secondary)
     }
 
-    @ViewBuilder private var footer: some View {
-        if dynamicType.isAccessibilitySize {
-            VStack(alignment: .leading, spacing: ODLayout.composerFooterGap) {
-                modelPill
-                HStack(spacing: ODLayout.elementGap) {
-                    addButton
-                    Spacer(minLength: 0)
-                    dictationControl
-                    primaryAction
-                }
-                .frame(minHeight: ODLayout.minimumHit)
+    private var footer: some View {
+        HStack(spacing: 0) {
+            addButton
+            if let thinking, let onThinking {
+                thinkingButton(isOn: thinking, onToggle: onThinking)
             }
-        } else {
-            HStack(spacing: 0) {
-                addButton
-                modelPill
-                    .padding(.leading, ODLayout.composerPlusModelGap)
-                Spacer(minLength: ODLayout.elementGap)
-                if microphone != nil {
-                    dictationControl
-                    primaryAction
-                        .padding(.leading, ODLayout.composerMicPrimaryGap)
-                } else {
-                    primaryAction
-                }
-            }
-            .frame(minHeight: ODLayout.minimumHit)
-        }
-    }
-
-    /// Typography and one horizontal inset, then a 32-point face, then the
-    /// 44-point hit region. The capsule is not painted on the hit region.
-    private var modelPill: some View {
-        let labeled = modelMenu
-            .padding(.horizontal, ODLayout.composerModelPillHorizontalInset)
-            .frame(maxWidth: dynamicType.isAccessibilitySize ? .infinity : ODLayout.composerModelFaceMaxWidth, alignment: .leading)
-        return Group {
-            if dynamicType.isAccessibilitySize {
-                labeled
-                    .padding(.vertical, ODLayout.unit)
-                    .background(ODPalette.text.opacity(0.055), in: Capsule())
+            Spacer(minLength: ODLayout.elementGap)
+            if microphone != nil {
+                dictationControl
+                primaryAction
+                    .padding(.leading, ODLayout.composerMicPrimaryGap)
             } else {
-                labeled
-                    .frame(height: ODLayout.composerModelFaceHeight)
-                    .background(ODPalette.text.opacity(0.055), in: Capsule())
+                primaryAction
             }
         }
-        .frame(minWidth: ODLayout.minimumHit, minHeight: ODLayout.minimumHit, alignment: .leading)
-        .contentShape(Rectangle())
+        .frame(minHeight: ODLayout.minimumHit)
+        .padding(.trailing, ODLayout.unit)
     }
 
     /// A naked utility icon. The host view supplies the glyph and behaviour;
@@ -170,6 +143,29 @@ public struct ODComposer: View {
         .disabled(!canAdd)
         .accessibilityLabel("Message tools and attachments")
         .accessibilityIdentifier("chat.composer.add")
+    }
+
+    /// Same naked-glyph treatment as the add control; the filled glyph in ink
+    /// marks the on state. Only shown for models whose reasoning can switch.
+    private func thinkingButton(isOn: Bool, onToggle: @escaping (Bool) -> Void) -> some View {
+        Button {
+            ODComposerHaptics.impact(.light)
+            onToggle(!isOn)
+        } label: {
+            Image(systemName: isOn ? "lightbulb.fill" : "lightbulb")
+                .font(.system(size: glyphSize, weight: .medium))
+                .foregroundStyle(isOn ? ODPalette.text : ODPalette.secondary)
+                .frame(width: ODLayout.minimumHit, height: ODLayout.minimumHit)
+                .contentShape(Rectangle())
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .buttonStyle(ODPressButtonStyle())
+        .disabled(isResponding)
+        .accessibilityLabel("Thinking")
+        .accessibilityValue(isOn ? "On" : "Off")
+        .accessibilityHint("Reason step by step before answering")
+        .accessibilityAddTraits(.isToggle)
+        .accessibilityIdentifier("chat.composer.thinking")
     }
 
     private var offersVoice: Bool {
@@ -337,12 +333,11 @@ private struct ODComposerAttachment: View {
     }
 }
 
-/// Name and optional parameter token for the composer menu. The full name
-/// stays on the menu’s accessibility value.
+/// Name and optional parameter token for the chat toolbar picker. The full
+/// name stays on the control’s accessibility value.
 public struct ODModelMenuLabel: View {
     private let displayName: String
     private let metadata: String?
-    @Environment(\.dynamicTypeSize) private var dynamicType
 
     public init(displayName: String, metadata: String? = nil) {
         self.displayName = displayName
@@ -352,10 +347,10 @@ public struct ODModelMenuLabel: View {
     public var body: some View {
         let face = ODPresentation.modelFace(displayName: displayName, metadata: metadata)
         HStack(spacing: 6) {
-            Text(face.title.isEmpty ? "Choose model" : face.title)
+            Text(face.title.isEmpty ? "Select model" : face.title)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(ODPalette.text)
-                .lineLimit(dynamicType.isAccessibilitySize ? nil : 1)
+                .lineLimit(1)
                 .truncationMode(.tail)
             if let size = face.size {
                 Text(size)

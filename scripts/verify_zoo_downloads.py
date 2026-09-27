@@ -157,6 +157,12 @@ def verify(entry: dict) -> bool:
 
 def main() -> int:
     entries = parse_catalog()
+    # ENTRY_RE is order- and layout-sensitive; an entry it misses would
+    # silently go unverified.
+    declared = CATALOG.read_text(encoding="utf-8").count("CoreAIZooModel(")
+    if len(entries) != declared:
+        print(f"parsed {len(entries)} of {declared} CoreAIZooModel entries; fix the entry layout or ENTRY_RE")
+        return 1
     wanted = set(sys.argv[1:])
     if wanted:
         entries = [e for e in entries if e["id"] in wanted]

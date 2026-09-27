@@ -88,9 +88,10 @@ final class SystemStatusService: ObservableObject {
         // quantities: 70% of physical RAM, RSS, and total RAM minus RSS. That
         // made Status claim 8.58–12.06 GB was free while the loader correctly
         // enforced the validated ~6.2 GB iPhone process budget.
-        snap.availableForML = MemoryAdvisor.availableMemoryForModel
-        snap.freeRightNow   = MemoryAdvisor.processAvailableMemory
-        snap.usedByApp      = MemoryAdvisor.physFootprint
+        let memory = MemoryAdvisor.memorySnapshot
+        snap.availableForML = memory.available
+        snap.freeRightNow   = memory.kernelHeadroom ?? memory.available
+        snap.usedByApp      = memory.footprint
 
         // Disk
         snap.diskFree           = HFModelDownloadManager.freeDiskBytes() ?? 0

@@ -213,6 +213,22 @@ public enum ApplePrivateCloud {
         return false
     }
 
+    /// True only when this *build* is actually allowed to talk to Private Cloud
+    /// Compute — i.e. the running binary's own code signature carries
+    /// `com.apple.developer.private-cloud-compute`.
+    ///
+    /// This is NOT redundant with `isSupportedOnCurrentOS`. PCC's
+    /// `availability` reports `.available` even in a process without the
+    /// entitlement, and the framework then **traps with a fatalError** on the
+    /// first generation (`Process is missing required entitlement:
+    /// com.apple.developer.private-cloud-compute`). A trap cannot be caught, so
+    /// nothing may touch the PCC model — not even to read its availability —
+    /// until this is true. The entitlement is provisioning-managed, therefore a
+    /// sideloaded, re-signed IPA usually does not have it.
+    public static var isProvisionedForCurrentBuild: Bool {
+        EntitlementsProbe.isPrivateCloudUsable
+    }
+
     /// FoundationModels streams CUMULATIVE content snapshots, but the app's
     /// token sink appends deltas. Returns the new suffix to append. Pure so the
     /// runtime's streaming stays correct under test without a device/SDK.
@@ -271,6 +287,7 @@ public struct ApplePCCRequest: Sendable {
 public enum ApplePCCError: LocalizedError, Equatable, Sendable {
     case notCompiledIn          // built without FM_PCC
     case unsupportedOS          // OS < iOS 27
+    case notProvisioned         // binary lacks the PCC entitlement
     case unavailable(String)    // model.availability == .unavailable(reason)
     case offline                // network failure
     case quotaExceeded          // daily allowance reached
@@ -286,6 +303,8 @@ public enum ApplePCCError: LocalizedError, Equatable, Sendable {
             return "Apple Private Cloud isn't included in this build."
         case .unsupportedOS:
             return "Apple Private Cloud requires iOS 27 or later."
+        case .notProvisioned:
+            return "Apple Private Cloud isn't enabled for this build. It needs an app signed with Apple's Private Cloud Compute entitlement; downloaded local models are unaffected."
         case .unavailable(let reason):
             return reason
         case .offline:

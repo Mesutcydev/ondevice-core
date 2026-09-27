@@ -6,8 +6,43 @@ import Foundation
 /// models. Keep this deliberately narrow: normal answer text must pass through
 /// unchanged.
 enum AssistantOutputSanitizer {
+    /// End-of-turn markers a model can print when it misses its stop token.
+    static let endOfTurnMarkers = [
+        "<|im_end|>", "<|endoftext|>", "<end_of_turn>", "<|eot_id|>",
+        "<|end_of_text|>", "<|end|>", "</s>", "<turn|>", "<|return|>",
+    ]
+
+    /// Brings every family's reasoning delimiters to `<think>…</think>`:
+    /// Gemma 4 uses `<|channel>thought … <channel|>`, Magistral `[THINK]`.
+    /// When the template opened `<think>` in the prompt (Qwen 3.5, DeepSeek-R1,
+    /// Qwen3 Thinking) the reply starts mid-reasoning, so a lone `</think>`
+    /// gets its opener back. Empty reasoning blocks and trailing end-of-turn
+    /// markers are dropped.
+    static func normalizeReasoningMarkup(_ output: String) -> String {
+        var text = output
+            .replacingOccurrences(of: "<|channel>thought", with: "<think>")
+            .replacingOccurrences(of: "<|channel>", with: "<think>")
+            .replacingOccurrences(of: "<channel|>", with: "</think>")
+            .replacingOccurrences(of: "[THINK]", with: "<think>")
+            .replacingOccurrences(of: "[/THINK]", with: "</think>")
+        if !text.contains("<think>"), text.contains("</think>") { text = "<think>" + text }
+        while let open = text.range(of: "<think>"),
+              let close = text.range(of: "</think>", range: open.upperBound..<text.endIndex),
+              text[open.upperBound..<close.lowerBound].allSatisfy(\.isWhitespace) {
+            let tail = text[close.upperBound...].drop(while: \.isWhitespace)
+            text = String(text[..<open.lowerBound]) + tail
+        }
+        var body = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var removed = false
+        while let marker = endOfTurnMarkers.first(where: { body.hasSuffix($0) }) {
+            body = String(body.dropLast(marker.count)).trimmingCharacters(in: .whitespacesAndNewlines)
+            removed = true
+        }
+        return removed ? body : text
+    }
+
     static func clean(_ output: String) -> String {
-        var lines = output
+        var lines = normalizeReasoningMarkup(output)
             .replacingOccurrences(of: "\r\n", with: "\n")
             .components(separatedBy: "\n")
 
@@ -64,7 +99,8 @@ enum AssistantOutputSanitizer {
     private static func repairingRunTogetherBoundaries(in output: String) -> String {
         var repaired = output
         let replacements: [(String, String)] = [
-            (#"([.!?])([A-Z])"#, "$1\n\n$2"),
+            // A period inside an initialism such as U.S. is not a sentence break.
+            (#"(?<![A-Z])([.!?])([A-Z])"#, "$1\n\n$2"),
             (#"([.!?])([—–]{1,3})([A-Z])"#, "$1\n\n—$3"),
             (#":([A-Z])"#, ":\n$1"),
             (#"\)([A-Z])"#, ")\n$1"),
@@ -173,7 +209,8 @@ struct ChatTemplate: Codable, Hashable {
 
     // MARK: - Built-in templates
 
-    /// ChatML — used by Qwen2.5, Qwen3, and many Chinese models.
+    /// ChatML without reasoning — Qwen2.5, Qwen3 *-Instruct(-2507), SmolLM2.
+    /// Matches the official templates, which add nothing after the cue.
     static let chatML = ChatTemplate(
         format: "chatml",
         systemPrefix: "<|im_start|>system\n",
@@ -183,9 +220,43 @@ struct ChatTemplate: Codable, Hashable {
         assistantPrefix: "<|im_start|>assistant\n",
         assistantSuffix: "<|im_end|>\n",
         generationPrompt: "<|im_start|>assistant\n",
+        supportsThinking: false,
+        noThinkTag: nil,
+        thinkTag: nil,
+        extraEOSTokens: ["<|im_end|>"]
+    )
+
+    /// Qwen3 hybrid models (Qwen3-0.6B…8B, Bonsai 1.7B…8B). The official
+    /// template switches reasoning off with an empty think block; with it on,
+    /// the model opens `<think>` itself.
+    static let qwen3 = ChatTemplate(
+        format: "qwen3",
+        systemPrefix: "<|im_start|>system\n",
+        systemSuffix: "<|im_end|>\n",
+        userPrefix: "<|im_start|>user\n",
+        userSuffix: "<|im_end|>\n",
+        assistantPrefix: "<|im_start|>assistant\n",
+        assistantSuffix: "<|im_end|>\n",
+        generationPrompt: "<|im_start|>assistant\n",
         supportsThinking: true,
-        noThinkTag: " /no_think",
-        thinkTag: " /think",
+        noThinkTag: "<think>\n\n</think>\n\n",
+        thinkTag: "",
+        extraEOSTokens: ["<|im_end|>"]
+    )
+
+    /// Qwen3 *-Thinking models always reason; their template opens `<think>`.
+    static let qwen3Thinking = ChatTemplate(
+        format: "qwen3-thinking",
+        systemPrefix: "<|im_start|>system\n",
+        systemSuffix: "<|im_end|>\n",
+        userPrefix: "<|im_start|>user\n",
+        userSuffix: "<|im_end|>\n",
+        assistantPrefix: "<|im_start|>assistant\n",
+        assistantSuffix: "<|im_end|>\n",
+        generationPrompt: "<|im_start|>assistant\n",
+        supportsThinking: true,
+        noThinkTag: "<think>\n",
+        thinkTag: "<think>\n",
         extraEOSTokens: ["<|im_end|>"]
     )
 
@@ -274,20 +345,50 @@ struct ChatTemplate: Codable, Hashable {
     // MARK: - Resolution
 
     /// Detect the best template for a model based on its repo ID or display name.
+    /// MLX models render their own shipped template; this hand-written one
+    /// formats GGUF prompts. Families whose format none of these reproduce
+    /// (DeepSeek-R1 distills, Gemma 4, Phi-4) get `.generic`.
     static func detect(for repoID: String) -> ChatTemplate {
         let lower = repoID.lowercased()
+        if lower.contains("deepseek") || lower.contains("gemma-4") || lower.contains("gemma4") {
+            return .generic
+        }
         if lower.contains("qwen3.5") || lower.contains("qwen3_5")
             || lower.contains("ornith")
             || (lower.contains("bonsai") && lower.contains("27b")) {
             return .qwen35
         }
-        if lower.contains("bonsai") { return .chatML }
+        if lower.contains("qwen3") {
+            if lower.contains("thinking") { return .qwen3Thinking }
+            return lower.contains("instruct") ? .chatML : .qwen3
+        }
+        if lower.contains("bonsai") { return .qwen3 }
         if lower.contains("qwen")   { return .chatML }
         if lower.contains("llama")  { return .llama3 }
         if lower.contains("gemma")  { return .gemma }
-        if lower.contains("phi")    { return .phi }
+        if lower.contains("phi-3")  { return .phi }
         if lower.contains("smol")   { return .chatML }
         return .generic
+    }
+
+    /// Whether the chat template shipped in `directory` reads
+    /// `enable_thinking`. nil when the folder carries no template.
+    static func readsThinkingSwitch(in directory: URL) -> Bool? {
+        var templates: [String] = []
+        if let jinja = try? String(contentsOf: directory.appendingPathComponent("chat_template.jinja"), encoding: .utf8) {
+            templates.append(jinja)
+        }
+        for name in ["tokenizer_config.json", "chat_template.json"] {
+            guard let data = try? Data(contentsOf: directory.appendingPathComponent(name)),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+            else { continue }
+            if let template = json["chat_template"] as? String {
+                templates.append(template)
+            } else if let named = json["chat_template"] as? [[String: Any]] {
+                templates += named.compactMap { $0["template"] as? String }
+            }
+        }
+        return templates.isEmpty ? nil : templates.contains { $0.contains("enable_thinking") }
     }
 
     // MARK: - Formatting

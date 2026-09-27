@@ -50,7 +50,7 @@ struct ODSettingsView: View {
             .scrollContentBackground(.hidden)
             .background { ODPageBackground().ignoresSafeArea() }
             .navigationTitle("Settings")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Close", systemImage: "xmark") { dismiss() }.labelStyle(.iconOnly)

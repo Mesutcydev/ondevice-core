@@ -98,7 +98,6 @@ struct CodingAssistantView: View {
     @State private var showCompare = false
     @State private var showMacros = false
     @State private var showWebSettings = false
-    @State private var showDownloadCenter = false
     @State private var showUnsafeModelLoadConfirmation = false
     @State private var sharePayload: AssistantSharePayload?
     @State private var pendingWebPermission: WebPermissionRequest? = nil
@@ -207,7 +206,6 @@ struct CodingAssistantView: View {
     @State private var conversationFilter: String = ""
     @State private var showConversationSearch = false
     @FocusState private var inputFocused: Bool
-    @StateObject private var keyboardClearance = ODComposerKeyboardClearance()
     @State private var isNearConversationBottom = true
     /// Remember whether the user was following the live answer before the
     /// composer left the layout. When it returns, re-anchor only in that case;
@@ -231,65 +229,56 @@ struct CodingAssistantView: View {
     private let conversationBottomAnchorID = "conversation-bottom-anchor"
 
     var body: some View {
-        // Backdrop is owned by ContentView (StudioPageBackground for the assistant
-        // tab, Color.black for the camera tab). Painting a full-bleed T.bg here
-        // used to leak as a cream-colored vertical strip on the lens tab when
-        // SwiftUI kept this subtree resident across a tab switch.
+        // The transcript, navigation chrome and dock share one canvas color.
+        // The workbench's generic OLED background is black and otherwise
+        // creates a conspicuous band around the inset composer.
         NavigationStack {
             VStack(spacing: 0) {
-                // Model selection lives in the composer. Explain live runtime
-                // work independently of any stored replies in the transcript.
-                if modelStatusDescriptor.title != "Ready" {
-                    modelStatusBar
-                }
-
                 if showConversationSearch {
                     conversationSearchBar
                 }
 
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: ODLayout.groupGap) {
-                            if filteredMessages.isEmpty {
-                                ChatThreadEmptyState(
-                                    isFiltering: showConversationSearch
-                                        && !conversationFilter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-                                    attachedFilename: draftAttachmentNames.first,
-                                    attachedFileCount: draftAttachmentNames.count,
-                                    modelName: assistant.activeDisplayName,
-                                    modelStatus: modelStatusDescriptor.title,
-                                    loadFailure: modelLoadFailure,
-                                    failureCanRetry: !hasPermanentModelCapacityFailure,
-                                    canGenerate: assistant.canGenerateSelectedTarget,
-                                    onRetry: {
-                                        Task { await ensureModelReady() }
-                                    },
-                                    onSwitchModel: {
-                                        showModelPicker = true
-                                    },
-                                    onTryAnyway: hasPermanentModelCapacityFailure
-                                        ? { showUnsafeModelLoadConfirmation = true }
-                                        : nil
-                                )
-                                // No horizontal padding here — the empty state
-                                // applies the thread's own 20pt inset, so
-                                // adding 16 on top pushed it 36pt in, well out
-                                // of line with every message below it.
+                        VStack(spacing: 0) {
+                            LazyVStack(alignment: .leading, spacing: 14) {
+                                if filteredMessages.isEmpty {
+                                    ChatThreadEmptyState(
+                                        isFiltering: showConversationSearch
+                                            && !conversationFilter.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                                        attachedFilename: draftAttachmentNames.first,
+                                        attachedFileCount: draftAttachmentNames.count,
+                                        modelName: assistant.activeDisplayName,
+                                        modelStatus: modelStatusDescriptor.title,
+                                        loadFailure: modelLoadFailure,
+                                        failureCanRetry: !hasPermanentModelCapacityFailure,
+                                        canGenerate: assistant.canGenerateSelectedTarget,
+                                        onRetry: {
+                                            Task { await ensureModelReady() }
+                                        },
+                                        onSwitchModel: {
+                                            showModelPicker = true
+                                        },
+                                        onTryAnyway: hasPermanentModelCapacityFailure
+                                            ? { showUnsafeModelLoadConfirmation = true }
+                                            : nil
+                                    )
+                                }
+                                ForEach(filteredMessages) { msg in
+                                    transcriptRow(msg)
+                                        .id(msg.id)
+                                }
+                                activityCards
                             }
-                            ForEach(filteredMessages) { msg in
-                                transcriptRow(msg)
-                                .id(msg.id)
-                            }
-                            activityCards
-                            // The safe-area inset reserves the composer's
-                            // measured height. This small tail is only visual
-                            // breathing room below the final message.
+                            .padding(.top, 12)
+                            .scrollTargetLayout()
+                            // The composer already owns the safe-area inset.
+                            // Keep one small scroll target outside the turn
+                            // spacing so the final bubble sits near the dock.
                             Color.clear
-                                .frame(height: 12)
+                                .frame(height: ODLayout.chatThreadBottomClearance)
                                 .id(conversationBottomAnchorID)
                         }
-                        .padding(.vertical, 12)
-                        .scrollTargetLayout()
                     }
                     .scrollPosition(id: $readingMessageID, anchor: .top)
                     .scrollDismissesKeyboard(.interactively)
@@ -375,13 +364,8 @@ struct CodingAssistantView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Jump to latest message")
-                        // Lifted well off the bottom edge: the reply-action
-                        // chip row (Continue / Shorter / …) sits at the foot
-                        // of the transcript, and a 16pt inset put this button
-                        // on top of the trailing chip (2026-09-21 device
-                        // report). 72pt clears the chip row plus breathing room.
                         .padding(.trailing, 16)
-                        .padding(.bottom, 72)
+                        .padding(.bottom, 12)
                     }
                 }
             }
@@ -397,9 +381,21 @@ struct CodingAssistantView: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 // Stays mounted while generating — the field remains editable
                 // and the metrics row appears above the card instead of the
-                // whole bar swapping out.
-                ODComposerKeyboardSlot(clearance: keyboardClearance) {
-                    ODWorkspaceBottomBar { inputBar }
+                // whole bar swapping out. The dismiss key shares this one
+                // bottom stack so iOS cannot insert a detached keyboard
+                // toolbar between the composer and the keys.
+                ODWorkspaceBottomBar(backgroundColor: T.studio.paper) {
+                    VStack(spacing: 0) {
+                        inputBar
+                        if inputFocused {
+                            HStack {
+                                KeyboardDismissKey(focus: $inputFocused)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.horizontal, ODLayout.pageInset)
+                            .frame(minHeight: ODLayout.minimumHit)
+                        }
+                    }
                 }
             }
             // Leading chat apps dismiss entry focus when a request starts and
@@ -420,11 +416,9 @@ struct CodingAssistantView: View {
             .onDisappear { completionScrollTask?.cancel(); cancelDocumentSearch(); savePresentation() }
             .navigationTitle(currentConversationTitle ?? "OnDevice")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(T.studio.paper, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    KeyboardDismissKey(focus: $inputFocused, clearance: keyboardClearance)
-                    Spacer(minLength: 0)
-                }
                 ToolbarItem(placement: .topBarLeading) {
                     ODAppMenuButton {
                         inputFocused = false
@@ -434,147 +428,17 @@ struct CodingAssistantView: View {
                     .accessibilityLabel("Open conversations and app menu")
                     .accessibilityIdentifier("navigation.menu")
                 }
+                ToolbarItem(placement: .principal) {
+                    composerModelMenu
+                }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    // Overflow menu — groups secondary actions so iOS never
-                    // collapses toolbar items into the unreliable "..." button.
-                    // Voice conversation lives here too (was a separate top
-                    // button); the input bar's mic still provides one-tap
-                    // dictation, so the top row stays uncluttered.
-                    Menu {
-                        Button {
-                            clearConversation()
-                            HapticManager.impact(.medium)
-                        } label: {
-                            Label(loc.t("New conversation"), systemImage: "square.and.pencil")
-                        }
-                        Button("Past conversations", systemImage: "clock.arrow.circlepath") {
-                            inputFocused = false
-                            ODBridge.shared.store.selectedTab = .home
-                        }
-                        Button("Device", systemImage: "iphone") {
-                            ODBridge.shared.store.secondaryRoute = .device
-                        }
-                        // (The duplicate "Past conversations" entry that used to
-                        // live here is gone: the toolbar glyph above opens the
-                        // same sheet, and two controls for one destination is
-                        // how a menu starts looking like a second toolbar.)
-                        Divider()
-                        Button {
-                            ODBridge.shared.store.selectedTab = .voice
-                            ODBridge.shared.store.send(.beginVoiceSession)
-                            HapticManager.impact(.light)
-                        } label: {
-                            Label(loc.t("Voice conversation"), systemImage: "waveform")
-                        }
-                        Button {
-                            ODBridge.shared.store.selectedTab = .imageStudio
-                            HapticManager.impact(.light)
-                        } label: {
-                            Label(loc.t("Image generation"), systemImage: "wand.and.stars")
-                        }
-                        // (Past conversations now lives as a dedicated toolbar
-                        // button — see the topBarTrailing History button above.)
-                        Button {
-                            showPersonaPicker = true
-                            HapticManager.impact(.light)
-                        } label: {
-                            Label("\(loc.t("Persona")): \(PersonaStore.shared.active.name)",
-                                  systemImage: PersonaStore.shared.active.icon)
-                        }
-                        Button {
-                            showSettings = true
-                            HapticManager.impact(.light)
-                        } label: {
-                            Label(loc.t("Settings"), systemImage: "gearshape")
-                        }
-                        Button {
-                            diagnoseAppErrors()
-                            HapticManager.impact(.light)
-                        } label: {
-                            Label(loc.t("Diagnose app errors"), systemImage: "stethoscope")
-                        }
-                        Divider()
-                        Button {
-                            showConversationSearch.toggle()
-                            if !showConversationSearch { conversationFilter = "" }
-                            HapticManager.impact(.light)
-                        } label: {
-                            Label(loc.t(showConversationSearch ? "Hide search" : "Search messages"),
-                                  systemImage: showConversationSearch
-                                    ? "magnifyingglass.circle.fill"
-                                    : "magnifyingglass")
-                        }
-                        if messages.contains(where: {
-                            ($0.role == .user || $0.role == .assistant)
-                                && !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                        }) {
-                            Button {
-                                shareCurrentConversation()
-                            } label: {
-                                Label(loc.t("Share conversation"),
-                                      systemImage: "square.and.arrow.up")
-                            }
-                        }
-                        // Web Tool settings
-                        Button {
-                            showWebSettings = true
-                            HapticManager.impact(.light)
-                        } label: {
-                            Label(
-                                loc.t(WebToolService.shared.settings.mode == .off
-                                    ? "Web Tool (off)" : "Web Tool settings"),
-                                systemImage: WebToolService.shared.settings.mode == .off
-                                    ? "globe.slash" : "globe"
-                            )
-                        }
-                        Divider()
-                        // Power-user / diagnostic actions grouped under one
-                        // "Advanced" submenu so the top-level menu stays short
-                        // and uncluttered (these are rarely-used vs. the chat
-                        // essentials above).
-                        Menu {
-                            Button {
-                                showBenchmark = true
-                                HapticManager.impact(.light)
-                            } label: {
-                                Label(loc.t("Benchmark model"), systemImage: "speedometer")
-                            }
-                            // A/B compare — heavier workflow, max-tier only.
-                            if !DeviceTierAdvisor.shouldHideHeavyFeatures {
-                                Button {
-                                    showCompare = true
-                                    HapticManager.impact(.light)
-                                } label: {
-                                    Label(loc.t("Compare models"), systemImage: "rectangle.split.2x1")
-                                }
-                            }
-                            Button {
-                                showMacros = true
-                                HapticManager.impact(.light)
-                            } label: {
-                                Label(loc.t("Run macro"), systemImage: "arrow.triangle.branch")
-                            }
-                        } label: {
-                            Label(loc.t("Advanced"), systemImage: "slider.horizontal.3")
-                        }
-                        // Clear conversation — destructive, at the bottom
-                        if !messages.isEmpty {
-                            Divider()
-                            Button(role: .destructive) {
-                                showClearConfirm = true
-                            } label: {
-                                Label(loc.t("Clear conversation"), systemImage: "trash")
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .foregroundColor(.secondary)
-                    }
-                    .accessibilityLabel(loc.t("More options"))
+                    chatOptionsMenu
                 }
             }
-            .confirmationDialog("Clear conversation?", isPresented: $showClearConfirm) {
-                Button("Clear", role: .destructive) { clearConversation() }
+            .confirmationDialog("Delete this conversation?", isPresented: $showClearConfirm, titleVisibility: .visible) {
+                Button("Delete conversation", role: .destructive) { deleteCurrentConversation() }
+            } message: {
+                Text("Its messages are removed from this iPhone and, with iCloud sync on, from your other devices.")
             }
             .sheet(isPresented: $showConversationPicker) {
                 ConversationPickerView(
@@ -602,6 +466,9 @@ struct CodingAssistantView: View {
             }
             .sheet(isPresented: $showModelPicker) {
                 AssistantModelPickerView(downloadedOnly: true)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+                    .presentationContentInteraction(.scrolls)
             }
             .sheet(isPresented: $showRuntimeDetails) {
                 AssistantRuntimeDetailsSheetHost(
@@ -637,9 +504,6 @@ struct CodingAssistantView: View {
             .sheet(isPresented: $showWebSettings) {
                 WebSettingsView()
             }
-            .sheet(isPresented: $showDownloadCenter) {
-                ModelDownloadCenterView()
-            }
             .sheet(isPresented: $showUnsafeModelLoadConfirmation) {
                 UnsafeModelLoadConfirmationSheet(
                     modelName: assistant.activeModel.displayName
@@ -660,7 +524,10 @@ struct CodingAssistantView: View {
                         }
                         showFilePicker = false
                     },
-                    onCancel: { showFilePicker = false }
+                    onCancel: { showFilePicker = false },
+                    onImagePick: { photos in
+                        photos.forEach(handlePickedPhoto)
+                    }
                 )
             }
             .sheet(isPresented: $showToolFilePicker) {
@@ -678,7 +545,13 @@ struct CodingAssistantView: View {
                                 ? "The user did not choose a readable file."
                                 : "File read failed:\n" + errors.joined(separator: "\n")
                         } else {
-                            result = FileAttachmentService.renderForPrompt(added)
+                            result = FileAttachmentService.renderForPrompt(
+                                added,
+                                byteBudget: FileAttachmentService.promptByteBudget(
+                                    forInputTokens: assistant.currentInputBudget
+                                ),
+                                relevanceQuery: request.prompt
+                            )
                         }
                         let depth = request.depth
                         pendingToolFile = nil
@@ -730,6 +603,7 @@ struct CodingAssistantView: View {
                 }
             }
         }
+        .background(T.studio.paper.ignoresSafeArea())
         // Auto-prepare the model when the assistant tab appears.
         //
         // The "Jetsam at 6 GB" concern that drove an earlier lazy-load
@@ -775,6 +649,14 @@ struct CodingAssistantView: View {
                 consumeBridge()
                 consumeOpenConversation()
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .onDeviceDataWiped)) { _ in
+            // Discard, never persist: the store was just emptied on purpose.
+            stopGeneration()
+            messages = []
+            currentConversationID = nil
+            conversationContextMemory = nil
+            restorePresentation(nil)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background || phase == .inactive {
@@ -982,6 +864,23 @@ struct CodingAssistantView: View {
         restorePresentation(nil)
         UserDefaults.standard.removeObject(forKey: "chat.lastConversationID")
         restoreDefaultModelForNewConversation()
+    }
+
+    /// "Delete conversation" used to call `clearConversation()`, which saves the
+    /// chat to history and starts a new one — the confirmed destructive action
+    /// removed nothing. Delete the stored conversation, then start fresh.
+    private func deleteCurrentConversation() {
+        completionScrollTask?.cancel()
+        stopGeneration()
+        let id = currentConversationID
+        messages = []
+        currentConversationID = nil
+        conversationContextMemory = nil
+        restorePresentation(nil)
+        UserDefaults.standard.removeObject(forKey: "chat.lastConversationID")
+        if let id { store.delete(id: id) }
+        restoreDefaultModelForNewConversation()
+        HapticManager.impact(.medium)
     }
 
     private func loadConversation(_ conv: StoredConversation) {
@@ -1890,46 +1789,123 @@ struct CodingAssistantView: View {
                                                 }
                                             }
                                         }
-                                    // Four glyphs under the LAST answer, above a
-                                    // 1px divider. Older turns keep copy /
-                                    // regenerate / share on long-press.
+                                    // Keep reply commands together under the latest answer.
+                                    // Follow-up prompts live in More, leaving prose uncluttered.
                                     if msg.role == .assistant, !msg.isStreaming,
                                        !msg.content.isEmpty,
                                        messages.last(where: { $0.role == .assistant })?.id == msg.id {
-                                        VStack(alignment: .leading, spacing: 12) {
-                                            StudioAnswerActionRow(
-                                                provenance: answerProvenance,
-                                                footnote: answerFootnote(for: msg),
-                                                canRegenerate: assistant.state == .ready,
-                                                onCopy: {
-                                                    UIPasteboard.general.string = msg.content
-                                                    ToastCenter.shared.info(loc.t("Copied"))
-                                                },
-                                                onRegenerate: { regenerateLastResponse() },
-                                                onShare: {
-                                                    sharePayload = AssistantSharePayload(text: msg.content)
-                                                },
-                                                onSpeak: {
-                                                    ODBridge.shared.store.requestExclusiveOperation("Reading this reply aloud") {
-                                                        VoiceService.shared.speak(msg.content)
-                                                    }
+                                        StudioAnswerActionRow(
+                                            provenance: answerProvenance,
+                                            footnote: answerFootnote(for: msg),
+                                            canRegenerate: assistant.state == .ready,
+                                            onCopy: {
+                                                UIPasteboard.general.string = msg.content
+                                                ToastCenter.shared.info(loc.t("Copied"))
+                                            },
+                                            onRegenerate: { regenerateLastResponse() },
+                                            onShare: {
+                                                sharePayload = AssistantSharePayload(text: msg.content)
+                                            },
+                                            onSpeak: {
+                                                ODBridge.shared.store.requestExclusiveOperation("Reading this reply aloud") {
+                                                    VoiceService.shared.speak(msg.content)
                                                 }
-                                            )
-                                            // Follow-up chips that reframe the
-                                            // previous reply (continue / shorter /
-                                            // more formal) stay on the last turn.
-                                            if assistant.state == .ready {
-                                                AssistantQuickActions(
-                                                    disabled: assistant.state != .ready,
-                                                    onAction: { sendQuickAction($0) }
-                                                )
-                                            }
-                                        }
+                                            },
+                                            onQuickAction: assistant.state == .ready
+                                                ? { sendQuickAction($0) } : nil
+                                        )
                                         .padding(.horizontal, 20)
-                                        .padding(.top, 4)
-                                        .padding(.bottom, 8)
+                                        .padding(.bottom, 2)
                                     }
                                 }
+    }
+
+    /// Chat options. Everyday actions form the compact row at the top;
+    /// workspace navigation (history, Device, Image studio) lives in the sidebar.
+    private var chatOptionsMenu: some View {
+        let persona = PersonaStore.shared.active
+        let webMode = WebToolService.shared.settings.mode
+        let hasTranscript = messages.contains {
+            ($0.role == .user || $0.role == .assistant)
+                && !$0.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        return Menu {
+            ControlGroup {
+                Button(loc.t("New chat"), systemImage: "square.and.pencil") {
+                    clearConversation()
+                    HapticManager.impact(.medium)
+                }
+                Button(loc.t(showConversationSearch ? "Hide search" : "Search"), systemImage: "magnifyingglass") {
+                    showConversationSearch.toggle()
+                    if !showConversationSearch { conversationFilter = "" }
+                    HapticManager.impact(.light)
+                }
+                Button(loc.t("Share"), systemImage: "square.and.arrow.up") {
+                    shareCurrentConversation()
+                }
+                .disabled(!hasTranscript)
+            }
+            .controlGroupStyle(.compactMenu)
+
+            Section(loc.t("This chat")) {
+                Button {
+                    showPersonaPicker = true
+                    HapticManager.impact(.light)
+                } label: {
+                    Label(loc.t("Persona"), systemImage: persona.icon)
+                    Text(persona.name)
+                }
+                Button {
+                    showWebSettings = true
+                    HapticManager.impact(.light)
+                } label: {
+                    Label(loc.t("Web access"), systemImage: webMode == .off ? "globe.slash" : "globe")
+                    Text(loc.t(webMode == .off ? "Off" : webMode == .askEveryTime ? "Asks before each search" : "Always allowed"))
+                }
+                Button {
+                    ODBridge.shared.store.selectedTab = .voice
+                    ODBridge.shared.store.send(.beginVoiceSession)
+                    HapticManager.impact(.light)
+                } label: {
+                    Label(loc.t("Voice conversation"), systemImage: "waveform")
+                }
+            }
+
+            Section {
+                Menu {
+                    Button(loc.t("Runtime details"), systemImage: "cpu") { showRuntimeDetails = true }
+                    Button(loc.t("Benchmark model"), systemImage: "speedometer") { showBenchmark = true }
+                    // A/B compare — heavier workflow, max-tier only.
+                    if !DeviceTierAdvisor.shouldHideHeavyFeatures {
+                        Button(loc.t("Compare models"), systemImage: "rectangle.split.2x1") { showCompare = true }
+                    }
+                    Button(loc.t("Run macro"), systemImage: "arrow.triangle.branch") { showMacros = true }
+                    Button(loc.t("Diagnose app errors"), systemImage: "stethoscope") { diagnoseAppErrors() }
+                } label: {
+                    Label(loc.t("Tools"), systemImage: "wrench.and.screwdriver")
+                    Text(loc.t("Benchmark, compare, macros"))
+                }
+                Button(loc.t("Settings"), systemImage: "gearshape") {
+                    showSettings = true
+                    HapticManager.impact(.light)
+                }
+            }
+
+            if !messages.isEmpty {
+                Section {
+                    Button(role: .destructive) {
+                        showClearConfirm = true
+                    } label: {
+                        Label(loc.t("Delete conversation"), systemImage: "trash")
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .foregroundColor(.secondary)
+        }
+        .menuOrder(.fixed)
+        .accessibilityLabel(loc.t("More options"))
     }
 
     private var inputBar: some View {
@@ -1941,7 +1917,6 @@ struct CodingAssistantView: View {
             canStop: true,
             canAdd: !isGenerating && !isPreparingImageContext && documentSearchID == nil,
             canRemove: !isGenerating && !isPreparingImageContext && documentSearchID == nil,
-            modelMenu: AnyView(composerModelMenu),
             microphone: AnyView(MicDictationButton(text: $inputText, compact: true, resetID: dictationResetID)),
             notice: composerNotice,
             onVoice: (assistant.canGenerateSelectedTarget || ODBridge.shared.store.voiceSessionActive) ? {
@@ -2056,26 +2031,26 @@ struct CodingAssistantView: View {
     }
 
     private var composerModelMenu: some View {
-        Menu {
-            Button("Choose an assistant model", systemImage: "cube") { ODBridge.shared.store.requestExclusiveOperation("Changing the active model") { showModelPicker = true } }
-            if canLoadSelectedModel {
-                Button("Load model", systemImage: "arrow.up.circle") { ODBridge.shared.store.requestExclusiveOperation("Loading a model") { Task { await assistant.load() } } }
+        Button {
+            inputFocused = false
+            ODBridge.shared.store.requestExclusiveOperation("Changing the active model") {
+                showModelPicker = true
             }
-            if assistant.activeModel.supportsThinking {
-                Toggle("Think before answering", isOn: thinkingEnabledBinding)
-            }
-            Button("Device status", systemImage: "iphone") { ODBridge.shared.store.secondaryRoute = .device }
         } label: {
             ODModelMenuLabel(displayName: assistant.activeDisplayName)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Model")
+        .accessibilityLabel("Choose chat model")
         .accessibilityValue(ODPresentation.modelName(assistant.activeDisplayName))
+        .accessibilityIdentifier("chat.modelPicker")
     }
 
     private var composerNotice: AnyView? {
         if isPreparingImageContext {
-            return AnyView(Label("Reading image", systemImage: "photo").font(.footnote).foregroundStyle(.secondary))
+            return AnyView(Label("Reading image", systemImage: "photo").font(.footnote).foregroundStyle(.secondary).odShimmer())
+        }
+        if isModelPreparing && !isGenerating {
+            return AnyView(Text(modelProgressTitle).font(.footnote).foregroundStyle(.secondary).odShimmer())
         }
         if let warning = DeviceSafetyMonitor.shared.statusLabel {
             return AnyView(Text(warning).font(.footnote).foregroundStyle(T.warn))
@@ -2095,21 +2070,18 @@ struct CodingAssistantView: View {
                 }
             }.font(.footnote).buttonStyle(.glass).frame(minHeight: ODLayout.minimumHit))
         }
-        if !assistant.canGenerateSelectedTarget && !isGenerating {
+        if !assistant.canGenerateSelectedTarget && !isGenerating && !isModelPreparing {
             return AnyView(HStack(spacing: ODLayout.elementGap) {
-                Text(isModelPreparing ? "\(modelProgressTitle). Your draft is kept here."
-                     : modelLoadFailure != nil ? "The model couldn’t load. Try again or choose another model."
+                Text(modelLoadFailure != nil ? "The model couldn’t load. Try again or choose another model."
                      : "Choose or load a model to send your message.")
                     .font(.footnote).foregroundStyle(.secondary)
                 Spacer(minLength: 0)
-                if !isModelPreparing {
-                    Button(canLoadSelectedModel && !hasPermanentModelCapacityFailure
-                           ? (modelLoadFailure == nil ? "Load model" : "Retry loading") : "Choose model") {
-                        if canLoadSelectedModel && !hasPermanentModelCapacityFailure { Task { await assistant.load() } }
-                        else { showModelPicker = true }
-                    }
-                    .font(.footnote.weight(.medium)).frame(minHeight: ODLayout.minimumHit)
+                Button(canLoadSelectedModel && !hasPermanentModelCapacityFailure
+                       ? (modelLoadFailure == nil ? "Load model" : "Retry loading") : "Choose model") {
+                    if canLoadSelectedModel && !hasPermanentModelCapacityFailure { Task { await assistant.load() } }
+                    else { showModelPicker = true }
                 }
+                .font(.footnote.weight(.medium)).frame(minHeight: ODLayout.minimumHit)
             })
         }
         return nil
@@ -2525,7 +2497,13 @@ struct CodingAssistantView: View {
                                        displayText: String,
                                        validCitations: Set<Int>) {
         guard let submission = acceptedSubmission, accepts(submission) else { return }
-        let attachmentBlock = FileAttachmentService.renderForPrompt(submission.draft.files)
+        let attachmentBlock = FileAttachmentService.renderForPrompt(
+            submission.draft.files,
+            byteBudget: FileAttachmentService.promptByteBudget(
+                forInputTokens: assistant.currentInputBudget
+            ),
+            relevanceQuery: displayText
+        )
         let resolvedPrompt = attachmentBlock.isEmpty ? promptText : attachmentBlock + "\n" + promptText
         if !submission.draft.files.isEmpty {
             messages.append(ChatMessage(role: .system, content: FileAttachmentService.systemPromptAddendum))
@@ -2629,14 +2607,15 @@ struct CodingAssistantView: View {
     /// user-visible transcript.
     @MainActor
     private func preparedRuntimeContext(_ source: [ChatMessage]) -> [ChatMessage] {
+        let rebuilt = withCurrentSystemPrompt(source)
         let policyAdjustedSource: [ChatMessage]
         if assistant.activeModel.runtime == .coreAI {
             policyAdjustedSource = CoreAIConversationPlanner.applyingCompactPromptPolicy(
-                to: source,
+                to: rebuilt,
                 toolsEnabled: activeModelToolsEnabled
             )
         } else {
-            policyAdjustedSource = source
+            policyAdjustedSource = rebuilt
         }
         let previous = conversationContextMemory
         let prepared = ConversationContextCompactor.prepare(
@@ -2651,12 +2630,36 @@ struct CodingAssistantView: View {
         return prepared.messages
     }
 
+    /// Replaces the conversation's stored system notes with the prompt built
+    /// for this reply, so a persona switch, a new day, new memories or newly
+    /// attached material take effect on the very next answer.
+    private func withCurrentSystemPrompt(_ source: [ChatMessage]) -> [ChatMessage] {
+        let dialog = source.filter { $0.role != .system }
+        let persona = PersonaStore.shared.active
+        let coreAI = assistant.activeModel.runtime == .coreAI
+        let budget = assistant.currentInputBudget
+        let tools: CodingAssistantService.PromptContext.Tools = activeModelToolsEnabled
+            ? (coreAI || budget <= 2_048 ? .compact : .full)
+            : (AppSettings.shared.toolsEnabled && coreAI ? .unavailable : .none)
+        let prompt = CodingAssistantService.composeSystemPrompt(.init(
+            persona: persona.systemPrompt,
+            memory: MemoryStore.shared.contextBlock(forPersonaID: persona.id),
+            tools: tools,
+            messages: dialog,
+            inputBudget: budget
+        ))
+        return [ChatMessage(role: .system, content: prompt)] + dialog
+    }
+
     @MainActor
     private func stopAfterCompleteToolCallIfNeeded(messageID: UUID) {
         guard activeModelToolsEnabled,
               detectedStreamingToolCalls[messageID] == nil,
-              let body = messages.first(where: { $0.id == messageID })?.content,
-              let call = ToolRunner.extractCall(from: body) else { return }
+              let raw = messages.first(where: { $0.id == messageID })?.content,
+              // While the prompt-opened reasoning is still running, it is not an answer.
+              let call = ToolRunner.extractCall(
+                from: assistant.replyStartsInsideThinking && !raw.contains("<think>") ? "<think>" + raw : raw
+              ) else { return }
         detectedStreamingToolCalls[messageID] = call
         assistant.stopGeneration()
     }
@@ -2696,7 +2699,10 @@ struct CodingAssistantView: View {
         nextSendSeed = nil
         nextSendJSONMode = false
         nextSendCollectLogprobs = false
-        let runtimeMessages = preparedRuntimeContext(llmMessages)
+        let preparedMessages = preparedRuntimeContext(llmMessages)
+        let runtimeMessages = assistant.isVisionChatCapable
+            ? preparedMessages
+            : preparedMessages.map { $0.withoutImagePayloads() }
         let responseScope = captureRequest()
         submissionPreparing = false
         generateChatReply(
@@ -2718,7 +2724,15 @@ struct CodingAssistantView: View {
                 Task { @MainActor in
                     guard self.accepts(responseScope) else { return }
                     if let idx = self.messages.firstIndex(where: { $0.id == msgID }) {
-                        let raw = self.messages[idx].content
+                        // Store one reasoning dialect so titles, history and
+                        // rendering agree whatever family produced it.
+                        var raw = AssistantOutputSanitizer.normalizeReasoningMarkup(self.messages[idx].content)
+                        // A prompt-opened block that never closed (token
+                        // limit) keeps its opener so reasoning recovery sees it.
+                        if self.assistant.replyStartsInsideThinking, !raw.contains("<think>") {
+                            raw = "<think>" + raw
+                        }
+                        self.messages[idx].content = raw
                         self.messages[idx].isStreaming = false
                         self.recordGenerationMetrics(
                             messageID: msgID,
@@ -2979,6 +2993,14 @@ struct CodingAssistantView: View {
         } else {
             text = inputText
         }
+        if assistant.activeExecutionLocation == .localCoreAI,
+           submission.draft.files.reduce(0, { $0 + $1.byteSize })
+                > FileAttachmentService.promptByteBudget(forInputTokens: assistant.currentInputBudget) {
+            ToastCenter.shared.info(
+                "Using a short file excerpt",
+                detail: "Core AI has a compact context window. Choose a larger-context model for the full document."
+            )
+        }
         dictationResetID = UUID()
         if submission.matchesDraft(currentDraft, revision: draftRevision) { inputText = "" }
         inputFocused = false
@@ -3072,7 +3094,13 @@ struct CodingAssistantView: View {
         guard let submission = acceptedSubmission, accepts(submission) else { return }
         userAbortedToolTurn = false
         let attachments = submission.draft.files
-        let attachmentBlock = FileAttachmentService.renderForPrompt(attachments)
+        let attachmentBlock = FileAttachmentService.renderForPrompt(
+            attachments,
+            byteBudget: FileAttachmentService.promptByteBudget(
+                forInputTokens: assistant.currentInputBudget
+            ),
+            relevanceQuery: text
+        )
         // On-device RAG: pull the most relevant excerpts from the Knowledge
         // Base for THIS query (cosine over locally-embedded chunks, nothing
         // leaves the device). nil when the KB is disabled/empty or nothing is
@@ -4661,22 +4689,28 @@ struct MessageBubble: View, Equatable {
                 // SwiftUI diffing so parseBlocks only re-runs when this
                 // bubble's own content / streaming state changes.
                 if message.isStreaming && message.content.isEmpty {
-                    HStack(spacing: 8) {
-                        ProgressView().controlSize(.small)
-                        Text("Preparing reply")
-                            .font(.subheadline)
-                            .foregroundStyle(T.ink2)
-                    }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityIdentifier("chat.reply.preparing")
+                    Text("Preparing reply")
+                        .font(.subheadline)
+                        .foregroundStyle(T.ink2)
+                        .odShimmer()
+                        .accessibilityIdentifier("chat.reply.preparing")
+                        .transition(.opacity)
                 } else {
                     AssistantMarkdownView(content: message.content, isStreaming: message.isStreaming)
                         .equatable()
+                        .transition(.opacity)
                 }
             }
+            // One crossfade from the working label to the first words; the
+            // stream itself is not animated (token bursts outrun text layout).
+            .animation(ODMotion.fade, value: message.content.isEmpty)
 
             if let sources = message.documentSources, !sources.isEmpty {
                 DocumentSourcesButton(sources: sources)
+            }
+
+            if !message.isStreaming, let rate = message.generationTokensPerSecond {
+                StudioGenerationRate(tokensPerSecond: rate)
             }
 
             // Quiet mono line only when the state is not obvious from the
@@ -4695,7 +4729,7 @@ struct MessageBubble: View, Equatable {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
-        .padding(.vertical, 8)
+        .padding(.vertical, 4)
     }
 
     /// Mono state line shown under prose only when it carries information
@@ -4716,17 +4750,6 @@ struct MessageBubble: View, Equatable {
         message.generationExecutionLocation == .applePrivateCloud
             ? "icloud.fill"
             : "lock.fill"
-    }
-
-    private func generationMetric(icon: String, text: String) -> some View {
-        HStack(spacing: 3) {
-            Image(systemName: icon)
-                .font(.system(size: 9, weight: .semibold))
-            Text(text)
-                .font(T.sans(10, .medium))
-        }
-        .foregroundStyle(T.ink3)
-        .fixedSize(horizontal: true, vertical: false)
     }
 
     private func formattedDuration(_ duration: TimeInterval) -> String {
@@ -4879,88 +4902,6 @@ private struct AssistantToolResultCard: View {
     }
 }
 
-// MARK: - QuickAction
-//
-// Chip-style follow-up actions surfaced under the last assistant reply:
-// "Continue / Shorter / More formal / Explain". Each chip sends a
-// re-framing prompt through the normal offline path, so streaming,
-// stop-button, and web-tool routing all behave the same as a Send tap.
-
-enum QuickActionKind: String, CaseIterable, Identifiable {
-    case continueReply, shorter, moreFormal, explain
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .continueReply: return "Continue"
-        case .shorter:       return "Shorter"
-        case .moreFormal:    return "More formal"
-        case .explain:       return "Explain"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .continueReply: return "arrow.right.to.line"
-        case .shorter:       return "text.redaction"
-        case .moreFormal:    return "graduationcap"
-        case .explain:       return "lightbulb"
-        }
-    }
-}
-
-struct AssistantQuickActions: View {
-    let disabled: Bool
-    let onAction: (QuickActionKind) -> Void
-    @Environment(\.koduTheme) private var T
-
-    var body: some View {
-        // Horizontal scroller so the row stays single-line on narrow
-        // devices without truncating chip labels. Native iOS pattern
-        // (mirrors the model picker bar across cloud-AI competitors).
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(QuickActionKind.allCases) { kind in
-                    Button {
-                        onAction(kind)
-                    } label: {
-                        // Instrument prompt keys, not glass chips: one shared
-                        // height, a tonal fill, a hairline edge. They are
-                        // commands issued to the model, so they read as keys
-                        // on the same console as the composer.
-                        HStack(spacing: 5) {
-                            Image(systemName: kind.systemImage)
-                                .font(.system(size: 10, weight: .medium))
-                            Text(kind.label)
-                                .font(T.sans(12, .medium))
-                        }
-                        .foregroundColor(T.ink2)
-                        .padding(.horizontal, 11)
-                        .frame(height: 30)
-                        .background(
-                            RoundedRectangle(cornerRadius: StudioRadius.chip, style: .continuous)
-                                .fill(T.studio.fillActive)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: StudioRadius.chip, style: .continuous)
-                                .strokeBorder(T.rule2, lineWidth: 1)
-                        )
-                        .contentShape(RoundedRectangle(cornerRadius: StudioRadius.chip, style: .continuous))
-                    }
-                    .buttonStyle(StudioPressStyle())
-                    .disabled(disabled)
-                    .opacity(disabled ? 0.45 : 1.0)
-                }
-            }
-            .padding(.trailing, 8)
-        }
-        // Don't let the inner ScrollView eat the parent's gesture
-        // (chat ScrollView scroll/tap dismiss). showsIndicators false
-        // already, but disabling vertical bounce keeps it contained.
-        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-    }
-}
-
 // MARK: - AssistantMarkdownView
 
 struct AssistantMarkdownView: View, Equatable {
@@ -5035,11 +4976,8 @@ struct AssistantMarkdownView: View, Equatable {
         // SIGABRTs at `createNewLineseg`) over its capacity on long
         // streaming replies. The non-streaming branch above re-enables
         // selection once generation finishes.
-        let expectsImplicitThinking =
-            (AssistantModelSettingsStore.shared.settings(
-                for: CodingAssistantService.shared.activeModel.repoID
-            )?.thinkingEnabled ?? AppSettings.shared.assistantThinking)
-            && CodingAssistantService.shared.activeModel.supportsThinking
+        // The service knows whether the prompt itself opened `<think>`.
+        let expectsImplicitThinking = CodingAssistantService.shared.replyStartsInsideThinking
         let c = normalizedThink(content)
         if expectsImplicitThinking
             && !c.contains("<think>")
@@ -5095,8 +5033,7 @@ struct AssistantMarkdownView: View, Equatable {
     /// template pre-fills the opening <think>). Synthesize the opening tag so
     /// the parser collapses the reasoning instead of leaking a stray </think>.
     private func normalizedThink(_ s: String) -> String {
-        if !s.contains("<think>"), s.contains("</think>") { return "<think>" + s }
-        return s
+        AssistantOutputSanitizer.normalizeReasoningMarkup(s)
     }
 
     private func liveReasoningTail(_ source: String) -> String {
@@ -5122,7 +5059,7 @@ private struct AssistantProseView: View {
     var body: some View {
         let source = AssistantOutputSanitizer.preservingLineBreaksForMarkdown(content)
         let blocks = StudioMarkdownLayout.parse(source)
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 10) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                 switch block {
                 case .heading(let level, let title):
@@ -5134,7 +5071,7 @@ private struct AssistantProseView: View {
                     Text(Self.inline(text))
                         .font(T.conversationBody)
                         .foregroundStyle(T.ink)
-                        .lineSpacing(5)
+                        .lineSpacing(4)
                         .fixedSize(horizontal: false, vertical: true)
                 case .list(let items):
                     AssistantProseList(items: items)
@@ -5296,9 +5233,9 @@ struct CodeBlock: View {
                 }
                 .buttonStyle(.plain)
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 16)
             .padding(.top, 12)
-            .padding(.bottom, 4)
+            .padding(.bottom, 20)
             .overlay(alignment: .bottom) {
                 Rectangle()
                     .fill(S.codeInk.opacity(0.14))
@@ -5312,7 +5249,7 @@ struct CodeBlock: View {
                     .foregroundStyle(S.codeInk)
                     .lineSpacing(7)
                     .textSelection(.enabled)
-                    .padding(14)
+                    .padding(16)
             }
         }
         .background(S.codeBg, in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous))

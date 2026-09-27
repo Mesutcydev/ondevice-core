@@ -6,6 +6,14 @@ import OnDeviceUI
 final class Diagnostics { static let shared = Diagnostics(); func error(_ message: String, category: String) {} }
 enum CloudSyncTombstones { static func mark(_ id: UUID) {} }
 enum SpotlightIndexer { static func reindexAll(_ records: [StoredConversation]) {} }
+/// Stand-in for the production Documents scan: top-level folders holding config.json.
+enum LocalModelImportService {
+    static func documentsCandidates() -> [URL] {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        return ((try? FileManager.default.contentsOfDirectory(at: docs, includingPropertiesForKeys: nil)) ?? [])
+            .filter { FileManager.default.fileExists(atPath: $0.appendingPathComponent("config.json").path) }
+    }
+}
 final class ToastCenter { static let shared = ToastCenter(); func error(_ title: String, detail: String) {}
     func success(_ title: String, detail: String? = nil) {}
     func info(_ title: String, detail: String? = nil) {} }

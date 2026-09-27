@@ -107,10 +107,16 @@ final class APIServerWorkspaceTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["12000"].waitForExistence(timeout: 5))
 
         // Navigation keeps the saved configuration.
-        app.buttons["navigation.menu"].tap()
-        app.buttons["sidebar.home"].tap()
-        app.buttons["navigation.menu"].tap()
-        app.buttons["sidebar.apiServer"].tap()
+        // The drawer animates; wait for it to open before choosing a destination.
+        for destination in ["sidebar.home", "sidebar.apiServer"] {
+            app.buttons["navigation.menu"].firstMatch.tap()
+            let row = app.buttons[destination]
+            XCTAssertTrue(row.waitForExistence(timeout: 3))
+            row.tap()
+            let closed = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"),
+                                                   object: app.buttons["navigation.dismissMenu"])
+            XCTAssertEqual(XCTWaiter.wait(for: [closed], timeout: 3), .completed)
+        }
         XCTAssertTrue(app.staticTexts["12000"].exists)
 
         // One lifecycle control owns start and stop.

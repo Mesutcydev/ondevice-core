@@ -139,7 +139,7 @@ final class BriefPresentationMatrix: XCTestCase {
             app.launchArguments = ["-screen", "image"] + (turbo ? ["-image-turbo"] : [])
             app.launch()
             app.buttons["image.model"].tap()
-            app.buttons["Generation options"].tap()
+            app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Generation options")).firstMatch.tap()
             XCTAssertTrue(app.staticTexts["Generation steps"].waitForExistence(timeout: 3))
             XCTAssertEqual(app.textFields["Negative prompt"].exists, !turbo)
             app.terminate()
@@ -187,6 +187,34 @@ final class BriefPresentationMatrix: XCTestCase {
             capture(downloading ? "brief-model-downloading" : "brief-model-download-details")
             app.terminate()
         }
+    }
+
+    @MainActor func testDiscoverDownloadPauseResumeAndCancel() {
+        let app = XCUIApplication()
+        let id = "review/catalog-model"
+
+        app.launchArguments = ["-screen", "models", "-model-actions", "-model-downloading", "-action-probe"]
+        app.launch()
+        app.buttons["models.scope.discover"].tap()
+        XCTAssertTrue(app.buttons["model.pauseResume.\(id)"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["model.cancel.\(id)"].isHittable)
+        app.buttons["model.pauseResume.\(id)"].tap()
+        XCTAssertTrue(app.staticTexts["fixture.action"].label.contains("pauseDownload"))
+        app.buttons["model.cancel.\(id)"].tap()
+        XCTAssertTrue(app.buttons["Cancel download"].waitForExistence(timeout: 3))
+        app.buttons.matching(NSPredicate(format: "label == %@", "Cancel download")).element(boundBy: 1).tap()
+        let cancellation = NSPredicate(format: "label CONTAINS %@", "cancelDownload")
+        expectation(for: cancellation, evaluatedWith: app.staticTexts["fixture.action"])
+        waitForExpectations(timeout: 3)
+        app.terminate()
+
+        app.launchArguments = ["-screen", "models", "-model-actions", "-model-paused", "-action-probe"]
+        app.launch()
+        app.buttons["models.scope.discover"].tap()
+        XCTAssertTrue(app.buttons["model.pauseResume.\(id)"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["model.pauseResume.\(id)"].label.contains("Resume"))
+        app.buttons["model.pauseResume.\(id)"].tap()
+        XCTAssertTrue(app.staticTexts["fixture.action"].label.contains("download"))
     }
 
     @MainActor private func capture(_ name: String) {

@@ -68,3 +68,19 @@ The reference behavior was verified against
 `john-rocky/coreai-model-zoo@f85178aeeacf1883797fec38cdb22b51c17b4618`.
 Keep the shape-policy regression coverage in `StateHandlerTests` until the
 vendored Apple runtime contains equivalent fixed-S=1 handling.
+
+## Chat template and streaming text fixes
+
+`CoreAILanguageModel.CoreAIExecutor.makeTokens` now treats an empty result from
+`applyChatTemplate` as a failure and falls back to role-labelled text encoding.
+Previously it handed an empty token array to FoundationModels, which rejected
+the prompt as unsupported transcript content even when the latest user turn
+was ordinary text.
+
+`CoreAIStreamingTokenDecoder` replaces the two-token decoding window. The old
+window assumed a token decoded alone remained a prefix when the next token
+arrived; that assumption can drop spaces or repeat text for some tokenizers.
+The new decoder compares complete generated prefixes, holds unstable text
+until the next token, and discards unknown-token placeholders. The focused
+tests live in `CoreAIStreamingTokenDecoderTests.swift`. These patches should
+be reviewed when updating the upstream pin.

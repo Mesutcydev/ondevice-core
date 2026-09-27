@@ -113,7 +113,9 @@ struct ODPrimaryButton: View {
         .buttonStyle(.glassProminent)
         .buttonBorderShape(.capsule)
         .controlSize(.large)
-        .tint(.blue)
+        // Ink, like Send: the shell is monochrome, so one filled neutral
+        // marks the primary action on every screen.
+        .odInkProminent()
     }
 }
 
@@ -136,10 +138,13 @@ struct ODIconButton: View {
             Image(systemName: symbol)
                 .font(.system(size: iconSize, weight: .regular))
                 .foregroundStyle(ODPalette.text)
+                // Regular glass padding around this frame yields a ~46 pt circle,
+                // the reference drawer's control size.
+                .frame(width: iconSize + 8, height: iconSize + 8)
         }
         .buttonStyle(.glass)
         .buttonBorderShape(.circle)
-        .controlSize(.large)
+        .controlSize(.regular)
         .frame(minWidth: ODLayout.minimumHit, minHeight: ODLayout.minimumHit)
         .accessibilityLabel(label)
     }
@@ -229,6 +234,69 @@ struct ODStatCell: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
+}
+
+// MARK: - Motion
+
+/// Motion vocabulary. Short and damped: motion confirms a change, it never
+/// performs. Movement is dropped under Reduce Motion; fades remain.
+public enum ODMotion {
+    /// Taps, toggles and symbol swaps.
+    public static let quick: Animation = .snappy(duration: 0.22)
+    /// Insertion, removal and in-place layout changes.
+    public static let standard: Animation = .smooth(duration: 0.32)
+    /// Workspace and content crossfades; also the Reduce Motion replacement.
+    public static let fade: Animation = .easeInOut(duration: 0.18)
+
+    public static func resolve(_ animation: Animation, reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : animation
+    }
+}
+
+/// A light sweep across in-progress text ("Preparing reply", "Analyzing image")
+/// in place of a spinner, as the reference chat apps do. Static under Reduce
+/// Motion. `keyframeAnimator` keeps the loop scoped to this text, so it cannot
+/// leak into surrounding layout animations the way `repeatForever` can.
+private struct ODShimmer: ViewModifier {
+    let active: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        if active && !reduceMotion {
+            content.keyframeAnimator(initialValue: CGFloat(-1), repeating: true) { view, x in
+                view.mask {
+                    LinearGradient(colors: [.black.opacity(0.5), .black, .black.opacity(0.5)],
+                                   startPoint: UnitPoint(x: x, y: 0.5),
+                                   endPoint: UnitPoint(x: x + 1, y: 0.5))
+                }
+            } keyframes: { _ in
+                LinearKeyframe(CGFloat(1), duration: 1.4)
+                LinearKeyframe(CGFloat(1), duration: 0.5)
+            }
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    public func odShimmer(_ active: Bool = true) -> some View { modifier(ODShimmer(active: active)) }
+}
+
+/// Filled ink primary (pair with `.glassProminent`), the app's one primary
+/// action color. The label follows `isEnabled`: a forced on-ink color vanishes
+/// on the pale disabled fill, so disabled labels use the system secondary.
+private struct ODInkProminent: ViewModifier {
+    @Environment(\.isEnabled) private var isEnabled
+    func body(content: Content) -> some View {
+        content
+            .tint(ODPalette.send)
+            .foregroundStyle(isEnabled ? AnyShapeStyle(ODPalette.onSend) : AnyShapeStyle(.secondary))
+    }
+}
+
+extension View {
+    public func odInkProminent() -> some View { modifier(ODInkProminent()) }
 }
 
 struct ODPressButtonStyle: ButtonStyle {

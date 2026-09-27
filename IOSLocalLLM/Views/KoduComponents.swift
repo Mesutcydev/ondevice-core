@@ -131,7 +131,7 @@ struct KPrimaryButton: View {
             .frame(maxWidth: .infinity, minHeight: 44)
         }
         .buttonStyle(.glassProminent).controlSize(.large)
-        .tint(ODPalette.send).foregroundStyle(ODPalette.onSend)
+        .odInkProminent()
         .disabled(disabled)
     }
 }
@@ -176,10 +176,33 @@ struct KSection<Content: View>: View {
 
     var body: some View {
         Section {
-            content()
+            VStack(alignment: .leading, spacing: 0) {
+                content()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                T.surface,
+                in: RoundedRectangle(cornerRadius: StudioRadius.panel,
+                                     style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: StudioRadius.panel,
+                                 style: .continuous)
+                    .strokeBorder(T.rule, lineWidth: 1)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: StudioRadius.panel,
+                                        style: .continuous))
+            .padding(.horizontal, 16)
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
         } header: {
-            Text(title.replacingOccurrences(of: "_", with: " ").capitalized)
-                .font(.footnote).foregroundStyle(.secondary)
+            Text(title.replacingOccurrences(of: "_", with: " ").uppercased())
+                .font(T.sans(11, .semibold))
+                .tracking(1.1)
+                .foregroundColor(T.ink3)
+                .textCase(nil)
+                .padding(.horizontal, 18)
         }
     }
 }
@@ -250,8 +273,9 @@ struct KRow<Trailing: View>: View {
                     }
                 }
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.vertical, 4)
+            .frame(minHeight: ODLayout.settingsRowMinimumHeight)
+            .padding(.horizontal, ODLayout.settingsPageInset)
 
             if !last {
                 Rectangle().fill(T.rule).frame(height: 1)
@@ -509,7 +533,8 @@ struct KDisclosureRows<Content: View>: View {
                         .foregroundColor(T.ink4)
                         .rotationEffect(.degrees(open ? 90 : 0))
                 }
-                .padding(.horizontal, 14).padding(.vertical, 12)
+                .padding(.horizontal, ODLayout.settingsPageInset)
+                .frame(minHeight: ODLayout.settingsRowMinimumHeight)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

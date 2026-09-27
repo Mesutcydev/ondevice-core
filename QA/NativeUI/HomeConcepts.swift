@@ -32,6 +32,13 @@ struct HomeConceptReview: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("App menu", systemImage: "line.3.horizontal") { store.conversationsPresented = true }.labelStyle(.iconOnly)
                 }
+                ToolbarItem(placement: .principal) {
+                    Menu { Button("Models") { store.selectedTab = .models } } label: {
+                        ODModelMenuLabel(displayName: "Ornith 1.5 9B")
+                    }
+                    .accessibilityLabel("Model")
+                    .accessibilityIdentifier("chat.modelPicker")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button("New conversation") { text = ""; focus = true }
@@ -46,9 +53,6 @@ struct HomeConceptReview: View {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 ODComposer(text: $text, focus: $focus, attachments: [], isResponding: false,
                     canSend: !text.isEmpty, canStop: false, canAdd: true, canRemove: false,
-                    modelMenu: AnyView(Menu { Button("Models") { store.selectedTab = .models } } label: {
-                        HStack(spacing: 6) { Text("Ornith 1.5 9B").font(.subheadline.weight(.semibold)).foregroundStyle(ODPalette.text); Image(systemName: "chevron.down").font(.caption2.weight(.semibold)).foregroundStyle(ODPalette.secondary) }
-                    }),
                     microphone: AnyView(Button("Microphone", systemImage: "mic") { choose("Voice preview") }
                         .labelStyle(.iconOnly).buttonStyle(.plain).frame(minWidth: 44, minHeight: 44)),
                     onAdd: { choose("Attach a file") }, onRemove: { _ in },

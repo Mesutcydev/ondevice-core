@@ -7,52 +7,34 @@ import UIKit
 // MARK: - MemoryAdvisor
 // Helps decide whether loading a given model is safe on the current device.
 //
-// We use ProcessInfo.physicalMemory as the headline number, but reserve
-// roughly 30% for the OS + foreground apps. Models that exceed the remaining
-// budget are flagged as "won't fit" — the UI can warn before load() is called.
-//
-// The numbers below are approximate working-set sizes during inference, not
-// raw weight sizes. A 4-bit Qwen3-4B has ~2.3 GB of weights but typically
-// peaks around 3.5–4 GB with the KV cache.
+// Admission uses a live process snapshot, bounded by physical/platform caps.
+// Estimated model peaks are incremental to that snapshot. They include
+// weights and runtime state; the app's current footprint is already charged.
 
 enum MemoryAdvisor {
 
     // MARK: - Load-time headroom
-    //
-    // `estimatedFootprint(for:)` returns a model's *peak* resident working set
-    // — steady-state weights + KV cache + activations + the transient during
-    // load (on-disk read, 4-bit unpack, Metal upload running concurrently).
-    // The gate (`safetyBlocker`) therefore compares that peak directly against
-    // the live per-process ceiling and adds only a small fixed reserve for
-    // app/OS glue. It must NOT multiply the footprint again — doing so was the
-    // "everything reports double the RAM it needs" bug: a downloaded model was
-    // sized at on-disk × `workingSetOverhead` inside `estimatedFootprint` and
-    // then multiplied a *second* time by the spike factor here, yielding
-    // on-disk × ~2.5 and refusing 4B/8B models that comfortably fit.
-    //
-    // `loadSpikeMultiplier` is the single weights→peak factor used by callers
-    // that start from *raw* weight bytes (e.g. `LensInferenceLoop`, which sizes
-    // the VLM from `estimatedWeightBytes`). It is applied exactly once on that
-    // path. Inside this type, `estimatedFootprint` already bakes the peak in.
+
+    // Legacy weight-to-peak heuristic for callers without a tensor/config
+    // breakdown (primarily Lens). Never multiply an already-estimated peak.
     static let loadSpikeMultiplier = 1.6
 
-    // Single weights→peak factor for models sized from their on-disk weights
-    // (downloaded / imported). On-disk size ≈ quantized weights; the resident
-    // peak adds KV cache + activations. 1.3× covers a typical context window
-    // for 4-bit/8-bit MLX models, which mmap their weights (the on-disk read
-    // does not add resident pages beyond the weights themselves).
+    // Fallback for unknown architectures. Supported text models instead use
+    // explicit KV/recurrent/workspace estimates in MLXModelMemoryEstimate.
     static let workingSetOverhead = 1.3
 
-    // Fixed headroom reserved on top of a model's estimated peak, covering the
-    // app's own baseline, the MLX/Metal runtime, and OS glue. A fixed reserve
-    // (rather than a percentage of model size) avoids over-penalizing large
-    // models — the transient is already inside the peak estimate.
+    // Additional margin for concurrent app growth and estimation uncertainty.
+    // The current app footprint is already deducted from live headroom.
     static let loadHeadroomReserve: Int64 = 500_000_000
+
+    // Runtime slack in addition to the explicitly calculated KV, recurrent
+    // state, and prefill workspace. Rotating caches remain unquantized.
+    static let boundedKVRuntimeReserve: Int64 = 250_000_000
 
     // Reserve used in edge / developer mode (`AppSettings.showEdgeModels`).
     // Zero so a "tight" model whose peak just fits the live ceiling is allowed
     // to load. This is the opt-in risky path; the normal path keeps the full
-    // `loadHeadroomReserve` and therefore can never be coaxed into an OOM.
+    // `loadHeadroomReserve` to reduce the chance of memory-pressure failures.
     static let edgeHeadroomReserve: Int64 = 0
 
     // Conservative footprint assumed when a model can't be sized (custom /
@@ -113,9 +95,9 @@ enum MemoryAdvisor {
     /// allocate before iOS kills it for memory. On iOS this ceiling sits well
     /// below physical RAM (a 6 GB device often gives a process only ~3 GB even
     /// with the increased-memory entitlement), so it's the real OOM limit.
-    /// Reports 0 when unavailable (e.g. some simulator conditions).
+    /// Zero on an iOS app means no headroom, not permission to use a fallback.
     static var processAvailableMemory: Int64 {
-        Int64(os_proc_available_memory())
+        memorySnapshot.kernelHeadroom ?? 0
     }
 
     /// Device RAM not resident in THIS process (deviceTotalRAM − our own
@@ -153,7 +135,7 @@ enum MemoryAdvisor {
     /// while `resident_size` never added it back. That's the "open the Lens
     /// VLM, switch to Assistant, Qwen3-4B is suddenly too large for this
     /// device" bug: the ceiling was polluted by the just-used VLM's GPU memory.
-    static var physFootprint: Int64 {
+    private static func taskMemoryInfo() -> (footprint: Int64, remaining: Int64?)? {
         var info = task_vm_info_data_t()
         var count = mach_msg_type_number_t(
             MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
@@ -162,23 +144,22 @@ enum MemoryAdvisor {
                 task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
             }
         }
-        return kr == KERN_SUCCESS ? Int64(info.phys_footprint) : 0
+        guard kr == KERN_SUCCESS else { return nil }
+        // The remaining-limit field arrived in TASK_VM_INFO revision 4.
+        let remainingOffset = MemoryLayout<task_vm_info_data_t>.offset(of: \.limit_bytes_remaining)!
+        let hasRemaining = Int(count) * MemoryLayout<natural_t>.size >= remainingOffset + MemoryLayout<UInt64>.size
+        return (Int64(clamping: info.phys_footprint),
+                hasRemaining ? Int64(clamping: info.limit_bytes_remaining) : nil)
     }
 
-    // MARK: - Entitlement-aware ceiling
-    //
-    // IOSLocalLLM ships the `increased-memory-limit` entitlement. On some devices
-    // `os_proc_available_memory()` under-reports, so we fuse that signal with
-    // an empirical per-tier fraction of physical RAM. The result still needs a
-    // platform cap: build 45 proved that a 12 GB iPhone can report ~9.2 GB of
-    // apparent headroom and then be Jetsam-killed around a 5.6 GB footprint.
-    // iPad and Mac keep the scalable estimate; iPhone uses the validated bound.
+    static var physFootprint: Int64 {
+        taskMemoryInfo()?.footprint ?? 0
+    }
 
-    /// Fraction of physical RAM the app can realistically use as a hard ceiling
-    /// on this device class. Tuned empirically against the entitled per-process
-    /// limit (it sits well below 100% of device RAM even with the entitlement).
-    /// These fractions provide the synthetic candidate. `clampedProcessCeiling`
-    /// applies the separately validated iPhone ceiling afterward.
+    // MARK: - Platform bounds
+
+    /// Heuristic only for hosts without iOS process-limit reporting. An
+    /// entitlement never authorizes exceeding a reported kernel limit.
     private static var entitlementCeilingFraction: Double {
         switch DeviceTierAdvisor.current {
         case .lite, .entry: return 0.55   // ≤4 GB — keep very tight
@@ -194,11 +175,8 @@ enum MemoryAdvisor {
     /// Conservative process cap for iPhones below the 12 GB Max tier.
     static let maximumIPhoneProcessCeiling: Int64 = 6_200_000_000
 
-    /// 12 GB Pro Max devices have a materially larger entitled process budget.
-    /// Keep ~3.7 GB outside IOSLocalLLM while allowing a 5–6 GB quantized model
-    /// plus its measured load envelope. The previous universal 6.2 GB clamp
-    /// was introduced while stale MLX loads could overlap; after serializing
-    /// model loads it unnecessarily rejects Ornith 9B on this tier.
+    /// Upper policy bound for high-memory iPhones, not a guaranteed grant.
+    /// A smaller live kernel budget always wins.
     static let maximumHighMemoryIPhoneProcessCeiling: Int64 = 8_500_000_000
     static let highMemoryIPhoneRAMThreshold: Int64 = 10_000_000_000
 
@@ -226,46 +204,33 @@ enum MemoryAdvisor {
         return min(max(0, candidate), platformCap)
     }
 
-    /// Best estimate of this process's hard memory ceiling (the per-process
-    /// limit iOS enforces), in bytes — independent of what is loaded right now.
-    ///
-    /// Fuses two signals and trusts the larger:
-    ///   • Kernel: `os_proc_available_memory()` + current `phys_footprint`.
-    ///     Both use the identical footprint accounting, so the sum recovers the
-    ///     limit and is STABLE regardless of what is resident. (The previous
-    ///     version added `resident_size`, which omits GPU/Metal buffers, so the
-    ///     ceiling sagged by a resident VLM's GPU footprint — the "open Lens,
-    ///     switch to Assistant, 4B won't load" regression. See `physFootprint`.)
-    ///   • Entitlement: `physicalRAM × tierFraction`. Recovers the headroom the
-    ///     kernel signal hides on entitled devices.
-    /// Clamped to `physicalRAM − 1.5 GB`; iPhone is additionally capped at
-    /// the empirically validated 6.2 GB process budget.
-    static var processMemoryCeiling: Int64 {
-        let avail = processAvailableMemory
-        let footprint = physFootprint
-        let kernelCeiling: Int64 = (avail > 0 && footprint > 0)
-            ? avail + footprint
-            : (avail > 0 ? avail + max(0, deviceTotalRAM - nonResidentRAMEstimate) : 0)
-        let entitlementCeiling = Int64(Double(deviceTotalRAM) * entitlementCeilingFraction)
-        let best = max(kernelCeiling, entitlementCeiling)
-        let fallback = best > 0 ? best : availableRAM
-        return clampedProcessCeiling(
-            candidate: fallback,
-            totalRAM: deviceTotalRAM,
-            isPhone: isIPhoneProcess
+    /// Read footprint and headroom together from task_info when available.
+    /// Limits can change during the app lifecycle, so this is never cached.
+    /// A tier fraction is only for platforms without the iOS limit API.
+    static var memorySnapshot: ProcessMemoryBudget {
+        let info = taskMemoryInfo()
+        let headroom: Int64?
+        #if os(iOS) && !targetEnvironment(simulator)
+        headroom = info?.remaining ?? Int64(clamping: os_proc_available_memory())
+        #else
+        headroom = nil
+        #endif
+        return ProcessMemoryBudget.resolve(
+            footprint: info?.footprint,
+            kernelHeadroom: headroom,
+            fallbackCeiling: MemoryBytes.count(Double(deviceTotalRAM) * entitlementCeilingFraction),
+            platformCap: clampedProcessCeiling(
+                candidate: .max, totalRAM: deviceTotalRAM, isPhone: isIPhoneProcess
+            )
         )
     }
 
-    /// Live memory the app can realistically still allocate RIGHT NOW, in bytes
-    /// — the figure the load gate compares a model's footprint against. Like
-    /// `processMemoryCeiling` it fuses the kernel headroom with the
-    /// entitlement-fraction estimate. The final headroom is always derived
-    /// from `processMemoryCeiling`, so neither optimistic signal can exceed the
-    /// validated platform budget.
-    static var availableMemoryForModel: Int64 {
-        let footprint = physFootprint
-        return max(0, processMemoryCeiling - footprint)
-    }
+    /// Current estimated ceiling, not a guarantee of future allocations.
+    static var processMemoryCeiling: Int64 { memorySnapshot.ceiling }
+
+    /// Incremental allocations available now, with the current app footprint
+    /// already deducted. Zero is a valid exhausted budget.
+    static var availableMemoryForModel: Int64 { memorySnapshot.available }
 
     // MARK: - Device fit (for suggestion badges)
 
@@ -283,19 +248,16 @@ enum MemoryAdvisor {
         }
     }
 
-    /// Classifies whether a model of the given peak footprint fits this device.
-    ///
-    /// Measured against live `processAvailableMemory`. On the Models tab the app
-    /// has unloaded every model (ContentView does this on entering the tab), so
-    /// that figure is the true headroom a fresh load can use — the honest answer
-    /// to "will this run without an OOM crash." `.fits` keeps the full reserve;
-    /// `.tight` would load only with the reserve dropped (edge mode); `.over`
-    /// cannot load at all.
+    /// Classifies an additional model load using the same headroom and
+    /// reserve as admission. Visited workspaces can still hold allocations.
     static func fit(forFootprint footprint: Int64) -> Fit {
-        guard footprint > 0 else { return .fits }
-        let avail = availableMemoryForModel > 0 ? availableMemoryForModel : availableRAM
-        if footprint + loadHeadroomReserve <= avail { return .fits }
-        if footprint <= avail { return .tight }
+        fit(forFootprint: footprint, available: memorySnapshot.available)
+    }
+
+    static func fit(forFootprint footprint: Int64, available: Int64) -> Fit {
+        let assumed = footprint > 0 ? footprint : unknownFootprintFloor
+        if MemoryBytes.add(assumed, loadHeadroomReserve) <= available { return .fits }
+        if assumed <= available { return .tight }
         return .over
     }
 
@@ -309,9 +271,31 @@ enum MemoryAdvisor {
 
     /// Best-effort working-set estimate per model, in bytes.
     /// Falls back to AssistantModelCatalog preset metadata and finally to an
-    /// on-disk-size × 1.6 estimate so downloaded / imported models are no
+    /// on-disk weight estimate so downloaded / imported models are no
     /// longer reported as "0 — fits anywhere".
     static func estimatedFootprint(for modelID: String) -> Int64 {
+        // A Lens estimate must include the vision tower and image workspace.
+        // Never feed its selection through the text-only tensor estimator.
+        if modelID.hasPrefix("vision:") {
+            let repoID = String(modelID.dropFirst("vision:".count))
+            // GGUF pairs materialize only the projector (mirrors the
+            // LlamaCppVLMService load gate); the LLM weights stay mmap'd.
+            if let dir = LlamaCppVLMService.stagedDirectory(for: repoID),
+               let mmproj = LlamaCppVLMService.resolveMmprojPath(in: dir),
+               let bytes = (try? URL(fileURLWithPath: mmproj).resourceValues(forKeys: [.fileSizeKey]))?.fileSize {
+                return MemoryBytes.add(MemoryBytes.count(Double(bytes) * loadSpikeMultiplier),
+                                       GGUFLoadPolicy.storageBackedHeadroom)
+            }
+            return onDiskWeightsSize(forRepoID: repoID)
+                .map { MemoryBytes.count(Double($0) * loadSpikeMultiplier) } ?? 0
+        }
+        // 0. An installed MLX preset is sized from what it will actually load.
+        //    Its catalog number stays the estimate before download; several
+        //    were padded for an 8.5 GB ceiling iOS never granted.
+        if let preset = AssistantModelCatalog.model(forID: modelID), preset.runtime == .mlx,
+           let measured = measuredPresetFootprint(preset) {
+            return measured
+        }
         // 1. Built-ins with hand-tuned numbers
         switch modelID {
         case "qwen3-1.7b":       return 1_500_000_000   // ~1.5 GB peak
@@ -334,18 +318,89 @@ enum MemoryAdvisor {
                 return zoo.approxDownloadBytes + 500_000_000
             }
             if let onDisk = onDiskCoreAISize(forSelectionID: modelID), onDisk > 0 {
-                return Int64(Double(onDisk) * workingSetOverhead) + 500_000_000
+                return MemoryBytes.add(MemoryBytes.count(Double(onDisk) * workingSetOverhead), 500_000_000)
             }
         }
-        // 3. Custom/downloaded/imported — parse the prefix and look up the
-        //    on-disk repo size. Peak working set ≈ weights × workingSetOverhead
-        //    (KV cache + activations). This is the *final* peak estimate; the
-        //    gate does not multiply it again.
-        if let repoID = nonPresetRepoID(from: modelID),
-           let onDisk = onDiskWeightsSize(forRepoID: repoID), onDisk > 0 {
-            return Int64(Double(onDisk) * workingSetOverhead)
+        // 3. Installed text models use their actual tensors and execution
+        // profile. Unsized folders keep a conservative floor.
+        if let repoID = nonPresetRepoID(from: modelID) {
+            if let directory = localModelDirectory(forRepoID: repoID),
+               let measured = measuredFootprint(repoID: repoID, directory: directory) {
+                return measured
+            }
+            // mmap'd GGUF weights are not charged to the footprint: report
+            // exactly what GGUFLoadPolicy admits, not file size × overhead.
+            if let directory = localModelDirectory(forRepoID: repoID),
+               let gguf = LocalModelFileValidator.ggufLLM(in: directory),
+               let bytes = (try? gguf.resourceValues(forKeys: [.fileSizeKey]))?.fileSize {
+                return GGUFLoadPolicy.resolve(
+                    fileBytes: Int64(bytes),
+                    pagingEnabled: AppSettings.shared.largeModelLowMemoryEnabled
+                ).minimumAvailableBytes
+            }
+            if let onDisk = onDiskWeightsSize(forRepoID: repoID), onDisk > 0 {
+                return max(unknownFootprintFloor, MemoryBytes.count(Double(onDisk) * workingSetOverhead))
+            }
         }
         return 0
+    }
+
+    /// Estimate actual text tensors and the execution profile's cache/state.
+    /// Metadata-backed models expose a breakdown; unknown architectures keep
+    /// the proportional fallback rather than a universal 250 MB envelope.
+    static func measuredFootprint(repoID: String, directory: URL) -> Int64? {
+        let key = "text:\(repoID):\(directory.standardizedFileURL.path)"
+        _diskSizeLock.lock()
+        if let cached = _diskSizeCache[key] {
+            _diskSizeLock.unlock()
+            return cached < 0 ? nil : cached
+        }
+        _diskSizeLock.unlock()
+        let measured = uncachedTextFootprint(repoID: repoID, directory: directory)
+        _diskSizeLock.lock()
+        _diskSizeCache[key] = measured ?? -1
+        _diskSizeLock.unlock()
+        return measured
+    }
+
+    private static func uncachedTextFootprint(repoID: String, directory: URL) -> Int64? {
+        guard let weights = LocalModelRegistry.textWeightBytes(in: directory), weights > 0 else { return nil }
+        let profile = MLXAssistantExecutionProfile.resolve(
+            repoID: repoID,
+            architecture: LocalModelRegistry.declaredModelType(in: directory)
+        )
+        if let data = try? Data(contentsOf: directory.appendingPathComponent("config.json")),
+           let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let estimate = MLXModelMemoryEstimate.estimate(
+                weights: weights, config: config,
+                contextTokens: profile.maxKVSize ?? (DeviceTierAdvisor.current == .max ? 16_384 : 8_192),
+                rotatingCache: profile.maxKVSize != nil, kvBits: profile.kvBits,
+                prefillTokens: profile.prefillStepSize,
+                allocatorCache: Int64(profile.cacheLimitBytes),
+                runtimeReserve: boundedKVRuntimeReserve
+           ) {
+            return estimate.peak
+        }
+        return max(MemoryBytes.add(weights, boundedKVRuntimeReserve),
+                   MemoryBytes.count(Double(weights) * workingSetOverhead))
+    }
+
+    /// Memoized with the disk-size cache (invalidated when installs change):
+    /// this runs for every Models-tab fit badge.
+    private static func measuredPresetFootprint(_ preset: AssistantModel) -> Int64? {
+        let key = "measured:\(preset.id)"
+        _diskSizeLock.lock()
+        if let cached = _diskSizeCache[key] {
+            _diskSizeLock.unlock()
+            return cached < 0 ? nil : cached
+        }
+        _diskSizeLock.unlock()
+        let measured = CodingAssistantService.preStagedDirectory(for: preset)
+            .flatMap { measuredFootprint(repoID: preset.repoID, directory: $0) }
+        _diskSizeLock.lock()
+        _diskSizeCache[key] = measured ?? -1
+        _diskSizeLock.unlock()
+        return measured
     }
 
     /// Pulls the bare repoID out of `downloaded:…`, `imported:…`, `custom:…`.
@@ -368,12 +423,29 @@ enum MemoryAdvisor {
     /// download finishes, a model is deleted) so freshly-sized repos are
     /// re-measured on next access. Cheap; safe to call liberally.
     static func invalidateFootprintCache() {
+        LocalModelRegistry.invalidateMemoryMetadataCache()
         _diskSizeLock.lock()
         _diskSizeCache.removeAll(keepingCapacity: true)
         _diskSizeLock.unlock()
     }
 
-    /// On-disk allocated size of the repo's local copy, in bytes. Memoized —
+    /// Where a non-preset repo lives: Discovery downloads use
+    /// `HFModels/<author>_<name>`, Files imports `HFModels/local_<name>`
+    /// (repo `local/local_<name>`), catalog-style copies `LLMModels/<name>`.
+    static func localModelDirectory(forRepoID repoID: String) -> URL? {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let tail = repoID.split(separator: "/").last.map(String.init) ?? repoID
+        let candidates = [
+            docs.appendingPathComponent("HFModels").appendingPathComponent(repoID.replacingOccurrences(of: "/", with: "_")),
+            docs.appendingPathComponent("HFModels").appendingPathComponent(tail),
+            docs.appendingPathComponent("LLMModels").appendingPathComponent(tail),
+        ]
+        return candidates.first { FileManager.default.fileExists(atPath: $0.appendingPathComponent("config.json").path) }
+            ?? candidates.first { FileManager.default.fileExists(atPath: $0.path) }
+    }
+
+    /// Logical weight-file bytes, excluding tokenizer/docs and filesystem
+    /// allocation/compression effects. Memoized —
     /// see `_diskSizeCache`. Returns nil if the directory doesn't exist.
     private static func onDiskWeightsSize(forRepoID repoID: String) -> Int64? {
         _diskSizeLock.lock()
@@ -383,14 +455,21 @@ enum MemoryAdvisor {
         }
         _diskSizeLock.unlock()
 
-        let docs = FileManager.default
-            .urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let folder = repoID.replacingOccurrences(of: "/", with: "_")
-        let dest = docs.appendingPathComponent("HFModels", isDirectory: true)
-            .appendingPathComponent(folder, isDirectory: true)
-        let result: Int64? = FileManager.default.fileExists(atPath: dest.path)
-            ? (try? FileManager.default.allocatedSizeOfDirectory(at: dest))
-            : nil
+        let result: Int64? = localModelDirectory(forRepoID: repoID)
+            .flatMap { directory -> Int64? in
+                guard let files = FileManager.default.enumerator(
+                    at: directory, includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey],
+                    options: [.skipsHiddenFiles]
+                ) else { return nil }
+                var total: Int64 = 0
+                for case let file as URL in files {
+                    guard ["safetensors", "gguf", "npz", "bin"].contains(file.pathExtension) else { continue }
+                    guard let values = try? file.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey]),
+                          values.isRegularFile == true, let size = values.fileSize else { return nil }
+                    total = MemoryBytes.add(total, Int64(size))
+                }
+                return total > 0 ? total : nil
+            }
 
         _diskSizeLock.lock()
         _diskSizeCache[repoID] = result ?? -1
@@ -450,9 +529,9 @@ enum MemoryAdvisor {
     // MARK: - Verdicts
 
     enum Verdict {
-        case fitsComfortably         // < 60% of available
-        case marginal(String)        // 60–90% of available; warn but allow
-        case wontFit(String)         // > 90% — block
+        case fitsComfortably
+        case marginal(String)        // uncertain size or >85% of live headroom
+        case wontFit(String)         // peak + reserve exceeds live headroom
 
         var color: String {
             switch self {
@@ -468,71 +547,57 @@ enum MemoryAdvisor {
         }
     }
 
-    /// Returns a verdict for loading `modelID` in addition to whatever is
-    /// already considered loaded (sum the estimates).
-    static func verdict(for modelID: String, alreadyLoaded: [String] = []) -> Verdict {
-        let footprint = estimatedFootprint(for: modelID)
-        let loadedFootprints = alreadyLoaded.map { estimatedFootprint(for: $0) }
-        return verdict(forFootprint: footprint, alreadyLoadedFootprints: loadedFootprints)
+    /// Live headroom already includes resident allocations.
+    static func verdict(for modelID: String) -> Verdict {
+        verdict(forFootprint: estimatedFootprint(for: modelID))
     }
 
-    /// Verdict for callers that already have a hand-tuned peak footprint (image
-    /// generation / curated VLM catalog). Keeps picker badges aligned with the
-    /// same live-memory requirement enforced by the load gates.
     static func verdict(
-        forFootprint footprint: Int64,
-        alreadyLoadedFootprints: [Int64] = []
+        forFootprint footprint: Int64
     ) -> Verdict {
-        guard footprint > 0 else { return .fitsComfortably }
+        verdict(
+            forFootprint: footprint, available: memorySnapshot.available,
+            reserve: AppSettings.shared.showEdgeModels ? edgeHeadroomReserve : loadHeadroomReserve
+        )
+    }
 
-        let combined = footprint + alreadyLoadedFootprints.reduce(0, +)
-        let procAvail = availableMemoryForModel
-        let budget = procAvail > 0 ? procAvail : availableRAM
-        let reserve = AppSettings.shared.showEdgeModels ? edgeHeadroomReserve : loadHeadroomReserve
-        let needed = combined + reserve
-
+    static func verdict(forFootprint footprint: Int64, available: Int64, reserve: Int64) -> Verdict {
+        let needed = MemoryBytes.required(peak: footprint, reserve: reserve, unknownFloor: unknownFootprintFloor)
+        let budget = max(0, available)
         if needed > budget {
             return .wontFit(String(
-                format: "Needs ~%.1f GB but only ~%.1f GB is available to the app right now. Close other apps and retry.",
-                Double(needed) / 1_000_000_000,
-                Double(budget) / 1_000_000_000
+                format: "Estimated additional peak is ~%.1f GB including reserve; ~%.1f GB is available to the app right now. Unload a model and retry.",
+                Double(needed) / 1_000_000_000, Double(budget) / 1_000_000_000
             ))
         }
+        // Unknown size must never earn a reassuring green badge.
+        if footprint <= 0 {
+            return .marginal("Model size is unknown. Admission reserves at least \(unknownFootprintFloor.formattedBytes); actual memory use may be higher.")
+        }
         if Double(needed) / Double(max(1, budget)) > 0.85 {
-            return .marginal("This model fits, but uses most of the app's ~\(budget.formattedBytes) current memory headroom. Close other apps if loading is interrupted.")
+            return .marginal("This model fits, but uses most of the app's ~\(budget.formattedBytes) current memory headroom.")
         }
         return .fitsComfortably
     }
 
-    /// Verdict considering models currently flagged as loaded.
-    /// Must be called from MainActor since it reads service singletons.
     @MainActor
     static func verdictWithCurrentlyLoaded(for modelID: String) -> Verdict {
-        let footprint = estimatedFootprint(for: modelID)
-        return verdictWithCurrentlyLoaded(forFootprint: footprint, excludingModelID: modelID)
+        verdictWithCurrentlyLoaded(forFootprint: estimatedFootprint(for: modelID), excludingModelID: modelID)
     }
 
-    /// Same as `verdictWithCurrentlyLoaded(for:)`, but for callers with a
-    /// curated footprint that is not keyed in `estimatedFootprint`.
+    /// A currently resident target needs no second copy. Other runtimes are
+    /// already charged to the live snapshot; don't subtract estimates again.
     @MainActor
     static func verdictWithCurrentlyLoaded(
         forFootprint footprint: Int64,
         excludingModelID modelID: String? = nil
     ) -> Verdict {
-        var loaded: [String] = []
-        if CodingAssistantService.shared.state == .ready {
-            // Whatever the assistant currently holds, not a hardcoded ID.
-            loaded.append(CodingAssistantService.shared.activeModel.id)
+        if let modelID,
+           (CodingAssistantService.shared.state == .ready && CodingAssistantService.shared.activeModel.id == modelID)
+            || (modelID == FastVLMService.modelID && FastVLMService.shared.componentStatus.canGenerate) {
+            return .fitsComfortably
         }
-        if FastVLMService.shared.componentStatus.canGenerate { loaded.append(FastVLMService.modelID) }
-        let others = loaded.filter { loadedID in
-            guard let modelID else { return true }
-            return loadedID != modelID
-        }
-        return verdict(
-            forFootprint: footprint,
-            alreadyLoadedFootprints: others.map { estimatedFootprint(for: $0) }
-        )
+        return verdict(forFootprint: footprint)
     }
 
     // MARK: - Combined device-safety verdict
@@ -574,104 +639,52 @@ enum MemoryAdvisor {
             return nil
         }
 
-        // 1b. Post-pressure cooldown. iOS recently hit CRITICAL memory pressure
-        //     and we dumped weights; refuse heavy reloads briefly so we don't
-        //     race the kernel's reclaim into a Jetsam kill. A small model that
-        //     comfortably fits the live headroom is still allowed to recover.
-        if let remaining = pressureCooldownRemaining {
-            let footprint = estimatedFootprint(for: modelID)
-            let assumed = footprint > 0 ? footprint : unknownFootprintFloor
-            // A model may load during the cooldown if it COMFORTABLY fits the
-            // live headroom right now, full reserve kept. The earlier gate also
-            // required `assumed <= smallRecoveryModelCeiling` (1 GB) — but every
-            // shipping model is ≥1.4 GB, so NO real model could ever recover and
-            // the assistant/lens was dead for the whole 20s window even after
-            // the dump had freed plenty of memory. The full reserve is the
-            // safety margin against the in-flight reclaim race; the size ceiling
-            // added nothing but the dead-end.
-            let fitsAsRecovery = assumed + loadHeadroomReserve <= availableMemoryForModel
-            if !fitsAsRecovery {
-                let secs = max(1, Int(remaining.rounded(.up)))
-                return "iOS just reported a memory-pressure spike. Wait ~\(secs)s for it to recover memory, then retry."
-            }
+        // Size before sampling: filesystem work should not age the live budget.
+        let footprint = estimatedFootprint(for: modelID)
+        let assumed = footprint > 0 ? footprint : unknownFootprintFloor
+        let memory = memorySnapshot
+        Diagnostics.shared.breadcrumb(
+            "memory admission · model=\(modelID) · estimatedPeak=\(assumed) · footprint=\(memory.footprint) · kernelHeadroom=\(memory.kernelHeadroom.map(String.init) ?? "unavailable") · ceiling=\(memory.ceiling) · available=\(memory.available)",
+            category: "memory"
+        )
+        if let remaining = pressureCooldownRemaining,
+           MemoryBytes.add(assumed, loadHeadroomReserve) > memory.available {
+            let secs = max(1, Int(remaining.rounded(.up)))
+            return "iOS just reported a memory-pressure spike. Wait ~\(secs)s for it to recover memory, then retry."
         }
+        let reserve = (AppSettings.shared.showEdgeModels || allowTightFit)
+            ? edgeHeadroomReserve : loadHeadroomReserve
+        return capacityBlocker(
+            footprint: assumed, memory: memory, reserve: reserve,
+            runtime: runtime, lowMemoryEnabled: allowTightFit
+        )
+    }
 
-        // 2. RAM verdict (physical-memory heuristic). Adjustable: when the
-        //    user relaxes the strict gate, skip this conservative check but
-        //    still enforce the hard per-process ceiling below — that one
-        //    reflects memory the kernel will actually grant, so ignoring it
-        //    means a near-certain crash.
-        if AppSettings.shared.strictMemoryGate {
-            if case .wontFit(let msg) = verdictWithCurrentlyLoaded(for: modelID) {
-                let footprint = estimatedFootprint(for: modelID)
-                let fitsWithoutReserve = footprint > 0
-                    && footprint <= availableMemoryForModel
-                if !allowTightFit || !fitsWithoutReserve {
-                    return msg
-                }
-            }
+    /// Pure admission path used by the live gate and deterministic regressions.
+    static func capacityBlocker(
+        footprint: Int64, memory: ProcessMemoryBudget, reserve: Int64,
+        runtime: ModelRuntime?, lowMemoryEnabled: Bool
+    ) -> String? {
+        let assumed = footprint > 0 ? footprint : unknownFootprintFloor
+        let needed = MemoryBytes.add(assumed, reserve)
+        guard needed > memory.available else { return nil }
+        if assumed > memory.ceiling {
+            return hardCeilingMessage(
+                neededBytes: needed, ceilingBytes: memory.ceiling,
+                runtime: runtime, lowMemoryEnabled: lowMemoryEnabled
+            )
         }
-
-        // 3. Live per-process ceiling — the real OOM killer on iOS. The verdict
-        //    above reasons about *physical* RAM (70% of device total), but iOS
-        //    caps each process well below that. A model can pass the physical
-        //    heuristic (e.g. 3.8 GB on a "4.2 GB usable" 6 GB device) yet still
-        //    exceed the ~3 GB the kernel will actually hand this process — that
-        //    mismatch is the classic "passes the gate, crashes on load" case.
-        //    This backstop refuses outright before the allocation that would
-        //    SIGKILL the app. When the static footprint is unknown (custom /
-        //    imported models that don't match a preset or an on-disk folder),
-        //    fall back to a conservative floor so an unsized large model can't
-        //    slip through with needed == 0.
-        // Use the entitlement-aware live figure, NOT raw
-        // os_proc_available_memory(): on entitled devices the latter
-        // under-reports and refuses models that comfortably fit (the core
-        // "device has RAM but the model won't load" report).
-        let procAvail = availableMemoryForModel
-        if procAvail > 0 {
-            let footprint = estimatedFootprint(for: modelID)
-            let assumed = footprint > 0 ? footprint : unknownFootprintFloor
-            // `assumed` is already the peak resident working set (it includes
-            // the load transient — see `estimatedFootprint`). Add only a fixed
-            // reserve for app/runtime/OS glue. Multiplying the peak again here
-            // is what previously inflated every estimate ~2.5× and refused
-            // models that comfortably fit the per-process ceiling.
-            //
-            // Edge / developer mode drops the reserve so a "tight" model that
-            // sits right at the ceiling can load — experimental, may be killed
-            // under pressure. A normal user keeps the full reserve, so they
-            // never load anything that would OOM. Either way a model whose peak
-            // genuinely exceeds the live ceiling is still refused.
-            let reserve = (AppSettings.shared.showEdgeModels || allowTightFit)
-                ? edgeHeadroomReserve
-                : loadHeadroomReserve
-            let needed = assumed + reserve
-            if procAvail < needed {
-                // Distinguish "too big for this device, period" from "would
-                // fit if you freed up what's resident right now." The hard
-                // ceiling (`processMemoryCeiling`) is what this process can
-                // ever allocate with nothing else loaded; if `needed` exceeds
-                // even that, telling the user to "unload other models" is
-                // wrong — no amount of freeing helps, they need a smaller
-                // model. This is the common "Qwen2.5 7B won't load" case on
-                // 6 GB devices whose per-process ceiling sits below ~5 GB.
-                let ceiling = processMemoryCeiling
-                if needed > ceiling {
-                    return hardCeilingMessage(
-                        neededBytes: needed,
-                        ceilingBytes: ceiling,
-                        runtime: runtime,
-                        lowMemoryEnabled: allowTightFit
-                    )
-                }
-                return String(
-                    format: "Not enough memory to load this model safely (~%.1f GB needed, only ~%.1f GB available to the app). Unload other models or close some apps, then retry.",
-                    Double(needed) / 1_000_000_000,
-                    Double(procAvail) / 1_000_000_000
-                )
-            }
+        if reserve > 0, assumed <= memory.available {
+            return String(
+                format: "This model needs ~%.1f GB and fits the ~%.1f GB available only without the %.1f GB safety reserve. A reduced reserve increases the risk that iOS closes the app during inference.",
+                Double(assumed) / 1_000_000_000,
+                Double(memory.available) / 1_000_000_000, Double(reserve) / 1_000_000_000
+            )
         }
-        return nil
+        return String(
+            format: "Not enough memory to load this model safely (~%.1f GB needed, only ~%.1f GB available to the app). Unload other models or close some apps, then retry.",
+            Double(needed) / 1_000_000_000, Double(memory.available) / 1_000_000_000
+        )
     }
 
     /// Explains a hard process-ceiling refusal without implying that the
@@ -721,6 +734,6 @@ enum MemoryAdvisor {
     // MARK: - Device summary
 
     static var deviceSummary: String {
-        "\(deviceTotalRAM.formattedBytes) total · ~\(availableRAM.formattedBytes) usable for ML"
+        "\(deviceTotalRAM.formattedBytes) total · ~\(availableMemoryForModel.formattedBytes) available to load"
     }
 }

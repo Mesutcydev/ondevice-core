@@ -3,6 +3,56 @@ import XCTest
 
 final class CoreAIConversationPlannerTests: XCTestCase {
 
+    func testGroundedImageKeepsVisibleThumbnailButCoreAIGetsTextOnlyCopy() {
+        let thumbnail = Data([0xFF, 0xD8, 0xFF])
+        let visible = ChatMessage(
+            role: .user,
+            content: "What is in this image?",
+            modelContent: "[ON-DEVICE IMAGE ANALYSIS]\nA red bicycle.\nWhat is in this image?",
+            imageThumbnailData: thumbnail,
+            imageThumbnails: [.init(data: thumbnail)]
+        )
+        let runtime = visible.withoutImagePayloads()
+        XCTAssertTrue(visible.hasAttachedImages)
+        XCTAssertFalse(runtime.hasAttachedImages)
+        XCTAssertEqual(runtime.contentForModel, visible.contentForModel)
+        XCTAssertEqual(runtime.id, visible.id)
+    }
+
+    func testSmallCoreAIFileBudgetKeepsRelevantJSONField() {
+        let budget = FileAttachmentService.promptByteBudget(forInputTokens: 640)
+        XCTAssertEqual(budget, 640)
+        let json = "{\"padding\":\"" + String(repeating: "x", count: 2_000)
+            + "\",\"renewal_date\":\"2030-04-01\"}"
+        let file = FileAttachmentService.Attachment(
+            id: UUID(),
+            url: URL(fileURLWithPath: "/tmp/plan.json"),
+            displayName: "plan.json",
+            byteSize: json.utf8.count,
+            extractedText: json,
+            kind: .json,
+            warning: nil
+        )
+        let prompt = FileAttachmentService.renderForPrompt(
+            [file], byteBudget: budget, relevanceQuery: "What is the renewal date?"
+        )
+        XCTAssertTrue(prompt.contains("2030-04-01"))
+        XCTAssertTrue(prompt.contains("File [1]: plan.json"))
+        XCTAssertLessThanOrEqual(prompt.utf8.count, budget)
+
+        let messages = [
+            ChatMessage(role: .system, content: "Answer from the attached excerpt."),
+            ChatMessage(role: .user, content: "Earlier question"),
+            ChatMessage(role: .assistant, content: "Earlier answer"),
+            ChatMessage(role: .user, content: "What is the renewal date?",
+                        modelContent: prompt + "\nWhat is the renewal date?")
+        ]
+        let bounded = CoreAIConversationPlanner.boundedRuntimeMessages(messages, maxTokens: 640)
+        let latest = CoreAIConversationPlanner.plan(messages: bounded)?.latestUser ?? ""
+        XCTAssertTrue(latest.contains("2030-04-01"))
+        XCTAssertTrue(latest.contains("renewal date"))
+    }
+
     func testReasoningOnlyPackCannotBeForcedIntoNoThinkMode() {
         XCTAssertTrue(CoreAIZooCatalog.model(id: "zoo-lfm25-2.6b")?.requiresThinking == true)
         XCTAssertFalse(CoreAIZooCatalog.model(id: "zoo-qwen35-0.8b")?.requiresThinking == true)
@@ -22,6 +72,16 @@ final class CoreAIConversationPlannerTests: XCTestCase {
             plan?.history,
             [.user("Hi"), .assistant("Hello.")]
         )
+    }
+
+    func testPlanDoesNotReplayOldUnknownTokenPlaceholders() {
+        let plan = CoreAIConversationPlanner.plan(messages: [
+            ChatMessage(role: .user, content: "Make a background"),
+            ChatMessage(role: .assistant, content: "<unk><unk>Use a gradient."),
+            ChatMessage(role: .user, content: "Go"),
+        ])
+        XCTAssertEqual(plan?.history.last, .assistant("Use a gradient."))
+        XCTAssertEqual(plan?.latestUser, "Go")
     }
 
     func testPlanReturnsNilWithoutAUserTurn() {
@@ -50,6 +110,7 @@ final class CoreAIConversationPlannerTests: XCTestCase {
         let system = adjusted.first?.content ?? ""
         XCTAssertFalse(system.contains(ToolRunner.systemPromptAddendum))
         XCTAssertFalse(system.contains(CodingAssistantService.responseFormattingPrompt))
+        XCTAssertTrue(system.contains("Put each list item on its own line."))
         XCTAssertTrue(system.contains(CodingAssistantService.compactGroundingPrompt))
         XCTAssertTrue(system.contains(ToolRunner.coreAISystemPromptAddendum))
         XCTAssertLessThan(system.count, originalSystem.count / 2)

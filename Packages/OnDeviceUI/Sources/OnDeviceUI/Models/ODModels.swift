@@ -20,8 +20,8 @@ public enum ODTab: String, CaseIterable, Identifiable, Hashable {
     }
 }
 
-public enum ODModelKind: String, CaseIterable, Identifiable {
-    case language, vision, voice, image
+public enum ODModelKind: String, CaseIterable, Identifiable, Hashable {
+    case language, vision, voice, image, utility
     public var id: String { rawValue }
     public var title: String {
         switch self {
@@ -29,6 +29,7 @@ public enum ODModelKind: String, CaseIterable, Identifiable {
         case .vision: return "Lens"
         case .voice: return "Voice"
         case .image: return "Image"
+        case .utility: return "Tools"
         }
     }
     public var symbol: String {
@@ -37,6 +38,7 @@ public enum ODModelKind: String, CaseIterable, Identifiable {
         case .vision: return "eye"
         case .voice: return "waveform"
         case .image: return "photo"
+        case .utility: return "wrench.and.screwdriver"
         }
     }
 }
@@ -45,31 +47,67 @@ public struct ODModel: Identifiable, Equatable {
     public let id: String
     public var name: String
     public var metadata: String
+    public var summary: String?
+    public var vendor: String?
+    public var badges: [String]
     public var byteCount: Int64?
+    public var downloadSizeLabel: String?
     public var kind: ODModelKind
+    /// Roles advertised by the package, including roles whose loader is not
+    /// available in this build. Used for browsing and capability labels.
+    public var declaredKinds: Set<ODModelKind>
+    /// Workspaces with a supported runtime for this one installed package.
+    /// A unified chat and vision model appears once in the library.
+    public var supportedKinds: Set<ODModelKind>
     public var isLibraryEntry: Bool
     public var isInstalled: Bool
+    public var isSelectable: Bool
+    public var unavailableReason: String?
     public var isDefault: Bool
     public var estimatedMemoryBytes: Int64?
     public var downloadStatus: String?
     public var downloadProgress: Double?
+    public var isDownloadPaused: Bool
     public var availableCommands: [ODModelCommand]?
     public init(id: String, name: String, metadata: String, byteCount: Int64? = nil,
-                kind: ODModelKind, isInstalled: Bool = true, isDefault: Bool = false,
+                kind: ODModelKind, supportedKinds: Set<ODModelKind>? = nil,
+                declaredKinds: Set<ODModelKind>? = nil,
+                isInstalled: Bool = true, isDefault: Bool = false,
+                isSelectable: Bool = true, unavailableReason: String? = nil,
                 availableCommands: [ODModelCommand]? = nil, isLibraryEntry: Bool = true,
-                downloadStatus: String? = nil, downloadProgress: Double? = nil, estimatedMemoryBytes: Int64? = nil) {
+                downloadStatus: String? = nil, downloadProgress: Double? = nil, estimatedMemoryBytes: Int64? = nil,
+                isDownloadPaused: Bool = false, summary: String? = nil, vendor: String? = nil,
+                badges: [String] = [], downloadSizeLabel: String? = nil) {
         self.id = id
         self.name = ODPresentation.modelName(name)
         self.metadata = metadata.hasPrefix("local/") ? "Imported on this device" : metadata
+        self.summary = summary
+        self.vendor = vendor
+        self.badges = badges
         self.byteCount = byteCount
-        self.kind = kind; self.isInstalled = isInstalled; self.isDefault = isDefault
+        self.downloadSizeLabel = downloadSizeLabel
+        self.kind = kind
+        self.supportedKinds = supportedKinds ?? [kind]
+        self.declaredKinds = declaredKinds ?? self.supportedKinds
+        self.isInstalled = isInstalled; self.isDefault = isDefault
+        self.isSelectable = isSelectable
+        self.unavailableReason = unavailableReason
         self.isLibraryEntry = isLibraryEntry
         self.availableCommands = availableCommands
         self.downloadStatus = downloadStatus
-        self.downloadProgress = downloadProgress
+        self.downloadProgress = downloadProgress.flatMap {
+            $0.isFinite ? min(1, max(0, $0)) : nil
+        }
         self.estimatedMemoryBytes = estimatedMemoryBytes
+        self.isDownloadPaused = isDownloadPaused
     }
-    public var sizeLabel: String? { byteCount.map(ODFormat.bytes) }
+    public var sizeLabel: String? { byteCount.map(ODFormat.bytes) ?? downloadSizeLabel }
+    public var workspaceLabel: String {
+        if declaredKinds.contains(.language) && declaredKinds.contains(.vision) {
+            return "Assistant · Lens"
+        }
+        return kind.title
+    }
 }
 
 public enum ODModelPhase: Equatable {
@@ -233,10 +271,11 @@ public enum ODLensMode: String, CaseIterable, Identifiable {
 }
 
 public enum ODModelCommand: String, CaseIterable, Identifiable {
-    case details, download, configure, export, delete
+    case details, download, pauseDownload, cancelDownload, configure, export, delete
     public var id: String { rawValue }
     public var title: String {
         switch self { case .details: return "Model details"; case .download: return "Download"
+        case .pauseDownload: return "Pause download"; case .cancelDownload: return "Cancel download"
         case .configure: return "Configure"
         case .export: return "Export to Files"; case .delete: return "Delete model" }
     }
@@ -277,14 +316,32 @@ public struct ODCapabilities {
 }
 
 /// Intent-only bridge. The host owns inference, files, audio, camera and lifecycle state.
+/// A way the assistant approaches replies, chosen per conversation turn.
+public struct ODPersona: Identifiable, Hashable {
+    public let id: String
+    public var name: String
+    public var subtitle: String
+    public var symbol: String
+    public init(id: String, name: String, subtitle: String, symbol: String) {
+        self.id = id
+        self.name = name
+        self.subtitle = subtitle
+        self.symbol = symbol
+    }
+}
+
 public enum ODAction {
     case setConversationPinned(String, Bool), openMacBridge
     case openSettings, openModelPicker, openDiscovery, openCoreAIPacks, manageStorage
+    case importModel, showModelDownloads
     case loadModel(String)
+    case loadModelInWorkspace(String, ODModelKind)
     case modelAction(modelID: String, command: ODModelCommand)
     case quickStart(ODQuickAction)
     case newConversation, openConversation(String), showHistory
     case sendMessage(String), stopGeneration, addAttachment
+    case setThinking(Bool)
+    case selectPersona(String)
     case removeAttachment(String)
     case sendMessageWithAttachments(text: String, attachmentIDs: [String])
     case openImageModelPicker

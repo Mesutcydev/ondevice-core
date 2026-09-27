@@ -45,7 +45,7 @@ struct ODImageStudioView: View {
             .background { ODPageBackground().ignoresSafeArea() }
             .safeAreaInset(edge: .bottom, spacing: 0) { ODWorkspaceBottomBar { creationDock } }
             .navigationTitle("Image studio")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     ODAppMenuButton { store.conversationsPresented = true }
@@ -131,14 +131,14 @@ struct ODImageStudioView: View {
             }
         } else if store.selectedImageModel == nil {
             Button("Choose model") { modelPickerPresented = true }
-                .buttonStyle(.glassProminent).tint(.blue)
+                .buttonStyle(.glassProminent).odInkProminent()
                 .controlSize(.large)
         } else {
             Button("Create", action: generate)
                 .buttonStyle(.glassProminent)
                 .buttonBorderShape(.capsule)
                 .controlSize(.large)
-                .tint(.blue)
+                .odInkProminent()
                 .disabled(!canGenerate)
         }
     }

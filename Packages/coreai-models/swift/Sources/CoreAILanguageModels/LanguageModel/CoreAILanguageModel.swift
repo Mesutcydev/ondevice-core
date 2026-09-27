@@ -380,14 +380,10 @@ public struct CoreAILanguageModel: LanguageModel {
 
             // Use pre-computed set of all EOS-like tokens (main + additional)
             let eosTokens = eosTokenIds
-            // Incremental-decode buffer. After a clean emit, one token is
-            // retained as context for the next step (see below). During a
-            // multi-byte sequence that hasn't decoded cleanly yet, multiple
-            // tokens accumulate until the sequence is complete. In the steady
-            // state the buffer holds at most 2 tokens, so tokenizer.decode
-            // is O(1) per step.
-            var pendingTokens: [Int32] = []
-            var previousDecodedText: String = ""
+            // A token's standalone decoding is not necessarily a prefix of
+            // its decoding with the next token. Decode the full generated
+            // prefix and hold its changing tail until the next step.
+            var decoder = CoreAIStreamingTokenDecoder(tokenizer: tokenizer)
             var tokenStep: Int = 0
             // Segments the decoded stream into `.text` and `.reasoning`
             // events on the fly. Reasoning content (model's chain-of-thought
@@ -421,33 +417,14 @@ public struct CoreAILanguageModel: LanguageModel {
                         break
                     }
 
-                    pendingTokens.append(token)
                     tokenStep += 1
                     generatedTokenCount += 1
 
                     let decodeSpan = InstrumentsProfiler.beginDecode(step: tokenStep)
-                    let decodedText = tokenizer.decode(tokens: pendingTokens.map { Int($0) })
+                    let delta = decoder.append(Int(token))
                     decodeSpan.end()
-
-                    let common = decodedText.commonPrefix(with: previousDecodedText)
-                    let delta = String(decodedText.dropFirst(common.count))
-                    // Check for replacement char on the full `decodedText`, not on
-                    // `delta`. Some tokenizers emit one U+FFFD per attempted decode
-                    // of an incomplete multi-byte sequence (rather than one per
-                    // bad byte), so two consecutive partial tokens can produce
-                    // identical "\u{FFFD}" strings — making `delta` empty and
-                    // hiding the still-incomplete state. Checking `decodedText`
-                    // catches that case.
-                    let hasReplacementChar = decodedText.unicodeScalars.contains { $0 == "\u{FFFD}" }
-
-                    if hasReplacementChar {
-                        // UTF-8 bytes don't form a clean character yet. Hold the
-                        // token and wait for the next iteration to extend the
-                        // buffer; don't drop or advance.
-                        await channel.send(
-                            .response(action: .appendText("", tokenCount: 1))
-                        )
-                        previousDecodedText = decodedText
+                    if delta.isEmpty {
+                        await channel.send(.response(action: .appendText("", tokenCount: 1)))
                         continue
                     }
 
@@ -456,21 +433,6 @@ public struct CoreAILanguageModel: LanguageModel {
                         await dispatch(event: event, toolCallParser: &toolCallParser, channel: channel)
                     }
 
-                    // Retain the last token as O(1) context for the next decode.
-                    // SentencePiece needs at least one prior token to infer the leading
-                    // ▁ (space) on the following token; clearing to empty decodes each
-                    // new token in isolation and drops inter-word spaces.
-                    // Keeping one token bounds re-decode cost to 2 tokens per step.
-                    // Safe for all supported tokenizers: decode([last]) is a prefix of
-                    // decode([last, next]) when addPrefixSpace=true (Mistral, Llama, Qwen)
-                    // and for ByteLevel tokenizers (GPT-2 style) where spaces are direct bytes.
-                    if let last = pendingTokens.last {
-                        pendingTokens = [last]
-                        previousDecodedText = tokenizer.decode(tokens: [Int(last)])
-                    } else {
-                        pendingTokens.removeAll(keepingCapacity: true)
-                        previousDecodedText = ""
-                    }
                 }
             } catch {
                 // FoundationModels cancels this task when the user taps Stop.
@@ -480,6 +442,11 @@ public struct CoreAILanguageModel: LanguageModel {
                 throw error
             }
 
+            let finalDelta = decoder.finish()
+            for event in thinkParser.consume(finalDelta) {
+                if case .reasoning = event { reasoningTokenCount += 1 }
+                await dispatch(event: event, toolCallParser: &toolCallParser, channel: channel)
+            }
             // Flush parsers — drains any content held back waiting for a marker.
             // Without this, content right at the EOS boundary (or inside an
             // unclosed block) would be lost.
@@ -712,18 +679,24 @@ public struct CoreAILanguageModel: LanguageModel {
                 let additionalContext: [String: any Sendable]? = thinkingEnabled.map {
                     ["enable_thinking": $0]
                 }
-                return try tokenizer.applyChatTemplate(
+                let templated = try tokenizer.applyChatTemplate(
                     messages: messages,
                     tools: toolSpecs,
                     additionalContext: additionalContext
                 )
+                if !templated.isEmpty { return templated }
+                CLILogger.log("Chat template returned no tokens; using role-labelled encoding", component: component)
             } catch {
                 CLILogger.log(
-                    "Failed to apply chat template: \(error), falling back to simple encoding",
+                    "Failed to apply chat template: \(error), falling back to role-labelled encoding",
                     component: component)
-                let text = messages.compactMap { $0["content"] as? String }.joined(separator: "\n")
-                return tokenizer.encode(text: text)
             }
+            let text = messages.compactMap { message -> String? in
+                guard let content = message["content"] as? String, !content.isEmpty else { return nil }
+                let role = (message["role"] as? String ?? "user").capitalized
+                return "\(role): \(content)"
+            }.joined(separator: "\n\n") + "\n\nAssistant:"
+            return tokenizer.encode(text: text)
         }
 
         /// Converts a `ToolDefinition` into the `ToolSpec` format expected by

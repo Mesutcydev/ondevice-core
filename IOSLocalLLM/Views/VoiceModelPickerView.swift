@@ -214,6 +214,7 @@ struct VoiceModelPickerView: View {
         switch model.state {
         case .ready: return "Select"
         case .downloading, .enumerating: return "Downloading…"
+        case .paused: return "Resume"
         case .idle, .failed: return "Download"
         }
     }

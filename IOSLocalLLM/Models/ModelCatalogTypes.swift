@@ -1,4 +1,5 @@
 import SwiftUI
+import os
 
 // MARK: - ModelCatalogTypes
 //
@@ -180,6 +181,9 @@ public enum ModelRuntime: String, Codable, Hashable, CaseIterable, Sendable {
     case mlx        // Apple MLX (MLXLLM / MLXVLM) — safetensors
     case llamaCpp   // llama.cpp + GGUF (LlamaCppBridge / mtmd)
     case coreAI     // Apple Core AI + .aimodel resource pack (iOS 27+)
+    // Native Edge0 expert-streaming runtime. Catalog entries opt in explicitly;
+    // installed models are detected from the declared config architecture.
+    case edge0MLX
 
     /// Short badge label shown on picker rows and result cards.
     var label: String {
@@ -187,6 +191,7 @@ public enum ModelRuntime: String, Codable, Hashable, CaseIterable, Sendable {
         case .mlx:      return "MLX"
         case .llamaCpp: return "GGUF"
         case .coreAI:   return "CORE AI"
+        case .edge0MLX: return "EDGE0"
         }
     }
 
@@ -196,6 +201,7 @@ public enum ModelRuntime: String, Codable, Hashable, CaseIterable, Sendable {
         case .mlx:      return "mlx"
         case .llamaCpp: return "gguf"
         case .coreAI:   return "coreai"
+        case .edge0MLX: return "edge0mlx"
         }
     }
 }
@@ -541,7 +547,7 @@ enum LocalModelRegistry {
     static func visionMemoryAdvisorKey(for selectionID: String) -> String {
         let normalized = storedVisionSelectionID(selectionID)
         if isDefaultVisionSelection(normalized) { return defaultVisionSelectionID }
-        return "downloaded:\(persistedVisionRepoID(for: normalized))"
+        return "vision:\(persistedVisionRepoID(for: normalized))"
     }
 
     static func visualSelectionID(for model: DownloadableModel) -> String {
@@ -654,6 +660,12 @@ enum LocalModelRegistry {
         // Recognized so a previously-downloaded image model lists under its
         // own header instead of masquerading as an assistant.
         let fm = FileManager.default
+        if let names = try? fm.contentsOfDirectory(atPath: directory.path),
+           names.contains(where: {
+               $0.hasPrefix("lora_edge0_") || $0.hasPrefix("prerouter_edge0_")
+           }) {
+            return .assistant
+        }
         if fm.fileExists(atPath: directory.appendingPathComponent("model_index.json").path) {
             return .imageGen
         }
@@ -700,6 +712,131 @@ enum LocalModelRegistry {
             }
         }
         return .assistant
+    }
+
+    /// Some unified packs advertise both text and vision. Their primary
+    /// category is vision, but a supported text component can also make them
+    /// eligible for the Assistant picker.
+    static func hasDeclaredTextComponent(in directory: URL) -> Bool {
+        let config = directory.appendingPathComponent("config.json")
+        guard let data = try? Data(contentsOf: config),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let components = json["components"] as? [String: Any]
+        else { return false }
+        return components["text"] as? Bool == true
+    }
+
+    static func hasDeclaredVisionComponent(in directory: URL) -> Bool {
+        let config = directory.appendingPathComponent("config.json")
+        guard let data = try? Data(contentsOf: config),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let components = json["components"] as? [String: Any]
+        else { return false }
+        return components["vision"] as? Bool == true
+    }
+
+    static func declaredCategories(in directory: URL) -> Set<DownloadableModel.Category> {
+        let primary = category(in: directory)
+        var roles: Set<DownloadableModel.Category> = [primary]
+        guard primary == .assistant || primary == .vlm else { return roles }
+        if hasDeclaredTextComponent(in: directory) { roles.insert(.assistant) }
+        if hasDeclaredVisionComponent(in: directory) { roles.insert(.vlm) }
+        if isUnifiedTextVisionPack(in: directory) { roles.formUnion([.assistant, .vlm]) }
+        return roles
+    }
+
+    /// config.json model types that mlx-swift-lm 3.31.4 registers in BOTH its
+    /// LLM and VLM factories, so one checkpoint serves Assistant and Lens
+    /// (Qwen 3.5, Gemma 3 4B+, Gemma 4, Ministral 3). Keep in step with the
+    /// pinned package when it moves. `qwen3_5_moe` is left out on purpose:
+    /// every release is 35B+, which runs on iPhone only as Edge0.
+    static let unifiedTextVisionModelTypes: Set<String> = [
+        "qwen3_5", "gemma3", "gemma4", "gemma4_unified", "mistral3",
+    ]
+
+    /// A vision-primary folder (so never an Edge0 checkpoint, whose LoRA files
+    /// make it `.assistant`) whose declared type both factories can load.
+    /// Model roles are recomputed on every UI refresh, so the type lookup is
+    /// cached and the folder scan only runs for the unified types.
+    static func isUnifiedTextVisionPack(in directory: URL) -> Bool {
+        guard let modelType = declaredModelType(in: directory),
+              unifiedTextVisionModelTypes.contains(modelType)
+        else { return false }
+        return category(in: directory) == .vlm
+    }
+
+    private static let modelTypeCache = OSAllocatedUnfairLock<[String: String]>(initialState: [:])
+    private static let textWeightCache = OSAllocatedUnfairLock<[String: Int64]>(initialState: [:])
+
+    /// Bytes of the tensors a text-only load materializes, read from the
+    /// safetensors headers (no weights are read). MLX loads lazily and the
+    /// text models drop vision towers and MTP heads before evaluation, so a
+    /// unified pack costs Assistant only its language weights: Ternary Bonsai
+    /// 27B is 8.49 GB on disk but 7.57 GB of text. nil without safetensors.
+    static func textWeightBytes(in directory: URL) -> Int64? {
+        let key = directory.standardizedFileURL.path
+        if let cached = textWeightCache.withLock({ $0[key] }) { return cached }
+        guard let measured = ModelTensorFootprint.textBytes(in: directory, excluding: isNonTextTensor) else { return nil }
+        textWeightCache.withLock { $0[key] = measured }
+        return measured
+    }
+
+    static func invalidateMemoryMetadataCache() {
+        textWeightCache.withLock { $0.removeAll(keepingCapacity: true) }
+        modelTypeCache.withLock { $0.removeAll(keepingCapacity: true) }
+    }
+
+    /// Tensors the text runtimes drop before evaluation (mlx-swift-lm's
+    /// `sanitize`): vision towers, projectors and multi-token-prediction heads.
+    static func isNonTextTensor(_ name: String) -> Bool {
+        name.hasPrefix("vision_tower") || name.hasPrefix("model.visual")
+            || name.hasPrefix("visual.") || name.hasPrefix("vision_model")
+            || name.hasPrefix("multi_modal_projector") || name.contains("mtp.")
+    }
+
+    /// config.json's `model_type`, cached once read: a written config never changes.
+    static func declaredModelType(in directory: URL) -> String? {
+        let key = directory.standardizedFileURL.path
+        if let cached = modelTypeCache.withLock({ $0[key] }) { return cached.isEmpty ? nil : cached }
+        guard let data = try? Data(contentsOf: directory.appendingPathComponent("config.json")),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { return nil }
+        let modelType = json["model_type"] as? String ?? ""
+        modelTypeCache.withLock { $0[key] = modelType }
+        return modelType.isEmpty ? nil : modelType
+    }
+
+    static func supportsAssistant(in directory: URL) -> Bool {
+        declaredCategories(in: directory).contains(.assistant)
+            && unsupportedTextRuntimeReason(in: directory) == nil
+    }
+
+    /// The current Bonsai 2 pack requires an activation transform and an
+    /// inverse embedding lookup. A generic MLX load can produce plausible but
+    /// incorrect text, so the declared text component alone is insufficient.
+    static func unsupportedTextRuntimeReason(in directory: URL) -> String? {
+        let config = directory.appendingPathComponent("config.json")
+        guard let data = try? Data(contentsOf: config),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let modelType = json["model_type"] as? String else { return nil }
+        if modelType == "prism_hadamard_qwen35" {
+            return "Bonsai 2 needs a Hadamard-aware Swift model loader. This build cannot produce verified text output from this pack yet."
+        }
+        return nil
+    }
+
+    /// Lens also lacks the pack's custom vision model integration.
+    static func unsupportedVisionRuntimeReason(in directory: URL) -> String? {
+        unsupportedTextRuntimeReason(in: directory).map { _ in
+            "Bonsai 2 image input needs a Hadamard-aware Lens loader that is not available yet."
+        }
+    }
+
+    /// Prism's published language-weight size for the current MLX pack.
+    /// This is a storage figure, not a measured iPhone peak RAM requirement.
+    static func publishedBonsai2TextWeightBytes(for repoID: String) -> Int64? {
+        repoID.caseInsensitiveCompare("prism-ml/Ternary-Bonsai-2-27B-mlx-2bit") == .orderedSame
+            ? 7_670_000_000 : nil
     }
 
     static func voiceEngine(for model: DownloadableModel) -> VoiceEngineKind? {
@@ -772,6 +909,10 @@ enum LocalModelRegistry {
         let repoID = model.sourceRepoID
         let runtime: ModelRuntime? = {
             if let explicit = model.runtime { return explicit }
+            // An installed Edge0 checkpoint wins over naming heuristics.
+            if Self.installedEdge0Directory(forRepoID: repoID) {
+                return .edge0MLX
+            }
             switch role {
             case .assistant, .vision:
                 return repoID.lowercased().contains("gguf") ? .llamaCpp : .mlx
@@ -844,12 +985,37 @@ enum LocalModelRegistry {
             origin: origin,
             vendor: ModelVendor.infer(from: repoID),
             capabilities: supportsThinking(repoID: repoID) ? [.thinking] : [],
-            runtime: repoID.lowercased().contains("gguf") ? .llamaCpp : .mlx,
+            runtime: installedEdge0Directory(forRepoID: repoID)
+                ? .edge0MLX
+                : (repoID.lowercased().contains("gguf") ? .llamaCpp : .mlx),
             approxRAMBytes: inferredAssistantRAMBytes(for: repoID),
             contextWindowTokens: inferredAssistantContextWindow(for: repoID),
             supportsTools: inferredAssistantSupportsTools(for: repoID),
             voiceEngine: nil
         )
+    }
+
+    /// Nonisolated on-disk probe for the descriptor fallbacks: does an
+    /// installed directory for `repoID` declare the Edge0 architecture?
+    /// Mirrors validateDirectory's explicit signal without touching the
+    /// MainActor registry, so picker descriptor construction stays safe.
+    static func installedEdge0Directory(forRepoID repoID: String) -> Bool {
+        let docs = ModelStoragePaths.documents
+        let tail = ModelStoragePaths.directoryName(forRepoID: repoID)
+        let flattened = ModelStoragePaths.flattenedRepoID(repoID)
+        for root in ["LLMModels", "HFModels", "Edge0Models"] {
+            for name in [tail, flattened] {
+                let config = docs
+                    .appendingPathComponent(root)
+                    .appendingPathComponent(name)
+                    .appendingPathComponent("config.json")
+                guard let data = try? Data(contentsOf: config),
+                      let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+                else { continue }
+                if InstalledModelRegistry.isEdge0Architecture(json) { return true }
+            }
+        }
+        return false
     }
 
     private static func fallbackSubtitle(for role: LocalModelRole,
@@ -1160,7 +1326,7 @@ final class InstalledModelRegistry: ObservableObject {
         // 1. Rescan LLMModels directory (catalog presets)
         let fm = FileManager.default
         let docs = fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let llmRoot = docs.appendingPathComponent("LLMModels")
+        let llmRoot = ModelStoragePaths.llmModels
         reconcileDirectory(llmRoot, existing: existingByRepo, into: &updated, fm: fm)
 
         // 2. Rescan HFModels directory (custom downloads)
@@ -1228,7 +1394,20 @@ final class InstalledModelRegistry: ObservableObject {
         // treating them as not-downloaded / MLX.
         let isGGUFText = LocalModelFileValidator.hasValidGGUFTextModel(in: dir)
         let isGGUFPair = LocalModelFileValidator.hasCompleteGGUFVLMPair(in: dir)
-        let engine: ModelRuntime = (isGGUFText || isGGUFPair) ? .llamaCpp : .mlx
+
+        // Read config.json once: it decides both the engine and the metadata.
+        let configJSON: [String: Any]? = {
+            guard let data = try? Data(contentsOf: configPath) else { return nil }
+            return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        }()
+
+        // Explicit Edge0 detection: the DECLARED architecture, never a
+        // filename. BailingMoeV3ForCausalLM is the Edge0-8B MoE architecture
+        // and no other supported runtime can execute it.
+        let isEdge0 = Self.isEdge0Architecture(configJSON)
+        let engine: ModelRuntime = isEdge0
+            ? .edge0MLX
+            : ((isGGUFText || isGGUFPair) ? .llamaCpp : .mlx)
 
         guard fm.fileExists(atPath: configPath.path) || engine == .llamaCpp else {
             return nil  // Not a valid MLX model directory
@@ -1237,8 +1416,7 @@ final class InstalledModelRegistry: ObservableObject {
         // Read config for architecture info
         var arch: String? = nil
         var quant: String? = nil
-        if let data = try? Data(contentsOf: configPath),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+        if let json = configJSON {
             arch = (json["architectures"] as? [String])?.first
             quant = json["quantization"] as? String
                 ?? json["quant_method"] as? String
@@ -1253,7 +1431,7 @@ final class InstalledModelRegistry: ObservableObject {
         }
 
         // Validate required files
-        let validation: InstalledModelRecord.ValidationState
+        var validation: InstalledModelRecord.ValidationState
         let hasTokenizer: Bool
         if engine == .llamaCpp {
             // GGUF embeds its tokenizer; no tokenizer.json on disk is expected.
@@ -1262,7 +1440,7 @@ final class InstalledModelRegistry: ObservableObject {
             hasTokenizer = fm.fileExists(atPath: dir.appendingPathComponent("tokenizer.json").path)
                 || fm.fileExists(atPath: dir.appendingPathComponent("tokenizer_config.json").path)
         }
-        let hasWeights = Self.hasModelWeights(in: dir, engine: engine)
+        let hasWeights = Self.hasModelWeights(in: dir, engine: engine, repoID: repoID)
 
         switch (hasTokenizer, hasWeights) {
         case (false, _):     validation = .missingTokenizer
@@ -1270,8 +1448,21 @@ final class InstalledModelRegistry: ObservableObject {
         case (true, true):   validation = .valid
         }
 
+        if validation == .valid,
+           let reason = LocalModelRegistry.unsupportedTextRuntimeReason(in: dir) {
+            validation = .unsupportedArchitecture(reason)
+        }
+
+        // Native Edge0 execution requires the curated release identity. An
+        // old local/* import must be adopted by its preset before it can be
+        // selected; otherwise the runtime refuses that ID at load time.
+        if isEdge0 && validation == .valid
+            && Edge0ModelFamily.resolve(repoID: repoID) == nil {
+            validation = .unsupportedArchitecture("Edge0 import needs its curated preset")
+        }
+
         let displayName = repoID.split(separator: "/").last
-            .map(String.init) ?? repoID
+            .map { $0.hasPrefix("local_") ? String($0.dropFirst("local_".count)) : String($0) } ?? repoID
 
         return InstalledModelRecord(
             id: UUID(),
@@ -1289,7 +1480,7 @@ final class InstalledModelRegistry: ObservableObject {
         )
     }
 
-    private static func hasModelWeights(in dir: URL, engine: ModelRuntime) -> Bool {
+    private static func hasModelWeights(in dir: URL, engine: ModelRuntime, repoID: String) -> Bool {
         let fm = FileManager.default
         guard let names = try? fm.contentsOfDirectory(atPath: dir.path) else { return false }
         switch engine {
@@ -1304,7 +1495,21 @@ final class InstalledModelRegistry: ObservableObject {
                 || LocalModelFileValidator.hasCompleteGGUFVLMPair(in: dir)
         case .coreAI:
             return names.contains { $0.hasSuffix(".aimodel") || $0.hasSuffix(".aimodelc") }
+        case .edge0MLX:
+            if Edge0ModelFamily.resolve(repoID: repoID) == .qwen35MoE {
+                // 35B is a four-shard release with a pinned LoRA contract,
+                // never a single model.safetensors file.
+                return (try? Edge0_35BModelArtifacts.validateInstall(directory: dir)) != nil
+            }
+            return names.contains("model.safetensors")
         }
+    }
+
+    /// True when config.json declares the Edge0-8B MoE architecture. This is
+    /// the only explicit, non-filename signal used to classify an installed
+    /// directory as `.edge0MLX`.
+    nonisolated static func isEdge0Architecture(_ json: [String: Any]?) -> Bool {
+        Edge0_35BModelConfiguration.isEdge0Architecture(json)
     }
 
     private static func inferQuantization(fromRepoID repoID: String) -> String? {
@@ -1324,7 +1529,48 @@ final class InstalledModelRegistry: ObservableObject {
               let decoded = try? JSONDecoder().decode([InstalledModelRecord].self, from: data) else {
             return
         }
-        records = decoded
+        records = decoded.compactMap(Self.reanchoredRecord)
+    }
+
+    /// Persisted records carry an absolute container URL. When the app's data
+    /// container changes (reinstall / re-sign / restored backup), those URLs
+    /// point outside the CURRENT sandbox. They must never be used as a write
+    /// destination: re-anchor to the current Documents root using the record's
+    /// folder name, or drop the record.
+    static func reanchoredRecord(
+        _ record: InstalledModelRecord
+    ) -> InstalledModelRecord? {
+        let fm = FileManager.default
+        if ModelStoragePaths.isInsideSandbox(record.localURL) {
+            var isDir: ObjCBool = false
+            if fm.fileExists(atPath: record.localURL.path, isDirectory: &isDir),
+               isDir.boolValue {
+                return record
+            }
+        }
+        // Stale or missing: look for the same folder name under the known
+        // app-owned roots in the CURRENT container.
+        let name = record.localURL.lastPathComponent
+        guard !name.isEmpty else { return nil }
+        for root in ModelStoragePaths.modelRoots {
+            let candidate = root.appendingPathComponent(name, isDirectory: true)
+            var isDir: ObjCBool = false
+            guard fm.fileExists(atPath: candidate.path, isDirectory: &isDir),
+                  isDir.boolValue else { continue }
+            guard let rebuilt = validateDirectory(candidate, repoID: record.repoID) else {
+                continue
+            }
+            Diagnostics.shared.breadcrumb(
+                "registry re-anchored stale container path · repoID=\(record.repoID) · path=\(ModelStoragePaths.sandboxRelativePath(candidate))",
+                category: "registry"
+            )
+            return rebuilt
+        }
+        Diagnostics.shared.breadcrumb(
+            "registry dropped record outside current sandbox · repoID=\(record.repoID)",
+            category: "registry"
+        )
+        return nil
     }
 
     private func saveToDisk() {

@@ -46,17 +46,23 @@ struct LegalAcceptanceView: View {
                     documentRow(title: "Device safety notice", subtitle: "Heat, memory, and battery use", icon: "thermometer.medium", accepted: $didReadDeviceSafety) { showDeviceSafety = true }
                 } header: { Text("\(readCount) of 4 read") }
                 Section {
-                    Button("Agree and continue") {
+                    Button {
                         legal.acceptLegal()
                         legal.acceptDisclaimer()
                         legal.acceptDeviceSafety()
                         HapticManager.impact(.medium)
                         onAccepted()
+                    } label: {
+                        Text("Agree and continue")
+                            .font(.body.weight(.semibold))
+                            .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .buttonStyle(.glassProminent).controlSize(.large)
+                    .buttonStyle(.glassProminent).controlSize(.regular)
                     .tint(ODPalette.text).foregroundStyle(ODPalette.background)
                     .disabled(!canContinue)
+                    .accessibilityIdentifier("legal.agree")
+                    .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                    .listRowBackground(Color.clear)
                 } footer: {
                     Text("By tapping Agree and continue you confirm that you have read and accepted all four documents above. You can review them any time in Settings → Legal.")
                 }

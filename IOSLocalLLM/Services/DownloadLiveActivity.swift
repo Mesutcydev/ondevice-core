@@ -121,6 +121,25 @@ final class DownloadLiveActivityManager {
         }
     }
 
+    /// End a deliberately paused transfer without reporting 100% complete.
+    func pause(repoID: String) {
+        guard #available(iOS 16.2, *), let activity = activities.removeValue(forKey: repoID) else { return }
+        let previous = activity.content.state
+        let state = DownloadActivityAttributes.ContentState(
+            progress: previous.progress,
+            downloadedBytes: previous.downloadedBytes,
+            totalBytes: previous.totalBytes,
+            currentFile: "paused",
+            filesDone: previous.filesDone,
+            filesTotal: previous.filesTotal,
+            failed: false
+        )
+        Task {
+            await activity.end(.init(state: state, staleDate: nil),
+                               dismissalPolicy: .after(.now + 4))
+        }
+    }
+
     /// End an activity (failure path).
     func fail(repoID: String, reason: String) {
         guard #available(iOS 16.2, *),
@@ -168,6 +187,8 @@ final class DownloadLiveActivityManager {
                 filesTotal: Int) {}
 
     func finish(repoID: String) {}
+
+    func pause(repoID: String) {}
 
     func fail(repoID: String, reason: String) {}
 }

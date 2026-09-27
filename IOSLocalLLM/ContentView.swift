@@ -37,7 +37,9 @@ struct ContentView: View {
     @State private var showDiscovery = false
     @State private var showStorageCleanup = false
     @State private var showCoreAIPacks = false
-    @State private var showModelHub = false
+    @State private var showModelImport = false
+    @State private var showModelDownloads = false
+    @State private var modelImportError: String?
     @State private var modelSettingsTarget: AssistantModelSettingsTarget?
     @State private var exportingModel: DownloadableModel?
     /// Lens gallery import. The workbench asks for the library; the host owns
@@ -257,7 +259,7 @@ struct ContentView: View {
                 // FastVLM status is now observed live inside SettingsView via FastVLMService.shared
         }
         .sheet(isPresented: $showAssistantPicker) {
-            AssistantModelPickerView()
+            AssistantModelPickerView(downloadedOnly: true)
         }
         .sheet(isPresented: $showVoiceEnginePicker) {
             VoiceModelPickerView()
@@ -306,11 +308,19 @@ struct ContentView: View {
                 .toolbarBackground(.hidden, for: .navigationBar)
             }
         }
-        // "Model details" has no dedicated screen in this app; the model hub is
-        // where the real per-model actions live (load, unload, redownload,
-        // export, delete), so that is where a details tap lands.
-        .sheet(isPresented: $showModelHub) {
+        .localModelImportFlow(isPresented: $showModelImport) { urls in
+            Task { await importModel(from: urls) }
+        }
+        .sheet(isPresented: $showModelDownloads) {
             ModelDownloadCenterView()
+        }
+        .alert("Import failed", isPresented: Binding(
+            get: { modelImportError != nil },
+            set: { if !$0 { modelImportError = nil } }
+        )) {
+            Button("OK", role: .cancel) { modelImportError = nil }
+        } message: {
+            Text(modelImportError ?? "The model could not be imported.")
         }
         .sheet(item: $modelSettingsTarget) { target in
             AssistantModelSettingsView(target: target)
@@ -390,6 +400,18 @@ struct ContentView: View {
 
     // MARK: - Workbench bridge
 
+    private func importModel(from urls: [URL]) async {
+        do {
+            // The service posts the success toast with the model's name.
+            _ = try await LocalModelImportService.shared.importModel(from: urls)
+            ModelDownloadCenter.shared.refreshAllStates()
+            odBridge.refresh()
+            HapticManager.impact(.medium)
+        } catch {
+            modelImportError = error.localizedDescription
+        }
+    }
+
     /// The package identifies a model by the download center's own `id`; the
     /// hub's rows also carry the canonical Hugging Face repo id. They agree for
     /// curated entries and differ for imported ones, so match on both.
@@ -424,7 +446,7 @@ struct ContentView: View {
     private var lensHostSheetPresented: Bool {
         showLensPhotoPicker || showVisualModelPicker || showLensPresets || showLensHistory
             || showSettings || showHistory || showAssistantPicker || showVoiceEnginePicker
-            || showDiscovery || showStorageCleanup || showCoreAIPacks || showModelHub
+            || showDiscovery || showStorageCleanup || showCoreAIPacks || showModelImport || showModelDownloads
             || modelSettingsTarget != nil || exportingModel != nil
     }
 
@@ -453,6 +475,8 @@ struct ContentView: View {
         // Each of these now opens a real screen. They used to set the tab to
         // `.models` — which, from the Models tab, did nothing at all.
         routes.openDiscovery = { showDiscovery = true }
+        routes.importModel = { showModelImport = true }
+        routes.showModelDownloads = { showModelDownloads = true }
         routes.openCoreAIPacks = { showCoreAIPacks = true }
         routes.manageStorage = { showStorageCleanup = true }
         routes.openImageGeneration = { odBridge.store.secondaryRoute = .imageStudio }
@@ -533,7 +557,7 @@ struct ContentView: View {
         routes.modelCommand = { modelID, command in
             switch command {
             case .details:
-                showModelHub = true
+                odBridge.store.selectedTab = .models
             case .download:
                 // Discover-tab cards start the transfer in place. Routing
                 // this through "configure" used to just open a picker sheet
@@ -551,16 +575,21 @@ struct ContentView: View {
                     ToastCenter.shared.error("Model unavailable",
                                              detail: "This catalog entry has no downloader. Browse the Model Center instead.")
                 }
+            case .pauseDownload:
+                Self.downloadableModel(matching: modelID)?.pause()
+            case .cancelDownload:
+                Self.downloadableModel(matching: modelID)?.cancel()
             case .configure:
                 if let downloadable = Self.downloadableModel(matching: modelID) {
-                    switch downloadable.category {
-                    case .assistant:
+                    // Same chat-first role the Models list shows.
+                    switch ODBridge.kind(for: downloadable) {
+                    case .language:
                         if let model = AssistantModelCatalog.selection(forStoredID: LocalModelRegistry.assistantSelectionID(for: downloadable)) {
                             modelSettingsTarget = AssistantModelSettingsTarget(model: model)
                         } else { showAssistantPicker = true }
-                    case .vlm: showVisualModelPicker = true
+                    case .vision: showVisualModelPicker = true
                     case .voice: showVoiceEnginePicker = true
-                    case .imageGen: odBridge.store.secondaryRoute = .imageStudio
+                    case .image, .utility: odBridge.store.secondaryRoute = .imageStudio
                     }
                 } else if let model = AssistantModelCatalog.selection(forStoredID: modelID) {
                     modelSettingsTarget = AssistantModelSettingsTarget(model: model)

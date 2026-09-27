@@ -200,13 +200,17 @@ final class ApplePrivateCloudTests: XCTestCase {
     // MARK: facade is inert on a GA build
 
     func test_facade_buildAndRuntimeGatesStayConsistent() {
-        if ApplePrivateCloud.isCompiledIn {
-            // An iOS 27 SDK build may still run on iOS 18–26, where the
-            // stricter runtime gate remains false.
-            XCTAssertEqual(ApplePrivateCloud.unavailableError, .unsupportedOS)
-        } else {
+        // Gate precedence: not compiled in → OS too old → this build isn't
+        // entitled. On a test host the app module is compiled with FM_PCC
+        // against the iOS 27 simulator, so the entitlement gate is the one that
+        // answers — the exact state that used to trap inside FoundationModels.
+        if !ApplePrivateCloud.isCompiledIn {
             XCTAssertFalse(ApplePrivateCloud.isSupportedOnCurrentOS)
             XCTAssertEqual(ApplePrivateCloud.unavailableError, .notCompiledIn)
+        } else if !ApplePrivateCloud.isSupportedOnCurrentOS {
+            XCTAssertEqual(ApplePrivateCloud.unavailableError, .unsupportedOS)
+        } else if !ApplePrivateCloud.isProvisionedForCurrentBuild {
+            XCTAssertEqual(ApplePrivateCloud.unavailableError, .notProvisioned)
         }
     }
 

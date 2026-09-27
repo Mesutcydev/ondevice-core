@@ -12,14 +12,24 @@ extension EnvironmentValues {
 /// composer/action, so keyboard and scroll insets account for the combined height.
 public struct ODWorkspaceBottomBar<Content: View>: View {
     @EnvironmentObject private var store: ODStore
+    private let backgroundColor: Color?
     private let content: Content
-    public init(@ViewBuilder content: () -> Content) { self.content = content() }
+    public init(backgroundColor: Color? = nil, @ViewBuilder content: () -> Content) {
+        self.backgroundColor = backgroundColor
+        self.content = content()
+    }
     public var body: some View {
         VStack(spacing: 0) {
             ODVoiceSessionAccessory()
             content
         }
-        .background { ODPageBackground() }
+        .background {
+            if let backgroundColor {
+                backgroundColor.ignoresSafeArea(edges: .bottom)
+            } else {
+                ODPageBackground()
+            }
+        }
     }
 }
 
@@ -28,10 +38,20 @@ public struct ODVoiceSessionAccessory: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.odWorkspaceVisible) private var workspaceVisible
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     public init() {}
+    /// Animate on the session itself, not on workspace visibility, so switching
+    /// workspaces does not replay the entrance.
+    private var sessionMinimized: Bool { store.voiceSessionActive && !store.voiceSessionPresented }
     private var micState: String { !store.microphoneEnabled ? "Mic off" : store.microphoneCapturing ? "Mic on" : "Mic paused" }
     public var body: some View {
-        if workspaceVisible && store.voiceSessionActive && !store.voiceSessionPresented {
+        VStack(spacing: 0) {
+            if workspaceVisible && sessionMinimized { accessory.transition(.move(edge: .bottom).combined(with: .opacity)) }
+        }
+        .animation(reduceMotion ? ODMotion.fade : ODMotion.standard, value: sessionMinimized)
+    }
+
+    @ViewBuilder private var accessory: some View {
             let layout = typeSize.isAccessibilitySize
                 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
                 : AnyLayout(HStackLayout(spacing: 12))
@@ -68,6 +88,5 @@ public struct ODVoiceSessionAccessory: View {
             .padding(.horizontal, ODLayout.pageInset).padding(.vertical, 8)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("session.accessory")
-        }
     }
 }

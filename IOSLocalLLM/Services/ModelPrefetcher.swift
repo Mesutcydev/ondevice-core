@@ -73,7 +73,7 @@ final class ModelPrefetcher: ObservableObject {
         guard !path.isExpensive, !path.isConstrained else { return }
         guard let fastvlm = ModelDownloadCenter.shared.fastvlmModel else { return }
         switch fastvlm.state {
-        case .ready, .downloading, .enumerating: return   // already done or in progress
+        case .ready, .downloading, .enumerating, .paused: return   // respect a user pause
         default: break
         }
         ToastCenter.shared.info(

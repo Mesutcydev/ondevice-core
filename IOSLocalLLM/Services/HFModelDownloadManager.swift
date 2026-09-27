@@ -65,6 +65,7 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
 
     enum DownloadState: Equatable {
         case idle
+        case paused                // user paused; keep completed files and resume data
         case enumerating            // fetching file list from HF API
         case downloading
         case ready                  // all files present
@@ -76,7 +77,7 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
 
         static func == (lhs: DownloadState, rhs: DownloadState) -> Bool {
             switch (lhs, rhs) {
-            case (.idle, .idle), (.enumerating, .enumerating),
+            case (.idle, .idle), (.paused, .paused), (.enumerating, .enumerating),
                  (.downloading, .downloading), (.ready, .ready): return true
             case (.failed(let a), .failed(let b)): return a == b
             default: return false
@@ -87,6 +88,10 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
     // MARK: - Private
 
     private var downloadTask: Task<Void, Never>?
+    private var pendingInterruption: Task<Void, Never>?
+    private var pausePreferenceKey: String {
+        "hf-download-paused-\(SHA256.hash(data: Data(destination.path.utf8)).map { String(format: "%02x", $0) }.joined())"
+    }
 
     // MARK: - Init
 
@@ -101,18 +106,41 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
         self.branch      = branch
         self.destination = destination
         self.fileAllowlist = fileAllowlist
+        self.state = UserDefaults.standard.bool(forKey: pausePreferenceKey) ? .paused : .idle
     }
 
     // MARK: - Public API
 
     func start() {
         guard !state.isActive else { return }
-        downloadTask = Task { await run() }
+        UserDefaults.standard.removeObject(forKey: pausePreferenceKey)
+        state = .enumerating
+        let priorInterruption = pendingInterruption
+        pendingInterruption = nil
+        downloadTask = Task {
+            await priorInterruption?.value
+            guard !Task.isCancelled else { return }
+            await run()
+        }
         NotificationCenter.default.post(
             name: .hfModelDownloadStarted,
             object: self,
             userInfo: ["repoID": repoID]
         )
+    }
+
+    func pause() {
+        guard state.isActive else { return }
+        downloadTask?.cancel()
+        downloadTask = nil
+        state = .paused
+        UserDefaults.standard.set(true, forKey: pausePreferenceKey)
+        let priorInterruption = pendingInterruption
+        pendingInterruption = Task {
+            await priorInterruption?.value
+            await BackgroundDownloadCoordinator.shared.pauseTasks(matching: destination.path)
+        }
+        DownloadLiveActivityManager.shared.pause(repoID: repoID)
     }
 
     /// Cancels the in-flight download task(s) WITHOUT touching files on disk.
@@ -130,6 +158,7 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
     func cancel() {
         downloadTask?.cancel()
         downloadTask = nil
+        UserDefaults.standard.removeObject(forKey: pausePreferenceKey)
         // Cancelling is a user-initiated ABANDON (the UI cancel buttons call
         // this). A multi-file fetch leaves its already-completed files in
         // `destination`; left behind, they sit forever as an .idle,
@@ -138,14 +167,18 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
         // truly cancelled — AFTER the await so we don't race a final move,
         // and only this variant's tracked files (allowlist-safe), never a
         // shared sibling's. Not followed by start(), so no redownload race.
-        Task { @MainActor in
+        let priorInterruption = pendingInterruption
+        pendingInterruption = Task { @MainActor in
+            await priorInterruption?.value
             await BackgroundDownloadCoordinator.shared.cancelTasks(matching: destination.path)
             self.removeTrackedFiles()
+            self.reset()
         }
-        if state.isActive { state = .idle }
+        state = .idle
     }
 
     func delete() throws {
+        UserDefaults.standard.removeObject(forKey: pausePreferenceKey)
         cancelDownloadTasks()
         // Allowlisted downloads share their destination root with sibling
         // variants (KittenTTS Nano/Mini share VoiceModels/KittenTTS; the two
@@ -160,6 +193,28 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
         reset()
     }
 
+    /// Make the curated destination safe for a validated local import. Wait
+    /// for background transfers and the download loop to stop before removing
+    /// partial files; otherwise a late URLSession callback can overwrite the
+    /// imported checkpoint after its directory has moved into place.
+    func prepareForLocalImport() async throws {
+        let running = downloadTask
+        running?.cancel()
+        downloadTask = nil
+        let interruption = pendingInterruption
+        pendingInterruption = nil
+        await interruption?.value
+        await BackgroundDownloadCoordinator.shared.cancelTasks(matching: destination.path)
+        await running?.value
+        UserDefaults.standard.removeObject(forKey: pausePreferenceKey)
+        if FileManager.default.fileExists(atPath: destination.path) {
+            try FileManager.default.removeItem(at: destination)
+        }
+        reset()
+        lastFailureKind = .none
+        DownloadLiveActivityManager.shared.finish(repoID: repoID)
+    }
+
     /// Clears the files this downloader owns and starts a fresh fetch.
     /// Used when the bytes on disk exist but failed a higher-level
     /// validation step (for example a voice bundle whose files are present
@@ -167,6 +222,7 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
     /// tracked paths so sibling variants sharing the same destination root
     /// survive.
     func redownload() {
+        UserDefaults.standard.removeObject(forKey: pausePreferenceKey)
         cancelDownloadTasks()
         removeTrackedFiles()
         reset()
@@ -181,6 +237,35 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
         if state.isActive { return }
 
         let fm = FileManager.default
+        let expectedFiles = expectedSizesOnDisk()
+        if fileAllowlist == nil && !expectedFiles.isEmpty {
+            // A completed multi-file download records every known-size path
+            // before the first transfer starts. Never let the legacy
+            // config+weights shortcut call it ready while a tokenizer,
+            // processor, or runtime file is still missing after a relaunch.
+            var completeBytes: Int64 = 0
+            var completeFiles = 0
+            for (path, expectedSize) in expectedFiles {
+                let file = destination.appendingPathComponent(path)
+                guard fm.fileExists(atPath: file.path),
+                      let attrs = try? fm.attributesOfItem(atPath: file.path),
+                      let size = attrs[.size] as? NSNumber,
+                      size.int64Value == expectedSize else { continue }
+                completeBytes += expectedSize
+                completeFiles += 1
+            }
+            let allPresent = completeFiles == expectedFiles.count
+            totalBytes = expectedFiles.values.reduce(0, +)
+            downloadedBytes = completeBytes
+            filesTotal = expectedFiles.count
+            filesDone = completeFiles
+            progress = allPresent ? 1 : (totalBytes > 0
+                ? min(0.99, Double(completeBytes) / Double(totalBytes)) : 0)
+            state = allPresent ? .ready
+                : (UserDefaults.standard.bool(forKey: pausePreferenceKey) ? .paused : .idle)
+            if allPresent { UserDefaults.standard.removeObject(forKey: pausePreferenceKey) }
+            return
+        }
         if let allowlist = fileAllowlist {
             // For each rule, ensure at least one matching file exists.
             // Directory rules (ending in '/') require the directory to be non-empty.
@@ -209,7 +294,7 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
                 }
                 return size > 0
             }
-            state = allPresent ? .ready : .idle
+            state = allPresent ? .ready : (UserDefaults.standard.bool(forKey: pausePreferenceKey) ? .paused : .idle)
         } else if fm.fileExists(atPath: destination.path) {
             // For repos without an allowlist we expect a marker file.
             //   • MLX layout has `config.json` at the root — primary signal.
@@ -222,8 +307,10 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
             //     users to re-download it.
             //   • Bare partial downloads with just a stray .tmp still
             //     don't trigger a false ready.
-            state = Self.looksReady(in: destination) ? .ready : .idle
+            state = Self.looksReady(in: destination) ? .ready
+                : (UserDefaults.standard.bool(forKey: pausePreferenceKey) ? .paused : .idle)
         }
+        if state == .ready { UserDefaults.standard.removeObject(forKey: pausePreferenceKey) }
     }
 
     /// Heuristic for "this directory holds a loadable model". Recognizes more
@@ -408,7 +495,7 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
             if pendingBytes >= 1_000_000_000 {
                 ToastCenter.shared.info(
                     "Large model download",
-                    detail: "About \(pendingBytes.formattedBytes) will be stored on this device. Use Models → Storage Cleanup anytime to keep only the models you need."
+                    detail: "About \(pendingBytes.formattedBytes) will be stored on this device. Use Models → Manage model storage anytime to keep only the models you need."
                 )
             }
             if pendingBytes > 0, let free = Self.freeDiskBytes() {
@@ -485,9 +572,9 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
                 }
                 filesDone += 1
                 if totalBytes > 0 {
-                    progress = min(1.0, Double(downloadedBytes) / Double(totalBytes))
+                    progress = min(0.99, Double(downloadedBytes) / Double(totalBytes))
                 } else {
-                    progress = Double(filesDone) / Double(max(filesTotal, 1))
+                    progress = min(0.99, Double(filesDone) / Double(max(filesTotal, 1)))
                 }
 
                 // Push update to the Live Activity
@@ -514,8 +601,10 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
             }
 
             state = .ready
+            UserDefaults.standard.removeObject(forKey: pausePreferenceKey)
             progress = 1.0
             currentFile = ""
+            Diagnostics.shared.breadcrumb("Model download ready · \(repoID)", category: "hf-download")
             DownloadLiveActivityManager.shared.finish(repoID: repoID)
             ToastCenter.shared.success("Downloaded \(repoID)")
             NotificationCenter.default.post(
@@ -900,15 +989,19 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
                         guard let self else { return }
                         self.downloadedBytes = snapshot + received
                         if self.totalBytes > 0 {
-                            self.progress = Double(self.downloadedBytes) / Double(self.totalBytes)
+                            self.progress = min(0.99, max(0,
+                                Double(self.downloadedBytes) / Double(self.totalBytes)))
                         }
                     }
                 }
-                // Integrity check: LFS blobs carry their sha256 in the tree
-                // metadata. Verify the bytes on disk match; a mismatch is
-                // deleted and rethrown as retryable so the loop re-fetches.
-                // Skipped when no oid is known (plain git blobs, fallbacks).
-                if let expected = meta.sha256 {
+                // Hash small LFS assets immediately. Hashing a multi-GB
+                // checkpoint a second time after URLSession finalized it
+                // can keep iOS busy at 100%; the observed process exit came
+                // immediately after an 8-GB file was finalized. Large
+                // assets still need the exact file-size check below and the
+                // final all-files manifest check before becoming ready.
+                if let expected = meta.sha256, meta.size <= 512_000_000 {
+                    Diagnostics.shared.breadcrumb("Download checksum begin", category: "hf-download")
                     let actual = try await Self.sha256Hex(of: destination)
                     if actual.caseInsensitiveCompare(expected) != .orderedSame {
                         try? FileManager.default.removeItem(at: destination)
@@ -916,6 +1009,17 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
                                       userInfo: [NSLocalizedDescriptionKey:
                                         "Checksum mismatch for \(meta.name) — file corrupted in transit."])
                     }
+                    Diagnostics.shared.breadcrumb("Download checksum complete", category: "hf-download")
+                } else if meta.sha256 != nil {
+                    Diagnostics.shared.breadcrumb(
+                        "Large download verified by exact size",
+                        category: "hf-download"
+                    )
+                }
+                guard isComplete(meta) else {
+                    throw NSError(domain: "HFDownload", code: Self.checksumMismatchCode,
+                                  userInfo: [NSLocalizedDescriptionKey:
+                                    "Incomplete file \(meta.name) — retry the download."])
                 }
                 return meta.size
             } catch {
@@ -1066,6 +1170,18 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
             return [:]
         }
         return map
+    }
+
+    /// A receipt written by this download path lets the catalog
+    /// restore interrupted custom downloads after a process exit. A random
+    /// incomplete Files import must not be offered as a Hugging Face resume.
+    var hasResumableDownloadReceipt: Bool {
+        let sidecar = destination.appendingPathComponent(".repoID")
+        guard let data = try? Data(contentsOf: sidecar),
+              let savedRepo = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+              savedRepo == repoID else { return false }
+        return !expectedSizesOnDisk().isEmpty
     }
 
     private var alreadyDownloadedBytesSnapshot: Int64 = 0

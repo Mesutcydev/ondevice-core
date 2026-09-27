@@ -119,13 +119,13 @@ public final class LocalAIController {
                                     onToken: { token in
                                         continuation.yield(.token(token))
                                     },
-                                    onComplete: { [weak self] rate in
+                                    onComplete: { rate in
                                         continuation.yield(.usage(
                                             tokensPerSecond: rate,
                                             inputTokens: nil,
                                             outputTokens: nil
                                         ))
-                                        Task { @MainActor [weak self] in
+                                        Task { @MainActor [weak self = self] in
                                             self?.tokenRate = rate
                                         }
                                         completion.fire()
@@ -162,9 +162,9 @@ public final class LocalAIController {
                 }
             }
 
-            continuation.onTermination = { @Sendable [weak self] _ in
+            continuation.onTermination = { @Sendable _ in
                 task.cancel()
-                Task { @MainActor [weak self] in
+                Task { @MainActor [weak self = self] in
                     self?.cancelGeneration()
                 }
             }
@@ -202,6 +202,10 @@ public final class LocalAIController {
                                     case .coreAI:
                                         throw RuntimeError.unsupportedOperation(
                                             "Core AI vision packs are managed by the app's Core AI catalog and are not exposed through LocalAIController yet."
+                                        )
+                                    case .edge0MLX:
+                                        throw RuntimeError.unsupportedOperation(
+                                            "Edge0 MLX vision is not implemented in this build."
                                         )
                                     case .llamaCpp:
                                         if LlamaCppVLMService.shared.activeRepoID != target.repoID {
@@ -253,9 +257,9 @@ public final class LocalAIController {
                 }
             }
 
-            continuation.onTermination = { @Sendable [weak self] _ in
+            continuation.onTermination = { @Sendable _ in
                 task.cancel()
-                Task { @MainActor [weak self] in
+                Task { @MainActor [weak self = self] in
                     self?.cancelGeneration()
                 }
             }
@@ -289,6 +293,11 @@ public final class LocalAIController {
                     "Core AI vision preheating is managed by the Core AI runtime."
                 )
                 return
+            case .edge0MLX:
+                preheatStatus = .failed(
+                    "Edge0 MLX is not implemented in this build."
+                )
+                return
             case .llamaCpp:
                 await LlamaCppVLMService.shared.switchTo(repoID: repoID)
             case .mlx:
@@ -309,7 +318,7 @@ public final class LocalAIController {
             throw RuntimeError.underlying("Invalid repo id: \(repoID)")
         }
         var request = URLRequest(url: url)
-        request.setValue("ios-local-llm/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
+        request.setValue("OnDeviceMax/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         HFTokenStore.authorize(&request)
 
@@ -374,28 +383,15 @@ public final class LocalAIController {
     }
 
     private func resolveAssistantModel(_ model: LocalModel) throws -> AssistantModel {
-        guard model.runtime == .mlx else {
+        // Edge0 text generation is owned by CodingAssistantService through the
+        // runtime-engine seam (load → loadSelectedEdge0, generate →
+        // generateWithEdge0); this facade only has to admit it through.
+        guard model.runtime == .mlx || model.runtime == .edge0MLX else {
             throw RuntimeError.unsupportedOperation(
                 "Text generation through \(model.runtime.label) is not wired behind LocalAIController yet."
             )
         }
-        if let preset = AssistantModelCatalog.presets.first(where: {
-            $0.id == model.id || $0.repoID == model.repoID
-        }) {
-            return preset
-        }
-        return AssistantModel(
-            id: model.id,
-            repoID: model.repoID,
-            displayName: model.displayName,
-            subtitle: "custom · MLX",
-            approxRAMBytes: model.approxRAMBytes,
-            tags: [],
-            contextWindowTokens: model.contextWindowTokens,
-            capabilities: model.capabilities,
-            supportsTools: model.capabilities.contains(.tools),
-            runtime: model.runtime
-        )
+        return RuntimeEngineFactory.resolvedAssistantModel(for: model)
     }
 
     private func localAssistantModel(id: String) -> LocalModel? {

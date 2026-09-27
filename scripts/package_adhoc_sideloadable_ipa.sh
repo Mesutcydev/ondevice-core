@@ -100,7 +100,9 @@ plutil -lint "$actual_entitlements" >/dev/null || die "signed entitlements are i
 plutil -lint "$entitlements_path" >/dev/null || die "requested entitlements are invalid"
 plutil -convert binary1 -o "$work_dir/expected-entitlements.plist" "$entitlements_path"
 plutil -convert binary1 -o "$work_dir/actual-entitlements.plist.bin" "$actual_entitlements"
-cmp -s "$work_dir/expected-entitlements.plist" "$work_dir/actual-entitlements.plist.bin" || die "signed entitlements differ from the requested sideload entitlements"
+# Compare contents, not bytes: binary plist key order follows dictionary
+# hashing and shifts whenever the key set changes. `plutil -p` sorts keys.
+diff -q <(plutil -p "$work_dir/expected-entitlements.plist") <(plutil -p "$work_dir/actual-entitlements.plist.bin") >/dev/null || die "signed entitlements differ from the requested sideload entitlements"
 
 if [[ -n "$extension_entitlements_path" ]]; then
   extension_count=0
@@ -111,7 +113,7 @@ if [[ -n "$extension_entitlements_path" ]]; then
     plutil -lint "$actual_extension_entitlements" >/dev/null || die "share extension entitlements are invalid"
     plutil -convert binary1 -o "$work_dir/expected-extension-entitlements.plist" "$extension_entitlements_path"
     plutil -convert binary1 -o "$work_dir/actual-extension-entitlements-${extension_count}.plist.bin" "$actual_extension_entitlements"
-    cmp -s "$work_dir/expected-extension-entitlements.plist" "$work_dir/actual-extension-entitlements-${extension_count}.plist.bin" || die "share extension entitlements differ from the requested extension entitlements"
+    diff -q <(plutil -p "$work_dir/expected-extension-entitlements.plist") <(plutil -p "$work_dir/actual-extension-entitlements-${extension_count}.plist.bin") >/dev/null || die "share extension entitlements differ from the requested extension entitlements"
   done < <(find "$staged_app" -type d -name '*.appex' -print0)
   [[ "$extension_count" -gt 0 ]] || die "extension entitlements were provided but no share extension was packaged"
 fi

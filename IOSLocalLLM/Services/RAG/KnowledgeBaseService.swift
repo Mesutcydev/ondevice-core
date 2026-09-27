@@ -25,6 +25,7 @@ struct KBChunk: Codable, Sendable {
     let docID: UUID
     let text: String
     let vector: [Float]
+    var pageNumber: Int? = nil
 }
 
 /// A retrieved chunk with its similarity score and originating document name.
@@ -34,6 +35,7 @@ struct KBRetrieval: Identifiable, Sendable {
     let docName: String
     let text: String
     let score: Float
+    var pageNumber: Int? = nil
 }
 
 @MainActor
@@ -151,6 +153,70 @@ final class KnowledgeBaseService: ObservableObject {
                                    detail: "\(name) · \(newChunks.count) chunks")
     }
 
+    /// A PDF is indexed by page instead of by its first 64 KB. Keeping one
+    /// bounded record per page makes a late answer discoverable while the
+    /// prompt still receives only pages relevant to the current question.
+    func addPDFDocument(
+        name: String, pages: [FileAttachmentService.PDFPageText]
+    ) async {
+        let readable = pages.filter {
+            !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        guard !readable.isEmpty, embedder.isAvailable else {
+            if !embedder.isAvailable {
+                ToastCenter.shared.error("Knowledge Base unavailable",
+                                         detail: "On-device embeddings aren't supported for this language.")
+            }
+            return
+        }
+        if chunks.count + readable.count > maxTotalChunks {
+            ToastCenter.shared.error("Knowledge Base full",
+                                     detail: "Remove older documents before indexing more.")
+            return
+        }
+        let ticket = importGate.generation
+        let jobID = UUID()
+        let docID = UUID()
+        isIndexing = true
+        defer {
+            importJobs.removeValue(forKey: jobID)
+            isIndexing = !importJobs.isEmpty
+        }
+        let job = Task.detached(priority: .userInitiated) {
+            let worker = OnDeviceEmbedder()
+            var out: [KBChunk] = []
+            out.reserveCapacity(readable.count)
+            for page in readable {
+                guard !Task.isCancelled else { return [KBChunk]() }
+                guard let vector = worker.embed(page.text) else { continue }
+                out.append(KBChunk(id: UUID(), docID: docID, text: page.text,
+                                   vector: vector, pageNumber: page.number))
+            }
+            return out
+        }
+        importJobs[jobID] = job
+        let newChunks = await withTaskCancellationHandler { await job.value } onCancel: { job.cancel() }
+        guard ticket == importGate.generation, !Task.isCancelled, !job.isCancelled else { return }
+        guard !newChunks.isEmpty else {
+            ToastCenter.shared.error("Couldn't index \(name)", detail: "No embeddable pages found.")
+            return
+        }
+        guard importGate.accepts(ticket, existing: chunks.count,
+                                 incoming: newChunks.count, limit: maxTotalChunks) else {
+            ToastCenter.shared.error("Knowledge Base full",
+                                     detail: "This document exceeds the remaining capacity.")
+            return
+        }
+        chunks.append(contentsOf: newChunks)
+        documents.append(KBDocument(id: docID, name: name, addedAt: Date(),
+                                    chunkCount: newChunks.count,
+                                    byteCount: readable.reduce(0) { $0 + $1.text.utf8.count }))
+        persist()
+        HapticManager.impact(.medium)
+        ToastCenter.shared.success("Added to Knowledge Base",
+                                   detail: "\(name) · \(newChunks.count) pages")
+    }
+
     func removeDocument(_ id: UUID) {
         documents.removeAll { $0.id == id }
         chunks.removeAll { $0.docID == id }
@@ -181,13 +247,18 @@ final class KnowledgeBaseService: ObservableObject {
     /// Top-`k` chunks most similar to `query` (cosine), above `minScore`.
     func retrieve(query: String, topK: Int = 5, minScore: Float = 0.15) -> [KBRetrieval] {
         guard !chunks.isEmpty, let q = embedder.embed(query) else { return [] }
-        let scored: [(KBChunk, Float)] = chunks.map { ($0, OnDeviceEmbedder.cosine(q, $0.vector)) }
+        let terms = Self.queryTerms(query)
+        let scored: [(KBChunk, Float)] = chunks.map { chunk in
+            let semantic = OnDeviceEmbedder.cosine(q, chunk.vector)
+            let lexical = chunk.pageNumber == nil ? 0 : Self.pageLexicalScore(terms, text: chunk.text)
+            return (chunk, semantic + lexical)
+        }
         let docNames = Dictionary(uniqueKeysWithValues: documents.map { ($0.id, $0.name) })
         return scored
             .filter { $0.1 >= minScore }
             .sorted { $0.1 > $1.1 }
             .prefix(topK)
-            .map { KBRetrieval(id: $0.0.id, docID: $0.0.docID, docName: docNames[$0.0.docID] ?? "document", text: $0.0.text, score: $0.1) }
+            .map { KBRetrieval(id: $0.0.id, docID: $0.0.docID, docName: docNames[$0.0.docID] ?? "document", text: $0.0.text, score: $0.1, pageNumber: $0.0.pageNumber) }
     }
 
     /// Rendered grounding block for the assistant prompt, or nil when the KB
@@ -197,6 +268,7 @@ final class KnowledgeBaseService: ObservableObject {
         guard isEnabled, !chunks.isEmpty else { return nil }
         let snapshot = chunks
         let names = Dictionary(uniqueKeysWithValues: documents.map { ($0.id, $0.name) })
+        let terms = Self.queryTerms(query)
         let generation = importGate.generation
         let job = Task.detached(priority: .userInitiated) { () -> [KBRetrieval] in
             let worker = OnDeviceEmbedder()
@@ -204,11 +276,13 @@ final class KnowledgeBaseService: ObservableObject {
             var ranked: [(KBChunk, Float)] = []
             for chunk in snapshot {
                 guard !Task.isCancelled else { return [] }
-                let score = OnDeviceEmbedder.cosine(queryVector, chunk.vector)
+                let semantic = OnDeviceEmbedder.cosine(queryVector, chunk.vector)
+                let lexical = chunk.pageNumber == nil ? 0 : Self.pageLexicalScore(terms, text: chunk.text)
+                let score = semantic + lexical
                 if score >= 0.15 { ranked.append((chunk, score)) }
             }
             return ranked.sorted { $0.1 > $1.1 }.prefix(6).map {
-                KBRetrieval(id: $0.0.id, docID: $0.0.docID, docName: names[$0.0.docID] ?? "document", text: $0.0.text, score: $0.1)
+                KBRetrieval(id: $0.0.id, docID: $0.0.docID, docName: names[$0.0.docID] ?? "document", text: $0.0.text, score: $0.1, pageNumber: $0.0.pageNumber)
             }
         }
         let retrieved = await withTaskCancellationHandler { await job.value } onCancel: { job.cancel() }
@@ -224,16 +298,50 @@ final class KnowledgeBaseService: ObservableObject {
         var usedChars = lines.joined().count
         let budgetChars = tokenBudget * 4
         var sources: [ChatMessage.DocumentSource] = []
-        for h in hits {
-            let entry = "[\(h.docName)]\n\(h.text)\n"
+        for (index, h) in hits.enumerated() {
+            let label = h.pageNumber.map { "\(h.docName), p. \($0)" } ?? h.docName
+            let available = budgetChars - usedChars - label.count - 8
+            guard available > 0 else { break }
+            let pageAllowance = available / max(1, min(3, hits.count - index))
+            let excerpt = h.pageNumber == nil ? h.text
+                : Self.pageExcerpt(h.text, terms: terms, maxChars: pageAllowance)
+            let entry = "[\(label)]\n\(excerpt)\n"
             if usedChars + entry.count > budgetChars { break }
             lines.append(entry)
             usedChars += entry.count
-            sources.append(.init(id: h.id, documentID: h.docID, name: h.docName, excerpt: h.text))
+            sources.append(.init(id: h.id, documentID: h.docID, name: label, excerpt: excerpt))
         }
         lines.append("KNOWLEDGE BASE END")
         guard sources.count > 0 else { return nil }
         return (lines.joined(separator: "\n"), sources)
+    }
+
+    nonisolated static func pageLexicalScore(_ terms: Set<String>, text: String) -> Float {
+        guard !terms.isEmpty else { return 0 }
+        let lower = text.lowercased()
+        return min(1.2, Float(terms.filter { lower.contains($0) }.count) * 0.3)
+    }
+
+    nonisolated private static func queryTerms(_ query: String) -> Set<String> {
+        let ignored: Set<String> = ["about", "document", "from", "page", "please",
+                                    "that", "this", "what", "when", "where", "which", "with"]
+        return Set(query.lowercased()
+            .split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+            .map(String.init)
+            .filter { $0.count >= 3 && !ignored.contains($0) })
+    }
+
+    nonisolated private static func pageExcerpt(
+        _ text: String, terms: Set<String>, maxChars: Int
+    ) -> String {
+        guard text.count > maxChars else { return text }
+        let lower = text.lowercased()
+        let offsets = terms.compactMap { term -> Int? in
+            guard let range = lower.range(of: term) else { return nil }
+            return lower.distance(from: lower.startIndex, to: range.lowerBound)
+        }
+        let start = max(0, (offsets.min() ?? 0) - maxChars / 4)
+        return "…" + String(text.dropFirst(start).prefix(max(0, maxChars - 2))) + "…"
     }
 
     // MARK: - Chunking

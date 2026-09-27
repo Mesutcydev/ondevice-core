@@ -1,4 +1,5 @@
 import XCTest
+import MLXLMCommon
 @testable import IOSLocalLLM
 
 // MARK: - DeviceTierAdvisorTests
@@ -705,46 +706,87 @@ final class DeviceTierAdvisorTests: XCTestCase {
         XCTAssertTrue(MemoryAdvisor.isHardCapacityFailure(message))
     }
 
-    func test_verdict_unknownModel_fitsComfortably() {
-        // Unknown footprint (== 0) must not be treated as huge — it returns
-        // fits (the per-process ceiling in safetyBlocker is the real backstop).
-        XCTAssertFalse(MemoryAdvisor.verdict(for: "totally/unknown-model-xyz").isBlocking)
+    func test_unknownModelNeverReceivesComfortableVerdict() {
+        let verdict = MemoryAdvisor.verdict(forFootprint: 0, available: 8_000_000_000, reserve: 500_000_000)
+        guard case .marginal = verdict else { return XCTFail("Unknown size must remain uncertain") }
+        XCTAssertTrue(MemoryAdvisor.verdict(forFootprint: 0, available: 2_000_000_000, reserve: 500_000_000).isBlocking)
     }
 
-    func test_verdict_oversizedStack_isBlocking() {
-        // Stacking many copies of the largest model far exceeds any device's
-        // 70%-of-physical budget, so the verdict must block regardless of the
-        // test host's RAM.
-        let huge = Array(repeating: "qwen3-8b", count: 20)
-        XCTAssertTrue(MemoryAdvisor.verdict(for: "qwen3-8b", alreadyLoaded: huge).isBlocking,
-                      "20x 8B models must exceed budget and block")
+    func test_zeroHeadroomAlwaysBlocksEvenWithoutReserve() {
+        let memory = ProcessMemoryBudget.resolve(
+            footprint: 6_000_000_000, kernelHeadroom: 0,
+            fallbackCeiling: 9_000_000_000, platformCap: 8_500_000_000
+        )
+        XCTAssertEqual(memory.available, 0)
+        XCTAssertNotNil(MemoryAdvisor.capacityBlocker(
+            footprint: 1, memory: memory, reserve: 0, runtime: .mlx, lowMemoryEnabled: true
+        ))
+        XCTAssertTrue(MemoryAdvisor.verdict(forFootprint: 1, available: 0, reserve: 0).isBlocking)
+        guard case .over = MemoryAdvisor.fit(forFootprint: 1, available: 0) else {
+            return XCTFail("Exhausted headroom must not become 70% of physical RAM")
+        }
     }
 
-    func test_normalGGUFModeKeepsSmallModelsFullyAccelerated() {
+    func test_residentMemoryIsChargedExactlyOnce() {
+        let memory = ProcessMemoryBudget.resolve(
+            footprint: 2_000_000_000, kernelHeadroom: 4_000_000_000,
+            fallbackCeiling: 9_000_000_000, platformCap: 8_500_000_000
+        )
+        XCTAssertNil(MemoryAdvisor.capacityBlocker(
+            footprint: 3_000_000_000, memory: memory, reserve: 500_000_000,
+            runtime: .mlx, lowMemoryEnabled: false
+        ))
+        XCTAssertFalse(MemoryAdvisor.verdict(forFootprint: 3_000_000_000, available: memory.available, reserve: 500_000_000).isBlocking)
+    }
+
+    func test_profileBoundsFactoryCacheWithoutReplacingRecurrentState() {
+        let profile = MLXAssistantExecutionProfile.resolve(repoID: "example/qwen3.5")
+        let recurrent = MambaCache()
+        let alreadyBounded = RotatingKVCache(maxSize: 512, keep: 4)
+        let bounded = profile.boundedCache([KVCacheSimple(), recurrent, alreadyBounded])
+        XCTAssertTrue(bounded[0] is RotatingKVCache)
+        XCTAssertTrue((bounded[1] as? MambaCache) === recurrent)
+        XCTAssertTrue((bounded[2] as? RotatingKVCache) === alreadyBounded)
+        let ordinary = KVCacheSimple()
+        let defaultProfile = MLXAssistantExecutionProfile.resolve(repoID: "example/qwen3")
+        XCTAssertTrue((defaultProfile.boundedCache([ordinary])[0] as? KVCacheSimple) === ordinary)
+    }
+
+    func test_ggufThatFitsMetalRunsOnGPUWithRuntimeHeadroomOnly() {
         let policy = GGUFLoadPolicy.resolve(
-            fileBytes: 2 * 1_024 * 1_024 * 1_024,
-            pagingEnabled: false
+            fileBytes: 6 * 1_024 * 1_024 * 1_024,
+            pagingEnabled: false,
+            metalBudget: 7 * 1_024 * 1_024 * 1_024
         )
 
         XCTAssertEqual(policy.gpuLayers, 999)
-        XCTAssertFalse(policy.storageBacked)
-        XCTAssertGreaterThan(policy.minimumAvailableBytes, 2_000_000_000)
+        XCTAssertTrue(policy.storageBacked)
+        XCTAssertEqual(policy.minimumAvailableBytes, GGUFLoadPolicy.storageBackedHeadroom)
     }
 
-    func test_normalGGUFModeBoundsMetalOffloadForLargeModels() {
+    func test_ggufOverMetalBudgetNeedsPagingOptIn() {
         let policy = GGUFLoadPolicy.resolve(
             fileBytes: 8 * 1_024 * 1_024 * 1_024,
-            pagingEnabled: false
+            pagingEnabled: false,
+            metalBudget: 7 * 1_024 * 1_024 * 1_024
         )
 
-        XCTAssertEqual(policy.gpuLayers, 12)
+        XCTAssertEqual(policy.gpuLayers, 0)
         XCTAssertFalse(policy.storageBacked)
+        XCTAssertGreaterThan(policy.minimumAvailableBytes, 8_000_000_000)
+    }
+
+    func test_cpuThrashThresholdMatchesMeasuredIPhone() {
+        let ram: Int64 = 12_262_000_000
+        XCTAssertFalse(GGUFLoadPolicy.cpuWillThrash(fileBytes: 7_321_313_312, physicalRAM: ram))
+        XCTAssertTrue(GGUFLoadPolicy.cpuWillThrash(fileBytes: 9_001_752_960, physicalRAM: ram))
     }
 
     func test_storageBackedGGUFModeUsesFixedHeadroomAndNoMetalLayers() {
         let policy = GGUFLoadPolicy.resolve(
             fileBytes: 18 * 1_024 * 1_024 * 1_024,
-            pagingEnabled: true
+            pagingEnabled: true,
+            metalBudget: 7 * 1_024 * 1_024 * 1_024
         )
 
         XCTAssertEqual(policy.gpuLayers, 0)

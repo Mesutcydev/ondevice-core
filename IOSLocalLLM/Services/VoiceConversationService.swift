@@ -271,10 +271,17 @@ final class VoiceConversationService: ObservableObject {
         default: modelLoadTask = Task { [assistant] in await assistant.load() }
         }
 
+        // Same builder as chat, in spoken mode: replies are read aloud, so
+        // Markdown, lists and code would be spoken literally.
+        let persona = PersonaStore.shared.active
         session = [ChatMessage(
             role: .system,
-            content: PersonaStore.shared.active.systemPrompt
-                + "\n\n" + CodingAssistantService.groundingPrompt
+            content: CodingAssistantService.composeSystemPrompt(.init(
+                persona: persona.systemPrompt,
+                memory: MemoryStore.shared.contextBlock(forPersonaID: persona.id),
+                inputBudget: assistant.currentInputBudget,
+                spoken: true
+            ))
         )]
         resetLiveReply()
         liveTranscript = ""

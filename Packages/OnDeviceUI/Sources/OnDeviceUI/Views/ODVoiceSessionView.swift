@@ -311,12 +311,14 @@ private struct ODVoiceCircleControl: View {
 
     @ViewBuilder
     private var styledButton: some View {
-        if prominent {
+        if prominent && destructive {
             button
                 .buttonStyle(.glassProminent)
                 // The brand's dark red is a pastel intended for text. Use
                 // native red for a filled End control and its system label.
-                .tint(destructive ? .red : .blue)
+                .tint(.red)
+        } else if prominent {
+            button.buttonStyle(.glassProminent).odInkProminent()
         } else {
             button
                 .buttonStyle(.glass)

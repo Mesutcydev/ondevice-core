@@ -20,7 +20,7 @@ struct ODConversationsHome: View {
             .searchFocused($searchFocused)
             .onSubmit(of: .search) { searchFocused = false }
             .navigationTitle("Chats")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 ODWorkspaceBottomBar { EmptyView() }
             }
@@ -31,10 +31,18 @@ struct ODConversationsHome: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button("Manage conversations", systemImage: "bubble.left.and.bubble.right") { store.send(.showHistory) }
+                        Section {
+                            Button { store.send(.showHistory) } label: {
+                                Label("Manage chats", systemImage: "square.stack")
+                                Text("Delete, export, or copy")
+                            }
                             .disabled(!store.capabilities.canShowHistory)
-                        Button("Settings", systemImage: "gearshape") { store.secondaryRoute = .settings }
+                        }
+                        Section {
+                            Button("Settings", systemImage: "gearshape") { store.secondaryRoute = .settings }
+                        }
                     } label: { Image(systemName: "ellipsis") }
+                    .menuOrder(.fixed)
                     .accessibilityLabel("Conversation options")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -81,8 +89,39 @@ struct ODConversationListing: View {
     let sidebar: Bool
     @State private var groups = ODConversationGroups()
     @State private var pinnedExpanded = true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        if sidebar { sidebarBody } else { homeBody }
+    }
+
+    /// Drawer: one flat Recents list, pinned first, like the reference chat apps.
+    private var sidebarBody: some View {
+        LazyVStack(alignment: .leading, spacing: 2) {
+            if groups.pinned.isEmpty && groups.recent.isEmpty {
+                HStack(alignment: .top, spacing: 14) {
+                    Image(systemName: "clock").font(.body).foregroundStyle(ODPalette.secondary)
+                        .padding(.top, 2).accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("No recent chats").font(.body)
+                        Text("Start a new conversation").font(.subheadline).foregroundStyle(ODPalette.secondary)
+                    }
+                }
+                .padding(.vertical, 10)
+                .accessibilityElement(children: .combine)
+            }
+            ForEach(groups.pinned + groups.recent) { conversation in
+                ODConversationNavigationRow(conversation: conversation, sidebar: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, ODLayout.conversationRowInset)
+        .onChange(of: store.recentConversations, initial: true) { _, conversations in
+            groups = ODConversationGroups(conversations: conversations, query: query)
+        }
+    }
+
+    private var homeBody: some View {
         LazyVStack(alignment: .leading, spacing: 20) {
             if groups.pinned.isEmpty && groups.recent.isEmpty {
                 if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -96,7 +135,9 @@ struct ODConversationListing: View {
             }
             if !groups.pinned.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
-                    Button { pinnedExpanded.toggle() } label: {
+                    Button {
+                        withAnimation(ODMotion.resolve(ODMotion.standard, reduceMotion: reduceMotion)) { pinnedExpanded.toggle() }
+                    } label: {
                         HStack(spacing: 6) {
                             Text("Pinned").font(.subheadline.weight(.semibold))
                             Image(systemName: "chevron.down").font(.caption2).foregroundStyle(.secondary)
@@ -125,6 +166,8 @@ struct ODConversationListing: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, ODLayout.elementGap).padding(.bottom, ODLayout.pageInset)
+        // Only pin changes animate; streaming subtitle updates must not.
+        .animation(ODMotion.resolve(ODMotion.standard, reduceMotion: reduceMotion), value: groups.pinned.map(\.id))
         .onChange(of: store.recentConversations, initial: true) { _, conversations in
             groups = ODConversationGroups(conversations: conversations, query: query)
         }
@@ -142,6 +185,8 @@ struct ODConversationNavigationRow: View {
     let conversation: ODRecentConversation
     let sidebar: Bool
 
+    private var isOpen: Bool { store.selectedTab == .chat && store.selectedConversationID == conversation.id }
+
     var body: some View {
         Button {
             store.conversationsPresented = false
@@ -149,10 +194,61 @@ struct ODConversationNavigationRow: View {
             store.selectedTab = .chat
             if !resumeCurrent { store.send(.openConversation(conversation.id)) }
         } label: {
-            HStack(spacing: 12) {
-                if sidebar && conversation.isPinned {
-                    Image(systemName: "bubble.left").font(.body).accessibilityHidden(true)
+            if sidebar { sidebarLabel } else { homeLabel }
+        }
+        .buttonStyle(ODPressButtonStyle())
+        .disabled(!store.canPerformActions || (store.isResponding && store.selectedConversationID != conversation.id))
+        .accessibilityIdentifier("\(sidebar ? "sidebar" : "home").conversation.\(conversation.id)")
+        .accessibilityAddTraits(sidebar && isOpen ? .isSelected : [])
+        .accessibilityHint("Open conversation. More actions are available.")
+        .contextMenu {
+            if store.capabilities.canPinConversations {
+                Button(conversation.isPinned ? "Unpin conversation" : "Pin conversation",
+                       systemImage: conversation.isPinned ? "pin.slash" : "pin") {
+                    store.send(.setConversationPinned(conversation.id, !conversation.isPinned))
                 }
+            }
+        }
+        .accessibilityActions {
+            if store.capabilities.canPinConversations {
+                Button(conversation.isPinned ? "Unpin conversation" : "Pin conversation") {
+                    store.send(.setConversationPinned(conversation.id, !conversation.isPinned))
+                }
+            }
+        }
+    }
+
+    private var sidebarLabel: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    if conversation.isPinned {
+                        Image(systemName: "pin.fill").font(.caption2).foregroundStyle(ODPalette.secondary)
+                            .accessibilityLabel("Pinned")
+                    }
+                    Text(conversation.title).font(.body)
+                        .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
+                }
+                if !conversation.subtitle.isEmpty {
+                    Text(conversation.subtitle).font(.subheadline).foregroundStyle(ODPalette.secondary)
+                        .lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if store.isResponding && store.selectedConversationID == conversation.id {
+                ProgressView().controlSize(.small).accessibilityLabel("Responding")
+            }
+        }
+        .foregroundStyle(ODPalette.text)
+        .padding(.horizontal, 12).padding(.vertical, 9)
+        .frame(minHeight: 52)
+        .background(isOpen ? Color(uiColor: .secondarySystemGroupedBackground) : .clear,
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(Rectangle())
+    }
+
+    private var homeLabel: some View {
+            HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: ODLayout.smallGap) {
                     let titleLayout = typeSize.isAccessibilitySize
                         ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4))
@@ -176,28 +272,10 @@ struct ODConversationNavigationRow: View {
                     ProgressView().accessibilityLabel("Responding")
                 }
             }
-            .foregroundStyle(ODPalette.text).padding(.vertical, 12).frame(minHeight: 68)
+            .foregroundStyle(ODPalette.text)
+            .padding(.horizontal, ODLayout.conversationRowInset)
+            .padding(.vertical, 12).frame(minHeight: 68)
             .overlay(alignment: .bottom) { ODHairline() }
             .contentShape(Rectangle())
-        }
-        .buttonStyle(ODPressButtonStyle())
-        .disabled(!store.canPerformActions || (store.isResponding && store.selectedConversationID != conversation.id))
-        .accessibilityIdentifier("\(sidebar ? "sidebar" : "home").conversation.\(conversation.id)")
-        .accessibilityHint("Open conversation. More actions are available.")
-        .contextMenu {
-            if store.capabilities.canPinConversations {
-                Button(conversation.isPinned ? "Unpin conversation" : "Pin conversation",
-                       systemImage: conversation.isPinned ? "pin.slash" : "pin") {
-                    store.send(.setConversationPinned(conversation.id, !conversation.isPinned))
-                }
-            }
-        }
-        .accessibilityActions {
-            if store.capabilities.canPinConversations {
-                Button(conversation.isPinned ? "Unpin conversation" : "Pin conversation") {
-                    store.send(.setConversationPinned(conversation.id, !conversation.isPinned))
-                }
-            }
-        }
     }
 }

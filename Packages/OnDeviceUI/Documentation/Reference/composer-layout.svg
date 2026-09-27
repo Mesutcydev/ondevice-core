@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1120" viewBox="0 0 1600 1120">
 <title>OnDevice composer: measured layout specification</title>
-<desc>Exact minimum-target geometry at 393 points, drawn at two SVG pixels per point. The native controls can measure larger and the composer must expand. No native tab bar is illustrated.</desc>
+<desc>Responsive app-owned geometry at a 393-point safe-area width, drawn at two SVG pixels per point. Native controls can measure larger and the composer expands with content. No native tab bar is illustrated.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#777"/></marker></defs>
 <style>text{font-family:Inter,Arial,sans-serif;fill:#202124}.title{font-size:36px;font-weight:600}.subtitle{font-size:20px;fill:#65676c}.h{font-size:25px;font-weight:600}.body{font-size:20px}.note{font-size:17px;fill:#64676b}.tiny{font-size:15px;fill:#64676b}.code{font-family:Menlo,monospace;font-size:19px}.rule{stroke:#d9dadd;stroke-width:1}.dim{stroke:#777;stroke-width:1;marker-start:url(#arrow);marker-end:url(#arrow)}.guide{stroke:#a9afb8;stroke-width:1;stroke-dasharray:6 5;fill:none}.target{fill:#f3f4f5;stroke:#8c939e;stroke-width:1;stroke-dasharray:5 4}</style>
 <rect width="1600" height="1120" fill="#fbfbfa"/>
@@ -11,44 +11,42 @@
 <text x="60" y="210" class="note">Minimum-target example · 2 SVG px = 1 pt · No attachment</text>
 <line x1="100" y1="236" x2="806" y2="236" class="dim"/>
 <rect x="384" y="222" width="140" height="28" fill="#fbfbfa"/>
-<text x="454" y="242" text-anchor="middle" class="note">C = 353 pt</text>
-<line x1="60" y1="253" x2="60" y2="508" class="guide"/>
-<line x1="846" y1="253" x2="846" y2="508" class="guide"/>
-<rect x="100" y="262" width="706" height="224" rx="48" fill="#fff" stroke="#a4a7ad" stroke-width="1"/>
-<rect x="132" y="286" width="642" height="88" class="guide"/>
-<text x="148" y="322" class="body">Message</text>
-<text x="148" y="350" class="tiny">321 pt writing width · measured text height ≥ 44 pt</text>
-<rect x="124" y="382" width="88" height="88" rx="4" class="target"/>
-<text x="168" y="421" text-anchor="middle" class="body">+</text>
-<text x="168" y="449" text-anchor="middle" class="tiny">44+</text>
-<rect x="228" y="382" width="346" height="88" rx="4" fill="#f7f7f6" stroke="#d7d8dc"/>
-<text x="246" y="421" class="body">Local model⌄</text>
-<text x="246" y="449" class="tiny">Flexible allocation · label may truncate</text>
-<rect x="590" y="382" width="88" height="88" rx="4" class="target"/>
-<text x="634" y="421" text-anchor="middle" class="body">Mic</text>
-<text x="634" y="449" text-anchor="middle" class="tiny">44+</text>
-<rect x="694" y="382" width="88" height="88" rx="4" class="target"/>
-<text x="738" y="421" text-anchor="middle" class="body">Send</text>
-<text x="738" y="449" text-anchor="middle" class="tiny">44+</text>
-<line x1="875" y1="262" x2="875" y2="486" class="dim"/>
-<text x="890" y="354" class="note">112 pt</text>
+<text x="454" y="242" text-anchor="middle" class="note">C = 361 pt</text>
+<line x1="60" y1="253" x2="60" y2="484" class="guide"/>
+<line x1="846" y1="253" x2="846" y2="484" class="guide"/>
+<rect x="92" y="262" width="722" height="200" rx="52" fill="#fff" stroke="#a4a7ad" stroke-width="1"/>
+<rect x="148" y="270" width="610" height="88" class="guide"/>
+<text x="164" y="306" class="body">Message</text>
+<text x="164" y="334" class="tiny">305 pt text region · inset scales with body text</text>
+<rect x="116" y="366" width="88" height="88" rx="4" class="target"/>
+<text x="160" y="405" text-anchor="middle" class="body">+</text>
+<text x="160" y="433" text-anchor="middle" class="tiny">44+</text>
+<rect x="598" y="366" width="88" height="88" rx="4" class="target"/>
+<text x="642" y="405" text-anchor="middle" class="body">Mic</text>
+<text x="642" y="433" text-anchor="middle" class="tiny">44+</text>
+<rect x="702" y="366" width="88" height="88" rx="4" class="target"/>
+<text x="746" y="405" text-anchor="middle" class="body">Send</text>
+<text x="746" y="433" text-anchor="middle" class="tiny">44+</text>
+<line x1="843" y1="262" x2="843" y2="462" class="dim"/>
+<text x="858" y="354" class="note">100 pt</text>
 <text x="890" y="380" class="tiny">floor</text>
-<line x1="60" y1="518" x2="100" y2="518" class="dim"/>
-<line x1="806" y1="518" x2="846" y2="518" class="dim"/>
-<text x="80" y="549" text-anchor="middle" class="note">20</text>
-<text x="826" y="549" text-anchor="middle" class="note">20</text>
-<text x="122" y="518" class="note">Panel R24 · Text inset16 · Footer inset12</text>
-<text x="122" y="550" class="note">Dashed boxes show minimum hit areas, not control artwork.</text>
+<line x1="60" y1="494" x2="92" y2="494" class="dim"/>
+<line x1="814" y1="494" x2="846" y2="494" class="dim"/>
+<text x="76" y="525" text-anchor="middle" class="note">16</text>
+<text x="830" y="525" text-anchor="middle" class="note">16</text>
+<text x="122" y="494" class="note">Panel R26 · Text inset28 · Footer inset12</text>
+<text x="122" y="526" class="note">Dashed boxes show minimum hit areas, not control artwork.</text>
 <text x="998" y="182" class="h">Measure first. Let content grow.</text>
-<text x="998" y="224" class="code">C = max(0, W − 40)</text>
-<text x="998" y="257" class="code">Text width = max(0, C − 32)</text>
+<text x="998" y="224" class="code">C = max(0, W − 32)</text>
+<text x="998" y="257" class="code">Text width = max(0, C − 56)</text>
 <text x="998" y="290" class="code">Footer width = max(0, C − 24)</text>
-<text x="998" y="340" class="code">H = 12 + max(44, T) + 4</text>
-<text x="998" y="373" class="code">    + max(44, F) + 8 + D</text>
+<text x="998" y="316" class="note">Model picker: centered navigation item above this panel</text>
+<text x="998" y="340" class="code">H = 4 + max(44, T) + 4</text>
+<text x="998" y="373" class="code">    + max(44, F) + 4 + D</text>
 <text x="998" y="414" class="note">T: natural text-area height</text>
-<text x="998" y="444" class="note">F: measured footer height, including stacked rows</text>
-<text x="998" y="474" class="note">D: 0, or attachment-strip height + 8 pt</text>
-<text x="998" y="521" class="body">112 pt is a lower bound.</text>
+<text x="998" y="444" class="note">F: measured footer action-row height</text>
+<text x="998" y="474" class="note">D: 0, or attachment-strip height + 4 pt</text>
+<text x="998" y="521" class="body">100 pt is a lower bound.</text>
 <text x="998" y="551" class="note">Native controls, larger text and attachments</text>
 <text x="998" y="576" class="note">can make the actual composer taller.</text>
 <line x1="52" y1="610" x2="1548" y2="610" class="rule"/>
@@ -60,38 +58,38 @@
 <text x="660" y="700" class="note">Footer</text>
 <line x1="60" y1="715" x2="900" y2="715" class="rule"/>
 <text x="60" y="743" class="body">320</text>
-<text x="260" y="743" class="body">280</text>
-<text x="460" y="743" class="body">248</text>
-<text x="660" y="743" class="body">256</text>
+<text x="260" y="743" class="body">288</text>
+<text x="460" y="743" class="body">232</text>
+<text x="660" y="743" class="body">264</text>
 <line x1="60" y1="758" x2="900" y2="758" class="rule"/>
 <text x="60" y="786" class="body">375</text>
-<text x="260" y="786" class="body">335</text>
-<text x="460" y="786" class="body">303</text>
-<text x="660" y="786" class="body">311</text>
+<text x="260" y="786" class="body">343</text>
+<text x="460" y="786" class="body">287</text>
+<text x="660" y="786" class="body">319</text>
 <line x1="60" y1="801" x2="900" y2="801" class="rule"/>
 <text x="60" y="829" class="body">393</text>
-<text x="260" y="829" class="body">353</text>
-<text x="460" y="829" class="body">321</text>
-<text x="660" y="829" class="body">329</text>
+<text x="260" y="829" class="body">361</text>
+<text x="460" y="829" class="body">305</text>
+<text x="660" y="829" class="body">337</text>
 <line x1="60" y1="844" x2="900" y2="844" class="rule"/>
 <text x="60" y="872" class="body">430</text>
-<text x="260" y="872" class="body">390</text>
-<text x="460" y="872" class="body">358</text>
-<text x="660" y="872" class="body">366</text>
+<text x="260" y="872" class="body">398</text>
+<text x="460" y="872" class="body">342</text>
+<text x="660" y="872" class="body">374</text>
 <line x1="60" y1="887" x2="900" y2="887" class="rule"/>
 <text x="60" y="945" class="note">User bubble cap = floor(0.82 × C × displayScale) / displayScale</text>
-<text x="60" y="975" class="note">At W393 and @3×: 289⅓ pt maximum · Bubble padding16 × 12 pt · Gap24 pt</text>
+<text x="60" y="975" class="note">At W393 and @3×: 296 pt maximum · Bubble padding16 × 12 pt</text>
 <text x="998" y="654" class="h">Type and interaction</text>
 <text x="998" y="700" class="body">Body: native .body · 1…6 input lines</text>
 <text x="998" y="736" class="body">Labels: native .footnote · full VoiceOver name</text>
 <text x="998" y="772" class="body">Return: newline · Explicit Send → Stop</text>
-<text x="998" y="808" class="body">Larger text: model row above action row</text>
+<text x="998" y="808" class="body">Model selection: centered top navigation item</text>
 <text x="998" y="852" class="note">Footer widths are measured by SwiftUI.</text>
 <text x="998" y="879" class="note">If mic is unavailable, its control is omitted.</text>
 <text x="998" y="906" class="note">Tap areas grow with semantic typography.</text>
 <text x="998" y="948" class="note">Navigation, tabs and keyboard safe areas</text>
 <text x="998" y="975" class="note">are owned by iOS. No bar metrics are specified.</text>
 <line x1="52" y1="1018" x2="1548" y2="1018" class="rule"/>
-<text x="60" y="1055" class="note">Implementation: ODTheme.swift + ODChatView.swift · Complete equations: Documentation/LayoutMetrics.md</text>
+<text x="60" y="1055" class="note">Implementation: ODTheme.swift + ODComposer.swift · Complete equations: Documentation/LayoutMetrics.md</text>
 <text x="60" y="1086" class="tiny">This is an exact layout specification for app-owned content, not a simulator screenshot or a measured native-control rendering.</text>
 </svg>

@@ -243,14 +243,8 @@ struct ModelsManagerView: View {
         // Import-local picker + its alerts, formerly attached to the Installed
         // section. They now live on the page body so they work from the
         // utilities footer on every category page.
-        .sheet(isPresented: $showImportPicker) {
-            LocalModelDocumentPicker(
-                onPick: { url in
-                    showImportPicker = false
-                    Task { await importLocalModel(at: url) }
-                },
-                onCancel: { showImportPicker = false }
-            )
+        .localModelImportFlow(isPresented: $showImportPicker) { urls in
+            Task { await importLocalModel(at: urls) }
         }
         .sheet(item: $exportingModel) { model in
             if let directory = model.downloader?.destination {
@@ -1055,6 +1049,7 @@ struct ModelsManagerView: View {
         center.models.filter { m in
             guard m.supportsCategory(category), let dl = m.downloader else { return false }
             if dl.state.isActive { return true }
+            if dl.state == .paused { return true }
             if case .failed = dl.state { return true }
             return false
         }
@@ -1072,7 +1067,7 @@ struct ModelsManagerView: View {
         let candidates = center.models.filter { m in
             guard m.supportsCategory(category) else { return false }
             switch m.state {
-            case .ready, .downloading, .enumerating: return false  // shown elsewhere
+            case .ready, .downloading, .enumerating, .paused: return false  // shown elsewhere
             default: return true                                    // idle / failed
             }
         }
@@ -1113,6 +1108,11 @@ struct ModelsManagerView: View {
     /// genuinely can't load and are never suggested.
     private func passesSafetyFilter(_ model: DownloadableModel) -> Bool {
         guard model.platformCompatibility?.supportsCurrentPlatform ?? true else {
+            return false
+        }
+        if let destination = model.downloader?.destination,
+           !model.supportsCategory(.assistant),
+           LocalModelRegistry.unsupportedVisionRuntimeReason(in: destination) != nil {
             return false
         }
         switch MemoryAdvisor.fit(forFootprint: modelFootprint(model)) {
@@ -1253,6 +1253,8 @@ struct ModelsManagerView: View {
                             }
                         case .downloading, .enumerating:
                             statusPill(text: loc.t("downloading"), color: T.accent)
+                        case .paused:
+                            cardButton(label: loc.t("Resume"), kind: .primary) { model.start() }
                         case .idle, .failed:
                             cardButton(label: loc.t("Download"), kind: .primary) { model.start() }
                         }
@@ -2635,7 +2637,7 @@ struct ModelsManagerView: View {
                     Text(loc.t("Import a model from Files"))
                         .font(S.sans(14, .medium))
                         .foregroundColor(S.ink)
-                    Text(loc.t("MLX folder with config.json and weights"))
+                    Text(loc.t("MLX or Core AI folder, or a GGUF file"))
                         .font(S.sans(12))
                         .foregroundColor(S.ink3)
                         .lineLimit(1)
@@ -2651,13 +2653,12 @@ struct ModelsManagerView: View {
         .buttonStyle(.plain)
     }
 
-    private func importLocalModel(at url: URL) async {
+    private func importLocalModel(at urls: [URL]) async {
         do {
-            let repoID = try await LocalModelImportService.shared.importModel(from: url)
+            // The service posts the success toast with the model's name.
+            _ = try await LocalModelImportService.shared.importModel(from: urls)
             await MainActor.run {
                 center.refreshAllStates()
-                ToastCenter.shared.success("Model imported",
-                                            detail: repoID)
                 HapticManager.impact(.medium)
             }
         } catch {
@@ -3293,14 +3294,15 @@ struct ModelsManagerView: View {
             }
             // Progress / status row
             switch model.state {
-            case .downloading, .enumerating:
+            case .downloading, .enumerating, .paused:
                 progressStrip(progress: model.progress,
                               downloaded: model.downloadedBytes,
                               total: model.totalBytes,
                               file: model.currentFile)
                 HStack(spacing: 6) {
-                    cardButton(label: loc.t("Cancel download"), kind: .secondary) {
-                        model.cancel()
+                    cardButton(label: loc.t(model.state == .paused ? "Resume" : "Pause"), kind: .primary) {
+                        if model.state == .paused { model.start() }
+                        else { model.pause() }
                     }
                     Spacer(minLength: 0)
                 }
@@ -4028,6 +4030,9 @@ private struct ComboModelDownloadControl: View {
             case .failed:
                 actionButton(retryLabel)
 
+            case .paused:
+                actionButton("Resume")
+
             case .idle:
                 actionButton(getLabel)
             }
@@ -4115,6 +4120,7 @@ private struct InstallingRow: View {
     /// `@ObservedObject` to an optional — the parent unwraps in the
     /// `ForEach` and hands a guaranteed-non-nil reference here.
     @ObservedObject private var downloader: HFModelDownloadManager
+    @State private var cancelConfirmationPresented = false
 
     init(model: DownloadableModel,
          downloader: HFModelDownloadManager,
@@ -4140,7 +4146,7 @@ private struct InstallingRow: View {
     ///   • totalBytes is still 0 (first file not opened yet)
     private var isIndeterminate: Bool {
         if downloader.state == .enumerating { return true }
-        return downloader.totalBytes == 0
+        return downloader.state.isActive && downloader.totalBytes == 0
     }
 
     var body: some View {
@@ -4155,6 +4161,15 @@ private struct InstallingRow: View {
             RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
                 .stroke(T.studio.rule, lineWidth: 1)
         )
+        .confirmationDialog("Cancel download of \(model.displayName)?",
+                            isPresented: $cancelConfirmationPresented, titleVisibility: .visible) {
+            Button("Cancel download", role: .destructive) {
+                downloader.cancel()
+                HapticManager.impact(.medium)
+            }
+        } message: {
+            Text("Downloaded files for this model will be removed. You can start again later.")
+        }
     }
 
     // MARK: - Header
@@ -4247,6 +4262,10 @@ private struct InstallingRow: View {
                             .animation(.easeInOut(duration: 0.18), value: downloader.filesDone)
                     }
                 }
+            } else if downloader.state == .paused {
+                Text("Paused")
+                    .font(T.mono(10, .semibold))
+                    .foregroundColor(T.ink2)
             } else {
                 Text(loc.t("Preparing file list…"))
                     .font(T.mono(10))
@@ -4272,26 +4291,36 @@ private struct InstallingRow: View {
                     .lineLimit(3)
             }
 
-            // Action buttons. Layout flips based on state:
-            //   downloading / enumerating → Cancel
-            //   failed                     → Retry + (Open on HuggingFace)
+            // Pause retains files and resume data; Cancel confirms removal.
             HStack(spacing: 6) {
                 if case .failed = downloader.state {
                     Button(action: { downloader.start(); HapticManager.impact(.medium) }) {
                         Text(loc.t("Retry"))
                             .font(T.studio.sans(12.5, .medium))
                             .foregroundColor(T.studio.paper)
-                            .padding(.horizontal, 12).frame(minHeight: 30)
+                            .padding(.horizontal, 14).frame(minHeight: 44)
                             .background(RoundedRectangle(cornerRadius: StudioRadius.chip, style: .continuous).fill(T.studio.ink))
                     }
                     .buttonStyle(.plain)
                 } else {
-                    Button(action: { downloader.cancel(); HapticManager.impact(.light) }) {
-                        Text(loc.t("Cancel"))
+                    Button {
+                        if downloader.state == .paused { downloader.start() }
+                        else { downloader.pause() }
+                        HapticManager.impact(.light)
+                    } label: {
+                        Label(loc.t(downloader.state == .paused ? "Resume" : "Pause"),
+                              systemImage: downloader.state == .paused ? "play.fill" : "pause.fill")
+                            .font(T.studio.sans(12.5, .semibold))
+                            .foregroundColor(T.accent)
+                            .padding(.horizontal, 14).frame(minHeight: 44)
+                            .background(Capsule().fill(T.accentSoft))
+                    }
+                    .buttonStyle(.plain)
+                    Button(role: .destructive) { cancelConfirmationPresented = true } label: {
+                        Text(loc.t("Cancel download"))
                             .font(T.studio.sans(12.5, .medium))
-                            .foregroundColor(T.studio.ink)
-                            .padding(.horizontal, 12).frame(minHeight: 30)
-                            .overlay(RoundedRectangle(cornerRadius: StudioRadius.chip, style: .continuous).stroke(T.studio.rule, lineWidth: 1))
+                            .foregroundColor(T.bad)
+                            .padding(.horizontal, 10).frame(minHeight: 44)
                     }
                     .buttonStyle(.plain)
                 }

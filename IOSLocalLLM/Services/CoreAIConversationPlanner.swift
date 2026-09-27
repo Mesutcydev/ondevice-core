@@ -9,6 +9,7 @@ import Foundation
 /// message, so the tokenizer wrapped it again.
 enum CoreAIConversationPlanner {
     private static let truncationMarker = "\n[…content shortened to fit this Core AI model…]\n"
+    private static let compactResponseFormattingPrompt = "Use short, readable paragraphs. Put each list item on its own line."
 
     enum Turn: Equatable, Sendable {
         case user(String)
@@ -43,7 +44,7 @@ enum CoreAIConversationPlanner {
             )
             text = text.replacingOccurrences(
                 of: CodingAssistantService.responseFormattingPrompt,
-                with: ""
+                with: compactResponseFormattingPrompt
             )
             if !addedRuntimeAddendum {
                 text += toolsEnabled
@@ -198,8 +199,11 @@ enum CoreAIConversationPlanner {
                 guard !text.isEmpty else { continue }
                 history.append(.user(text))
             case .assistant:
-                guard !text.isEmpty else { continue }
-                history.append(.assistant(text))
+                // Earlier builds could persist tokenizer placeholders in
+                // visible replies. Do not teach the next turn to repeat them.
+                let cleaned = text.replacingOccurrences(of: "<unk>", with: "")
+                guard !cleaned.isEmpty else { continue }
+                history.append(.assistant(cleaned))
             case .tool:
                 history.append(toolTurn(from: message) ?? .tool(
                     id: message.id.uuidString,

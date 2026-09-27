@@ -44,7 +44,7 @@ The current root follows the later user-supplied sidebar reference: a conversati
 
 The supplied `ODMessage` presentation is plain text with role and ID. It supports selectable text, Copy and basic active-transcript following. Preserve or reconnect the host’s richer Markdown/code/media renderer, durable history and per-conversation reading-position restoration. The handoff does not replace those services.
 
-The composer is one rounded content surface with attachment metadata, a writing area and a footer. The native model menu lives in that footer beside the plain attachment action; the navigation header retains the conversation title. A separate capability-gated microphone sits beside the always-visible Send/Stop action. Empty or unavailable drafts disable Send instead of swapping it for Voice. Relevant preparation, error and unavailable-send explanations appear only when needed.
+The composer is one rounded content surface with attachment metadata, a writing area and a footer. The model selector occupies the centered navigation item; its menu still exposes model details and supported loading actions. The footer has the plain attachment action, a separate capability-gated microphone and the always-visible Send/Stop action. Empty or unavailable drafts disable Send instead of swapping it for Voice. Relevant preparation, error and unavailable-send explanations appear only when needed.
 
 `ODAttachment` is displayed inside the composer above the writing area. It contains `id`, `name` and `kind` (`.file` or `.image`). It represents an attachment already owned by the host. It contains no bytes, file URL, upload state or extraction result. `.addAttachment` opens the existing picker; after acceptance, publish its metadata in `store.draftAttachments`.
 

@@ -186,7 +186,8 @@ final class GGUFGenerationProfileTests: XCTestCase {
         )
         XCTAssertTrue(prompt.contains("<|im_start|>system\nBe brief.<|im_end|>"))
         XCTAssertTrue(prompt.contains("<|im_start|>user\nHello<|im_end|>"))
-        XCTAssertTrue(prompt.hasSuffix("<|im_start|>assistant\n /no_think"))
+        // Official Qwen2.5 / Qwen3-Instruct render: nothing after the cue.
+        XCTAssertTrue(prompt.hasSuffix("<|im_start|>assistant\n"))
         XCTAssertFalse(prompt.contains("user: Hello"))
     }
 

@@ -29,6 +29,7 @@ public enum ODLayout {
     public static let smallGap = unit
     public static let largeGap = 8 * unit
     public static let groupGap = 6 * unit
+    public static let chatThreadBottomClearance: CGFloat = 6
     public static let elementGap = 2 * unit
     public static let labelGap = 3 * unit
     public static let bubbleInsetH = 4 * unit
@@ -36,33 +37,40 @@ public enum ODLayout {
     public static let bubbleCorner = 5 * unit
     public static let minimumHit = 11 * unit
     public static let panelCorner = 6 * unit
-    public static let panelHorizontalInset = 3 * unit
-    public static let textAdditionalHorizontalInset = unit
+    public static let panelHorizontalInset = 4 * unit
+    /// Extra breathing room between the writing text and the panel inset.
+    /// The composer scales this with the body text size.
+    public static let textAdditionalHorizontalInset = 5 * unit
+    /// Inner inset for recent conversation labels in home and sidebar lists.
+    public static let conversationRowInset = 2 * unit
+    /// Retained for source compatibility with early sidebar integrations.
+    public static let sidebarConversationInset = conversationRowInset
 
-    // Composer geometry, 22 September 2026 contract. Empty one-line height is
-    // 8 + 44 + 4 + 44 + 8 = 108. One ordinary attachment row adds 44 + 4.
+    // Two-row composer with a clear writing inset above the text baseline.
+    // Both writing and action targets retain a 44-point minimum.
     // The corner radius stays fixed so a taller draft does not become a capsule.
-    public static let composerTopInset = 2 * unit
+    public static let composerTopInset = 3 * unit
     public static let composerTextMinimumHeight = minimumHit
     public static let composerFooterGap = unit
-    public static let composerBottomInset = 2 * unit
+    public static let composerBottomInset = 4 * unit
     public static let composerAttachmentGap = unit
-    public static let composerInputStackGap = 2 * unit
+    public static let composerInputStackGap = unit
     public static let composerMinimumHeight = composerTopInset + composerTextMinimumHeight
         + composerFooterGap + minimumHit + composerBottomInset
     public static let composerCorner: CGFloat = 26
-    /// Visible model face. The footer row supplies the 44-point hit target.
-    public static let composerModelFaceHeight: CGFloat = 32
-    public static let composerModelFaceMaxWidth: CGFloat = 42 * unit
-    public static let composerModelPillHorizontalInset = 2.5 * unit
-    public static let composerPlusModelGap = unit
     public static let composerMicPrimaryGap = 2 * unit
     public static let composerAttachmentFaceHeight: CGFloat = 38
     public static let standardIcon = 5 * unit
     public static let rowMinimumHeight = 12 * unit
     public static let sectionMinimumHeight = 7 * unit
+    // Settings use one 4-point grid across the host and package screens.
+    public static let settingsPageInset = 4 * unit
+    public static let settingsCardCorner = 4 * unit
+    public static let settingsRowMinimumHeight = 13 * unit
+    public static let settingsIconSize = 9 * unit
+    public static let settingsPreviewHeight = 24 * unit
     public static let userBubbleWidthFraction: CGFloat = 0.82
-    public static let drawerWidthFraction: CGFloat = 0.74
+    public static let drawerWidthFraction: CGFloat = 0.775
     public static let drawerMaximumWidth = 90 * unit
     public static let readableMaximumWidth = 130 * unit
     public static let attachmentNameMaximumWidth = 40 * unit

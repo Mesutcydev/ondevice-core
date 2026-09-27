@@ -6,6 +6,11 @@
   <array>
     <string>group.com.mesutcydev.ondevicemax.shared</string>
   </array>
+  <!-- Profiles that grant it (development builds, some ad-hoc
+       certificates) raise the memory ceiling for high-watermark loads.
+       Declared so AltStore-style re-signers keep it; ignored otherwise. -->
+  <key>com.apple.developer.kernel.increased-debugging-memory-limit</key>
+  <true/>
   <key>com.apple.developer.kernel.increased-memory-limit</key>
   <true/>
   <key>com.apple.developer.kernel.extended-virtual-addressing</key>

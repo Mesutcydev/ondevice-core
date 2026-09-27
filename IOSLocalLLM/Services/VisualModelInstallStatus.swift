@@ -87,6 +87,15 @@ enum VisualModelInstallStatus {
     /// Returns the strict runnability state — what each backend actually
     /// requires on disk, not just whether the downloader is happy.
     static func runStatus(for model: DownloadableModel) -> VisualModelRunStatus {
+        if model.id != FastVLMService.modelID {
+            guard model.isReady else {
+                return .partial("Finish downloading the model's remaining files.")
+            }
+            if let destination = model.downloader?.destination,
+               let reason = LocalModelRegistry.unsupportedVisionRuntimeReason(in: destination) {
+                return .partial(reason)
+            }
+        }
         switch backend(for: model) {
         case .fastVLM:
             return mapFastVLM(FastVLMService.installStatus())
@@ -130,7 +139,7 @@ enum VisualModelInstallStatus {
 
     /// Key passed to MemoryAdvisor. FastVLM uses its hardcoded
     /// `fastvlm-mlx` ID (matches the hand-tuned footprint table); every
-    /// other VLM uses the `downloaded:<repoID>` prefix so MemoryAdvisor
+    /// other VLM uses the `vision:<repoID>` prefix so MemoryAdvisor
     /// falls through to `onDiskWeightsSize(forRepoID:)` and reports a
     /// real estimate instead of 0 (= "fits anywhere").
     private static func memoryKey(for model: DownloadableModel) -> String {
@@ -141,6 +150,13 @@ enum VisualModelInstallStatus {
     /// disk (download still pending). Callers can format with
     /// `Int64.formattedBytes`.
     static func ramEstimate(for model: DownloadableModel) -> Int64 {
+        // A pack without a runnable Lens backend has no measured Lens peak.
+        // In particular, applying the generic 1.6× VLM factor to Bonsai 2's
+        // whole 8.60 GB file produced a misleading ~13.8 GB RAM badge.
+        if let destination = model.downloader?.destination,
+           LocalModelRegistry.unsupportedVisionRuntimeReason(in: destination) != nil {
+            return 0
+        }
         if let ram = model.approxRAMBytes, ram > 0 { return ram }
         switch backend(for: model) {
         case .fastVLM:
@@ -157,7 +173,11 @@ enum VisualModelInstallStatus {
     /// Best-effort RAM verdict for adding this VLM to whatever's already
     /// loaded. Live-RAM check via `verdictWithCurrentlyLoaded` so a
     /// device under pressure downgrades from green to amber/red.
-    static func memoryVerdict(for model: DownloadableModel) -> MemoryAdvisor.Verdict {
+    static func memoryVerdict(for model: DownloadableModel) -> MemoryAdvisor.Verdict? {
+        if let destination = model.downloader?.destination,
+           LocalModelRegistry.unsupportedVisionRuntimeReason(in: destination) != nil {
+            return nil
+        }
         let footprint = ramEstimate(for: model)
         if footprint > 0 {
             return MemoryAdvisor.verdictWithCurrentlyLoaded(

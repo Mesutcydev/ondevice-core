@@ -78,20 +78,29 @@ struct VoiceConversationView: View {
 
     private var voiceOptions: some View {
                 Menu("Voice options", systemImage: "ellipsis") {
-                    Text("Engine: \(voice.currentEngineKind.displayName)")
-                    Text("Model: \(CodingAssistantService.shared.activeDisplayName)")
-                    Button("Conversation model", systemImage: "cube") {
-                        showModelPicker = true
+                    Section("Conversation") {
+                        Button { showModelPicker = true } label: {
+                            Label("Conversation model", systemImage: "cube")
+                            Text(CodingAssistantService.shared.activeDisplayName)
+                        }
+                        Button { showVoiceSettings = true } label: {
+                            Label("Voice settings", systemImage: "slider.horizontal.3")
+                            Text(voice.currentEngineKind.displayName)
+                        }
                     }
-                    Button("Voice settings", systemImage: "slider.horizontal.3") { showVoiceSettings = true }
-                    Button("Replay last reply", systemImage: "arrow.counterclockwise") { play(conv.liveReply) }
-                        .disabled(!canReplay || standalonePlayback)
-                    Button("Test audio", systemImage: "speaker.wave.2") { play("Audio test. If you hear this, voice replies will play.") }
-                        .disabled(conv.phase == .thinking || conv.phase == .speaking || standalonePlayback)
+                    Section("Playback") {
+                        Button("Replay last reply", systemImage: "arrow.counterclockwise") { play(conv.liveReply) }
+                            .disabled(!canReplay || standalonePlayback)
+                        Button("Test audio", systemImage: "speaker.wave.2") { play("Audio test. If you hear this, voice replies will play.") }
+                            .disabled(conv.phase == .thinking || conv.phase == .speaking || standalonePlayback)
+                    }
                     #if DEBUG
-                    Button("Voice diagnostics", systemImage: "waveform.badge.magnifyingglass") { showVoiceValidation = true }
+                    Section {
+                        Button("Voice diagnostics", systemImage: "waveform.badge.magnifyingglass") { showVoiceValidation = true }
+                    }
                     #endif
                 }
+                .menuOrder(.fixed)
                 .labelStyle(.iconOnly)
                 .accessibilityLabel("Voice options")
     }
@@ -129,7 +138,7 @@ private struct VoiceModelPickerSheet: View {
 
     private var downloadedModels: [DownloadableModel] {
         let candidates = center.models.filter { m in
-            guard m.isReady, !m.isRequired, m.category == .assistant else { return false }
+            guard m.isReady, !m.isRequired, m.supportsCategory(.assistant) else { return false }
             return !AssistantModelCatalog.presets.contains { $0.repoID == m.id }
         }
         var seen = Set<String>()

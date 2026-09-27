@@ -93,7 +93,7 @@ struct CompareView: View {
     private var selectableModels: [AssistantModel] {
         var out = AssistantModelCatalog.presets
         var seen = Set(out.map(\.repoID))
-        for m in center.models where m.category == .assistant && m.isReady && !m.isRequired {
+        for m in center.models where m.supportsCategory(.assistant) && m.isReady && !m.isRequired {
             let descriptor = LocalModelRegistry.descriptor(for: m, forcedRole: .assistant)
             guard !seen.contains(descriptor.repoID) else { continue }
             seen.insert(descriptor.repoID)

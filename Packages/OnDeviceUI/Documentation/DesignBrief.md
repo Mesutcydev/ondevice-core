@@ -39,9 +39,9 @@ The app-owned scale is **u = 4 pt**: page insets 20, message gaps 24, related-el
 
 Use one rounded rectangle. Draft attachments sit **inside**, above the writing area. The field occupies the upper area and expands from one through six visible lines. Return inserts a newline; sending is an explicit action.
 
-The footer places the plain attachment action and native model menu on the left. A separately supported microphone and the primary Send action sit on the right. Send stays visible but disabled for an empty or unavailable draft; while responding, it becomes Stop with the host’s cancellation capability. The microphone never replaces Send and must have an unambiguous action label.
+The centered navigation item shows the active model and opens its picker; without a selection it says “Select model.” The composer footer places the plain attachment action on the left. A separately supported microphone and the primary Send action sit on the right. Send stays visible but disabled for an empty or unavailable draft; while responding, it becomes Stop with the host’s cancellation capability. The microphone never replaces Send and must have an unambiguous action label.
 
-The plus and microphone use neutral minimum-44-point targets. Send/Stop uses the real native glass-prominent circular button. At accessibility text sizes, the model menu moves to its own row above the footer icons. Keep a simple conversation title in the navigation header.
+The plus and microphone use neutral minimum-44-point targets. Send/Stop uses the real native glass-prominent circular button. The model name truncates within the centered navigation slot at narrow widths, while its accessibility value retains the full name. Conversation titles remain available in chat history.
 
 `ODAttachment(id:name:kind:)` is metadata for a host-owned attachment, not a file upload or processing result. Add, remove and send use the existing attachment service. Sending snapshots text and stable IDs through `.sendMessageWithAttachments(text:attachmentIDs:)`; clearing waits for host acceptance and must not erase a newer draft.
 

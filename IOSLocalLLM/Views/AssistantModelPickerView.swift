@@ -52,7 +52,10 @@ struct AssistantModelPickerView: View {
         let catalogReady = center.models.filter { m in
             guard m.isReady else { return false }
             guard !m.isRequired else { return false }
-            guard m.category == .assistant else { return false }
+            guard m.supportsCategory(.assistant) else { return false }
+            guard m.downloader.flatMap({
+                LocalModelRegistry.unsupportedTextRuntimeReason(in: $0.destination)
+            }) == nil else { return false }
             return !AssistantModelCatalog.presets.contains {
                 $0.repoID.caseInsensitiveCompare(m.sourceRepoID) == .orderedSame
             }
@@ -70,6 +73,11 @@ struct AssistantModelPickerView: View {
             guard seen.insert(rec.repoID).inserted else { continue }
             guard rec.validationState.isActivatable else { continue }
             guard rec.engine == .mlx || rec.engine == .llamaCpp else { continue }
+            guard center.models.first(where: {
+                $0.sourceRepoID.caseInsensitiveCompare(rec.repoID) == .orderedSame
+            })?.supportsCategory(.assistant)
+                ?? LocalModelRegistry.supportsAssistant(in: rec.localURL)
+            else { continue }
             guard !AssistantModelCatalog.presets.contains(where: {
                 $0.repoID.caseInsensitiveCompare(rec.repoID) == .orderedSame
             }) else { continue }
@@ -79,7 +87,10 @@ struct AssistantModelPickerView: View {
             downloader.checkIfReady()
             let wrapper = DownloadableModel(
                 id: rec.repoID,
-                displayName: rec.displayName,
+                // The catalog row carries the metadata-derived import name.
+                displayName: center.models.first(where: {
+                    $0.sourceRepoID.caseInsensitiveCompare(rec.repoID) == .orderedSame
+                })?.displayName ?? rec.displayName,
                 subtitle: String("\(rec.engine) · \(rec.quantization ?? "unknown") · \(rec.downloadBytes > 0 ? rec.downloadBytes.formattedBytes : "on disk")"),
                 sizeLabel: rec.downloadBytes > 0 ? rec.downloadBytes.formattedBytes : "—",
                 category: .assistant,
@@ -107,13 +118,15 @@ struct AssistantModelPickerView: View {
 
         for record in registry.records {
             guard record.validationState.isActivatable else { continue }
-            guard record.engine == .mlx || record.engine == .llamaCpp else { continue }
-            guard LocalModelRegistry.category(
-                repoID: record.repoID,
-                pipelineTag: nil
-            ) == .assistant else {
-                continue
-            }
+            guard record.engine == .mlx || record.engine == .llamaCpp
+                || (record.engine == .edge0MLX
+                    && Edge0ModelFamily.resolve(repoID: record.repoID) != nil)
+            else { continue }
+            guard center.models.first(where: {
+                $0.sourceRepoID.caseInsensitiveCompare(record.repoID) == .orderedSame
+            })?.supportsCategory(.assistant)
+                ?? LocalModelRegistry.supportsAssistant(in: record.localURL)
+            else { continue }
 
             let key = record.repoID.lowercased()
             guard seen.insert(key).inserted else { continue }
@@ -130,7 +143,9 @@ struct AssistantModelPickerView: View {
                 downloader.checkIfReady()
                 let wrapper = DownloadableModel(
                     id: record.repoID,
-                    displayName: record.displayName,
+                    displayName: center.models.first(where: {
+                        $0.sourceRepoID.caseInsensitiveCompare(record.repoID) == .orderedSame
+                    })?.displayName ?? record.displayName,
                     subtitle: "\(record.engine) · \(record.quantization ?? "unknown") · \(record.downloadBytes > 0 ? record.downloadBytes.formattedBytes : "on disk")",
                     sizeLabel: record.downloadBytes > 0
                         ? record.downloadBytes.formattedBytes
@@ -149,7 +164,7 @@ struct AssistantModelPickerView: View {
         // Catalog state still contributes ready models that have not reached
         // the registry yet during a just-finished download.
         for downloadable in center.models
-        where downloadable.isReady && downloadable.category == .assistant {
+        where downloadable.isReady && downloadable.supportsCategory(.assistant) {
             let key = downloadable.sourceRepoID.lowercased()
             guard seen.insert(key).inserted else { continue }
             if let preset = AssistantModelCatalog.presets.first(where: {
@@ -169,10 +184,63 @@ struct AssistantModelPickerView: View {
         }
     }
 
+    private var availableLocalModels: [AssistantModel] {
+        var seen = Set<String>()
+        return (installedCoreAIAssistants + downloadedOnlyAssistantModels)
+            .filter { seen.insert($0.id.lowercased()).inserted }
+            .sorted {
+                let lhsActive = $0.id == assistant.activeModel.id
+                let rhsActive = $1.id == assistant.activeModel.id
+                if lhsActive != rhsActive { return lhsActive }
+                return $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
+            }
+    }
+
+    /// Keep fully transferred packs visible when their architecture needs a
+    /// loader the app does not have. A disabled explanation is safer than
+    /// silently dropping a user's multi-GB download from the picker.
+    private var unavailableDownloadedModels: [DownloadableModel] {
+        center.models.filter { model in
+            guard model.isReady, let destination = model.downloader?.destination
+            else { return false }
+            return LocalModelRegistry.unsupportedTextRuntimeReason(in: destination) != nil
+        }
+    }
+
+    private var unavailableDownloadedSection: some View {
+        Section("Downloaded · unavailable") {
+            ForEach(unavailableDownloadedModels) { model in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(model.displayName)
+                        .font(.body.weight(.semibold))
+                    if let destination = model.downloader?.destination,
+                       let reason = LocalModelRegistry.unsupportedTextRuntimeReason(in: destination) {
+                        Text(reason)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let textWeights = LocalModelRegistry.publishedBonsai2TextWeightBytes(
+                        for: model.sourceRepoID
+                    ) {
+                        Text("Text weights ~\(textWeights.formattedBytes) · runtime peak unmeasured")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .combine)
+            }
+        }
+    }
+
     var body: some View {
         NavigationStack {
             List {
-                    Text(downloadedOnly ? "Choose a model for this conversation, or set a default for new chats." : "New conversations start with your default model.")
+                if downloadedOnly {
+                    availablePickerContent
+                } else {
+                    Text("New conversations start with your default model.")
                         .font(.footnote).foregroundStyle(.secondary)
                     if ApplePrivateCloud.isSupportedOnCurrentOS {
                         ApplePrivateCloudPickerSection(
@@ -201,46 +269,6 @@ struct AssistantModelPickerView: View {
                     } else if !downloadedOnly {
                         coreAIEmptySection
                     }
-                    if downloadedOnly {
-                        if downloadedOnlyAssistantModels.isEmpty
-                            && installedCoreAIAssistants.isEmpty {
-                            VStack(spacing: 18) {
-                                ContentUnavailableView(
-                                    "No downloaded assistant models",
-                                    systemImage: "internaldrive",
-                                    description: Text(
-                                        "Download an assistant model from the Models tab first."
-                                    )
-                                )
-                                Button {
-                                    dismiss()
-                                    Task { @MainActor in
-                                        try? await Task.sleep(for: .milliseconds(250))
-                                        AppBridge.shared.requestTab(.models)
-                                    }
-                                } label: {
-                                    Label("Browse Models", systemImage: "cube.box")
-                                        .font(T.sans(15, .semibold))
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 13)
-                                }
-                                .buttonStyle(StudioPressStyle())
-                                .foregroundStyle(T.studio.paper)
-                                .background(T.studio.ink,
-                                            in: RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous))
-                                .padding(.horizontal, 24)
-                            }
-                            .padding(.top, 48)
-                        } else if !downloadedOnlyAssistantModels.isEmpty {
-                            modelSection(title: "Downloaded") {
-                                LazyVStack(spacing: 12) {
-                                    ForEach(downloadedOnlyAssistantModels) { model in
-                                        row(for: model)
-                                    }
-                                }
-                            }
-                        }
-                    } else {
                         if let warning = safety.statusLabel,
                            safety.thermalState != .nominal || safety.lowPowerMode {
                             thermalBanner(text: warning)
@@ -254,6 +282,9 @@ struct AssistantModelPickerView: View {
                         if !downloadedModels.isEmpty {
                             downloadedSection
                         }
+                        if !unavailableDownloadedModels.isEmpty {
+                            unavailableDownloadedSection
+                        }
                         presetsSection
                         importSection
                         customSection
@@ -261,14 +292,8 @@ struct AssistantModelPickerView: View {
             }
             .listStyle(.insetGrouped).scrollContentBackground(.hidden)
             .navigationTitle(downloadedOnly ? "Chat model" : "Default model")
-            .sheet(isPresented: $showLocalImport) {
-                LocalModelDocumentPicker(
-                    onPick: { url in
-                        showLocalImport = false
-                        Task { await importLocal(url) }
-                    },
-                    onCancel: { showLocalImport = false }
-                )
+            .localModelImportFlow(isPresented: $showLocalImport) { urls in
+                Task { await importLocal(urls) }
             }
             .sheet(isPresented: $showApplePrivateCloudDisclosure) {
                 ApplePrivateCloudPrivacyDisclosureView {
@@ -292,6 +317,131 @@ struct AssistantModelPickerView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var availablePickerContent: some View {
+        if availableLocalModels.isEmpty && unavailableDownloadedModels.isEmpty
+            && !assistant.applePrivateCloudStatus.canSend {
+            ContentUnavailableView(
+                "No chat models installed",
+                systemImage: "internaldrive",
+                description: Text("Download a chat model from Models to use it here.")
+            )
+            Button("Browse Models", systemImage: "cube.box") {
+                dismiss()
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(250))
+                    AppBridge.shared.requestTab(.models)
+                }
+            }
+        } else {
+            if !availableLocalModels.isEmpty {
+                Section {
+                    ForEach(availableLocalModels) { model in
+                        availableRow(for: model)
+                    }
+                } header: {
+                    Text("Available on this device")
+                } footer: {
+                    Text("Tap to use a model and remember it for new chats. The star saves a default without loading it.")
+                }
+            }
+            if ApplePrivateCloud.isSupportedOnCurrentOS && assistant.applePrivateCloudStatus.canSend {
+                Section("Apple Private Cloud") {
+                    Button(action: chooseApplePrivateCloud) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "apple.intelligence")
+                                .font(.title3)
+                                .frame(width: 34, height: 34)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(ApplePrivateCloud.displayName).font(.body.weight(.semibold))
+                                Text("Uses a network connection")
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 4)
+                            if isActivating { ProgressView().controlSize(.small) }
+                            else if assistant.activeExecutionLocation == .applePrivateCloud {
+                                Image(systemName: "checkmark.circle.fill").foregroundStyle(T.accent)
+                            }
+                        }
+                        .frame(minHeight: 48)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isActivating)
+                }
+            }
+        }
+        if !unavailableDownloadedModels.isEmpty {
+            unavailableDownloadedSection
+        }
+    }
+
+    private func availableRow(for model: AssistantModel) -> some View {
+        let isActive = assistant.activeModel.id == model.id && assistant.activeExecutionLocation != .applePrivateCloud
+        let isDefault = settings.assistantModelID == model.id
+        let runsHere = model.platformCompatibility?.supportsCurrentPlatform ?? true
+        return HStack(spacing: 8) {
+            Button {
+                guard !isActivating else { return }
+                selectedID = model.id
+                HapticManager.impact(.light)
+                isActivating = true
+                Task {
+                    await assistant.switchTo(model, persistAsDefault: true)
+                    isActivating = false
+                    dismiss()
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: model.runtime == .coreAI ? "cpu" : "internaldrive")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(T.accent)
+                        .frame(width: 34, height: 34)
+                        .background(T.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(model.displayName)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(T.ink)
+                            .lineLimit(1)
+                        Text(model.subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 2)
+                    if isActive {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(T.accent)
+                            .accessibilityLabel("Active")
+                    }
+                }
+                .frame(minHeight: 52)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(isActivating || !runsHere)
+            .accessibilityIdentifier("chat.availableModel.\(model.id)")
+            .accessibilityHint(runsHere ? "" : (model.platformCompatibility?.detail ?? "Unavailable on this device"))
+
+            Button {
+                settings.assistantModelID = model.id
+                settings.hasPickedAssistantModel = true
+                HapticManager.impact(.medium)
+                ToastCenter.shared.success("Default model updated",
+                                           detail: "\(model.displayName) will be used for new chats.")
+            } label: {
+                Image(systemName: isDefault ? "star.fill" : "star")
+                    .foregroundStyle(isDefault ? T.accent : T.ink2)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(isDefault || !runsHere)
+            .accessibilityLabel(isDefault ? "Default model" : "Set \(model.displayName) as default")
+        }
+        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 8))
     }
 
     private var coreAIEmptySection: some View {
@@ -342,7 +492,7 @@ struct AssistantModelPickerView: View {
         isActivating = true
         Task {
             let selected = await assistant.selectApplePrivateCloud(
-                persistAsDefault: !downloadedOnly
+                persistAsDefault: true
             )
             isActivating = false
             if selected { dismiss() }
@@ -407,7 +557,7 @@ struct AssistantModelPickerView: View {
             )
             Text(
                 downloadedOnly
-                    ? "Choose a model for this conversation, or set one as the default for new chats."
+                    ? "Your selection is remembered for new chats. The star saves a default without loading it."
                     : "New conversations and future launches will start with this model."
             )
                 .font(T.sans(13))
@@ -428,7 +578,7 @@ struct AssistantModelPickerView: View {
                 Task {
                     await assistant.switchTo(
                         model,
-                        persistAsDefault: !downloadedOnly
+                        persistAsDefault: true
                     )
                     dismiss()
                 }
@@ -495,7 +645,11 @@ struct AssistantModelPickerView: View {
             switch MemoryAdvisor.fit(forFootprint: MemoryAdvisor.estimatedFootprint(for: model.id)) {
             case .fits:  return true
             case .tight: return settings.showEdgeModels
-            case .over:  return false
+            case .over:
+                // Storage-backed runtimes (Edge0) admit dynamically at load
+                // time and refuse safely, so they stay visible rather than
+                // vanishing from the picker when live memory is tight.
+                return model.runtime == .edge0MLX
             }
         }
         let recommendedID = recommendedAssistant?.id
@@ -538,7 +692,7 @@ struct AssistantModelPickerView: View {
                     )
                     await assistant.switchTo(
                         model,
-                        persistAsDefault: !downloadedOnly
+                        persistAsDefault: true
                     )
                     isActivating = false
                     dismiss()
@@ -764,7 +918,7 @@ struct AssistantModelPickerView: View {
                         Text("import from files")
                             .font(T.mono(13, .semibold))
                             .foregroundColor(T.ink)
-                        KMono(text: "load an mlx folder, .mlpackage, or .mlmodel",
+                        KMono(text: "load an mlx or core ai folder, or a gguf file",
                                size: 10, color: T.ink3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -786,17 +940,23 @@ struct AssistantModelPickerView: View {
         }
     }
 
-    private func importLocal(_ url: URL) async {
+    private func importLocal(_ urls: [URL]) async {
         isImporting = true
         defer { isImporting = false }
         do {
-            let repoID = try await LocalModelImportService.shared.importModel(from: url)
+            let repoID = try await LocalModelImportService.shared.importModel(from: urls)
             // Switch the assistant to the imported model automatically
             // Resolve through the newly registered catalog entry so its
             // on-disk runtime (.llamaCpp for GGUF) is preserved. Synthesizing
             // only from the opaque local/ id defaulted imported GGUFs to MLX.
             let model: AssistantModel
-            if let entry = center.models.first(where: { $0.id == repoID }),
+            if let installed = CoreAIModelStore.shared.installedModel(id: repoID) {
+                // Core AI vision/utility packs have no chat model to switch to.
+                guard let chat = installed.assistantModel else { dismiss(); return }
+                model = chat
+            } else if let preset = AssistantModelCatalog.model(forID: repoID) {
+                model = preset
+            } else if let entry = center.models.first(where: { $0.id == repoID }),
                let resolved = LocalModelRegistry
                     .descriptor(for: entry, forcedRole: .assistant, forcedOrigin: .imported)
                     .assistantModel {
@@ -808,7 +968,7 @@ struct AssistantModelPickerView: View {
             }
             await assistant.switchTo(
                 model,
-                persistAsDefault: !downloadedOnly
+                persistAsDefault: true
             )
             dismiss()
         } catch {
@@ -848,7 +1008,7 @@ struct AssistantModelPickerView: View {
                     Task {
                         await assistant.switchTo(
                             custom,
-                            persistAsDefault: !downloadedOnly
+                            persistAsDefault: true
                         )
                         dismiss()
                     }
@@ -977,7 +1137,10 @@ private struct ApplePrivateCloudPickerSection: View {
                         .foregroundStyle(isDefault ? T.accent : T.ink2)
                     }
                     .buttonStyle(.plain)
-                    .disabled(isDefault || isActivating)
+                    // Never let a build that cannot run PCC write it into the
+                    // default slot: that would strand every new conversation on
+                    // a model that can only refuse.
+                    .disabled(isDefault || isActivating || status == .entitlementUnavailable)
                 }
             }
         }
@@ -1017,6 +1180,8 @@ private struct ApplePrivateCloudPickerSection: View {
             return "Choose Show Options or continue with any downloaded local model."
         case .offline:
             return "Connect to the internet, then reopen this picker to refresh."
+        case .entitlementUnavailable:
+            return "This build was signed without Apple's Private Cloud Compute entitlement, so Apple Private Cloud can't run here. Downloaded local models are unaffected."
         default:
             return "Downloaded local models remain available."
         }

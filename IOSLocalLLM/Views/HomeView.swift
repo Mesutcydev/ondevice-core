@@ -10,7 +10,7 @@ struct NativeDeviceView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var destination: Destination?
     private enum Destination: String, Identifiable {
-        case diagnostics, library, storage, downloads, benchmark, quality, compare, knowledge
+        case diagnostics, benchmark, quality, compare, knowledge
         var id: String { rawValue }
     }
     var body: some View {
@@ -37,14 +37,8 @@ struct NativeDeviceView: View {
                 Section("Storage") {
                     LabeledContent("Model files", value: ODFormat.bytes(center.totalStorageUsed))
                     LabeledContent("Free device storage", value: bridge.store.metrics.diskFreeBytes.map(ODFormat.bytes) ?? "Unavailable")
-                    Button { destination = .library } label: {
-                        HStack { Text("Model library and imports"); Spacer(); Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary) }
-                    }.foregroundStyle(.primary)
-                    Button { destination = .storage } label: {
-                        HStack { Text("Manage storage"); Spacer(); Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary) }
-                    }.foregroundStyle(.primary)
-                    Button { destination = .downloads } label: {
-                        HStack { Text("Downloads and model operations"); Spacer(); Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary) }
+                    Button { bridge.store.selectedTab = .models } label: {
+                        HStack { Text("Models and imports"); Spacer(); Image(systemName: "chevron.right").font(.footnote).foregroundStyle(.tertiary) }
                     }.foregroundStyle(.primary)
                 }
                 Section {
@@ -79,7 +73,7 @@ struct NativeDeviceView: View {
             .scrollContentBackground(.hidden)
             .background { ODPageBackground().ignoresSafeArea() }
             .navigationTitle("Device")
-            .navigationBarTitleDisplayMode(onOpenMenu == nil ? .inline : .large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if let onOpenMenu {
                     ToolbarItem(placement: .topBarLeading) { ODAppMenuButton(action: onOpenMenu).accessibilityIdentifier("navigation.menu") }
@@ -91,9 +85,6 @@ struct NativeDeviceView: View {
             .sheet(item: $destination) { destination in
                 switch destination {
                 case .diagnostics: SystemStatusView()
-                case .library: ModelsManagerView()
-                case .storage: ModelStorageCleanupView()
-                case .downloads: ModelDownloadCenterView()
                 case .benchmark: BenchmarkView()
                 case .quality: QualityEvalView()
                 case .compare: CompareView()

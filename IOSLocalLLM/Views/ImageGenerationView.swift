@@ -14,6 +14,7 @@ struct ImageGenerationView: View {
     @State private var showsModels = false
     @State private var showsOptions = false
     @State private var deletingModel: ImageGenerationService.Model?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationStack {
@@ -24,6 +25,10 @@ struct ImageGenerationView: View {
                             .resizable().scaledToFit()
                             .clipShape(RoundedRectangle(cornerRadius: ODLayout.corner))
                             .accessibilityLabel("Generated image")
+                            // Each finished image is its own view, so it fades in
+                            // rather than snapping over the previous result.
+                            .id(service.resultURL)
+                            .transition(.opacity.combined(with: .scale(0.98)))
                         if let resultPrompt = service.resultPrompt {
                             Text(resultPrompt).font(.body).textSelection(.enabled)
                                 .accessibilityIdentifier("image.result.prompt")
@@ -34,24 +39,25 @@ struct ImageGenerationView: View {
                             .disabled(service.isWorking)
                     }
                     if service.isWorking {
-                        HStack(spacing: ODLayout.elementGap) {
-                            ProgressView()
-                            Text(service.statusMessage.isEmpty ? "Preparing image" : service.statusMessage)
-                                .font(.footnote).foregroundStyle(.secondary)
-                        }
+                        Text(service.statusMessage.isEmpty ? "Preparing image" : service.statusMessage)
+                            .font(.footnote).foregroundStyle(.secondary)
+                            .odShimmer()
+                            .transition(.opacity)
                     }
                     if case .failed(let message) = service.state {
                         Label(message, systemImage: "exclamationmark.circle")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }
+                .animation(ODMotion.fade, value: service.isWorking)
+                .animation(ODMotion.resolve(ODMotion.standard, reduceMotion: reduceMotion), value: service.resultURL)
                 .padding(ODLayout.pageInset)
             }
             .background { ODPageBackground().ignoresSafeArea() }
             .scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom, spacing: 0) { ODWorkspaceBottomBar { nextImageDock } }
             .navigationTitle("Image studio")
-            .navigationBarTitleDisplayMode(onOpenMenu == nil ? .inline : .large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if let onOpenMenu {
                     ToolbarItem(placement: .topBarLeading) {
@@ -128,15 +134,19 @@ struct ImageGenerationView: View {
 
     private var modelMenu: some View {
         Menu {
-            Button("Choose image model", systemImage: "cube") { showsModels = true }
-            Button("Generation options", systemImage: "slider.horizontal.3") { showsOptions = true }
+            Button { showsModels = true } label: {
+                Label("Image model", systemImage: "cube")
+                Text(service.selectedModel.displayName)
+            }
+            Button { showsOptions = true } label: {
+                Label("Generation options", systemImage: "slider.horizontal.3")
+                Text(steps < 1 ? "Model default steps" : "\(Int(steps)) steps")
+            }
         } label: {
-            Label(service.selectedModel.displayName, systemImage: "chevron.down")
-                .font(.subheadline)
-                .foregroundStyle(ODPalette.secondary)
-                .lineLimit(1)
+            ODModelMenuLabel(displayName: service.selectedModel.displayName)
                 .frame(minHeight: ODLayout.minimumHit)
         }
+        .menuOrder(.fixed)
         .disabled(service.isWorking)
         .accessibilityIdentifier("image.model")
     }
@@ -155,7 +165,7 @@ struct ImageGenerationView: View {
                 promptFocused = false
             }
         }
-        .buttonStyle(.glassProminent).tint(.blue)
+        .buttonStyle(.glassProminent).odInkProminent()
         .controlSize(.large)
         .disabled(service.isCancelling || (!service.isWorking && service.isInstalled(service.selectedModel) && prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
     }

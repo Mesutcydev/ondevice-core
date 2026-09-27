@@ -50,6 +50,11 @@ struct VisualModelPickerView: View {
             guard m.supportsCategory(.vlm) else { return false }
             // The FastVLM entry is required + handled by the default row.
             guard !m.isRequired else { return false }
+            guard m.isReady,
+                  m.platformCompatibility?.supportsCurrentPlatform ?? true,
+                  m.downloader.flatMap({
+                      LocalModelRegistry.unsupportedVisionRuntimeReason(in: $0.destination)
+                  }) == nil else { return false }
             guard VisualModelInstallStatus.runStatus(for: m).isReady else { return false }
             return seen.insert(m.sourceRepoID).inserted
         }
@@ -70,9 +75,24 @@ struct VisualModelPickerView: View {
     private var availableVLMs: [DownloadableModel] {
         var seen = Set<String>()
         return center.models.filter { m in
-            guard m.supportsCategory(.vlm), !m.isRequired, m.downloader != nil else { return false }
-            guard !VisualModelInstallStatus.runStatus(for: m).isReady else { return false }
+            guard m.supportsCategory(.vlm), !m.isRequired, m.downloader != nil,
+                  m.platformCompatibility?.supportsCurrentPlatform ?? true else { return false }
+            guard m.downloader.flatMap({
+                LocalModelRegistry.unsupportedVisionRuntimeReason(in: $0.destination)
+            }) == nil else { return false }
+            guard !m.isReady || !VisualModelInstallStatus.runStatus(for: m).isReady else { return false }
             return seen.insert(m.sourceRepoID).inserted
+        }
+    }
+
+    private var unavailableLensModels: [DownloadableModel] {
+        center.models.filter { model in
+            guard model.isReady else { return false }
+            return model.runtime == .edge0MLX
+                || model.platformCompatibility?.supportsCurrentPlatform == false
+                || model.downloader.flatMap({
+                    LocalModelRegistry.unsupportedVisionRuntimeReason(in: $0.destination)
+                }) != nil
         }
     }
 
@@ -87,9 +107,10 @@ struct VisualModelPickerView: View {
                     if !availableVLMs.isEmpty {
                         availableSection
                     }
-                    compareCard
-                    browseMoreCard
-                    hintCard
+                    if !unavailableLensModels.isEmpty {
+                        unavailableLensSection
+                    }
+                    exploreSection
                     statusCard
 
                 // NB: previous shape was `.id(downloadTick)` on this VStack
@@ -139,40 +160,51 @@ struct VisualModelPickerView: View {
         }
     }
 
-    /// Card-style launcher for the A/B comparison sheet. Lives below the
-    /// downloaded section so it sits where the user is after picking;
-    /// promoting it to a primary nav slot is overkill for a power-user
-    /// feature.
-    private var compareCard: some View {
-        Button {
-            HapticManager.impact(.light)
-            showComparison = true
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "rectangle.split.2x1.fill")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(T.accent)
-                    .frame(width: 32, height: 32)
-                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accentSoft))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(loc.t("compare models"))
-                        .font(T.mono(12, .semibold))
-                        .foregroundColor(T.ink)
-                    KMono(text: loc.t("run two VLMs on the same image side by side"),
-                          size: 10, color: T.ink3)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10))
-                    .foregroundColor(T.ink3)
+    /// Keep the two follow-up actions together as ordinary list rows. The
+    /// former three nested glass cards repeated download advice and made this
+    /// part of the picker much taller than the actual model choices.
+    private var exploreSection: some View {
+        Section("Explore") {
+            Button {
+                HapticManager.impact(.light)
+                showComparison = true
+            } label: {
+                exploreRow(symbol: "square.split.2x1", title: "Compare models",
+                           subtitle: "Try two vision models with one image")
             }
-            .padding(12)
+            .accessibilityIdentifier("vision.compare")
+
+            Button {
+                dismiss()
+                AppBridge.shared.requestTab(.models)
+            } label: {
+                exploreRow(symbol: "square.stack.3d.up", title: "Browse vision models",
+                           subtitle: "Find and download more models")
+            }
+            .accessibilityIdentifier("vision.browseModels")
         }
         .buttonStyle(.plain)
-        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
+    }
+
+    private func exploreRow(symbol: String, title: String, subtitle: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: symbol)
+                .font(.body.weight(.medium))
+                .foregroundStyle(T.accent)
+                .frame(width: 28)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.body.weight(.medium)).foregroundStyle(T.ink)
+                Text(subtitle).font(.footnote).foregroundStyle(T.ink3)
+            }
+            Spacer(minLength: 8)
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(T.ink3)
+                .accessibilityHidden(true)
+        }
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
     }
 
     // MARK: - Sections
@@ -243,13 +275,13 @@ struct VisualModelPickerView: View {
     private func badgeRow(
         formatLabel: String,
         ramBytes: Int64,
-        verdict: MemoryAdvisor.Verdict,
+        verdict: MemoryAdvisor.Verdict?,
         tokensPerSecond: Double?
     ) -> some View {
         HStack(spacing: 6) {
             formatPill(text: formatLabel)
             KCapabilityPill(capability: .vision, size: .compact)
-            if ramBytes > 0 {
+            if ramBytes > 0, let verdict {
                 ramPill(bytes: ramBytes, verdict: verdict)
             }
             if let tps = tokensPerSecond {
@@ -312,7 +344,7 @@ struct VisualModelPickerView: View {
         }()
         HStack(spacing: 4) {
             Rectangle().fill(color).frame(width: 6, height: 6)
-            Text(bytes.formattedBytes)
+            Text("~\(bytes.formattedBytes) RAM")
                 .font(T.mono(8, .semibold))
                 .tracking(0.4)
                 .foregroundColor(T.ink2)
@@ -322,6 +354,7 @@ struct VisualModelPickerView: View {
         .background(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).fill(color.opacity(0.10)))
         .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous).stroke(color.opacity(0.32), lineWidth: 0.5))
         .fixedSize(horizontal: true, vertical: false)
+        .accessibilityLabel("Estimated peak RAM \(bytes.formattedBytes)")
     }
 
     /// FastVLM verdict — kept as a computed property so callers don't have
@@ -375,27 +408,6 @@ struct VisualModelPickerView: View {
         .padding(.top, 8)
     }
 
-    /// Footer card pointing users at the Download Center to add more visual
-    /// models. Direct deep-link is intentionally avoided here so the sheet
-    /// stays single-purpose — it just hints; tap the path in the Models tab.
-    private var browseMoreCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(loc.t("want more models?"))
-                .font(T.mono(9, .semibold))
-                .tracking(0.5)
-                .foregroundColor(T.ink3)
-            Text(loc.t("Browse Qwen3-VL, Gemma 3 Vision, SmolVLM2 and more in Models → Download Center. The picker updates automatically when a download finishes."))
-                .font(T.sans(11))
-                .foregroundColor(T.ink2)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
-    }
-
     private var downloadedSection: some View {
         KSection(title: loc.t("downloaded_vlms")) {
             ForEach(Array(downloadedVLMs.enumerated()), id: \.offset) { i, m in
@@ -403,6 +415,43 @@ struct VisualModelPickerView: View {
                 row(for: m)
             }
         }
+    }
+
+    private var unavailableLensSection: some View {
+        Section("Stored, unavailable in Lens") {
+            ForEach(unavailableLensModels, id: \.id) { model in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(model.displayName)
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(T.ink)
+                    Text(lensUnavailableReason(for: model))
+                        .font(.footnote)
+                        .foregroundStyle(T.ink3)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if let textWeights = LocalModelRegistry.publishedBonsai2TextWeightBytes(
+                        for: model.sourceRepoID
+                    ) {
+                        Text("Text weights ~\(textWeights.formattedBytes) · runtime peak unmeasured")
+                            .font(.caption)
+                            .foregroundStyle(T.ink3)
+                    }
+                }
+                .padding(.vertical, 4)
+                .accessibilityElement(children: .combine)
+            }
+        }
+    }
+
+    private func lensUnavailableReason(for model: DownloadableModel) -> String {
+        if model.runtime == .edge0MLX {
+            return "The Edge0 native runtime currently handles text only. This model works in Assistant, but image input is not available in Lens yet."
+        }
+        if model.platformCompatibility?.supportsCurrentPlatform == false {
+            return model.platformCompatibility?.detail ?? "This model is not supported on this device."
+        }
+        return model.downloader.flatMap {
+            LocalModelRegistry.unsupportedVisionRuntimeReason(in: $0.destination)
+        } ?? "This model needs a runtime that is not available in Lens."
     }
 
     // MARK: - Available to download (inline)
@@ -546,28 +595,6 @@ struct VisualModelPickerView: View {
 
     // MARK: - Hint + status
 
-    private var hintCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(loc.t("tip"))
-                .font(T.mono(9, .semibold))
-                .tracking(0.5)
-                .foregroundColor(T.ink3)
-            Text(loc.t("FastVLM is fastest. Swap in Qwen2-VL or Gemma 3 Vision if you want richer descriptions and have the RAM for it."))
-                .font(T.sans(11))
-                .foregroundColor(T.ink2)
-                .fixedSize(horizontal: false, vertical: true)
-            Text(loc.t("Download more VLMs in the Download Center → browse visual models."))
-                .font(T.sans(11))
-                .foregroundColor(T.ink3)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-    }
-
     @ViewBuilder
     private var statusCard: some View {
         switch vision.state {
@@ -662,6 +689,11 @@ struct VisualModelPickerView: View {
             guard let model = center.models.first(where: {
                 $0.id == selectedID || $0.sourceRepoID == selectedID
             }),
+                  model.isReady,
+                  model.supportsCategory(.vlm),
+                  model.downloader.flatMap({
+                      LocalModelRegistry.unsupportedVisionRuntimeReason(in: $0.destination)
+                  }) == nil,
                   VisualModelInstallStatus.runStatus(for: model).isReady else {
                 ToastCenter.shared.error(
                     "Model not installed",

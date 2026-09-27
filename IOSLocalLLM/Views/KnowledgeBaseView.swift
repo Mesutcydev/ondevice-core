@@ -241,7 +241,11 @@ struct KnowledgeBaseView: View {
             for url in urls {
                 do {
                     let attachment = try await FileAttachmentService.read(url)
-                    await kb.addDocument(name: attachment.displayName, text: attachment.extractedText)
+                    if let pages = attachment.pdfPages {
+                        await kb.addPDFDocument(name: attachment.displayName, pages: pages)
+                    } else {
+                        await kb.addDocument(name: attachment.displayName, text: attachment.extractedText)
+                    }
                 } catch {
                     ToastCenter.shared.error("Couldn't read \(url.lastPathComponent)",
                                              detail: error.localizedDescription)

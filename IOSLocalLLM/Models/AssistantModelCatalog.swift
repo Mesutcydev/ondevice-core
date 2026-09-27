@@ -92,8 +92,7 @@ struct AssistantModel: Identifiable, Hashable, Codable {
 
     /// True when this model uses a ChatML-compatible template (Qwen family).
     var usesChatML: Bool {
-        chatTemplate.format == "chatml" || chatTemplate.format == "qwen35"
-            || chatTemplate.format == "generic"
+        ["chatml", "qwen3", "qwen3-thinking", "qwen35", "generic"].contains(chatTemplate.format)
     }
 }
 
@@ -101,12 +100,12 @@ struct AssistantModel: Identifiable, Hashable, Codable {
 
 enum AssistantModelCatalog {
 
-    /// Built-in models known to work with MLX `LLMModelFactory` on iOS.
-    /// Order = priority (first entry is the default).
+    /// Built-in text models. Order = priority; the existing Qwen preset stays
+    /// first so new installations keep OnDeviceMax's established default.
     ///
-    /// Curation rule: every preset must be a **text** model whose
-    /// architecture is loadable by `LLMModelFactory` (the chat tab's
-    /// runtime). Multimodal models (Qwen3-VL, Gemma 3 vision, SmolVLM2)
+    /// Curation rule: every preset must be a **text** model whose runtime
+    /// is wired through CodingAssistantService. Multimodal models (Qwen3-VL,
+    /// Gemma 3 vision, SmolVLM2)
     /// run through a different factory and live in the VLM catalog
     /// (`ModelDownloadCenter.buildCatalog`), not here. New entries below
     /// share an architecture already proven by an existing preset
@@ -129,6 +128,49 @@ enum AssistantModelCatalog {
             contextWindowTokens: 32768,
             capabilities: [.recommended, .best, .newRelease],
             supportsTools: true
+        ),
+        // ── Edge0-8B A1B (native runtime) ─────────────────────────────────
+        // Hybrid MoE (18 KDA + 6 MLA layers, layer 0 dense MLP) executed by
+        // the app's own streaming runtime (RuntimeEngineFactory →
+        // ManagedRuntimeEngine → Edge0RuntimeBackend → Edge0Engine), not MLX.
+        // Downloads the 4-bit checkpoint plus its 16 MB Recover-LoRA;
+        // experts stream from disk under a bounded resident pool.
+        AssistantModel(
+            id: "edge0-8b-a1b-preview",
+            repoID: "Edge0/Edge0-8B-A1B-preview",
+            displayName: "Edge0-8B A1B",
+            subtitle: "4-bit · 4.2 GiB · native runtime",
+            // Storage-backed design: routed experts stream from disk through
+            // a bounded pool. Measured device footprint while loaded is
+            // ~1.61 GB with LoRA, so a resident-model estimate here would hide
+            // it from the memory-fit filters. Download size is separate.
+            approxRAMBytes: 2_200_000_000,
+            tags: ["native", "moe", "thinking"],
+            contextWindowTokens: 131_072,
+            downloadSizeBytes: 4_540_000_000,
+            capabilities: [.thinking, .newRelease],
+            supportsTools: false,
+            runtime: .edge0MLX
+        ),
+        // ── Edge0-35B A3B Preview (native runtime, experimental) ──────────
+        // Qwen3.5-MoE (40 layers, 256 experts) executed by the native 35B
+        // engine: quantized base + 310 unmerged Recover-LoRA adapters +
+        // true-router K=4, bounded per-token expert loads. Not the default;
+        // brings up first device testing of the 35B family.
+        AssistantModel(
+            id: "edge0-35b-a3b-preview",
+            repoID: Edge0ModelFamily.qwen35MoERepoID,
+            displayName: "Edge0-35B A3B Preview",
+            subtitle: "4-bit · 19.6 GB · native runtime · experimental",
+            // Storage-backed experts stream from disk through a bounded
+            // pool; resident base + LoRA + pool is ~2.2 GB while loaded.
+            approxRAMBytes: 2_600_000_000,
+            tags: ["native", "moe", "thinking", "experimental"],
+            contextWindowTokens: 4096,
+            downloadSizeBytes: Edge0_35BModelArtifacts.downloadSizeBytes,
+            capabilities: [.thinking, .newRelease],
+            supportsTools: false,
+            runtime: .edge0MLX
         ),
         // Thinking-2507 — emits a reasoning trace; best for hard reasoning
         // / math / multi-step code on capable devices.
@@ -215,6 +257,50 @@ enum AssistantModelCatalog {
             capabilities: [.best, .newRelease],
             supportsTools: true
         ),
+        // ── Qwen 3.5 (unified text + vision) ──────────────────────────────
+        // Same qwen3_5 architecture as Ornith 9B and Bonsai 27B, so both load
+        // on a proven path and get the bounded Qwen 3.5 KV profiles in
+        // Assistant and Lens. One download serves both; the template reads
+        // `enable_thinking`, so the composer's Thinking switch applies.
+        AssistantModel(
+            id: "qwen3.5-4b-4bit",
+            repoID: "mlx-community/Qwen3.5-4B-4bit",
+            displayName: "Qwen3.5 4B",
+            subtitle: "4-bit · 3.1 GB · thinking · vision",
+            approxRAMBytes: 4_600_000_000,
+            tags: ["thinking", "vision", "multilingual"],
+            contextWindowTokens: 2_048,
+            downloadSizeBytes: 3_060_000_000,
+            capabilities: [.newRelease, .thinking, .vision, .multilingual],
+            supportsTools: true
+        ),
+        AssistantModel(
+            id: "qwen3.5-9b-4bit",
+            repoID: "mlx-community/Qwen3.5-9B-4bit",
+            displayName: "Qwen3.5 9B",
+            subtitle: "4-bit · 6.0 GB · thinking · vision · high-memory",
+            // Ornith 9B's measured envelope: same architecture, same 5.98 GB pack.
+            approxRAMBytes: 7_250_000_000,
+            tags: ["quality", "thinking", "vision"],
+            contextWindowTokens: 2_048,
+            downloadSizeBytes: 5_980_000_000,
+            platformCompatibility: .highMemoryMobileAndMac,
+            capabilities: [.best, .newRelease, .thinking, .vision, .multilingual],
+            supportsTools: true
+        ),
+        // Llama 3.1 8B — same llama architecture as the Llama 3.2 presets.
+        AssistantModel(
+            id: "llama-3.1-8b",
+            repoID: "mlx-community/Llama-3.1-8B-Instruct-4bit",
+            displayName: "Llama 3.1 8B",
+            subtitle: "4-bit · 4.5 GB · general-purpose",
+            approxRAMBytes: 6_400_000_000,
+            tags: ["chat", "quality"],
+            contextWindowTokens: 32768,
+            downloadSizeBytes: 4_530_000_000,
+            capabilities: [.best, .multilingual],
+            supportsTools: true
+        ),
         // ── PrismML Bonsai low-bit family ─────────────────────────────────
         // Bonsai keeps Qwen's architecture and chat vocabulary while replacing
         // the dense weights with binary (1-bit) or ternary (2-bit packed)
@@ -244,7 +330,9 @@ enum AssistantModelCatalog {
             repoID: "prism-ml/Ternary-Bonsai-27B-mlx-2bit",
             displayName: "Ternary Bonsai 27B",
             subtitle: "2-bit · 8.5 GB download · Mac only",
-            approxRAMBytes: 9_200_000_000,
+            // 7.57 GB of language weights alone exceed the ~6.5 GB per-app
+            // limit iOS reports on a 12 GB iPhone (os_proc_available_memory).
+            approxRAMBytes: 7_820_000_000,
             tags: ["reason", "thinking", "code", "quality"],
             contextWindowTokens: 32768,
             downloadSizeBytes: 8_525_000_000,

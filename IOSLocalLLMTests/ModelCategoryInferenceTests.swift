@@ -1,4 +1,5 @@
 import XCTest
+import OnDeviceUI
 @testable import IOSLocalLLM
 
 // MARK: - ModelCategoryInferenceTests
@@ -9,6 +10,61 @@ import XCTest
 // per-category headers in the Models tab.
 
 final class ModelCategoryInferenceTests: XCTestCase {
+    @MainActor
+    func test_interruptedDownloadDoesNotBecomeReadyFromWeightsAlone() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        try Data(#"{"model_type":"prism_hadamard_qwen35"}"#.utf8)
+            .write(to: directory.appendingPathComponent("config.json"))
+        try Data([1]).write(to: directory.appendingPathComponent("model.safetensors"))
+        let expected = [
+            "config.json": Int64(try Data(contentsOf: directory.appendingPathComponent("config.json")).count),
+            "model.safetensors": Int64(1),
+            "tokenizer.json": Int64(2),
+        ]
+        try JSONEncoder().encode(expected)
+            .write(to: directory.appendingPathComponent(".hf-expected.json"))
+
+        XCTAssertTrue(HFModelDownloadManager.looksReady(in: directory))
+        let downloader = HFModelDownloadManager(
+            repoID: "test/interrupted-model",
+            destination: directory
+        )
+        downloader.checkIfReady()
+        XCTAssertEqual(downloader.state, .idle)
+        XCTAssertEqual(downloader.progress, Double(expected["config.json"]! + 1)
+            / Double(expected.values.reduce(0, +)), accuracy: 0.001)
+        XCTAssertFalse(downloader.hasResumableDownloadReceipt)
+        try Data("test/interrupted-model".utf8)
+            .write(to: directory.appendingPathComponent(".repoID"))
+        XCTAssertTrue(downloader.hasResumableDownloadReceipt)
+
+        try Data([1, 2]).write(to: directory.appendingPathComponent("tokenizer.json"))
+        downloader.checkIfReady()
+        XCTAssertEqual(downloader.state, .ready)
+        XCTAssertEqual(downloader.progress, 1)
+    }
+
+    func test_savedEdge0SelectionWinsOverPreviouslyActiveMLXModel() throws {
+        let activeMLX = AssistantModelCatalog.presets[0]
+        let edge0 = try XCTUnwrap(AssistantModelCatalog.presets.first {
+            $0.runtime == .edge0MLX
+        })
+
+        let resolved = CodingAssistantService.loadTarget(
+            activeModel: activeMLX,
+            savedDefault: edge0,
+            reselectFromSettings: true
+        )
+
+        XCTAssertEqual(resolved.runtime, .edge0MLX)
+        XCTAssertEqual(resolved.id, edge0.id)
+        XCTAssertEqual(AssistantModelCatalog.presets[0].id, "qwen3-4b-2507")
+    }
+
     func test_explicitConversationSwitchPreservesItsLoadTarget() {
         let savedDefault = AssistantModel(
             id: "downloaded:MercuriusDream/Nanbeige4.2-3B-mlx-4bit",
@@ -154,6 +210,271 @@ final class ModelCategoryInferenceTests: XCTestCase {
         XCTAssertEqual(cat("meta-llama/Llama-3.2-1B-Instruct"), .assistant)
     }
 
+    func test_edge0RecoveryArtifactsOverrideVisionConfig() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try Data(#"{"architectures":["Qwen3_5MoeForConditionalGeneration"],"vision_config":{},"image_token_id":42}"#.utf8)
+            .write(to: dir.appendingPathComponent("config.json"))
+        XCTAssertEqual(LocalModelRegistry.category(in: dir), .vlm)
+        try Data([1]).write(to: dir.appendingPathComponent("lora_edge0_35b.safetensors"))
+        XCTAssertEqual(LocalModelRegistry.category(in: dir), .assistant)
+    }
+
+    @MainActor
+    func test_bonsai2TextComponentDoesNotBypassRequiredLoader() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try Data(#"{"model_type":"prism_hadamard_qwen35","components":{"text":true,"vision":true},"vision_config":{}}"#.utf8)
+            .write(to: dir.appendingPathComponent("config.json"))
+        try Data([1]).write(to: dir.appendingPathComponent("model.safetensors"))
+        try Data([1]).write(to: dir.appendingPathComponent("tokenizer.json"))
+
+        XCTAssertEqual(LocalModelRegistry.category(in: dir), .vlm)
+        XCTAssertTrue(LocalModelRegistry.hasDeclaredTextComponent(in: dir))
+        XCTAssertFalse(LocalModelRegistry.supportsAssistant(in: dir))
+        XCTAssertNotNil(LocalModelRegistry.unsupportedTextRuntimeReason(in: dir))
+        XCTAssertNotNil(LocalModelRegistry.unsupportedVisionRuntimeReason(in: dir))
+        let model = DownloadableModel(
+            id: "prism-ml/Ternary-Bonsai-2-27B-mlx-2bit",
+            displayName: "Ternary Bonsai 2 27B",
+            subtitle: "Prism ML",
+            sizeLabel: "8.6 GB",
+            category: .vlm,
+            downloader: HFModelDownloadManager(
+                repoID: "prism-ml/Ternary-Bonsai-2-27B-mlx-2bit",
+                destination: dir
+            )
+        )
+        XCTAssertEqual(model.declaredCategories, [.assistant, .vlm])
+        XCTAssertTrue(model.supportedCategories.isEmpty)
+        XCTAssertFalse(model.supportsCategory(.assistant))
+        XCTAssertFalse(model.supportsCategory(.vlm))
+        // Unrunnable text still reads as an Assistant pack, never Lens.
+        XCTAssertEqual(ODBridge.kind(for: model), .language)
+        XCTAssertEqual(
+            LocalModelRegistry.publishedBonsai2TextWeightBytes(for: model.sourceRepoID),
+            7_670_000_000
+        )
+        XCTAssertEqual(VisualModelInstallStatus.ramEstimate(for: model), 0)
+        XCTAssertNil(VisualModelInstallStatus.memoryVerdict(for: model))
+        let record = try XCTUnwrap(InstalledModelRegistry.validateDirectory(
+            dir, repoID: "prism-ml/Ternary-Bonsai-2-27B-mlx-2bit"
+        ))
+        XCTAssertFalse(record.validationState.isActivatable)
+    }
+
+    @MainActor
+    func test_supportedDualRolePackAppearsInAssistant() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try Data(#"{"model_type":"qwen3_5","components":{"text":true,"vision":true},"vision_config":{}}"#.utf8)
+            .write(to: dir.appendingPathComponent("config.json"))
+        try Data([1]).write(to: dir.appendingPathComponent("model.safetensors"))
+        try Data([1]).write(to: dir.appendingPathComponent("tokenizer.json"))
+
+        XCTAssertEqual(LocalModelRegistry.category(in: dir), .vlm)
+        XCTAssertTrue(LocalModelRegistry.supportsAssistant(in: dir))
+        XCTAssertNil(LocalModelRegistry.unsupportedTextRuntimeReason(in: dir))
+        let model = DownloadableModel(
+            id: "test/dual-role-model",
+            displayName: "Dual Role Model",
+            subtitle: "Test",
+            sizeLabel: "1 GB",
+            category: .vlm,
+            downloader: HFModelDownloadManager(repoID: "test/dual-role-model", destination: dir)
+        )
+        XCTAssertEqual(model.declaredCategories, [.assistant, .vlm])
+        XCTAssertEqual(model.supportedCategories, [.assistant, .vlm])
+        XCTAssertTrue(model.supportsCategory(.assistant))
+        XCTAssertTrue(model.supportsCategory(.vlm))
+        // Vision-primary on disk, but "Use" and Chat treat it as Assistant.
+        XCTAssertEqual(ODBridge.kind(for: model), .language)
+    }
+
+    @MainActor
+    func test_edge0WithVisionConfigIsAssistantOnly() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try Data(#"{"model_type":"qwen3_5_moe","architectures":["Qwen3_5MoeForConditionalGeneration"],"vision_config":{},"image_token_id":248056}"#.utf8)
+            .write(to: dir.appendingPathComponent("config.json"))
+        try Data([1]).write(to: dir.appendingPathComponent("lora_edge0_35b.safetensors"))
+        // Same model type as a unified Qwen 3.5 MoE pack, but never Lens.
+        XCTAssertFalse(LocalModelRegistry.isUnifiedTextVisionPack(in: dir))
+        let model = DownloadableModel(
+            id: "edge0-35b-a3b-preview",
+            displayName: "Edge0-35B A3B Preview",
+            subtitle: "native runtime",
+            sizeLabel: "19.6 GB",
+            category: .assistant,
+            downloader: HFModelDownloadManager(
+                repoID: "Edge0/Edge0-35B-A3B-preview",
+                destination: dir
+            ),
+            repoID: "Edge0/Edge0-35B-A3B-preview"
+        )
+        XCTAssertEqual(model.supportedCategories, [.assistant])
+        XCTAssertEqual(ODBridge.kind(for: model), .language)
+    }
+
+    @MainActor
+    func test_unifiedQwen35PackServesAssistantAndLens() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try Data(#"{"model_type":"qwen3_5","architectures":["Qwen3_5ForConditionalGeneration"],"vision_config":{}}"#.utf8)
+            .write(to: dir.appendingPathComponent("config.json"))
+        let model = DownloadableModel(
+            id: "mlx-community/Qwen3.5-9B-MLX-4bit", displayName: "Qwen3.5 9B",
+            subtitle: "HF", sizeLabel: "6 GB", category: .vlm,
+            downloader: HFModelDownloadManager(repoID: "mlx-community/Qwen3.5-9B-MLX-4bit", destination: dir)
+        )
+        XCTAssertEqual(model.supportedCategories, [.assistant, .vlm])
+        XCTAssertEqual(ODBridge.kind(for: model), .language)
+        // Qwen3-VL has no text-only loader in mlx-swift-lm: Lens only.
+        try Data(#"{"model_type":"qwen3_vl","vision_config":{}}"#.utf8)
+            .write(to: dir.appendingPathComponent("config.json"))
+        XCTAssertFalse(LocalModelRegistry.isUnifiedTextVisionPack(in: dir))
+    }
+
+    func test_weightBitsAndFootprintFollowTheQuantization() {
+        func bits(_ repo: String) -> Double? { OnDeviceCompatibility.weightBits(tags: [], repoID: repo) }
+        XCTAssertEqual(bits("mlx-community/Qwen3.5-9B-MLX-4bit"), 4)
+        XCTAssertEqual(bits("mlx-community/Llama-3.2-3B-Instruct-4bit"), 4)
+        XCTAssertEqual(bits("mlx-community/Qwen3-4B-Instruct-2507-8bit"), 8)
+        XCTAssertEqual(bits("prism-ml/Ternary-Bonsai-8B-mlx-2bit"), 2)
+        XCTAssertEqual(bits("prism-ml/Bonsai-27B-mlx-1bit"), 1)
+        XCTAssertEqual(bits("mlx-community/gpt-oss-20b-MXFP4-Q8"), 4.25)
+        XCTAssertEqual(bits("unsloth/Qwen3-8B-GGUF-Q4_K_M"), 4.5)
+        XCTAssertEqual(bits("mlx-community/Qwen3-VL-8B-Instruct-bf16"), 16)
+        XCTAssertNil(bits("Qwen/Qwen3-8B"))
+        let q4 = OnDeviceCompatibility.estimatedFootprint(params: 9_000_000_000, tags: [], repoID: "x/Qwen3.5-9B-4bit")
+        let q8 = OnDeviceCompatibility.estimatedFootprint(params: 9_000_000_000, tags: [], repoID: "x/Qwen3.5-9B-8bit")
+        XCTAssertGreaterThan(q4, 6_000_000_000)
+        XCTAssertLessThan(q4, 7_000_000_000)
+        XCTAssertGreaterThan(q8, q4 * 18 / 10)
+    }
+
+    func test_currentFamiliesAreRecognized() {
+        for repo in ["mlx-community/Qwen3.5-4B-MLX-4bit", "mlx-community/gemma-3n-E4B-it-lm-4bit",
+                     "mlx-community/Phi-4-mini-instruct-4bit", "mlx-community/SmolLM3-3B-4bit",
+                     "mlx-community/LFM2.5-1.2B-Instruct-4bit", "mlx-community/granite-4.0-h-micro-4bit",
+                     "mlx-community/Ministral-3-3B-Instruct-2512-4bit", "mlx-community/exaone-4.0-1.2b-4bit"] {
+            XCTAssertNotNil(OnDeviceCompatibility.recognizedFamily(repoID: repo, kind: .text), repo)
+        }
+        for repo in ["mlx-community/Qwen3.5-9B-MLX-4bit", "mlx-community/LFM2.5-VL-1.6B-4bit",
+                     "mlx-community/gemma-4-e4b-it-4bit"] {
+            XCTAssertNotNil(OnDeviceCompatibility.recognizedFamily(repoID: repo, kind: .vlm), repo)
+        }
+    }
+
+    @MainActor
+    func test_multiFileImportIsNamedFromTheModelItself() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let config = dir.appendingPathComponent("config.json")
+        try Data(#"{"model_type":"qwen3_5"}"#.utf8).write(to: config)
+        XCTAssertEqual(LocalModelImportService.metadataName(forFiles: [config]), "qwen3.5")
+
+        let readme = dir.appendingPathComponent("README.md")
+        try Data("---\ntags:\n- mlx\n---\n\n# mlx-community/Qwen3.5-9B-4bit\nConverted.\n## Use with mlx\n".utf8)
+            .write(to: readme)
+        XCTAssertEqual(LocalModelImportService.metadataName(forFiles: [config, readme]), "Qwen3.5-9B-4bit")
+
+        let gguf = dir.appendingPathComponent("Qwen3-8B-Q4_K_M.gguf")
+        let projector = dir.appendingPathComponent("mmproj-Qwen3-8B-f16.gguf")
+        XCTAssertEqual(LocalModelImportService.metadataName(forFiles: [projector, gguf]), "Qwen3-8B-Q4_K_M")
+    }
+
+    @MainActor
+    func test_incompleteEdge0SelectionNamesTheMissingFiles() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try Data(#"{"model_type":"qwen3_5_moe","architectures":["Qwen3_5MoeForConditionalGeneration"],"vision_config":{}}"#.utf8)
+            .write(to: dir.appendingPathComponent("config.json"))
+        // No LoRA selected: still recognized, so it is refused rather than
+        // imported as a generic vision model.
+        XCTAssertTrue(LocalModelImportService.isEdge0ImportCandidate(in: dir))
+        let missing = LocalModelImportService.missingEdge0Files(in: dir)
+        XCTAssertTrue(missing.contains("lora_edge0_35b.safetensors"))
+        XCTAssertFalse(missing.contains("config.json"))
+        XCTAssertFalse(LocalModelRegistry.isUnifiedTextVisionPack(in: dir))
+    }
+
+    func test_textWeightsSkipVisionAndMTPTensors() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let header = try JSONSerialization.data(withJSONObject: [
+            "__metadata__": ["format": "mlx"],
+            "language_model.model.layers.0.mlp.weight": ["dtype": "U32", "shape": [10], "data_offsets": [0, 700]],
+            "lm_head.weight": ["dtype": "U32", "shape": [10], "data_offsets": [700, 1_000]],
+            "vision_tower.blocks.0.attn.qkv.weight": ["dtype": "F16", "shape": [10], "data_offsets": [1_000, 1_900]],
+            "mtp.layers.0.weight": ["dtype": "F16", "shape": [10], "data_offsets": [1_900, 2_000]],
+        ])
+        var file = Data()
+        withUnsafeBytes(of: UInt64(header.count).littleEndian) { file.append(contentsOf: $0) }
+        file.append(header)
+        file.append(Data(count: 2_000))
+        try file.write(to: dir.appendingPathComponent("model-00001-of-00001.safetensors"))
+        XCTAssertEqual(LocalModelRegistry.textWeightBytes(in: dir), 1_000)
+    }
+
+    func test_renamedQwen35FinetunesGetTheBoundedProfile() {
+        // MiMo's name carries no "qwen3.5"; its config.json declares qwen3_5.
+        let byName = MLXAssistantExecutionProfile.resolve(repoID: "mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit")
+        let byArchitecture = MLXAssistantExecutionProfile.resolve(
+            repoID: "mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit", architecture: "qwen3_5"
+        )
+        XCTAssertNil(byName.maxKVSize)
+        XCTAssertEqual(byArchitecture.maxKVSize, 2_048)
+        XCTAssertEqual(byArchitecture.kvBits, 4)
+        // Build 70 measured a ~6.5 GB kernel limit on an iPhone 17 Pro Max:
+        // MiMo's 7.10 GB of text weights cannot fit, and must be refused.
+        let kernelLimit: Int64 = 6_390_000_000 + 110_000_000
+        XCTAssertGreaterThan(7_100_000_000 + MemoryAdvisor.boundedKVRuntimeReserve, kernelLimit)
+    }
+
+    @MainActor
+    func test_visionOnlyPackStaysInLens() {
+        let model = DownloadableModel(
+            id: "example/vision-only",
+            displayName: "Vision only",
+            subtitle: "Vision",
+            sizeLabel: "1 GB",
+            category: .vlm,
+            repoID: "example/vision-only"
+        )
+        XCTAssertEqual(ODBridge.kind(for: model), .vision)
+    }
+
+    @MainActor
+    func test_assistantPresetWithVisionUsesOneDownloadForBothRoles() {
+        let model = DownloadableModel(
+            id: "prism-ml/Bonsai-27B-mlx-1bit",
+            displayName: "Bonsai 27B",
+            subtitle: "Prism ML",
+            sizeLabel: "5.2 GB",
+            category: .assistant,
+            capabilities: [.vision]
+        )
+        XCTAssertEqual(model.declaredCategories, [.assistant, .vlm])
+        XCTAssertEqual(model.supportedCategories, [.assistant, .vlm])
+    }
+
     // MARK: Image-gen must not be misread as a vision (VLM) model
 
     func test_imageGenDoesNotCollideWithVision() {
@@ -217,6 +538,43 @@ final class ModelCategoryInferenceTests: XCTestCase {
         ])
         XCTAssertTrue(bonsai.allSatisfy { $0.downloadSizeBytes != nil })
         XCTAssertTrue(bonsai.allSatisfy { $0.supportsThinking })
+    }
+
+    @MainActor
+    func test_downloadedUnifiedBonsaiKeepsAssistantAndLensRoles() {
+        let unified = DownloadableModel(
+            id: "prism-ml/Ternary-Bonsai-27B-mlx-2bit",
+            displayName: "Ternary Bonsai 27B",
+            subtitle: "Downloaded from Hugging Face",
+            sizeLabel: "8.5 GB",
+            category: .vlm,
+            repoID: "prism-ml/Ternary-Bonsai-27B-mlx-2bit"
+        )
+        XCTAssertTrue(unified.supportsCategory(.assistant))
+        XCTAssertTrue(unified.supportsCategory(.vlm))
+        XCTAssertTrue(unified.capabilities.contains(.vision))
+        XCTAssertEqual(unified.platformCompatibility, .macOnly)
+
+        let textOnly = DownloadableModel(
+            id: "prism-ml/Ternary-Bonsai-8B-mlx-2bit",
+            displayName: "Ternary Bonsai 8B",
+            subtitle: "Downloaded from Hugging Face",
+            sizeLabel: "2.3 GB",
+            category: .assistant,
+            repoID: "prism-ml/Ternary-Bonsai-8B-mlx-2bit"
+        )
+        XCTAssertTrue(textOnly.supportsCategory(.assistant))
+        XCTAssertFalse(textOnly.supportsCategory(.vlm))
+
+        let visionOnly = DownloadableModel(
+            id: "example/vision-only",
+            displayName: "Vision only",
+            subtitle: "Vision",
+            sizeLabel: "1 GB",
+            category: .vlm,
+            repoID: "example/vision-only"
+        )
+        XCTAssertFalse(visionOnly.supportsCategory(.assistant))
     }
 
     func test_ornithIsAFirstClassHighMemoryAssistantPreset() throws {
@@ -287,7 +645,59 @@ final class ModelCategoryInferenceTests: XCTestCase {
         )
         XCTAssertEqual(open, "<|im_start|>user\nWrite a story<|im_end|>\n<|im_start|>assistant\nOnce upon a time")
         let closed = ChatTemplate.chatML.format(messages: messages)
-        XCTAssertTrue(closed.contains("<|im_end|>\n<|im_start|>assistant\n /no_think"))
+        XCTAssertTrue(closed.hasSuffix("<|im_end|>\n<|im_start|>assistant\n"))
+    }
+
+    /// Expected strings are the official Hugging Face chat-template renders.
+    func test_detectedTemplatesMatchOfficialThinkingContracts() {
+        let messages = [ChatMessage(role: .user, content: "Hi")]
+        let hybrid = ChatTemplate.detect(for: "mlx-community/Qwen3-8B-4bit")
+        XCTAssertTrue(hybrid.format(messages: messages, enableThinking: false)
+            .hasSuffix("<|im_start|>assistant\n<think>\n\n</think>\n\n"))
+        XCTAssertTrue(hybrid.format(messages: messages, enableThinking: true)
+            .hasSuffix("<|im_start|>assistant\n"))
+        XCTAssertTrue(ChatTemplate.detect(for: "mlx-community/Qwen3-4B-Instruct-2507-4bit")
+            .format(messages: messages).hasSuffix("<|im_start|>assistant\n"))
+        XCTAssertTrue(ChatTemplate.detect(for: "mlx-community/Qwen3-4B-Thinking-2507-4bit")
+            .format(messages: messages, enableThinking: false).hasSuffix("<|im_start|>assistant\n<think>\n"))
+        XCTAssertEqual(ChatTemplate.detect(for: "prism-ml/Bonsai-8B-mlx-1bit").format, "qwen3")
+        // Formats the hand-written templates cannot reproduce.
+        XCTAssertEqual(ChatTemplate.detect(for: "mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit").format, "generic")
+        XCTAssertEqual(ChatTemplate.detect(for: "mlx-community/gemma-4-31b-it-4bit").format, "generic")
+        XCTAssertEqual(ChatTemplate.detect(for: "mlx-community/Phi-4-mini-instruct-4bit").format, "generic")
+        XCTAssertEqual(ChatTemplate.detect(for: "mlx-community/Phi-3.5-mini-instruct-4bit").format, "phi")
+    }
+
+    func test_thinkingSwitchIsReadFromTheShippedTemplate() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        XCTAssertNil(ChatTemplate.readsThinkingSwitch(in: dir))
+        try Data(#"{"chat_template":"{% if enable_thinking is defined and enable_thinking is false %}x{% endif %}"}"#.utf8)
+            .write(to: dir.appendingPathComponent("tokenizer_config.json"))
+        XCTAssertEqual(ChatTemplate.readsThinkingSwitch(in: dir), true)
+        try Data("{{ messages }}".utf8).write(to: dir.appendingPathComponent("chat_template.jinja"))
+        try Data(#"{"chat_template":"{{ messages }}"}"#.utf8)
+            .write(to: dir.appendingPathComponent("tokenizer_config.json"))
+        XCTAssertEqual(ChatTemplate.readsThinkingSwitch(in: dir), false)
+    }
+
+    func test_reasoningMarkupFromEveryFamilyBecomesThinkBlocks() {
+        let normalize = AssistantOutputSanitizer.normalizeReasoningMarkup
+        // Gemma 4 channel and Magistral delimiters.
+        XCTAssertEqual(normalize("<|channel>thought\nplan<channel|>Answer"), "<think>\nplan</think>Answer")
+        XCTAssertEqual(normalize("[THINK]x[/THINK]y"), "<think>x</think>y")
+        // Template opened <think> in the prompt (Qwen 3.5, DeepSeek-R1).
+        XCTAssertEqual(normalize("reasoning</think>\n\nAnswer"), "<think>reasoning</think>\n\nAnswer")
+        // Empty reasoning renders nothing.
+        XCTAssertEqual(normalize("<think>\n\n</think>\n\nAnswer"), "Answer")
+        // Missed stop tokens are dropped.
+        XCTAssertEqual(normalize("Answer<|im_end|>"), "Answer")
+        XCTAssertEqual(normalize("Answer <end_of_turn>\n"), "Answer")
+        XCTAssertEqual(normalize("Plain answer."), "Plain answer.")
+        let blocks = StudioTextBlocks.parse(AssistantOutputSanitizer.clean("why</think>Because."))
+        XCTAssertEqual(blocks.first, .thinking("why", false))
     }
 
     func test_assistantOutputSanitizer_removesKnownQwenBoundaryLeaks() {
@@ -334,6 +744,13 @@ final class ModelCategoryInferenceTests: XCTestCase {
             source,
             "Please provide:  \nYour name (full name)  \nAny other detail.\n\nAsk again"
         )
+    }
+
+    func test_assistantMarkdown_doesNotSplitInitialisms() {
+        let source = AssistantOutputSanitizer.preservingLineBreaksForMarkdown(
+            "Columbus Day is a Federal Holiday in the U.S."
+        )
+        XCTAssertEqual(source, "Columbus Day is a Federal Holiday in the U.S.")
     }
 
     func test_assistantMarkdown_repairsRunTogetherHeadingsFromLocalModels() {

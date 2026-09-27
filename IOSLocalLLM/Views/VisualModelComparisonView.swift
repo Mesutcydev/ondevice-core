@@ -23,6 +23,7 @@ struct VisualModelComparisonView: View {
     @ObservedObject private var center = ModelDownloadCenter.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.koduTheme) private var T
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     /// Both panels start unselected; the user picks each from a per-panel
     /// menu. Each ID is either `""` (FastVLM) or a catalog repoID.
@@ -61,7 +62,7 @@ struct VisualModelComparisonView: View {
     private var availableModels: [DownloadableModel] {
         var seen = Set<String>()
         return center.models.filter { m in
-            guard m.supportsCategory(.vlm) else { return false }
+            guard m.id != FastVLMService.modelID, m.supportsCategory(.vlm) else { return false }
             guard VisualModelInstallStatus.runStatus(for: m).isReady else { return false }
             return seen.insert(m.sourceRepoID).inserted
         }
@@ -70,20 +71,34 @@ struct VisualModelComparisonView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("Image and prompt") {
                     imagePickerCard
                     promptCard
+                }
+                Section("Models and results") {
                     blindToggle
-                    HStack(alignment: .top, spacing: 12) {
-                        panel(side: .left)
-                        panel(side: .right)
+                    if horizontalSizeClass == .compact {
+                        VStack(spacing: 14) {
+                            panel(side: .left)
+                            panel(side: .right)
+                        }
+                    } else {
+                        HStack(alignment: .top, spacing: 12) {
+                            panel(side: .left)
+                            panel(side: .right)
+                        }
                     }
+                }
+                Section {
                     runButton
                     if canVote { voteCard }
+                }
+                Section("Past comparisons") {
                     ArenaLeaderboardCard(lane: .vision)
-                    Color.clear.frame(height: 24)
+                }
             }
             .listStyle(.insetGrouped).scrollContentBackground(.hidden)
-            .navigationTitle("Compare vision models")
+            .navigationTitle("Compare models")
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
 
@@ -134,7 +149,7 @@ struct VisualModelComparisonView: View {
                         KMono(text: "pick an image to compare", size: 11, color: T.ink3)
                     }
                 }
-                .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
+                .background(T.surface2, in: RoundedRectangle(cornerRadius: StudioRadius.tile))
             }
             // Snapshot main-actor state (image, theme) into locals so
             // the PhotosPicker label closure — which Swift 6 treats as
@@ -165,13 +180,15 @@ struct VisualModelComparisonView: View {
 
     private var promptCard: some View {
         VStack(alignment: .leading, spacing: 6) {
-            KCaption(text: "PROMPT")
-            TextField("", text: $prompt, axis: .vertical)
-                .font(T.mono(11))
+            Text("Ask both models")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(T.ink2)
+            TextField("Ask about the image", text: $prompt, axis: .vertical)
+                .font(.body)
                 .foregroundColor(T.ink)
                 .lineLimit(2...4)
-                .padding(8)
-                .kGlass(cornerRadius: StudioRadius.small, fallbackFill: T.surface2)
+                .padding(10)
+                .background(T.surface2, in: RoundedRectangle(cornerRadius: StudioRadius.small))
         }
     }
 
@@ -180,17 +197,16 @@ struct VisualModelComparisonView: View {
     private var blindToggle: some View {
         Toggle(isOn: $blind) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("blind mode")
-                    .font(T.mono(11, .semibold))
+                Text("Blind comparison")
+                    .font(.body.weight(.medium))
                     .foregroundColor(T.ink)
-                KMono(text: "hide names + randomize panels — judge the output, not the brand",
-                      size: 9, color: T.ink3)
+                Text("Hide names until you choose a winner")
+                    .font(.footnote)
+                    .foregroundColor(T.ink3)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
         .tint(T.accent)
-        .padding(10)
-        .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)
     }
 
     // MARK: - Voting
@@ -288,32 +304,31 @@ struct VisualModelComparisonView: View {
         let output = side == .left ? leftOutput : rightOutput
         let tps = side == .left ? leftTPS : rightTPS
         let running = side == .left ? leftRunning : rightRunning
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(side == .left ? "MODEL A" : "MODEL B")
+                .font(.caption2.weight(.semibold))
+                .tracking(0.7)
+                .foregroundStyle(T.ink3)
             modelPicker(side: side, currentID: id)
-            ZStack(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface)
-                VStack(alignment: .leading, spacing: 4) {
-                    if running {
-                        HStack(spacing: 6) {
-                            ProgressView().scaleEffect(0.6).tint(T.accent)
-                            KMono(text: "running…", size: 9, color: T.ink3)
-                        }
-                    } else if tps > 0 {
-                        KMono(text: String(format: "%.1f tok/s", tps), size: 9, color: T.accent)
-                    } else if !output.isEmpty {
-                        KMono(text: "done", size: 9, color: T.ink3)
-                    } else {
-                        KMono(text: "idle", size: 9, color: T.ink3)
+            VStack(alignment: .leading, spacing: 8) {
+                if running {
+                    HStack(spacing: 6) {
+                        ProgressView().controlSize(.small).tint(T.accent)
+                        Text("Generating…")
                     }
-                    Text(output.isEmpty ? "(no output yet)" : output)
-                        .font(T.mono(11))
-                        .foregroundColor(output.isEmpty ? T.ink3 : T.ink)
-                        .fixedSize(horizontal: false, vertical: true)
+                    .font(.caption).foregroundStyle(T.ink3)
+                } else if tps > 0 {
+                    Text(String(format: "%.1f tok/s", tps))
+                        .font(.caption.monospacedDigit()).foregroundStyle(T.accent)
                 }
-                .padding(10)
+                Text(output.isEmpty ? "The response will appear here." : output)
+                    .font(.callout)
+                    .foregroundStyle(output.isEmpty ? T.ink3 : T.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(minHeight: 160, alignment: .topLeading)
-            .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
+            .padding(12)
+            .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+            .background(T.surface2, in: RoundedRectangle(cornerRadius: StudioRadius.panel))
         }
         .frame(maxWidth: .infinity)
     }
@@ -340,17 +355,18 @@ struct VisualModelComparisonView: View {
                            ?? currentID.split(separator: "/").last.map(String.init)
                            ?? "Pick model"))
                 Text(title)
-                    .font(T.mono(11, .semibold))
+                    .font(.subheadline.weight(.medium))
                     .foregroundColor(T.ink)
                     .lineLimit(1)
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 8, weight: .semibold))
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.semibold))
                     .foregroundColor(T.ink3)
             }
-            .padding(.horizontal, 8).padding(.vertical, 5)
+            .padding(.horizontal, 12).padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .kGlass(cornerRadius: StudioRadius.small, fallbackFill: T.surface2)
+            .background(T.surface2, in: RoundedRectangle(cornerRadius: StudioRadius.small))
         }
+        .accessibilityIdentifier(side == .left ? "compare.modelA" : "compare.modelB")
     }
 
     private func setID(_ id: String, for side: Side) {
@@ -403,7 +419,7 @@ struct VisualModelComparisonView: View {
         // Both sides must point at a model that's actually runnable. Empty
         // id == FastVLM, which is only valid when its components can
         // generate (encoder + decoder + projector all loaded).
-        return isSideRunnable(leftID) && isSideRunnable(rightID)
+        return leftID != rightID && isSideRunnable(leftID) && isSideRunnable(rightID)
     }
 
     private func isSideRunnable(_ id: String) -> Bool {
@@ -434,10 +450,9 @@ struct VisualModelComparisonView: View {
                 ? "FastVLM isn't installed. Pick a downloaded VLM on the right."
                 : "Right model isn't ready. Pick another."
         }
-        if leftID == rightID && !leftID.isEmpty {
+        if leftID == rightID {
             // Same MLX/GGUF repo on both sides means two passes of the same
-            // model — wastes time and confuses the comparison. (FastVLM on
-            // both sides is also pointless but doesn't hurt anything.)
+            // model — wastes time and confuses the comparison.
             return "Pick two different models to compare."
         }
         return ""

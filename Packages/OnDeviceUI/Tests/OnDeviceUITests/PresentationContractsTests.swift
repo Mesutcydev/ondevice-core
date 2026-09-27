@@ -4,6 +4,49 @@ import Foundation
 
 @MainActor
 struct PresentationContractsTests {
+    @Test func unifiedModelKeepsBothWorkspaceRolesInOneLibraryEntry() {
+        let model = ODModel(
+            id: "bonsai",
+            name: "Ternary Bonsai 27B",
+            metadata: "2-bit",
+            kind: .language,
+            supportedKinds: [.language, .vision]
+        )
+        #expect(model.supportedKinds.contains(.language))
+        #expect(model.supportedKinds.contains(.vision))
+        #expect(model.workspaceLabel == "Assistant · Lens")
+        #expect(ODModel(id: "text", name: "Text", metadata: "", kind: .language)
+            .supportedKinds == [.language])
+    }
+
+    @Test func declaredRolesRemainVisibleWhenTheirRuntimeIsUnavailable() {
+        let model = ODModel(
+            id: "bonsai-2",
+            name: "Bonsai 2",
+            metadata: "2-bit",
+            kind: .vision,
+            supportedKinds: [],
+            declaredKinds: [.language, .vision],
+            isSelectable: false,
+            unavailableReason: "Loader unavailable"
+        )
+        #expect(model.declaredKinds == [.language, .vision])
+        #expect(model.supportedKinds.isEmpty)
+        #expect(model.workspaceLabel == "Assistant · Lens")
+        #expect(!model.isSelectable)
+    }
+
+    @Test func downloadProgressRejectsNonfiniteValuesAndClampsOvershoot() {
+        func model(_ progress: Double) -> ODModel {
+            ODModel(id: "model", name: "Model", metadata: "", kind: .language,
+                    downloadStatus: "Downloading", downloadProgress: progress)
+        }
+        #expect(model(.nan).downloadProgress == nil)
+        #expect(model(.infinity).downloadProgress == nil)
+        #expect(model(-0.2).downloadProgress == 0)
+        #expect(model(1.2).downloadProgress == 1)
+    }
+
     @Test func installedAndSelectedDoesNotMeanLoaded() throws {
         let store = ODStore(appearanceDefaults: nil)
         store.models = [ODModel(id: "a", name: "A", metadata: "", kind: .language, isInstalled: true)]
@@ -23,15 +66,15 @@ struct PresentationContractsTests {
 
     @Test func composerHeightBudgetFollowsContentRows() {
         let empty = ODLayout.composerPanelHeight(textNaturalHeight: 44, footerNaturalHeight: 44)
-        #expect(empty == 108)
-        #expect((104...112).contains(empty))
+        #expect(empty == 116)
+        #expect((112...120).contains(empty))
         let attached = ODLayout.composerPanelHeight(textNaturalHeight: 44, footerNaturalHeight: 44, attachmentStripHeight: 44)
-        #expect(attached == 156)
-        #expect((152...160).contains(attached))
-        #expect(ODLayout.composerModelFaceHeight == 32)
-        #expect(ODLayout.composerModelFaceHeight < ODLayout.minimumHit)
+        #expect(attached == 164)
+        #expect((160...168).contains(attached))
         #expect(ODLayout.composerCorner == 26)
-        #expect(ODLayout.composerInputStackGap == 8)
+        #expect(ODLayout.composerInputStackGap == 4)
+        #expect(ODLayout.textAdditionalHorizontalInset == 20)
+        #expect(ODLayout.conversationRowInset == 8)
     }
 
     @Test func modelFaceSplitsOnlyAParameterToken() {

@@ -213,8 +213,7 @@ struct ODLensView: View {
             }
             if store.lensIsAnalyzing {
                 HStack(spacing: ODLayout.elementGap) {
-                    ProgressView()
-                    Text("Analyzing image").font(.footnote).foregroundStyle(.secondary)
+                    Text("Analyzing image").font(.footnote).foregroundStyle(.secondary).odShimmer()
                     Spacer(minLength: 0)
                     if store.capabilities.canCancelLensAnalysis {
                         Button("Stop", systemImage: "stop.fill") { store.send(.cancelLensAnalysis) }
@@ -259,8 +258,7 @@ struct ODLensView: View {
                     .buttonStyle(.glassProminent)
                     .buttonBorderShape(.circle)
                     .controlSize(.large)
-                    .tint(ODPalette.send)
-                    .foregroundStyle(ODPalette.onSend)
+                    .odInkProminent()
                     .frame(minWidth: 15 * ODLayout.unit, minHeight: 15 * ODLayout.unit)
                     .disabled(!store.canPerformActions || store.lensIsAnalyzing || (!store.lensHasSelectedImage && !store.capabilities.canCapture))
                     .accessibilityLabel(store.lensHasSelectedImage ? (store.lensModelInstalled ? "Analyze selected image" : "Choose vision model") : "Capture image")

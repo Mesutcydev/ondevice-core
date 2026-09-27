@@ -58,6 +58,7 @@ enum OnDeviceCompatibility {
             return .text
         case "image-text-to-text",
              "image-to-text",
+             "video-text-to-text",
              "visual-question-answering":
             return .vlm
         case "text-to-speech":
@@ -96,25 +97,32 @@ enum OnDeviceCompatibility {
 
     // MARK: - Architecture family
 
-    /// MLX VLM families that mlx-swift-examples' VLMModelFactory knows how to load.
-    /// Keep in sync with that library's MLXVLM/Models/ folder.
+    /// Repo-name families for the VLM types mlx-swift-lm 3.31.4 registers
+    /// (qwen2_vl … qwen3_5, gemma3/4, lfm2_vl, mistral3, glm_ocr, fastvlm).
+    /// Keep in step with MLXVLM's VLMTypeRegistry when the pin moves.
     private static let supportedVLMFamilies: [String] = [
-        "qwen2-vl", "qwen2.5-vl", "qwen2_5-vl", "qwen3-vl",
-        "smolvlm", "smolvlm2",
-        "paligemma",
-        "gemma-3", "gemma3",
-        "idefics3",
+        "qwen2-vl", "qwen2.5-vl", "qwen2_5-vl", "qwen3-vl", "qwen3.5",
+        "smolvlm", "paligemma", "idefics3",
+        "gemma-3", "gemma3", "gemma-4",
+        "lfm2-vl", "lfm2.5-vl",
+        "pixtral", "ministral-3", "mistral-small-3",
+        "glm-ocr", "fastvlm", "llava",
     ]
 
-    /// MLX LLM families known to load via LLMModelFactory.
+    /// Repo-name families for the LLM types mlx-swift-lm 3.31.4 registers.
+    /// Keep in step with MLXLLM's LLMTypeRegistry when the pin moves.
     private static let supportedLLMFamilies: [String] = [
-        "qwen2", "qwen2.5", "qwen3",
-        "llama-3", "llama-3.1", "llama-3.2", "llama-3.3",
-        "phi-3", "phi-3.5",
-        "gemma-2", "gemma-3",
-        "mistral", "mixtral",
-        "smollm", "smollm2",
+        "qwen2", "qwen3",
+        "llama-3", "llama3", "hermes", "dolphin",
+        "phi-3", "phi-4",
+        "gemma-2", "gemma-3", "gemma-4",
+        "mistral", "ministral", "mixtral",
+        "smollm",
         "deepseek",
+        "lfm2", "granite", "glm-4", "olmo", "exaone", "ernie-4.5",
+        "nemotron", "minicpm", "internlm", "command-r", "starcoder2",
+        "falcon-h1", "apertus", "openelm", "baichuan", "mimo", "bitnet",
+        "gpt-oss", "bonsai", "ornith",
     ]
 
     /// Voice (TTS) families we know about.
@@ -179,30 +187,33 @@ enum OnDeviceCompatibility {
         return best
     }
 
-    /// Estimated working-set in bytes for a model of `params` weights. 4-bit
-    /// quantization gives ~0.5 bytes/param + ~50% KV cache overhead.
-    ///
-    /// Checks both HF tags AND the repo name because many MLX community repos
-    /// encode quantization in the name (e.g. "Qwen2.5-VL-3B-Instruct-4bit")
-    /// without adding a corresponding HF tag — causing fp16 rates to be used
-    /// and the model to be falsely blocked.
-    static func estimatedFootprint(params: Int64, tags: [String], repoID: String = "") -> Int64 {
-        let r = repoID.lowercased()
-        let isQuantized = tags.contains { t in
-            let l = t.lowercased()
-            return l.contains("4bit") || l.contains("4-bit")
-                || l.contains("8bit") || l.contains("8-bit")
-                || l.contains("q4") || l.contains("q8")
+    /// Bits per weight encoded in the repo name or tags: "-4bit", "8-bit",
+    /// "mxfp4", GGUF "Q4_K_M", "bf16". nil when nothing says (treated as fp16).
+    /// Checks the name too: MLX community repos often encode the quantization
+    /// only there ("Qwen2.5-VL-3B-Instruct-4bit").
+    static func weightBits(tags: [String], repoID: String) -> Double? {
+        let haystack = ([repoID] + tags).joined(separator: " ").lowercased()
+        func first(_ pattern: String) -> Double? {
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(in: haystack, range: NSRange(haystack.startIndex..., in: haystack)),
+                  let range = Range(match.range(at: 1), in: haystack)
+            else { return nil }
+            return Double(haystack[range])
         }
-        || r.contains("4bit") || r.contains("4-bit")
-        || r.contains("8bit") || r.contains("8-bit")
-        || r.contains("-q4") || r.contains("_q4")
-        || r.contains("-q8") || r.contains("_q8")
+        if let bits = first(#"(?<![0-9])([1-8])[-_ ]?bit"#) { return bits }
+        if haystack.contains("mxfp4") || haystack.contains("nvfp4") { return 4.25 }
+        if let q = first(#"(?<![a-z0-9])i?q([1-8])(?:_|$|[^0-9])"#) { return q + 0.5 }
+        if haystack.contains("bf16") || haystack.contains("fp16") || haystack.contains("f16") { return 16 }
+        return nil
+    }
 
-        let bytesPerParam: Double = isQuantized ? 0.55 : 2.0   // fp16 = 2 bytes
-        let weights = Double(params) * bytesPerParam
-        let working = weights * 1.5                            // KV cache + glue
-        return Int64(working)
+    /// Estimated peak working set for `params` weights: quantized weights
+    /// (plus ~0.5 bit/weight of group scales) times the same weights→peak
+    /// factor the load gate uses for downloaded models.
+    static func estimatedFootprint(params: Int64, tags: [String], repoID: String = "") -> Int64 {
+        let bits = weightBits(tags: tags, repoID: repoID).map { $0 < 16 ? $0 + 0.5 : $0 } ?? 16
+        let weights = Double(params) * bits / 8
+        return Int64(weights * MemoryAdvisor.workingSetOverhead)
     }
 
     // MARK: - Verdict
@@ -250,7 +261,7 @@ enum OnDeviceCompatibility {
         switch f {
         case .gguf, .ggml:
             if k != .vlm {
-                return .blocked(reason: "GGUF / GGML is only supported for vision models in this app right now.")
+                return .blocked(reason: "This repo holds every GGUF quantization, so it isn't downloaded here. Save one .gguf file to Files, then add it with Models → Import model.")
             }
         case .onnx:
             return .blocked(reason: "ONNX format — no on-device runtime in this app.")

@@ -6,6 +6,11 @@
   <array>
     <string>group.com.mesutcydev.ondevicemax.shared</string>
   </array>
+  <!-- Profiles that grant it (development builds, some ad-hoc
+       certificates) raise the memory ceiling for high-watermark loads.
+       Declared so AltStore-style re-signers keep it; ignored otherwise. -->
+  <key>com.apple.developer.kernel.increased-debugging-memory-limit</key>
+  <true/>
   <!-- Raises the per-process Jetsam memory limit for ML workloads.
        Without this the limit is ~3.3 GB; MLX model loading peaks above
        that on any model >1.5 B parameters. Required for on-device LLMs. -->

@@ -30,6 +30,12 @@ public final class ODStore: ObservableObject {
     /// The host updates this list after accepting add/remove/send operations.
     @Published public var draftAttachments: [ODAttachment] = []
     @Published public var isResponding = false
+    /// Reasoning for the next reply. nil hides the switch: the selected model
+    /// answers the same either way.
+    @Published public var thinkingEnabled: Bool?
+    /// Empty hides the persona picker.
+    @Published public var personas: [ODPersona] = []
+    @Published public var selectedPersonaID: String?
     @Published public var imagePrompt = ""
     @Published public var selectedImageModelID: String?
     @Published public var imagePhase: ODImagePhase = .idle
@@ -144,7 +150,8 @@ public final class ODStore: ObservableObject {
     public func send(_ action: ODAction) {
         let reason: String?
         switch action {
-        case .loadModel, .modelAction(_, .configure), .modelAction(_, .delete): reason = "Changing the active model"
+        case .loadModel, .loadModelInWorkspace, .modelAction(_, .configure), .modelAction(_, .delete):
+            reason = "Changing the active model"
         case .sendMessage, .sendMessageWithAttachments: reason = "Sending a chat message"
         case .generateImage: reason = "Creating an image"
         case .analyzeLens: reason = "Analyzing an image"
@@ -165,8 +172,11 @@ public final class ODStore: ObservableObject {
         store.models = [
             ODModel(id: "local/local_Ornith-1.5-9B-Q5_K_M", name: "Ornith 1.5",
                     metadata: "9B · Q5_K_M", byteCount: 6_470_000_000,
-                    kind: .language, isDefault: true),
-            ODModel(id: "smolvlm2500m", name: "SmolVLM", metadata: "Vision model", kind: .vision)
+                    kind: .language, isDefault: true,
+                    summary: "A capable local assistant for chat and code.", vendor: "qwen"),
+            ODModel(id: "smolvlm2500m", name: "SmolVLM", metadata: "Vision model", kind: .vision,
+                    summary: "Compact on-device visual understanding.", vendor: "huggingFace",
+                    badges: ["Vision"])
         ]
         store.selectedModelID = store.models.first?.id
         store.loadedModelID = store.selectedModelID

@@ -17,7 +17,19 @@ public struct OnDeviceWorkbench: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.layoutDirection) private var layoutDirection
     @State private var visited: Set<ODTab> = []
-    @GestureState private var drawerDrag: CGFloat = 0
+    /// Animated mirror of `store.conversationsPresented`: every open/close runs
+    /// one spring, and the drawer stays mounted until its close has finished.
+    @State private var drawerOpen = false
+    @State private var drawerMounted = false
+    @GestureState(resetTransaction: Transaction(animation: OnDeviceWorkbench.drawerSpring))
+    private var drawerDrag: CGFloat = 0
+
+    /// Critically damped and a touch slower than a push: the workspace should
+    /// feel weighty as it slides onto its card, then settle without a wobble.
+    static let drawerSpring: Animation = .spring(response: 0.44, dampingFraction: 0.9)
+    /// Close to the iPhone display radius, so the card reads as the screen itself
+    /// sliding aside (the reference drawer), not a panel with small corners.
+    private static let cardCorner: CGFloat = 55
 
     public init(store: ODStore, cameraPreview: AnyView? = nil,
                 chatContent: AnyView? = nil, settingsContent: AnyView? = nil,
@@ -40,24 +52,32 @@ public struct OnDeviceWorkbench: View {
             let width = dynamicTypeSize.isAccessibilitySize
                 ? min(480, max(0, geometry.size.width - 24))
                 : ODLayout.drawerWidth(availableWidth: geometry.size.width)
-            let offset = min(width, max(0, (store.conversationsPresented ? width : 0) + drawerDrag))
+            let offset = min(width, max(0, (drawerOpen ? width : 0) + drawerDrag))
+            let progress = width > 0 ? offset / width : 0
             let direction: CGFloat = layoutDirection == .rightToLeft ? -1 : 1
             ZStack(alignment: .leading) {
-                if store.conversationsPresented || drawerDrag > 0 {
+                if drawerMounted || drawerDrag > 0 {
                     ODConversationDrawer()
                         .frame(width: width)
                         .frame(maxHeight: .infinity)
+                        // Parallax: the drawer eases in from a quarter of its width
+                        // behind the moving workspace instead of sitting static.
+                        .offset(x: reduceMotion ? 0 : -(1 - progress) * width * 0.25 * direction)
+                        .opacity(reduceMotion ? (drawerOpen ? 1 : 0) : 0.35 + 0.65 * progress)
+                        .accessibilityHidden(!store.conversationsPresented)
+                        .allowsHitTesting(store.conversationsPresented)
                         .accessibilityAction(.escape) { store.conversationsPresented = false }
                         .simultaneousGesture(drawerGesture(width: width, direction: direction))
                 }
                 primaryWorkspace
                     .background { ODPageBackground().ignoresSafeArea() }
                     .overlay {
+                        // No dimming: the card keeps full brightness, as in the
+                        // reference. Tapping anywhere on it closes the drawer.
                         if store.conversationsPresented {
                             Button { store.conversationsPresented = false } label: {
-                                Rectangle().fill(ODPalette.background.opacity(0.45))
+                                Color.clear.contentShape(Rectangle())
                                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .contentShape(Rectangle())
                             }
                                 .buttonStyle(.plain)
                                 .accessibilityLabel("Close app menu")
@@ -65,9 +85,28 @@ public struct OnDeviceWorkbench: View {
                                 .gesture(drawerGesture(width: width, direction: direction))
                         }
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: offset > 0 ? 36 : 0))
-                    .shadow(color: .black.opacity(offset > 0 ? 0.12 : 0), radius: 18, x: -6)
-                    .offset(x: reduceMotion ? (store.conversationsPresented ? width * direction : 0) : offset * direction)
+                    // The workspace becomes a full-height card: continuous corners
+                    // round in over the first part of the slide. The mask reaches
+                    // into the status-bar and home-indicator areas so the card's
+                    // corners sit at the screen edges, not the safe-area edges.
+                    .mask {
+                        RoundedRectangle(cornerRadius: Self.cardCorner * min(1, progress * 3), style: .continuous)
+                            .padding(.top, -geometry.safeAreaInsets.top)
+                            .padding(.bottom, -geometry.safeAreaInsets.bottom)
+                    }
+                    .overlay {
+                        // Hairline edge only in OLED, where card and drawer are
+                        // both black; elsewhere the card's own color separates it.
+                        RoundedRectangle(cornerRadius: Self.cardCorner * min(1, progress * 3), style: .continuous)
+                            .strokeBorder(store.appearance == .oled ? ODPalette.line : .clear, lineWidth: 1)
+                            .padding(.top, -geometry.safeAreaInsets.top)
+                            .padding(.bottom, -geometry.safeAreaInsets.bottom)
+                            .opacity(progress)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                    }
+                    .shadow(color: .black.opacity(0.22 * progress), radius: 30, x: -8 * direction)
+                    .offset(x: reduceMotion ? (drawerOpen ? width * direction : 0) : offset * direction)
                     .zIndex(1)
                 // The menu-dismiss button remains accessible while the workspace beneath is hidden.
                 if !store.conversationsPresented {
@@ -80,11 +119,21 @@ public struct OnDeviceWorkbench: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background { ODPageBackground().ignoresSafeArea() }
+        // The drawer's backdrop sits behind the card, so its rounded corners
+        // cut out to the drawer color instead of vanishing into the page color.
+        .background { Color(uiColor: .systemGroupedBackground).ignoresSafeArea() }
         .environmentObject(store)
         .preferredColorScheme(store.appearance.colorScheme)
         .environment(\.odAppearance, store.appearance)
-        .animation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 1), value: store.conversationsPresented)
+        .onChange(of: store.conversationsPresented, initial: true) { _, presented in
+            if presented { drawerMounted = true }
+            withAnimation(reduceMotion ? ODMotion.fade : Self.drawerSpring) {
+                drawerOpen = presented
+            } completion: {
+                if !store.conversationsPresented { drawerMounted = false }
+            }
+        }
+        .sensoryFeedback(.impact(weight: .light, intensity: 0.55), trigger: store.conversationsPresented)
         .onChange(of: store.selectedTab, initial: true) { _, destination in
             visited.insert(destination)
         }
@@ -152,7 +201,7 @@ public struct OnDeviceWorkbench: View {
                     }
                 }
                 .environment(\.odWorkspaceVisible, store.selectedTab == destination && !store.conversationsPresented && store.secondaryRoute == nil)
-                .opacity(store.selectedTab == destination ? 1 : 0)
+                .animation(ODMotion.fade) { $0.opacity(store.selectedTab == destination ? 1 : 0) }
                 .allowsHitTesting(store.selectedTab == destination)
                 .accessibilityHidden(store.selectedTab != destination)
                 .zIndex(store.selectedTab == destination ? 1 : 0)

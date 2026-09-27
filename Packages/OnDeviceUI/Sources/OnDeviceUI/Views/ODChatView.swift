@@ -7,7 +7,6 @@ struct ODChatView: View {
     @EnvironmentObject private var store: ODStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var composerFocused: Bool
-    @StateObject private var keyboardClearance = ODComposerKeyboardClearance()
     @State private var followsLatestMessage = true
     @State private var detailModel: ODModel?
     @State private var deferredModelAction: ODAction?
@@ -36,23 +35,27 @@ struct ODChatView: View {
                                 .padding(.horizontal, ODLayout.pageInset)
                                 .padding(.vertical, ODLayout.pageInset)
                         } else {
-                            LazyVStack(alignment: .leading, spacing: ODLayout.groupGap) {
-                                ForEach(store.messages) { message in
-                                    ODTranscriptMessage(message: message,
-                                                        availableWidth: ODLayout.contentWidth(availableWidth: geometry.size.width))
-                                        .id(message.id)
-                                }
-                                if store.isResponding {
-                                    HStack(spacing: ODLayout.elementGap) {
-                                        ProgressView().accessibilityHidden(true)
-                                        Text("Responding").font(.footnote).foregroundStyle(.secondary)
+                            VStack(spacing: 0) {
+                                LazyVStack(alignment: .leading, spacing: 14) {
+                                    ForEach(store.messages) { message in
+                                        ODTranscriptMessage(message: message,
+                                                            availableWidth: ODLayout.contentWidth(availableWidth: geometry.size.width))
+                                            .id(message.id)
                                     }
-                                    .accessibilityElement(children: .combine)
+                                    if store.isResponding {
+                                        HStack(spacing: ODLayout.elementGap) {
+                                            ProgressView().accessibilityHidden(true)
+                                            Text("Responding").font(.footnote).foregroundStyle(.secondary)
+                                        }
+                                        .accessibilityElement(children: .combine)
+                                    }
                                 }
-                                Color.clear.frame(height: 1).id("conversation-bottom")
+                                .padding(.horizontal, ODLayout.pageInset)
+                                .padding(.top, ODLayout.pageInset)
+                                Color.clear
+                                    .frame(height: ODLayout.chatThreadBottomClearance)
+                                    .id("conversation-bottom")
                             }
-                            .padding(.horizontal, ODLayout.pageInset)
-                            .padding(.vertical, ODLayout.pageInset)
                         }
                     }
                     .scrollDismissesKeyboard(.interactively)
@@ -97,17 +100,23 @@ struct ODChatView: View {
             }
             .background { ODPageBackground().ignoresSafeArea() }
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                ODComposerKeyboardSlot(clearance: keyboardClearance) {
-                    ODWorkspaceBottomBar { composer }
+                ODWorkspaceBottomBar {
+                    VStack(spacing: 0) {
+                        composer
+                        if composerFocused {
+                            HStack {
+                                ODKeyboardDismissKey(focus: $composerFocused)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.horizontal, ODLayout.pageInset)
+                            .frame(minHeight: ODLayout.minimumHit)
+                        }
+                    }
                 }
             }
             .navigationTitle(store.selectedConversation?.title ?? "OnDevice")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    ODKeyboardDismissKey(focus: $composerFocused, clearance: keyboardClearance)
-                    Spacer(minLength: 0)
-                }
                 ToolbarItem(placement: .topBarLeading) {
                     ODAppMenuButton {
                         composerFocused = false
@@ -116,6 +125,9 @@ struct ODChatView: View {
                     .labelStyle(.iconOnly)
                     .accessibilityLabel("Open conversations and app menu")
                     .accessibilityIdentifier("navigation.menu")
+                }
+                ToolbarItem(placement: .principal) {
+                    modelSelector
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("New conversation", systemImage: "square.and.pencil") {
@@ -171,7 +183,6 @@ struct ODChatView: View {
             canSend: canSend, canStop: store.canPerformActions && store.capabilities.canStopGeneration,
             canAdd: store.canPerformActions && store.capabilities.canAddAttachments && !store.isResponding,
             canRemove: store.canPerformActions && store.capabilities.canRemoveAttachments && !store.isResponding,
-            modelMenu: AnyView(modelSelector),
             microphone: nil,
             notice: AnyView(VStack(alignment: .leading, spacing: ODLayout.elementGap) {
                 stateNotice
@@ -187,6 +198,8 @@ struct ODChatView: View {
                     if store.capabilities.canStartVoice { store.send(.beginVoiceSession) }
                 }
             },
+            thinking: store.thinkingEnabled,
+            onThinking: { store.send(.setThinking($0)) },
             onAdd: { store.send(.addAttachment) },
             onRemove: { store.send(.removeAttachment($0)) },
             onSend: { text, ids in
@@ -232,6 +245,21 @@ struct ODChatView: View {
                         .disabled(!store.canPerformActions || !store.capabilities.canLoadModels || store.isResponding)
                 }
             }
+            if !store.personas.isEmpty {
+                Picker(selection: Binding(
+                    get: { store.selectedPersonaID ?? "" },
+                    set: { store.send(.selectPersona($0)) }
+                )) {
+                    ForEach(store.personas) { persona in
+                        Label(persona.name, systemImage: persona.symbol).tag(persona.id)
+                    }
+                } label: {
+                    Label("Persona", systemImage: "person.crop.circle")
+                }
+                .pickerStyle(.menu)
+                .disabled(!store.canPerformActions)
+                .accessibilityIdentifier("chat.personaPicker")
+            }
             Button("Device status", systemImage: "iphone") {
                 composerFocused = false
                 store.secondaryRoute = .device
@@ -243,7 +271,8 @@ struct ODChatView: View {
         .buttonStyle(.plain)
         .accessibilityLabel("Model")
         .accessibilityValue(store.selectedModel?.name ?? "None selected")
-        .accessibilityHint("Choose or load an assistant model, or inspect its details")
+        .accessibilityHint("Choose or load an assistant model, pick a persona, or inspect details")
+        .accessibilityIdentifier("chat.modelPicker")
     }
 
     @ViewBuilder private var stateNotice: some View {
@@ -306,15 +335,20 @@ private struct ODTranscriptMessage: View {
                         .padding(.vertical, ODLayout.bubbleInsetV)
                         .background(ODPalette.input, in: RoundedRectangle(cornerRadius: ODLayout.bubbleCorner))
                         .frame(maxWidth: ODLayout.maxUserBubbleWidth(contentWidth: availableWidth, displayScale: displayScale), alignment: .trailing)
+                        .accessibilityIdentifier("chat.message.user.\(message.id.uuidString)")
                 }
             } else {
-                Text(message.text)
-                    .font(.body)
-                    .lineSpacing(ODLayout.unit)
-                    .foregroundStyle(ODPalette.text)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(Array(message.text.components(separatedBy: "\n\n").enumerated()), id: \.offset) { _, paragraph in
+                        Text(paragraph)
+                            .font(.body)
+                            .lineSpacing(ODLayout.unit)
+                            .foregroundStyle(ODPalette.text)
+                            .textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .contextMenu {

@@ -74,6 +74,7 @@ struct AssistantLiveStatusRow: View {
             }
             Text(title)
                 .font(T.sans(11, .medium))
+                .odShimmer()
             Spacer(minLength: 0)
         }
         .foregroundStyle(T.ink3)

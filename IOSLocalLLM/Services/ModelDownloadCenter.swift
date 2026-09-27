@@ -58,14 +58,46 @@ final class DownloadableModel: ObservableObject, Identifiable {
     /// selectable runtime for them yet.
     let supportedVoiceEngine: VoiceEngineKind?
 
-    enum Category { case assistant, vlm, voice, imageGen }
+    enum Category: Hashable { case assistant, vlm, voice, imageGen }
 
-    /// A package can serve more than its primary catalog category. Today this
-    /// is used by unified text+vision models: they stay a single download but
-    /// surface in both Assistant and Lens.
+    /// One download can advertise several roles while retaining a single
+    /// primary category for catalog grouping and storage accounting.
+    var declaredCategories: Set<Category> {
+        var roles: Set<Category> = [category]
+        guard category == .assistant || category == .vlm else { return roles }
+        if capabilities.contains(.vision)
+            || downloader.map({ LocalModelRegistry.hasDeclaredVisionComponent(in: $0.destination) }) == true {
+            roles.insert(.vlm)
+        }
+        if AssistantModelCatalog.presets.contains(where: {
+            $0.repoID.caseInsensitiveCompare(sourceRepoID) == .orderedSame
+        }) || downloader.map({ LocalModelRegistry.hasDeclaredTextComponent(in: $0.destination) }) == true {
+            roles.insert(.assistant)
+        }
+        if runtime != .edge0MLX,
+           downloader.map({ LocalModelRegistry.isUnifiedTextVisionPack(in: $0.destination) }) == true {
+            roles.formUnion([.assistant, .vlm])
+        }
+        return roles
+    }
+
+    /// Executable roles are checked independently. A pack can remain visible
+    /// under both roles even if this build lacks one or both loaders.
+    var supportedCategories: Set<Category> {
+        var roles = declaredCategories
+        if let destination = downloader?.destination {
+            if LocalModelRegistry.unsupportedTextRuntimeReason(in: destination) != nil {
+                roles.remove(.assistant)
+            }
+            if LocalModelRegistry.unsupportedVisionRuntimeReason(in: destination) != nil {
+                roles.remove(.vlm)
+            }
+        }
+        return roles
+    }
+
     func supportsCategory(_ requested: Category) -> Bool {
-        if category == requested { return true }
-        return requested == .vlm && capabilities.contains(.vision)
+        supportedCategories.contains(requested)
     }
 
     // The underlying downloader. Nil for entries that aren't downloaded
@@ -121,17 +153,21 @@ final class DownloadableModel: ObservableObject, Identifiable {
         // Merge explicit capabilities with auto-detected gated flag —
         // this way curated entries don't have to remember to add .gated
         // by hand for `meta-llama/...` repos.
+        let assistantPreset = AssistantModelCatalog.presets.first {
+            $0.repoID.caseInsensitiveCompare(inferenceSource) == .orderedSame
+        }
         var caps = capabilities
+        caps.formUnion(assistantPreset?.capabilities ?? [])
         if KnownGatedRepos.isGated(repoID: inferenceSource) {
             caps.insert(.gated)
         }
         self.capabilities = caps
 
         self.longDescription = longDescription
-        self.runtime = runtime
-        self.approxRAMBytes = approxRAMBytes
-        self.contextWindowTokens = contextWindowTokens
-        self.platformCompatibility = platformCompatibility
+        self.runtime = runtime ?? assistantPreset?.runtime
+        self.approxRAMBytes = approxRAMBytes ?? assistantPreset?.approxRAMBytes
+        self.contextWindowTokens = contextWindowTokens ?? assistantPreset?.contextWindowTokens
+        self.platformCompatibility = platformCompatibility ?? assistantPreset?.platformCompatibility
         self.supportedVoiceEngine = supportedVoiceEngine
     }
 
@@ -167,6 +203,7 @@ final class DownloadableModel: ObservableObject, Identifiable {
         }
         downloader?.start()
     }
+    func pause() { downloader?.pause() }
     func cancel() { downloader?.cancel() }
     func delete() throws { try downloader?.delete() }
     func redownload() { downloader?.redownload() }
@@ -203,10 +240,9 @@ final class ModelDownloadCenter: ObservableObject {
     // propagate to a view observing the center — so without this, tapping
     // "Download" flipped the downloader to .enumerating but the catalog list
     // never re-rendered to move the row into the in-flight section ("Download
-    // does nothing"). We forward `$state` only (not `progress`): state drives
-    // the section a model lives in; live progress is rendered by InstallingRow,
-    // which observes the downloader directly, so per-tick re-renders here would
-    // be pure waste.
+    // does nothing"). State drives the section a model lives in. The legacy
+    // InstallingRow observes progress directly, but OnDeviceUI receives
+    // snapshots through ODBridge and needs throttled progress forwarding.
     private var downloaderBindings: Set<AnyCancellable> = []
 
     private func rebindDownloaders() {
@@ -214,6 +250,12 @@ final class ModelDownloadCenter: ObservableObject {
         for m in models {
             m.downloader?.$state
                 .removeDuplicates()
+                .sink { [weak self] _ in self?.objectWillChange.send() }
+                .store(in: &downloaderBindings)
+            m.downloader?.$progress
+                .dropFirst()
+                .removeDuplicates()
+                .throttle(for: .milliseconds(400), scheduler: RunLoop.main, latest: true)
                 .sink { [weak self] _ in self?.objectWillChange.send() }
                 .store(in: &downloaderBindings)
         }
@@ -231,7 +273,8 @@ final class ModelDownloadCenter: ObservableObject {
         // and ContentView.onAppear also kicks a refreshAllStates().
         Task { @MainActor [weak self] in
             guard let self else { return }
-            self.scanCustomDownloads()
+            await self.scanCustomDownloads()
+            InstalledModelRegistry.shared.reconcileWithDisk()
             self.reconcileInstalledRegistry()
             self.repairInvalidRoleAssignments()
             self.refreshAllStates()
@@ -385,6 +428,19 @@ final class ModelDownloadCenter: ObservableObject {
             )
             s.fastVLMRepoID = FastVLMConfig.defaultRepoID
         }
+        // Clear a stale Edge0 import from Lens before the deferred disk scan
+        // starts. The native runtime only accepts the curated preset ID, and
+        // a 35B text checkpoint must never enter the camera load path.
+        let visualID = LocalModelRegistry.storedVisionSelectionID(s.cameraVisualModelID)
+        if visualID.hasPrefix("local/local_") {
+            let directory = ModelStoragePaths.documents
+                .appendingPathComponent("HFModels", isDirectory: true)
+                .appendingPathComponent(String(visualID.dropFirst("local/".count)), isDirectory: true)
+            if LocalModelImportService.isEdge0ImportCandidate(in: directory) {
+                s.cameraVisualModelID = ""
+                s.hasPickedCameraVisualModel = false
+            }
+        }
         // REMOVED: a previous version of this code reset
         // assistantModelID from "qwen3-4b" to "qwen2.5-coder-1.5b" on
         // every singleton init, because of a key-layout mismatch
@@ -424,7 +480,10 @@ final class ModelDownloadCenter: ObservableObject {
 
         let visualStored = LocalModelRegistry.storedVisionSelectionID(settings.cameraVisualModelID)
         if let visualModel = matchingModel(visualStored),
-           !visualModel.supportsCategory(.vlm) {
+           (!visualModel.supportsCategory(.vlm)
+               || visualModel.downloader.flatMap({
+                   LocalModelRegistry.unsupportedVisionRuntimeReason(in: $0.destination)
+               }) != nil) {
             settings.cameraVisualModelID = ""
             settings.hasPickedCameraVisualModel = false
         }
@@ -451,7 +510,8 @@ final class ModelDownloadCenter: ObservableObject {
         // them to one row instead of showing the model twice.
         let destPath = downloader.destination.standardizedFileURL.path
         guard !models.contains(where: {
-            $0.id == repoID || $0.downloader?.destination.standardizedFileURL.path == destPath
+            $0.sourceRepoID.caseInsensitiveCompare(repoID) == .orderedSame
+                || $0.downloader?.destination.standardizedFileURL.path == destPath
         }) else { return }
         let model = DownloadableModel(
             id: repoID,
@@ -466,6 +526,18 @@ final class ModelDownloadCenter: ObservableObject {
         )
         models.append(model)
         model.checkIfReady()
+    }
+
+    /// Destination used when reconciling a registry record: the record's own
+    /// path only when it is inside the current sandbox, otherwise the
+    /// canonical `Documents/LLMModels/<dir>` location.
+    nonisolated static func reconciledDestination(for record: InstalledModelRecord) -> URL {
+        if ModelStoragePaths.isInsideSandbox(record.localURL) {
+            return record.localURL
+        }
+        return ModelStoragePaths.llmModelDirectory(
+            named: ModelStoragePaths.directoryName(forRepoID: record.repoID)
+        )
     }
 
     /// Drops a custom model from the catalog (called after delete).
@@ -508,10 +580,23 @@ final class ModelDownloadCenter: ObservableObject {
             }
 
             let existing = existingIndex.map { updated[$0] }
+
+            // A stale record (from a previous data container) must never be
+            // used as a download destination. Fall back to the canonical
+            // sandbox location for the repo.
+            let destination = Self.reconciledDestination(for: record)
             let downloader = HFModelDownloadManager(
                 repoID: record.repoID,
-                destination: record.localURL
+                destination: destination,
+                branch: existing?.downloader?.branch
+                    ?? Edge0ModelFamily.resolve(repoID: record.repoID)?
+                        .pinnedRevision ?? "main"
             )
+            // Registry-backed entries would otherwise lose the curated
+            // allowlist (and start fetching every repo artifact).
+            if let curatedAllowlist = existing?.downloader?.fileAllowlist {
+                downloader.fileAllowlist = curatedAllowlist
+            }
             downloader.checkIfReady()
 
             let category = LocalModelRegistry.category(in: record.localURL)
@@ -530,7 +615,7 @@ final class ModelDownloadCenter: ObservableObject {
                 category: existing?.category ?? category,
                 isRequired: existing?.isRequired ?? false,
                 docURL: existing?.docURL
-                    ?? "https://huggingface.co/\(record.repoID)",
+                    ?? (record.repoID.hasPrefix("local/") ? nil : "https://huggingface.co/\(record.repoID)"),
                 downloader: downloader,
                 repoID: record.repoID,
                 capabilities: capabilities,
@@ -559,7 +644,7 @@ final class ModelDownloadCenter: ObservableObject {
 
     /// Scans `Documents/HFModels/` for previously-downloaded HF repos and
     /// re-registers them so they survive app restarts.
-    private func scanCustomDownloads() {
+    private func scanCustomDownloads() async {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let root = docs.appendingPathComponent("HFModels", isDirectory: true)
         guard let entries = try? FileManager.default.contentsOfDirectory(
@@ -572,8 +657,46 @@ final class ModelDownloadCenter: ObservableObject {
             var isDir: ObjCBool = false
             guard fm.fileExists(atPath: dest.path, isDirectory: &isDir), isDir.boolValue else { continue }
 
+            if entry.hasPrefix("local_"),
+               LocalModelImportService.isEdge0ImportCandidate(in: dest) {
+                let oldRepoID = recoverRepoID(from: entry, in: dest)
+                if let family = LocalModelImportService.validatedEdge0Family(in: dest) {
+                    do {
+                        _ = try await LocalModelImportService.shared.adoptValidatedEdge0(
+                            at: dest, family: family, previousRepoID: oldRepoID
+                        )
+                    } catch {
+                        Diagnostics.shared.warning(
+                            "Could not adopt existing Edge0 import: \(error.localizedDescription)",
+                            category: "localimport"
+                        )
+                    }
+                } else {
+                    Diagnostics.shared.warning(
+                        "Incomplete Edge0 import needs re-importing",
+                        category: "localimport"
+                    )
+                }
+                // Local Edge0 IDs cannot run and must never reappear in Lens
+                // or Assistant, even if the curated preset is already ready.
+                InstalledModelRegistry.shared.remove(repoID: oldRepoID)
+                let settings = AppSettings.shared
+                if LocalModelRegistry.storedVisionSelectionID(settings.cameraVisualModelID) == oldRepoID {
+                    settings.cameraVisualModelID = ""
+                    settings.hasPickedCameraVisualModel = false
+                }
+                if LocalModelRegistry.unwrapAssistantSelectionID(settings.assistantModelID) == oldRepoID {
+                    settings.assistantModelID = AssistantModelCatalog.presets.first?.id ?? ""
+                    settings.hasPickedAssistantModel = false
+                }
+                if LocalModelRegistry.unwrapAssistantSelectionID(settings.voiceConversationModelID) == oldRepoID {
+                    settings.voiceConversationModelID = ""
+                }
+                continue
+            }
+
             // Try the folder itself first.
-            if registerIfReady(folderName: entry, directory: dest) { continue }
+            if registerIfPresent(folderName: entry, directory: dest) { continue }
 
             // Recursive fallback: a model can sit one level down (e.g. a Files
             // import that wrapped the real model folder, or a repo stored as
@@ -584,15 +707,15 @@ final class ModelDownloadCenter: ObservableObject {
                 let subDir = dest.appendingPathComponent(sub)
                 var subIsDir: ObjCBool = false
                 guard fm.fileExists(atPath: subDir.path, isDirectory: &subIsDir), subIsDir.boolValue else { continue }
-                _ = registerIfReady(folderName: sub, directory: subDir)
+                _ = registerIfPresent(folderName: sub, directory: subDir)
             }
         }
     }
 
-    /// Registers the model at `directory` if its files are complete. Returns
-    /// true when a model was found (already registered or newly added).
+    /// Restores complete models and interrupted Hugging Face downloads. The
+    /// latter need their own row so Resume remains available after a relaunch.
     @discardableResult
-    private func registerIfReady(folderName: String, directory: URL) -> Bool {
+    private func registerIfPresent(folderName: String, directory: URL) -> Bool {
         // Prefer the lossless sidecar written at download time. Folder name
         // encoding is `author/name → author_name`, which is lossy whenever
         // either side already contains an underscore.
@@ -600,34 +723,59 @@ final class ModelDownloadCenter: ObservableObject {
 
         let downloader = HFModelDownloadManager(repoID: repoID, destination: directory)
         downloader.checkIfReady()
-        guard downloader.state == .ready else { return false }
+        let isReady = downloader.state == .ready
+        guard isReady || downloader.hasResumableDownloadReceipt else { return false }
 
-        if models.contains(where: { $0.id == repoID }) { return true }
+        if models.contains(where: {
+            $0.sourceRepoID.caseInsensitiveCompare(repoID) == .orderedSame
+        }) {
+            // Keep one catalog identity for the repo. The installed registry
+            // will point that entry at this ready directory during reconcile.
+            if isReady,
+               let record = InstalledModelRegistry.validateDirectory(directory, repoID: repoID) {
+                InstalledModelRegistry.shared.register(record)
+            }
+            return true
+        }
 
-        let dirSize = (try? FileManager.default
-            .allocatedSizeOfDirectory(at: directory)) ?? 0
+        let dirSize = isReady
+            ? ((try? FileManager.default.allocatedSizeOfDirectory(at: directory)) ?? 0)
+            : downloader.totalBytes
         let runtime: ModelRuntime? = LocalModelFileValidator.hasValidGGUFTextModel(in: directory)
             ? .llamaCpp
             : nil
+        // Files imports (`local/local_<name>`) must come back looking as they
+        // did at import time, without a Hugging Face link that can't exist.
+        let isImported = repoID.hasPrefix("local/local_")
+        let importedName = String(repoID.dropFirst("local/local_".count))
         let model = DownloadableModel(
             id: repoID,
-            displayName: repoID.split(separator: "/").last.map(String.init) ?? repoID,
-            subtitle: repoID,
-            sizeLabel: dirSize > 0 ? dirSize.formattedBytes : "—",
+            // Earlier multi-file imports were all called "Model-files"; name
+            // those from the model's own metadata instead.
+            displayName: isImported
+                ? (importedName.hasPrefix("Model-files")
+                    ? LocalModelImportService.metadataName(forFiles: (try? FileManager.default
+                        .contentsOfDirectory(at: directory, includingPropertiesForKeys: [.fileSizeKey])) ?? [])
+                        ?? importedName
+                    : importedName)
+                : repoID.split(separator: "/").last.map(String.init) ?? repoID,
+            subtitle: isImported ? "local · imported from Files" : repoID,
+            sizeLabel: dirSize > 0 ? (isReady ? "" : "~") + dirSize.formattedBytes : "—",
             // Inspect config.json so a model downloaded via HFSearch keeps its
             // real category across restarts — otherwise every restored entry
             // came back as .assistant, and VLMs vanished from the vision
             // picker even though the files were on disk.
             category: LocalModelRegistry.category(in: directory),
             isRequired: false,
-            docURL: "https://huggingface.co/\(repoID)",
+            docURL: isImported ? nil : "https://huggingface.co/\(repoID)",
             downloader: downloader,
             runtime: runtime
         )
         models.append(model)
         // Also register in the installed-model registry so community/
         // custom downloads appear in pickers immediately without a relaunch.
-        if let record = InstalledModelRegistry.validateDirectory(directory, repoID: repoID) {
+        if isReady,
+           let record = InstalledModelRegistry.validateDirectory(directory, repoID: repoID) {
             InstalledModelRegistry.shared.register(record)
         }
         return true
@@ -676,8 +824,7 @@ final class ModelDownloadCenter: ObservableObject {
         for preset in AssistantModelCatalog.presets {
             let dirName = preset.repoID.split(separator: "/").last.map(String.init)
                 ?? preset.repoID
-            let dest = docs.appendingPathComponent("LLMModels")
-                .appendingPathComponent(dirName)
+            let dest = ModelStoragePaths.llmModelDirectory(named: dirName)
             // Prefer a preset's published package size. Conventional 4-bit
             // models can still use the historical RAM × 0.6 estimate, but
             // Bonsai's 1/2-bit packages are far smaller and need an explicit
@@ -698,10 +845,44 @@ final class ModelDownloadCenter: ObservableObject {
                 category: .assistant,
                 isRequired: false,
                 docURL: "https://huggingface.co/\(preset.repoID)",
-                downloader: HFModelDownloadManager(
-                    repoID: preset.repoID,
-                    destination: dest
-                ),
+                downloader: {
+                    let downloader = HFModelDownloadManager(
+                        repoID: preset.repoID,
+                        destination: dest,
+                        branch: Edge0ModelFamily.resolve(repoID: preset.repoID)?
+                            .pinnedRevision ?? "main"
+                    )
+                    // One packed checkpoint + tokenizer/config. The repo may
+                    // carry extra artifacts; a complete runnable model is
+                    // exactly this set, verified by Edge0ModelArtifacts.
+                    if preset.runtime == .edge0MLX {
+                        switch Edge0ModelFamily.resolve(repoID: preset.repoID) {
+                        case .qwen35MoE:
+                            // Exact base + Recover-LoRA inventory. The
+                            // prerouter artifact is optional and unused in
+                            // this release, so it is not downloaded.
+                            downloader.fileAllowlist =
+                                Edge0_35BModelArtifacts.downloadAllowlist
+                        default:
+                            downloader.fileAllowlist = [
+                                "config.json",
+                                "generation_config.json",
+                                "chat_template.jinja",
+                                "model.safetensors",
+                                "lora_edge0_8b.safetensors",
+                                // Advisory prerouter head (Phase 4B-3).
+                                // Optional optimization artifact: the base
+                                // model stays valid without it; staged
+                                // remains the fallback.
+                                "prerouter_edge0_8b.safetensors",
+                                "special_tokens_map.json",
+                                "tokenizer.json",
+                                "tokenizer_config.json",
+                            ]
+                        }
+                    }
+                    return downloader
+                }(),
                 repoID: preset.repoID,
                 capabilities: preset.capabilities,
                 runtime: preset.runtime,
@@ -1160,14 +1341,33 @@ final class ModelDownloadCenter: ObservableObject {
 
     // MARK: - Orphaned / partial download cleanup
     //
-    // A download that's cancelled or fails partway leaves completed files on
-    // disk inside its destination folder. Those folders never reach `.ready`,
-    // so `scanCustomDownloads()` skips them — meaning they're invisible in the
-    // catalog and there's no way to delete them from the UI. They quietly pile
-    // up (a user reported ~33 GB of these leftovers). This surfaces them and
-    // lets the user reclaim the space with one tap.
+    // A cancelled download can leave files on disk. Resumable Hugging Face
+    // downloads with a receipt now return to the catalog on launch; older
+    // orphan folders without one still need storage-cleanup access.
 
     /// Roots that hold one-repo-per-subdirectory model downloads. Voice models
+    /// Incremental, single-file download of the OPTIONAL advisory prerouter
+    /// into the already-installed 35B directory. Never touches the base
+    /// checkpoint or LoRA, and never runs during generation.
+    func make35BPrerouterDownloader() -> HFModelDownloadManager? {
+        guard let preset = AssistantModelCatalog.presets.first(where: {
+            $0.runtime == .edge0MLX
+                && Edge0ModelFamily.resolve(repoID: $0.repoID) == .qwen35MoE
+        }) else {
+            return nil
+        }
+        let dirName = preset.repoID.split(separator: "/").last
+            .map(String.init) ?? preset.repoID
+        let destination = ModelStoragePaths.llmModelDirectory(named: dirName)
+        let downloader = HFModelDownloadManager(
+            repoID: preset.repoID,
+            destination: destination,
+            branch: Edge0ModelFamily.qwen35MoEPinnedRevision
+        )
+        downloader.fileAllowlist = Edge0_35BModelArtifacts.optionalPrerouterAllowlist
+        return downloader
+    }
+
     /// live under shared, allowlisted folders (KittenTTS/Kokoro variants share
     /// a directory) so they're deliberately excluded — partial cleanup there
     /// would risk deleting a sibling variant's files.
