@@ -12,43 +12,44 @@
 <line x1="100" y1="236" x2="806" y2="236" class="dim"/>
 <rect x="384" y="222" width="140" height="28" fill="#fbfbfa"/>
 <text x="454" y="242" text-anchor="middle" class="note">C = 361 pt</text>
-<line x1="60" y1="253" x2="60" y2="484" class="guide"/>
-<line x1="846" y1="253" x2="846" y2="484" class="guide"/>
-<rect x="92" y="262" width="722" height="200" rx="52" fill="#fff" stroke="#a4a7ad" stroke-width="1"/>
-<rect x="148" y="270" width="610" height="88" class="guide"/>
-<text x="164" y="306" class="body">Message</text>
-<text x="164" y="334" class="tiny">305 pt text region · inset scales with body text</text>
-<rect x="116" y="366" width="88" height="88" rx="4" class="target"/>
-<text x="160" y="405" text-anchor="middle" class="body">+</text>
-<text x="160" y="433" text-anchor="middle" class="tiny">44+</text>
-<rect x="598" y="366" width="88" height="88" rx="4" class="target"/>
-<text x="642" y="405" text-anchor="middle" class="body">Mic</text>
-<text x="642" y="433" text-anchor="middle" class="tiny">44+</text>
-<rect x="702" y="366" width="88" height="88" rx="4" class="target"/>
-<text x="746" y="405" text-anchor="middle" class="body">Send</text>
-<text x="746" y="433" text-anchor="middle" class="tiny">44+</text>
-<line x1="843" y1="262" x2="843" y2="462" class="dim"/>
-<text x="858" y="354" class="note">100 pt</text>
-<text x="890" y="380" class="tiny">floor</text>
-<line x1="60" y1="494" x2="92" y2="494" class="dim"/>
-<line x1="814" y1="494" x2="846" y2="494" class="dim"/>
-<text x="76" y="525" text-anchor="middle" class="note">16</text>
-<text x="830" y="525" text-anchor="middle" class="note">16</text>
-<text x="122" y="494" class="note">Panel R26 · Text inset28 · Footer inset12</text>
-<text x="122" y="526" class="note">Dashed boxes show minimum hit areas, not control artwork.</text>
+<line x1="60" y1="253" x2="60" y2="480" class="guide"/>
+<line x1="846" y1="253" x2="846" y2="480" class="guide"/>
+<rect x="92" y="262" width="722" height="196" rx="60" fill="#fff" stroke="#a4a7ad" stroke-width="1"/>
+<rect x="132" y="294" width="642" height="44" class="guide"/>
+<text x="136" y="324" class="body">Message</text>
+<text x="300" y="324" class="tiny">321 pt text region · 20 pt inset at every text size</text>
+<rect x="108" y="354" width="88" height="88" rx="4" class="target"/>
+<text x="152" y="393" text-anchor="middle" class="body">+</text>
+<text x="152" y="421" text-anchor="middle" class="tiny">44+</text>
+<rect x="606" y="354" width="88" height="88" rx="4" class="target"/>
+<text x="650" y="393" text-anchor="middle" class="body">Mic</text>
+<text x="650" y="421" text-anchor="middle" class="tiny">44+</text>
+<rect x="710" y="354" width="88" height="88" rx="4" class="target"/>
+<circle cx="754" cy="398" r="36" fill="#202124"/>
+<text x="754" y="397" text-anchor="middle" class="tiny" style="fill:#fff">Send</text>
+<text x="754" y="417" text-anchor="middle" class="tiny" style="fill:#fff">36</text>
+<line x1="843" y1="262" x2="843" y2="458" class="dim"/>
+<text x="858" y="366" class="note">98 pt</text>
+<text x="858" y="392" class="tiny">one line</text>
+<line x1="60" y1="490" x2="92" y2="490" class="dim"/>
+<line x1="814" y1="490" x2="846" y2="490" class="dim"/>
+<text x="76" y="521" text-anchor="middle" class="note">16</text>
+<text x="830" y="521" text-anchor="middle" class="note">16</text>
+<text x="122" y="490" class="note">Panel R30 · Text inset 20 · Footer inset 8 · Send gap 12 (30 = 18 + 12)</text>
+<text x="122" y="522" class="note">Dashed boxes show minimum hit areas, not control artwork.</text>
 <text x="998" y="182" class="h">Measure first. Let content grow.</text>
 <text x="998" y="224" class="code">C = max(0, W − 32)</text>
-<text x="998" y="257" class="code">Text width = max(0, C − 56)</text>
-<text x="998" y="290" class="code">Footer width = max(0, C − 24)</text>
+<text x="998" y="257" class="code">Text width = max(0, C − 40)</text>
+<text x="998" y="290" class="code">Footer width = max(0, C − 16)</text>
 <text x="998" y="316" class="note">Model picker: centered navigation item above this panel</text>
-<text x="998" y="340" class="code">H = 4 + max(44, T) + 4</text>
-<text x="998" y="373" class="code">    + max(44, F) + 4 + D</text>
-<text x="998" y="414" class="note">T: natural text-area height</text>
+<text x="998" y="340" class="code">H = 16 + T + 8</text>
+<text x="998" y="373" class="code">    + max(44, F) + 8 + D</text>
+<text x="998" y="414" class="note">T: natural text height (22 pt per body line)</text>
 <text x="998" y="444" class="note">F: measured footer action-row height</text>
 <text x="998" y="474" class="note">D: 0, or attachment-strip height + 4 pt</text>
-<text x="998" y="521" class="body">100 pt is a lower bound.</text>
-<text x="998" y="551" class="note">Native controls, larger text and attachments</text>
-<text x="998" y="576" class="note">can make the actual composer taller.</text>
+<text x="998" y="521" class="body">98 pt with one line of text.</text>
+<text x="998" y="551" class="note">Each new line, larger text and attachments</text>
+<text x="998" y="576" class="note">make the composer taller; tapping it focuses the text.</text>
 <line x1="52" y1="610" x2="1548" y2="610" class="rule"/>
 <text x="60" y="654" class="h">Responsive widths / points</text>
 
@@ -59,23 +60,23 @@
 <line x1="60" y1="715" x2="900" y2="715" class="rule"/>
 <text x="60" y="743" class="body">320</text>
 <text x="260" y="743" class="body">288</text>
-<text x="460" y="743" class="body">232</text>
-<text x="660" y="743" class="body">264</text>
+<text x="460" y="743" class="body">248</text>
+<text x="660" y="743" class="body">272</text>
 <line x1="60" y1="758" x2="900" y2="758" class="rule"/>
 <text x="60" y="786" class="body">375</text>
 <text x="260" y="786" class="body">343</text>
-<text x="460" y="786" class="body">287</text>
-<text x="660" y="786" class="body">319</text>
+<text x="460" y="786" class="body">303</text>
+<text x="660" y="786" class="body">327</text>
 <line x1="60" y1="801" x2="900" y2="801" class="rule"/>
 <text x="60" y="829" class="body">393</text>
 <text x="260" y="829" class="body">361</text>
-<text x="460" y="829" class="body">305</text>
-<text x="660" y="829" class="body">337</text>
+<text x="460" y="829" class="body">321</text>
+<text x="660" y="829" class="body">345</text>
 <line x1="60" y1="844" x2="900" y2="844" class="rule"/>
 <text x="60" y="872" class="body">430</text>
 <text x="260" y="872" class="body">398</text>
-<text x="460" y="872" class="body">342</text>
-<text x="660" y="872" class="body">374</text>
+<text x="460" y="872" class="body">358</text>
+<text x="660" y="872" class="body">382</text>
 <line x1="60" y1="887" x2="900" y2="887" class="rule"/>
 <text x="60" y="945" class="note">User bubble cap = floor(0.82 × C × displayScale) / displayScale</text>
 <text x="60" y="975" class="note">At W393 and @3×: 296 pt maximum · Bubble padding16 × 12 pt</text>

@@ -201,7 +201,9 @@ final class NativeUIFlows: XCTestCase {
         XCTAssertTrue(latest.waitForExistence(timeout: 10))
         XCTAssertTrue(composer.waitForExistence(timeout: 10))
         app.swipeUp()
-        XCTAssertLessThanOrEqual(composer.frame.minY - latest.frame.maxY, 28,
+        // The text starts 16 pt inside the card (ODLayout.composerTopInset);
+        // the band that matters lies between the message and the card.
+        XCTAssertLessThanOrEqual(composer.frame.minY - 16 - latest.frame.maxY, 20,
                                  "The latest message should not leave an empty scroll band above the composer")
         capture("chat-latest-compact-dark")
     }
@@ -316,6 +318,24 @@ final class NativeUIFlows: XCTestCase {
         XCTAssertTrue(app.staticTexts["submission.status"].label.contains("file-1"))
         app.buttons["chat.composer.stop"].tap()
         XCTAssertTrue(app.buttons["chat.composer.send"].exists)
+    }
+
+    @MainActor func testComposerCardFocusesTextAndGrowsByWholeLines() {
+        let app = launch()
+        let field = app.descendants(matching: .any).matching(identifier: "chat.composer.text").firstMatch
+        let add = app.buttons["chat.composer.add"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        // The gap above the action row belongs to no control; the card owns it.
+        app.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: app.frame.midX, dy: (field.frame.maxY + add.frame.minY) / 2))
+            .tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        let lineHeight = field.frame.height
+        let gap = add.frame.minY - field.frame.maxY
+        field.typeText("First line\nSecond line")
+        XCTAssertGreaterThan(field.frame.height, lineHeight * 1.5)
+        XCTAssertEqual(add.frame.minY - field.frame.maxY, gap, accuracy: 1)
+        capture("composer-card-focus-two-lines")
     }
 
     @MainActor func testChatComposerAndKeyboardStayTogether() {

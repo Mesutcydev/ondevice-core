@@ -38,26 +38,33 @@ public enum ODLayout {
     public static let minimumHit = 11 * unit
     public static let panelCorner = 6 * unit
     public static let panelHorizontalInset = 4 * unit
-    /// Extra breathing room between the writing text and the panel inset.
-    /// The composer scales this with the body text size.
-    public static let textAdditionalHorizontalInset = 5 * unit
+    /// Added to `composerSideInset` so the writing text starts 20 pt in, level
+    /// with the leading icon's glyph. Fixed, like system layout margins.
+    public static let textAdditionalHorizontalInset = 3 * unit
     /// Inner inset for recent conversation labels in home and sidebar lists.
     public static let conversationRowInset = 2 * unit
     /// Retained for source compatibility with early sidebar integrations.
     public static let sidebarConversationInset = conversationRowInset
 
-    // Two-row composer with a clear writing inset above the text baseline.
-    // Both writing and action targets retain a 44-point minimum.
-    // The corner radius stays fixed so a taller draft does not become a capsule.
-    public static let composerTopInset = 3 * unit
-    public static let composerTextMinimumHeight = minimumHit
-    public static let composerFooterGap = unit
-    public static let composerBottomInset = 4 * unit
+    // Two-row composer in the common chat-app shape: text on an even 20-pt
+    // inset level with the leading icon, a constant gap above a row of 44-pt
+    // targets, and a 36-pt send circle concentric with the corner
+    // (30 = 18 + 12). The whole card focuses the text, so the text row can
+    // take its natural height. The radius stays fixed so a taller draft does
+    // not become a capsule.
+    public static let composerSideInset = 2 * unit
+    public static let composerTopInset = 4 * unit
+    public static let composerFooterGap = 2 * unit
+    public static let composerBottomInset = 2 * unit
+    public static let composerSendDiameter = 9 * unit
+    /// Composer glyphs grow with text only this far, so they stay inside
+    /// their 44-pt targets and the send circle, as system bar icons do.
+    public static let composerGlyphMaximum = 7 * unit
     public static let composerAttachmentGap = unit
     public static let composerInputStackGap = unit
-    public static let composerMinimumHeight = composerTopInset + composerTextMinimumHeight
-        + composerFooterGap + minimumHit + composerBottomInset
-    public static let composerCorner: CGFloat = 26
+    public static let composerMinimumHeight = composerTopInset + composerFooterGap
+        + minimumHit + composerBottomInset
+    public static let composerCorner: CGFloat = 30
     public static let composerMicPrimaryGap = 2 * unit
     public static let composerAttachmentFaceHeight: CGFloat = 38
     public static let standardIcon = 5 * unit
@@ -94,7 +101,7 @@ public enum ODLayout {
                                     footerNaturalHeight: CGFloat,
                                     attachmentStripHeight: CGFloat? = nil) -> CGFloat {
         let attachmentHeight = attachmentStripHeight.map { max(0, $0) + composerAttachmentGap } ?? 0
-        return composerTopInset + attachmentHeight + max(composerTextMinimumHeight, textNaturalHeight)
+        return composerTopInset + attachmentHeight + max(0, textNaturalHeight)
             + composerFooterGap + max(minimumHit, footerNaturalHeight) + composerBottomInset
     }
 

@@ -25,7 +25,7 @@ public struct ODComposer: View {
     @Environment(\.displayScale) private var displayScale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ScaledMetric(relativeTo: .body) private var glyphSize = ODLayout.standardIcon
-    @ScaledMetric(relativeTo: .body) private var writingHorizontalInset = ODLayout.textAdditionalHorizontalInset
+    private let writingHorizontalInset = ODLayout.textAdditionalHorizontalInset
 
     public init(text: Binding<String>, focus: FocusState<Bool>.Binding,
                 attachments: [ODAttachment], isResponding: Bool,
@@ -72,17 +72,20 @@ public struct ODComposer: View {
                     .lineLimit(1...6)
                     .submitLabel(.return)
                     .padding(.horizontal, writingHorizontalInset)
-                    .frame(maxWidth: .infinity, minHeight: ODLayout.composerTextMinimumHeight, alignment: .topLeading)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                     .focused(focus)
                     .accessibilityLabel("Message")
                     .accessibilityIdentifier("chat.composer.text")
                     .padding(.bottom, ODLayout.composerFooterGap)
                 footer
             }
-            .padding(.horizontal, ODLayout.panelHorizontalInset)
+            .padding(.horizontal, ODLayout.composerSideInset)
             .padding(.top, ODLayout.composerTopInset)
             .padding(.bottom, ODLayout.composerBottomInset)
             .frame(maxWidth: .infinity, minHeight: ODLayout.composerMinimumHeight)
+            // Any tap on the card that no control claims focuses the text.
+            .contentShape(composerShape)
+            .onTapGesture { focus.wrappedValue = true }
             .background(ODPalette.surface, in: composerShape)
             .overlay { composerShape.strokeBorder(ODPalette.line, lineWidth: ODLayout.hairline(displayScale: displayScale)) }
             .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: text)
@@ -98,7 +101,7 @@ public struct ODComposer: View {
     }
 
     private var prompt: Text {
-        Text("Message…").foregroundStyle(ODPalette.secondary)
+        Text("Message").foregroundStyle(ODPalette.secondary)
     }
 
     private var footer: some View {
@@ -117,7 +120,6 @@ public struct ODComposer: View {
             }
         }
         .frame(minHeight: ODLayout.minimumHit)
-        .padding(.trailing, ODLayout.unit)
     }
 
     /// A naked utility icon. The host view supplies the glyph and behaviour;
@@ -134,7 +136,7 @@ public struct ODComposer: View {
             onAdd()
         } label: {
             Image(systemName: "plus")
-                .font(.system(size: glyphSize, weight: .medium))
+                .font(.system(size: min(glyphSize, ODLayout.composerGlyphMaximum), weight: .medium))
                 .foregroundStyle(ODPalette.secondary)
                 .frame(width: ODLayout.minimumHit, height: ODLayout.minimumHit)
                 .contentShape(Rectangle())
@@ -153,7 +155,7 @@ public struct ODComposer: View {
             onToggle(!isOn)
         } label: {
             Image(systemName: isOn ? "lightbulb.fill" : "lightbulb")
-                .font(.system(size: glyphSize, weight: .medium))
+                .font(.system(size: min(glyphSize, ODLayout.composerGlyphMaximum), weight: .medium))
                 .foregroundStyle(isOn ? ODPalette.text : ODPalette.secondary)
                 .frame(width: ODLayout.minimumHit, height: ODLayout.minimumHit)
                 .contentShape(Rectangle())
@@ -219,7 +221,7 @@ private struct ODComposerPrimaryAction: View {
     let hapticStyle: UIImpactFeedbackGenerator.FeedbackStyle
     let action: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @ScaledMetric(relativeTo: .body) private var glyphSize = 18
+    @ScaledMetric(relativeTo: .body) private var glyphSize = 16
 
     var body: some View {
         Button {
@@ -227,11 +229,12 @@ private struct ODComposerPrimaryAction: View {
             action()
         } label: {
             Image(systemName: symbol)
-                .font(.system(size: glyphSize, weight: .semibold))
+                .font(.system(size: min(glyphSize, ODLayout.composerSendDiameter / 2), weight: .semibold))
                 .foregroundStyle(ODPalette.onSend)
-                .frame(width: ODLayout.minimumHit, height: ODLayout.minimumHit)
+                .frame(width: ODLayout.composerSendDiameter, height: ODLayout.composerSendDiameter)
                 .background(ODPalette.send, in: Circle())
-                .contentShape(Circle())
+                .frame(width: ODLayout.minimumHit, height: ODLayout.minimumHit)
+                .contentShape(Rectangle())
                 .contentTransition(.symbolEffect(.replace))
         }
         .buttonStyle(ODComposerPrimaryActionStyle())
@@ -395,7 +398,7 @@ public struct ODKeyboardDismissKey: View {
 }
 
 /// Lifts the composer by the measured overlap of the keyboard-toolbar
-/// control. The 8pt gap under the card is `composerInputStackGap`; this
+/// control. The gap under the card is `composerInputStackGap`; this
 /// object only removes the part of the toolbar that draws through it.
 @MainActor
 public final class ODComposerKeyboardClearance: ObservableObject {

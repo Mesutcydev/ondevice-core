@@ -26,7 +26,7 @@
   ],
   "runtimePlatform": [
     "iOS 27 or newer",
-    "macOS 13 or newer through Mac Catalyst"
+    "macOS 27 or newer on Apple silicon through Mac Catalyst"
   ],
   "developmentStatus": "active",
   "keywords": [

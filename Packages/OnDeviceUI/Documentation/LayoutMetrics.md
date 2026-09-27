@@ -1,6 +1,6 @@
 # Layout metrics
 
-The current chat reference places model selection in the centered navigation item. The composer keeps the writing area and attachment, microphone and Send/Stop controls. Image attachments have 96-point previews (112 at accessibility sizes), with independent 44-point removal targets. The writing inset scales with body text.
+The current chat reference places model selection in the centered navigation item. The composer keeps the writing area and attachment, microphone and Send/Stop controls. Image attachments have 96-point previews (112 at accessibility sizes), with independent 44-point removal targets. The writing inset is fixed, like system layout margins.
 
 The chat composer is one app-owned panel: draft attachments, writing area, then a separate control footer. Its structure follows the reviewed official Codex desktop composer, adapted to OnDevice's supported local-model and attachment actions. This document defines its dimensions and responsive equations without assigning geometry to Apple's native navigation or tab bars.
 
@@ -19,17 +19,21 @@ All dimensions below are logical points. The spacing unit is **u = 4 pt**. These
 | User bubble vertical padding | 3u per side | 12 pt |
 | User bubble corner radius | 5u | 20 pt |
 | Minimum interactive target | 11u | 44 pt |
-| Composer panel radius | fixed | 26 pt |
-| Composer panel horizontal inset | 4u per side | 16 pt |
-| Additional writing-area horizontal inset | 5u per side at the base text size | 20 pt |
-| Writing-area total horizontal inset | 4u + 5u per side at the base text size | 36 pt |
-| Panel top inset | 3u | 12 pt |
-| Writing-area minimum height | 11u | 44 pt |
-| Gap before control footer | u | 4 pt |
+| Composer panel radius | send radius + send gap | 30 pt |
+| Composer side inset (footer targets) | 2u per side | 8 pt |
+| Additional writing-area horizontal inset | 3u per side | 12 pt |
+| Writing-area total horizontal inset | 2u + 3u per side | 20 pt |
+| Panel top inset | 4u | 16 pt |
+| Writing area | measured natural height, one body line = 22 pt | T |
+| Gap before control footer | 2u | 8 pt |
 | Footer minimum height | 11u | 44 pt |
-| Panel bottom inset | 4u | 16 pt |
-| Panel minimum height, no attachments | 12 + 44 + 4 + 44 + 16 | 120 pt |
-| Content action glyph at base text size | 5u | 20 pt |
+| Panel bottom inset | 2u | 8 pt |
+| Panel height, one line, no attachments | 16 + 22 + 8 + 44 + 8 | 98 pt |
+| Send circle diameter, inside a 44 pt target | 9u | 36 pt |
+| Send circle gap to the right and bottom edges | 8 + (44 − 36) / 2 | 12 pt |
+| Content action glyph at base text size | 5u, capped at 7u | 20 pt |
+
+The text starts 20 pt from the left and 16 pt from the top of the panel, level with the leading + glyph. The send circle is concentric with the panel corner: 30 = 36 / 2 + 12. Any tap on the panel that no control claims focuses the text, so the writing area keeps its natural height instead of a 44 pt minimum, and each new line grows the panel by one line.
 
 The composer and message bubbles are app content surfaces. Their radii do not set the shape of a native button, tab bar or toolbar. Native buttons use Apple's APIs and preserve their actual intrinsic sizing. A 44 pt target is a minimum; native styling, localization and Dynamic Type may require more room.
 
@@ -48,12 +52,12 @@ For an illustrative **W = 393 pt**, using the declared app insets:
 | Region | Calculation | Width |
 | --- | --- | ---: |
 | Transcript / outer composer panel | 393 − 2 × 16 | 361 pt |
-| Footer layout area | 361 − 2 × 16 | 329 pt |
-| Writing-area text region at base body size | 361 − 2 × (16 + 20) | 289 pt |
+| Footer layout area | 361 − 2 × 8 | 345 pt |
+| Writing-area text region | 361 − 2 × 20 | 321 pt |
 
 These figures describe app-owned layout regions at the example width. They are not measurements of native button rendering, glyph bounds, text-field internals or a particular iPhone's current safe area.
 
-The footer has Add attachment, optional microphone, and Send / Stop. A flexible spacer keeps the leading and trailing actions apart. Let **I = C − 32** be the footer width, and **A**, **V** and **S** the measured control widths. With a microphone, its minimum flexible space is:
+The footer has Add attachment, optional microphone, and Send / Stop. A flexible spacer keeps the leading and trailing actions apart. Let **I = C − 16** be the footer width, and **A**, **V** and **S** the measured control widths. With a microphone, its minimum flexible space is:
 
 `I − A − V − S − 16`
 
@@ -61,7 +65,7 @@ The 16 pt accounts for the 8 pt minimum flexible gap and the 8 pt microphone-to-
 
 `I − A − S − 8`
 
-At the example **I = 329 pt**, assuming minimum target widths **A = V = S = 44 pt**, the flexible gap has **181 pt** with a microphone and **233 pt** without one. The model picker is measured independently by the native navigation bar and truncates its visible title when space is limited; its accessibility value retains the full model name.
+At the example **I = 345 pt**, assuming minimum target widths **A = V = S = 44 pt**, the flexible gap has **197 pt** with a microphone and **249 pt** without one. The model picker is measured independently by the native navigation bar and truncates its visible title when space is limited; its accessibility value retains the full model name.
 
 At accessibility text sizes, the composer footer remains one row of action targets. Native control sizes remain unconstrained by a fixed toolbar height.
 
@@ -69,9 +73,9 @@ At accessibility text sizes, the composer footer remains one row of action targe
 
 Let **T** be the writing area's measured natural height and **F** the footer's measured natural height, excluding the panel's explicit padding. For no attachments:
 
-`H = 12 + max(44, T) + 4 + max(44, F) + 16`
+`H = 16 + T + 8 + max(44, F) + 8`
 
-The lower bound is therefore **120 pt**. This is a minimum content equation, not a prediction that every device renders a 120 pt panel. If the measured footer is 50 pt and the text region stays within its 44 pt minimum, the equation produces 126 pt. The panel accepts the larger native measurement. One ordinary attachment row is **120 + 44 + 4 = 168 pt**.
+With one body line (T = 22 pt) the panel is **98 pt**; each further line adds its line height. This is a content equation, not a prediction that every device renders a 98 pt panel. If the measured footer is 50 pt, the equation produces 104 pt. The panel accepts the larger native measurement. One ordinary attachment row gives **98 + 44 + 4 = 146 pt**.
 
 When attachments are present, let **A** be the measured strip height. The strip is inside the panel above the writing area, and adds one 4 pt gap:
 
@@ -79,11 +83,11 @@ When attachments are present, let **A** be the measured strip height. The strip 
 
 The accessibility footer uses the same equation: **F** is its measured action-row height. There is no fixed extra allowance that assumes native control heights.
 
-The writing-area's extra inset scales with the body text size. The implementation uses natural SwiftUI stacks and minimum frames. `composerPanelHeight(textNaturalHeight:footerNaturalHeight:attachmentStripHeight:)` records the calculation for review or integration; it is not used to override Apple's measurements with guessed values.
+The writing-area inset stays fixed at every text size. The implementation uses natural SwiftUI stacks and minimum frames. `composerPanelHeight(textNaturalHeight:footerNaturalHeight:attachmentStripHeight:)` records the calculation for review or integration; it is not used to override Apple's measurements with guessed values.
 
 ## Typography and draft behavior
 
-Messages and draft text use semantic `.body` fonts. Secondary model information and filenames use semantic text styles; the wordmark uses `.largeTitle` or `.title` with a serif design. Content action glyphs begin at 20 pt and scale through `@ScaledMetric(relativeTo: .body)`. SwiftUI supplies actual font metrics and Dynamic Type growth. Native tab-bar and navigation typography is left to the system.
+Messages and draft text use semantic `.body` fonts. Secondary model information and filenames use semantic text styles; the wordmark uses `.largeTitle` or `.title` with a serif design. Content action glyphs begin at 20 pt and scale through `@ScaledMetric(relativeTo: .body)` up to 28 pt, so they stay inside their 44 pt targets; the send arrow stops at half the send circle. SwiftUI supplies actual font metrics and Dynamic Type growth. Native tab-bar and navigation typography is left to the system.
 
 The multiline field supports **one through six visible lines**. Return inserts a newline; there is no submit-to-send callback. Sending is an explicit action. Whitespace is inspected only to detect an empty draft; submission preserves the user's exact text, including code indentation and intentional newlines.
 

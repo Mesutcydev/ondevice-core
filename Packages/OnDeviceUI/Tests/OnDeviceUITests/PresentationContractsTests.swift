@@ -65,15 +65,19 @@ struct PresentationContractsTests {
     }
 
     @Test func composerHeightBudgetFollowsContentRows() {
-        let empty = ODLayout.composerPanelHeight(textNaturalHeight: 44, footerNaturalHeight: 44)
-        #expect(empty == 120)
-        #expect((112...120).contains(empty))
-        let attached = ODLayout.composerPanelHeight(textNaturalHeight: 44, footerNaturalHeight: 44, attachmentStripHeight: 44)
-        #expect(attached == 168)
-        #expect((160...168).contains(attached))
-        #expect(ODLayout.composerCorner == 26)
+        // One body line (22 pt) and a 44-pt action row.
+        let empty = ODLayout.composerPanelHeight(textNaturalHeight: 22, footerNaturalHeight: 44)
+        #expect(empty == 98)
+        let attached = ODLayout.composerPanelHeight(textNaturalHeight: 22, footerNaturalHeight: 44, attachmentStripHeight: 44)
+        #expect(attached == 146)
+        // A second line grows the card by exactly one line.
+        #expect(ODLayout.composerPanelHeight(textNaturalHeight: 44, footerNaturalHeight: 44) == empty + 22)
+        // The send circle sits concentrically in the corner.
+        let sendGap = ODLayout.composerSideInset + (ODLayout.minimumHit - ODLayout.composerSendDiameter) / 2
+        #expect(ODLayout.composerCorner == ODLayout.composerSendDiameter / 2 + sendGap)
+        #expect(ODLayout.composerCorner == 30)
         #expect(ODLayout.composerInputStackGap == 4)
-        #expect(ODLayout.textAdditionalHorizontalInset == 20)
+        #expect(ODLayout.composerSideInset + ODLayout.textAdditionalHorizontalInset == 20)
         #expect(ODLayout.conversationRowInset == 8)
     }
 
