@@ -6,7 +6,7 @@ frameworks, CocoaPods, and signing profiles are not stored in Git.
 ## Prerequisites
 
 - Apple-silicon Mac
-- Xcode 26 or newer
+- Xcode 27 or newer (the app targets iOS 27)
 - Xcode command-line tools
 - Homebrew
 - At least 15 GB of free space for native framework builds and package caches
@@ -73,16 +73,17 @@ upstream repository transitively. This is a documented forward-compatibility
 risk in [Docs/XCODE_SECURITY_SETTINGS.md](Docs/XCODE_SECURITY_SETTINGS.md), not
 a missing package in the current lockfile.
 
-## Run in Simulator
+## Simulator and device builds
 
-Select the `OnDeviceMax` scheme and an iOS 27 Simulator. Simulator builds
-do not require a paid Apple Developer Program membership.
-
-The vendored `CoreAIShared` package imports the iOS-27 `CoreAI` module, which
+The app runs only on a physical iPhone with iOS 27. The vendored `CoreAIShared` package imports the iOS-27 `CoreAI` module, which
 ships in the iPhoneOS SDK but not in the iPhoneSimulator SDK. A Simulator
 destination therefore fails to resolve that import; use a device destination
 (`generic/platform=iOS`) for compile verification. See
 `Docs/MAX_RELEASE_AUDIT.md`.
+
+For UI review in the Simulator, use the [`QA/NativeUI`](QA/NativeUI/README.md)
+host, which runs the production `OnDeviceUI` package against stub services
+and needs no paid Apple Developer Program membership.
 
 The source-only build starts without bundled AI weights. Features that depend
 on a model become available after the user downloads a compatible model from
@@ -150,16 +151,24 @@ rm -rf Packages/VoiceAgentOrb/.build
 swift test --package-path Packages/VoiceAgentOrb
 ```
 
-Run app unit tests from Xcode or with a Simulator destination:
+App unit tests are hosted in the app, so they run only on a connected iPhone:
 
 ```bash
 xcodebuild test \
   -workspace OnDeviceMax.xcworkspace \
   -scheme OnDeviceMax \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+  -destination 'platform=iOS,name=YOUR_IPHONE'
 ```
 
-The exact Simulator name depends on the runtimes installed on your Mac.
+Without a device, compile them as the gate:
+
+```bash
+xcodebuild build-for-testing \
+  -workspace OnDeviceMax.xcworkspace \
+  -scheme OnDeviceMax \
+  -destination 'generic/platform=iOS' \
+  CODE_SIGNING_ALLOWED=NO
+```
 
 Thermal, Jetsam, Metal-residency, and battery claims require physical-device
 validation; see [Docs/VALIDATION.md](Docs/VALIDATION.md).

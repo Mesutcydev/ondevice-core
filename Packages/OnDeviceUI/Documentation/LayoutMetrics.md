@@ -20,15 +20,15 @@ All dimensions below are logical points. The spacing unit is **u = 4 pt**. These
 | User bubble corner radius | 5u | 20 pt |
 | Minimum interactive target | 11u | 44 pt |
 | Composer panel radius | fixed | 26 pt |
-| Composer panel horizontal inset | 3u per side | 12 pt |
+| Composer panel horizontal inset | 4u per side | 16 pt |
 | Additional writing-area horizontal inset | 5u per side at the base text size | 20 pt |
-| Writing-area total horizontal inset | 3u + 4u per side at the base text size | 28 pt |
+| Writing-area total horizontal inset | 4u + 5u per side at the base text size | 36 pt |
 | Panel top inset | 3u | 12 pt |
 | Writing-area minimum height | 11u | 44 pt |
 | Gap before control footer | u | 4 pt |
 | Footer minimum height | 11u | 44 pt |
-| Panel bottom inset | u | 4 pt |
-| Panel minimum height, no attachments | 12 + 44 + 4 + 44 + 4 | 108 pt |
+| Panel bottom inset | 4u | 16 pt |
+| Panel minimum height, no attachments | 12 + 44 + 4 + 44 + 16 | 120 pt |
 | Content action glyph at base text size | 5u | 20 pt |
 
 The composer and message bubbles are app content surfaces. Their radii do not set the shape of a native button, tab bar or toolbar. Native buttons use Apple's APIs and preserve their actual intrinsic sizing. A 44 pt target is a minimum; native styling, localization and Dynamic Type may require more room.
@@ -48,12 +48,12 @@ For an illustrative **W = 393 pt**, using the declared app insets:
 | Region | Calculation | Width |
 | --- | --- | ---: |
 | Transcript / outer composer panel | 393 − 2 × 16 | 361 pt |
-| Footer layout area | 361 − 2 × 12 | 337 pt |
-| Writing-area text region at base body size | 361 − 2 × (12 + 16) | 305 pt |
+| Footer layout area | 361 − 2 × 16 | 329 pt |
+| Writing-area text region at base body size | 361 − 2 × (16 + 20) | 289 pt |
 
 These figures describe app-owned layout regions at the example width. They are not measurements of native button rendering, glyph bounds, text-field internals or a particular iPhone's current safe area.
 
-The footer has Add attachment, optional microphone, and Send / Stop. A flexible spacer keeps the leading and trailing actions apart. Let **I = C − 24** be the footer width, and **A**, **V** and **S** the measured control widths. With a microphone, its minimum flexible space is:
+The footer has Add attachment, optional microphone, and Send / Stop. A flexible spacer keeps the leading and trailing actions apart. Let **I = C − 32** be the footer width, and **A**, **V** and **S** the measured control widths. With a microphone, its minimum flexible space is:
 
 `I − A − V − S − 16`
 
@@ -61,7 +61,7 @@ The 16 pt accounts for the 8 pt minimum flexible gap and the 8 pt microphone-to-
 
 `I − A − S − 8`
 
-At the example **I = 337 pt**, assuming minimum target widths **A = V = S = 44 pt**, the flexible gap has **189 pt** with a microphone and **241 pt** without one. The model picker is measured independently by the native navigation bar and truncates its visible title when space is limited; its accessibility value retains the full model name.
+At the example **I = 329 pt**, assuming minimum target widths **A = V = S = 44 pt**, the flexible gap has **181 pt** with a microphone and **233 pt** without one. The model picker is measured independently by the native navigation bar and truncates its visible title when space is limited; its accessibility value retains the full model name.
 
 At accessibility text sizes, the composer footer remains one row of action targets. Native control sizes remain unconstrained by a fixed toolbar height.
 
@@ -69,9 +69,9 @@ At accessibility text sizes, the composer footer remains one row of action targe
 
 Let **T** be the writing area's measured natural height and **F** the footer's measured natural height, excluding the panel's explicit padding. For no attachments:
 
-`H = 12 + max(44, T) + 4 + max(44, F) + 4`
+`H = 12 + max(44, T) + 4 + max(44, F) + 16`
 
-The lower bound is therefore **108 pt**. This is a minimum content equation, not a prediction that every device renders a 108 pt panel. If the measured footer is 50 pt and the text region stays within its 44 pt minimum, the equation produces 114 pt. The panel accepts the larger native measurement. One ordinary attachment row is **108 + 44 + 4 = 156 pt**.
+The lower bound is therefore **120 pt**. This is a minimum content equation, not a prediction that every device renders a 120 pt panel. If the measured footer is 50 pt and the text region stays within its 44 pt minimum, the equation produces 126 pt. The panel accepts the larger native measurement. One ordinary attachment row is **120 + 44 + 4 = 168 pt**.
 
 When attachments are present, let **A** be the measured strip height. The strip is inside the panel above the writing area, and adds one 4 pt gap:
 

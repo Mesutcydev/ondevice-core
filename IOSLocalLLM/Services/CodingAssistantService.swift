@@ -784,6 +784,10 @@ final class CodingAssistantService: ObservableObject {
     /// Single owner for drain-before-clear. Overlapping unload callers join
     /// this job instead of nilling `generateTask` and freeing a live runtime.
     private var cleanupTask: Task<Void, Never>?
+    /// Bumped by `stopGeneration`. A request parked waiting for a busy or
+    /// loading runtime captures it and drops itself if Stop ran meanwhile,
+    /// so a queued send can't start decoding after the user stopped.
+    private var stopEpoch = 0
     private var activePCCRequestID: UUID?
     /// Identity of the MLX load currently allowed to publish a container.
     /// Model loading itself cannot be interrupted safely, so an unload/model
@@ -2358,6 +2362,8 @@ final class CodingAssistantService: ObservableObject {
         // briefly onto the main actor so a just-finished decode can flip
         // back to `.ready`, then retry once.
         if case .generating = state {
+            let epoch = stopEpoch
+            let model = activeSelectionID
             Task { @MainActor [weak self] in
                 guard let self else {
                     onError?("Service unavailable")
@@ -2365,9 +2371,13 @@ final class CodingAssistantService: ObservableObject {
                     return
                 }
                 var waited = 0
-                while case .generating = self.state, waited < 40 {
+                while case .generating = self.state, waited < 40, self.stopEpoch == epoch {
                     try? await Task.sleep(nanoseconds: 50_000_000)
                     waited += 1
+                }
+                guard self.parkedRequestMayStart(epoch: epoch, model: model, onError: onError) else {
+                    onComplete(0)
+                    return
                 }
                 guard case .ready = self.state else {
                     onError?("The model stayed busy; retry shortly")
@@ -2403,6 +2413,8 @@ final class CodingAssistantService: ObservableObject {
             ? ggufModel != nil
             : resolvedMLXContainer != nil
         if state != .ready || !hasRuntimeModel {
+            let epoch = stopEpoch
+            let model = activeSelectionID
             Task { [weak self] in
                 guard let self else {
                     onError?("Service unavailable")
@@ -2414,7 +2426,7 @@ final class CodingAssistantService: ObservableObject {
                     // deadline so a wedged load (network stall, HubApi hang)
                     // can't spin this poll forever and freeze the send.
                     let deadline = Date().addingTimeInterval(60)
-                    while case .loading = self.state {
+                    while case .loading = self.state, self.stopEpoch == epoch {
                         if Date() >= deadline {
                             onError?("Timed out waiting for the model to load")
                             onComplete(0)
@@ -2424,6 +2436,10 @@ final class CodingAssistantService: ObservableObject {
                     }
                 } else if state != .ready {
                     await self.load()
+                }
+                guard self.parkedRequestMayStart(epoch: epoch, model: model, onError: onError) else {
+                    onComplete(0)
+                    return
                 }
                 let isLoaded = self.isLlamaCppExecution
                     ? self.ggufModel != nil
@@ -3778,6 +3794,31 @@ final class CodingAssistantService: ObservableObject {
     // MARK: - Stop
 
     func stopGeneration() {
+        stopEpoch &+= 1
+        cancelBackendGeneration()
+    }
+
+    /// Rechecks a request that waited for a busy or loading runtime. Stop
+    /// drops it silently, like a running decode; a model switch reports an
+    /// error rather than answering with a model the caller didn't pick.
+    private func parkedRequestMayStart(
+        epoch: Int,
+        model: String,
+        onError: (@Sendable (String) -> Void)?
+    ) -> Bool {
+        guard stopEpoch == epoch else { return false }
+        guard activeSelectionID == model else {
+            onError?("The model changed while this request was waiting. Send it again.")
+            return false
+        }
+        return true
+    }
+
+    /// Cancels the running decode on every backend without dropping parked
+    /// requests. Unload cleanup uses it because `load()` unloads a stale
+    /// runtime first, and that must not drop the request waiting on it; the
+    /// local API uses it after a stream finishes normally.
+    func cancelBackendGeneration() {
         if let activePCCRequestID {
             ApplePrivateCloud.cancel(activePCCRequestID)
         }
@@ -3873,7 +3914,7 @@ final class CodingAssistantService: ObservableObject {
         let pccInflight = pccGenerateTask
         let coreAIInflight = coreAIGenerateTask
         activeLoadID = nil
-        stopGeneration()
+        cancelBackendGeneration()
         if let inflight {
             _ = await inflight.value
         }

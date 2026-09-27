@@ -66,10 +66,10 @@ struct PresentationContractsTests {
 
     @Test func composerHeightBudgetFollowsContentRows() {
         let empty = ODLayout.composerPanelHeight(textNaturalHeight: 44, footerNaturalHeight: 44)
-        #expect(empty == 116)
+        #expect(empty == 120)
         #expect((112...120).contains(empty))
         let attached = ODLayout.composerPanelHeight(textNaturalHeight: 44, footerNaturalHeight: 44, attachmentStripHeight: 44)
-        #expect(attached == 164)
+        #expect(attached == 168)
         #expect((160...168).contains(attached))
         #expect(ODLayout.composerCorner == 26)
         #expect(ODLayout.composerInputStackGap == 4)

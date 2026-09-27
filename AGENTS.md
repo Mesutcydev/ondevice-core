@@ -91,16 +91,18 @@ Fast repository validation:
 swift test --package-path Packages/VoiceAgentOrb
 ```
 
-App tests, after native dependencies and CocoaPods are available:
+App tests, after native dependencies and CocoaPods are available, run only on
+a connected iPhone (CoreAI is not in the Simulator SDK):
 
 ```bash
 xcodebuild test \
   -workspace OnDeviceMax.xcworkspace \
   -scheme OnDeviceMax \
-  -destination 'platform=iOS Simulator,name=iPhone 17 Pro'
+  -destination 'platform=iOS,name=YOUR_IPHONE'
 ```
 
-Use an installed Simulator name when the example destination is unavailable.
+Without a device, use `build-for-testing` with `-destination 'generic/platform=iOS'
+CODE_SIGNING_ALLOWED=NO` as the compile gate, and `QA/NativeUI` for UI.
 For focused changes, run the smallest relevant test selection first, then the
 repository validator.
 

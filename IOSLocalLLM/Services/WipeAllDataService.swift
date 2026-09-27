@@ -128,6 +128,12 @@ enum WipeAllDataService {
            let mems = try? JSONSerialization.jsonObject(with: memData) as? [Any] {
             r.memoriesDeleted = mems.count
         }
+        // Clear the loaded copies too. Removing only the keys left the facts
+        // in memory: they were still injected into the next prompt, and the
+        // next edit persisted them again.
+        MemoryStore.shared.clearAll()
+        SnippetStore.shared.resetToStarter()
+        BenchmarkService.shared.clearHistory()
         for k in keysToWipe { defaults.removeObject(forKey: k) }
 
         // 5. Reset onboarding + model-pick flags so the next launch feels

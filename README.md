@@ -122,15 +122,17 @@ setup, tests, accessibility, and documentation are especially welcome.
 ## Requirements
 
 - macOS with Apple silicon
-- Xcode 26 or newer
-- iOS 18 or newer
+- Xcode 27 or newer
+- iOS 27 or newer, on a physical iPhone (the Core AI runtime is not in the
+  Simulator SDK)
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 - [CocoaPods](https://cocoapods.org/)
 - CMake
 
-An Apple Developer Program membership is not required for Simulator builds.
-Running on a physical device uses your own signing identity and bundle
-identifier.
+The app itself builds only for a device and uses your own signing identity and
+bundle identifier. UI work is reviewed in the Simulator through the
+[`QA/NativeUI`](QA/NativeUI/README.md) host, which needs no paid Apple
+Developer Program membership.
 
 ## Build
 

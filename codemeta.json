@@ -25,7 +25,7 @@
     "C++"
   ],
   "runtimePlatform": [
-    "iOS 18 or newer",
+    "iOS 27 or newer",
     "macOS 13 or newer through Mac Catalyst"
   ],
   "developmentStatus": "active",

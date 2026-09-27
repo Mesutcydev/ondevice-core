@@ -2385,8 +2385,19 @@ actor LocalAPIServer {
                     onError: { message in signal.fail(message) }
                 )
             }
-            continuation.onTermination = { _ in
-                Task { @MainActor in CodingAssistantService.shared.stopGeneration() }
+            // A client disconnect is a Stop. A normal finish keeps the old
+            // backend reset (it also retires this request's resumable cache)
+            // but must not Stop: that would drop a chat request waiting for
+            // this decode to end.
+            continuation.onTermination = { termination in
+                Task { @MainActor in
+                    let service = CodingAssistantService.shared
+                    if case .cancelled = termination {
+                        service.stopGeneration()
+                    } else {
+                        service.cancelBackendGeneration()
+                    }
+                }
             }
         }
     }
