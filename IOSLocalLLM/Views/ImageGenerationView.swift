@@ -5,6 +5,7 @@ import OnDeviceUI
 struct ImageGenerationView: View {
     var onOpenMenu: (() -> Void)? = nil
     @ObservedObject private var service = ImageGenerationService.shared
+    @ObservedObject private var parentalControls: ParentalControlManager
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicType
     @FocusState private var promptFocused: Bool
@@ -13,13 +14,33 @@ struct ImageGenerationView: View {
     @State private var steps: Double = 0
     @State private var showsModels = false
     @State private var showsOptions = false
+    @State private var showsContentConcern = false
+    @State private var confirmsImageDeletion = false
     @State private var deletingModel: ImageGenerationService.Model?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @MainActor
+    init(onOpenMenu: (() -> Void)? = nil, parentalControls: ParentalControlManager? = nil) {
+        self.onOpenMenu = onOpenMenu
+        self.parentalControls = parentalControls ?? .shared
+    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: ODLayout.groupGap) {
+                    if service.selectedModel.id == "stabilityai/sd-turbo" || service.selectedModel.id == "stabilityai/sdxl-turbo" {
+                        Text("Powered by Stability AI")
+                            .font(.subheadline)
+                            .accessibilityIdentifier("image.model.attribution")
+                    }
+                    if let restriction = parentalControls.imageGenerationRestriction {
+                        Label(restriction, systemImage: "lock.shield")
+                            .font(.body)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .accessibilityIdentifier("image.parental-restriction")
+                        NavigationLink("Parental controls") { ParentalControlsView(controls: parentalControls) }
+                    }
                     if let image = service.image {
                         Image(uiImage: image)
                             .resizable().scaledToFit()
@@ -73,6 +94,24 @@ struct ImageGenerationView: View {
                         }
                     }
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    if service.image != nil {
+                        Menu {
+                            Button("Report content concern", systemImage: "flag") {
+                                showsContentConcern = true
+                            }
+                            .accessibilityIdentifier("image.report-content")
+                            Button("Delete image", systemImage: "trash", role: .destructive) {
+                                confirmsImageDeletion = true
+                            }
+                            .disabled(service.isWorking)
+                            .accessibilityIdentifier("image.delete-result")
+                        } label: {
+                            Label("Image actions", systemImage: "ellipsis")
+                        }
+                        .accessibilityIdentifier("image.result-actions")
+                    }
+                }
                 ToolbarItemGroup(placement: .keyboard) {
                     ODKeyboardDismissKey(focus: $promptFocused)
                     Spacer(minLength: 0)
@@ -80,6 +119,15 @@ struct ImageGenerationView: View {
             }
             .sheet(isPresented: $showsModels) { modelPicker }
             .sheet(isPresented: $showsOptions) { options }
+            .sheet(isPresented: $showsContentConcern) { ContentConcernView() }
+            .alert("Delete this generated image?", isPresented: $confirmsImageDeletion) {
+                Button("Delete image", role: .destructive) { service.discardResult() }
+                    .accessibilityIdentifier("image.delete-result.confirm")
+                Button("Cancel", role: .cancel) {}
+                    .accessibilityIdentifier("image.delete-result.cancel")
+            } message: {
+                Text("This removes the image from OnDevice. Copies you exported to Photos or another app remain there.")
+            }
         }
     }
 
@@ -115,9 +163,10 @@ struct ImageGenerationView: View {
                 .padding(.vertical, 4)
                 .accessibilityIdentifier("image.draft.prompt")
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: ODLayout.elementGap) { modelActionLabel; Spacer(minLength: 8); createButton }
-                VStack(alignment: .leading, spacing: ODLayout.elementGap) { modelActionLabel; createButton }
+                HStack(spacing: ODLayout.elementGap) { modelMenu; Spacer(minLength: 8); createButton }
+                VStack(alignment: .leading, spacing: ODLayout.elementGap) { modelMenu; createButton }
             }
+            if !service.isWorking && !service.isInstalled(service.selectedModel) { modelDownloadStatus }
         }
         .padding(ODLayout.panelHorizontalInset)
         .glassEffect(.regular, in: RoundedRectangle(cornerRadius: ODLayout.panelCorner))
@@ -126,10 +175,26 @@ struct ImageGenerationView: View {
         .background { ODPageBackground().ignoresSafeArea() }
     }
 
-    @ViewBuilder private var modelActionLabel: some View {
-        if !service.isInstalled(service.selectedModel) && !service.isWorking {
-            Text("Image model required").font(.subheadline).foregroundStyle(.secondary)
-        } else { modelMenu }
+    /// The download is its own step: it never waits for a prompt, and the
+    /// prompt can be written while it runs.
+    @ViewBuilder private var modelDownloadStatus: some View {
+        let model = service.selectedModel
+        if service.isDownloading(model) {
+            ProgressView(value: service.downloadProgress(for: model)) {
+                Text("Downloading \(model.displayName)")
+            } currentValueLabel: {
+                Text(service.downloadProgress(for: model), format: .percent.precision(.fractionLength(0)))
+            }
+            .font(.footnote).tint(ODPalette.text)
+            .accessibilityIdentifier("image.model.download-progress")
+        } else if let error = service.directDownloadErrors[model.id] {
+            Label(error, systemImage: "exclamationmark.circle")
+                .font(.footnote).foregroundStyle(.secondary)
+        } else {
+            Text("\(model.displayName) needs a one-time \(model.sizeLabel) download. You can write your prompt meanwhile.")
+                .font(.footnote).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var modelMenu: some View {
@@ -154,9 +219,12 @@ struct ImageGenerationView: View {
     private var generationFailed: Bool { if case .failed = service.state { return true }; return false }
 
     private var createButton: some View {
-        Button(service.isCancelling ? "Stopping" : service.isWorking ? "Cancel" : !service.isInstalled(service.selectedModel) ? "Choose model" : generationFailed ? "Retry" : "Create", systemImage: service.isWorking ? "stop.fill" : !service.isInstalled(service.selectedModel) ? "cube" : generationFailed ? "arrow.clockwise" : "arrow.up") {
+        let model = service.selectedModel
+        let installed = service.isInstalled(model)
+        let needsDownload = !installed && !service.isDownloading(model)
+        return Button(service.isCancelling ? "Stopping" : service.isWorking ? "Cancel" : needsDownload ? "Download" : generationFailed ? "Retry" : "Create", systemImage: service.isWorking ? "stop.fill" : needsDownload ? "arrow.down.circle" : generationFailed ? "arrow.clockwise" : "arrow.up") {
             if service.isWorking { service.cancel() }
-            else if !service.isInstalled(service.selectedModel) { showsModels = true }
+            else if needsDownload { service.startDownload(model) }
             else {
                 // The service snapshots model, prompt and options before any asynchronous work.
                 ODBridge.shared.store.requestExclusiveOperation("Creating an image") {
@@ -165,9 +233,11 @@ struct ImageGenerationView: View {
                 promptFocused = false
             }
         }
+        .disabled(parentalControls.blocksImageGeneration && !service.isWorking)
         .buttonStyle(.glassProminent).odInkProminent()
+        .accessibilityIdentifier("image.create")
         .controlSize(.large)
-        .disabled(service.isCancelling || (!service.isWorking && service.isInstalled(service.selectedModel) && prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
+        .disabled(service.isCancelling || (!service.isWorking && !needsDownload && (!installed || prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)))
     }
 
     private var modelPicker: some View {

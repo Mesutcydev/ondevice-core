@@ -21,6 +21,27 @@ Contributors adding or replacing an asset must record:
 from repository facts. The PNG is a raster rendering of that SVG. Neither file
 contains model weights, screenshots of private data, or third-party logos.
 
+## OnDevice Max portfolio motion — October 10, 2026
+
+`PortfolioAssets/OnDeviceMax-Motion/` contains original promotional motion
+created with AI assistance for the project owner, following the black, white,
+red, and dotted typography direction of `https://ondevice.fun/`. Original code,
+composition, device frames, animation, posters, and video exports are copyright
+2026 Mesut and iOS Local LLM contributors and use this repository's MIT license.
+
+The graphic reuses the repository's App Store QA captures for Chat, Sidebar,
+Voice, and Models (`AppStoreScreenshots/1.0-81/en-US/iphone-6.9/`) and the current
+angular waveform `AppIcon-1024.png`. Source paths and SHA-256 hashes are recorded
+in the asset directory's manifest. Screens contain synthetic fixture content;
+no people, user documents, credentials, model weights, stock art, music, or font
+files were added. Native iPhone chrome and symbols are interface context, not
+Apple endorsement. The video is promotional artwork, not runtime performance
+evidence. Fonts are rendered from local system fonts and are not redistributed.
+
+The browser version contains original Canvas/JavaScript with no runtime
+dependencies. Native export tools (`@napi-rs/canvas` 0.1.100, sharp, and FFmpeg)
+are not included in the deliverable. See its README for recreation and embedding.
+
 ## Simulator screenshots
 
 `Docs/Images/Screenshots/*.png` were captured on 29 July 2026 from an

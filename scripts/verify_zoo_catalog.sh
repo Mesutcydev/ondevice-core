@@ -13,6 +13,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CATALOG="$ROOT/IOSLocalLLM/Models/CoreAIZooCatalog.swift"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
+SWIFT_FLAGS=()
+if [ "${1:-}" = "--appstore" ]; then SWIFT_FLAGS=(-DAPP_STORE); fi
 
 # CoreAIZooCatalog now also adapts entries into the full workbench's
 # AssistantModel. The catalog invariants are still pure Foundation, so provide
@@ -63,7 +65,16 @@ func check(_ condition: Bool, _ message: String) {
 
 let catalog = CoreAIZooCatalog.iphoneLanguageModels
 
-check(catalog.count >= 20, "catalog has only \(catalog.count) entries")
+#if APP_STORE
+check(!catalog.contains { $0.hfRepo.lowercased().contains("youtu") }, "public catalog includes Youtu")
+check(!CoreAIZooCatalog.isTextGenerationPack(id: "coreai:zoo-youtu-llm-2b"), "legacy Youtu identity is still activatable")
+#endif
+
+#if APP_STORE
+check(catalog.count >= 33, "public catalog has only \(catalog.count) entries")
+#else
+check(catalog.count >= 34, "catalog has only \(catalog.count) entries")
+#endif
 
 let ids = catalog.map(\.id)
 check(Set(ids).count == ids.count, "duplicate catalog ids")
@@ -130,7 +141,7 @@ let smallest = catalog.min { $0.approxDownloadBytes < $1.approxDownloadBytes }
 check(smallest?.id == "zoo-qwen3-0.6b-official-ios", "unexpected smallest pack: \(smallest?.id ?? "nil")")
 
 // Auto-load classification: non-chat packs must never enter the text runtime.
-for category in [CoreAIZooModel.Category.vision, .utility] {
+for category in [CoreAIZooModel.Category.vision, .utility, .classifier] {
     for m in CoreAIZooCatalog.models(in: category) {
         check(!CoreAIZooCatalog.isTextGenerationPack(id: m.id), "\(m.id): non-chat pack would auto-load")
     }
@@ -148,6 +159,15 @@ check(!CoreAIZooCatalog.isTextGenerationPack(id: "zoo-gemma4-e2b"),
       "withdrawn Gemma 4 identity must not fall through to custom chat")
 check(!catalog.contains { $0.pathPrefix?.contains("_tbl") == true },
       "catalog includes a static-table bundle without its required provider")
+check(CoreAIZooCatalog.model(id: "zoo-minicpm5-1b")?.contextWindow == 1_024,
+      "MiniCPM5 1B must retain its iPhone 1K limit")
+check(!catalog.contains { $0.id == "zoo-julia-1" }, "Julia is only audited on Mac")
+for m in CoreAIZooCatalog.models(in: .classifier) + CoreAIZooCatalog.macOnlyClassifierModels {
+    check(!m.supportsTools && !m.supportsThinking, "\(m.id): classifier claims chat capabilities")
+    check(!CoreAIZooCatalog.isTextGenerationPack(id: m.id), "\(m.id): classifier would auto-load as chat")
+    check(CoreAIZooCatalog.assistantModel(forSelectionID: m.assistantSelectionID) == nil,
+          "\(m.id): classifier appears in the assistant picker")
+}
 for m in catalog {
     check(CoreAIZooCatalog.model(id: m.id)?.hfRepo == m.hfRepo, "\(m.id): id lookup failed")
 }
@@ -183,5 +203,6 @@ failures.forEach { print("  - \($0)") }
 exit(1)
 SWIFT
 
-swiftc -O -o "$WORK/verify" "$WORK/stubs.swift" "$CATALOG" "$WORK/main.swift"
+CLANG_MODULE_CACHE_PATH="$WORK/ModuleCache" \
+    swiftc -O "${SWIFT_FLAGS[@]}" -o "$WORK/verify" "$WORK/stubs.swift" "$ROOT/IOSLocalLLM/Models/AppStoreModelPolicy.swift" "$CATALOG" "$WORK/main.swift"
 "$WORK/verify"

@@ -22,6 +22,13 @@ struct ODImageStudioView: View {
         NavigationStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: ODLayout.labelGap) {
+                        if let restriction = store.imageGenerationRestriction {
+                            Label(restriction, systemImage: "lock.shield")
+                                .font(.body)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("image.parental-restriction")
+                            Button("Open Settings") { store.send(.openSettings) }
+                        }
                         if let resultURL = store.imageResultURL {
                             ODGeneratedResultView(url: resultURL)
                             if let prompt = store.imageResultPrompt, !prompt.isEmpty {

@@ -44,6 +44,7 @@ struct StudioAnswerActionRow: View {
     let onSpeak: () -> Void
     var onQuickAction: ((QuickActionKind) -> Void)? = nil
     @State private var showsDetails = false
+    @State private var showsContentConcern = false
     @State private var copied = false
     @State private var regenerations = 0
 
@@ -89,6 +90,7 @@ struct StudioAnswerActionRow: View {
                 Section {
                     Button("Share response", systemImage: "square.and.arrow.up", action: onShare)
                     Button("Response details", systemImage: "info.circle") { showsDetails = true }
+                    Button("Report content concern", systemImage: "flag") { showsContentConcern = true }
                 }
             } label: {
                 Image(systemName: "ellipsis").frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
@@ -98,6 +100,7 @@ struct StudioAnswerActionRow: View {
             Spacer(minLength: 0)
         }
         .font(.subheadline).foregroundStyle(.secondary).buttonStyle(.plain)
+        .sheet(isPresented: $showsContentConcern) { ContentConcernView() }
         .sheet(isPresented: $showsDetails) {
             NavigationStack {
                 Form {

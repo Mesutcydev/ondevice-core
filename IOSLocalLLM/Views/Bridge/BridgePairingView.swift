@@ -522,7 +522,7 @@ private struct LocalAPIServerCard: View {
             manager.refreshAddresses()
         }
         .sheet(isPresented: $showDownloadedModelPicker) {
-            AssistantModelPickerView(downloadedOnly: true)
+            AssistantModelPickerView(downloadedOnly: true, allowsAPIProviders: false)
         }
     }
 

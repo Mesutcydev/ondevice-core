@@ -45,6 +45,7 @@ final class FastVLMService: ObservableObject {
     private var downloadObserver: NSObjectProtocol?
 
     private init() {
+        guard !AppStoreModelPolicy.isPublicDistribution else { return }
         // Auto-reload when the FastVLM MLX download completes
         downloadObserver = NotificationCenter.default.addObserver(
             forName: .hfModelDownloadCompleted,
@@ -89,6 +90,7 @@ final class FastVLMService: ObservableObject {
 
     private var modelContainer: ModelContainer?
     private var generationTask: Task<Void, Never>?
+    private var loadLifetime = PresentationRequestLifetime()
     private static var didRegister = false
 
     // MARK: - Load
@@ -104,12 +106,31 @@ final class FastVLMService: ObservableObject {
     /// If the model weights are not yet downloaded, all components report `.unloaded`
     /// with a clear message. The UI can then prompt the user to download.
     func load() async {
+        if let restriction = AppStoreModelPolicy.restriction(for: Self.modelID) {
+            componentStatus.encoder = .failed(restriction)
+            componentStatus.projector = .failed(restriction)
+            componentStatus.decoder = .failed(restriction)
+            componentStatus.tokenizer = .failed(restriction)
+            return
+        }
         // Re-entrancy guard. The download-completed observer and a manual
         // load can call load() concurrently; both would reach
         // loadContainer() since every await below yields the MainActor.
         // Mark .loading BEFORE the first await so the second caller sees it
         // (each early-return path below overwrites the status again).
         guard !componentStatus.isLoading else { return }
+        if modelContainer != nil, componentStatus.canGenerate { return }
+        guard let loadID = loadLifetime.begin() else { return }
+        defer {
+            if Task.isCancelled, loadLifetime.accepts(loadID) {
+                modelContainer = nil
+                componentStatus = FastVLMComponentStatus()
+                loadProgress = 0
+                loadStatusMessage = ""
+                Task { await MLXGenerationGate.shared.clearCacheWhenIdle() }
+            }
+            loadLifetime.finish(loadID)
+        }
         componentStatus.encoder   = .loading
         componentStatus.projector = .loading
         componentStatus.decoder   = .loading
@@ -123,10 +144,12 @@ final class FastVLMService: ObservableObject {
         MLXVisionService.shared.unload()
         await LlamaCppVLMService.shared.unloadAndWaitForCleanup()
         await MLXGenerationGate.shared.clearCacheWhenIdle()
+        guard loadLifetime.accepts(loadID), !Task.isCancelled else { return }
 
         // Step 1: Register model types (idempotent)
         if !FastVLMService.didRegister {
             await FastVLM.register(modelFactory: VLMModelFactory.shared)
+            guard loadLifetime.accepts(loadID), !Task.isCancelled else { return }
             FastVLMService.didRegister = true
         }
 
@@ -170,6 +193,7 @@ final class FastVLMService: ObservableObject {
         // FastVLM SIGKILL on load. safetyBlocker enforces os_proc_available_memory
         // with the shared load-spike headroom, closing that gap.
         await MLXGenerationGate.shared.clearCacheWhenIdle()
+        guard loadLifetime.accepts(loadID), !Task.isCancelled else { return }
         if let block = MemoryAdvisor.safetyBlocker(for: Self.modelID) {
             componentStatus.encoder   = .failed(block)
             componentStatus.projector = .failed(block)
@@ -199,17 +223,30 @@ final class FastVLMService: ObservableObject {
 
         // Step 5: Load via VLMModelFactory
         do {
+            try ModelCheckpointCompatibility.validateMLXDirectory(mlxDir)
             let config = ModelConfiguration(directory: mlxDir)
             // Gated so the Metal weight uploads can't race a concurrent
             // MLXVision load or a CodingAssistant generate.
-            let container = try await MLXGenerationGate.shared.run { [weak self] in
+            try await MLXGenerationGate.shared.run { [weak self] in
                 // Snapshot `weak self` into a local `let` so the inner
                 // Task captures an immutable binding — silences the
                 // Swift 6 "captured var 'self'" warning that fires when
                 // a [weak self] capture is re-captured by a Sendable
                 // closure inside.
                 let weakSelf = self
-                return try await VLMModelFactory.shared.loadContainer(
+                guard await MainActor.run(body: {
+                    weakSelf?.loadLifetime.accepts(loadID) == true
+                }) else { throw MLXGenerationGate.Cancelled() }
+                if let block = MemoryAdvisor.capacityBlocker(
+                    footprint: MemoryAdvisor.estimatedFootprint(for: Self.modelID),
+                    memory: MemoryAdvisor.memorySnapshot,
+                    reserve: MemoryAdvisor.loadHeadroomReserve,
+                    runtime: .mlx, lowMemoryEnabled: false
+                ) {
+                    throw NSError(domain: "MemoryAdvisor", code: 2,
+                                  userInfo: [NSLocalizedDescriptionKey: block])
+                }
+                var loaded: ModelContainer? = try await VLMModelFactory.shared.loadContainer(
                     from: HubApiDownloader(),
                     configuration: config
                 ) { progress in
@@ -219,6 +256,7 @@ final class FastVLMService: ObservableObject {
                         // Hops are unordered — drop stale fractions so the
                         // percentage can't render backwards.
                         guard let weakSelf,
+                              weakSelf.loadLifetime.accepts(loadID),
                               fraction >= weakSelf.loadProgress else { return }
                         weakSelf.loadProgress = fraction
                         // Weights are local — every byte read is a "Preparing"
@@ -227,8 +265,16 @@ final class FastVLMService: ObservableObject {
                         weakSelf.loadStatusMessage = "Preparing \(pct)%"
                     }
                 }
+                await MainActor.run { [weakSelf, loaded] in
+                    guard let weakSelf, weakSelf.loadLifetime.accepts(loadID),
+                          !Task.isCancelled else { return }
+                    weakSelf.modelContainer = loaded
+                }
+                loaded = nil
+                mlxClearCache()
             }
-            modelContainer = container
+            guard loadLifetime.accepts(loadID), modelContainer != nil,
+                  !Task.isCancelled else { return }
             let elapsedMs = Date().timeIntervalSince(loadStart) * 1000
             ModelUsageTracker.shared.recordLoadTime(modelID: Self.modelID, ms: elapsedMs)
             componentStatus.encoder   = .ready
@@ -239,6 +285,7 @@ final class FastVLMService: ObservableObject {
             loadStatusMessage = ""
             ToastCenter.shared.success("FastVLM ready")
         } catch is MLXGenerationGate.Cancelled {
+            guard loadLifetime.accepts(loadID) else { return }
             // App backgrounded or gate drained mid-load. Reset back to a
             // clean unloaded state — not a failure.
             componentStatus.encoder   = .unloaded
@@ -248,6 +295,7 @@ final class FastVLMService: ObservableObject {
             loadProgress = 0
             loadStatusMessage = ""
         } catch {
+            guard loadLifetime.accepts(loadID), !Task.isCancelled else { return }
             let msg = error.localizedDescription
             componentStatus.encoder   = .failed(msg)
             componentStatus.projector = .failed(msg)
@@ -275,6 +323,10 @@ final class FastVLMService: ObservableObject {
         settings: FastVLMGenerationSettings
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
+            if let restriction = AppStoreModelPolicy.restriction(for: Self.modelID) {
+                continuation.finish(throwing: FastVLMError.decoderNotLoaded(restriction))
+                return
+            }
             guard let container = modelContainer else {
                 continuation.finish(throwing: FastVLMError.decoderNotLoaded(
                     "FastVLM model not loaded. " +
@@ -315,7 +367,8 @@ final class FastVLMService: ObservableObject {
                 // next RepetitionContext logits lookup traps in MLX.getItem.
                 // Keep the processor disabled until upstream handles batched
                 // prompts; temperature and top-p sampling remain unchanged.
-                repetitionPenalty: nil
+                repetitionPenalty: nil,
+                prefill: .init(chunking: .remainder)
             )
 
             // A second analyze() must not leave the previous generation
@@ -376,7 +429,7 @@ final class FastVLMService: ObservableObject {
                                         continuation.yield(text)
                                     case .info(let completion):
                                         info = completion
-                                    case .toolCall:
+                                    case .toolCall, .rejectedToolCall:
                                         break
                                     }
                                 }
@@ -441,6 +494,7 @@ final class FastVLMService: ObservableObject {
     }
 
     func unload() {
+        loadLifetime.cancel()
         // Same drain-before-clear pattern as CodingAssistantService.unload():
         // flushing the MLX buffer pool while a generation task is mid-Metal
         // command-buffer races the completion handler into
@@ -485,6 +539,7 @@ final class FastVLMService: ObservableObject {
     /// usable?" gate should consult this — not `isReady` — so a half-installed
     /// FastVLM can't be activated.
     static func installStatus() -> InstallStatus {
+        guard !AppStoreModelPolicy.isPublicDistribution else { return .notInstalled }
         let hasDecoder: Bool = {
             guard let mlxDir = FastVLMModelBundleValidator.mlxModelURL() else { return false }
             return directoryHasSafetensors(mlxDir)

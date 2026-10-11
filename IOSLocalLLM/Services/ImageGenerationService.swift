@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import UIKit
 import ImageIO
 import MLX
@@ -55,7 +56,13 @@ final class ImageGenerationService: ObservableObject {
     /// to the variants proven to load through this library — adding an
     /// arbitrary HF repo here only works if it ships the SD/SDXL
     /// `unet/ text_encoder/ vae/ tokenizer/` layout.
-    nonisolated static let catalog: [Model] = [
+    nonisolated static var catalog: [Model] {
+        guard AppStoreModelPolicy.isPublicDistribution,
+              !AppStoreModelPolicy.auditedRevisions.isEmpty else { return sourceCatalog }
+        return sourceCatalog.filter { AppStoreModelPolicy.downloadRevision(for: $0.id) != nil }
+    }
+
+    private nonisolated static let sourceCatalog: [Model] = [
         Model(
             id: "stabilityai/sdxl-turbo",
             displayName: "SDXL Turbo",
@@ -197,7 +204,17 @@ final class ImageGenerationService: ObservableObject {
     private var cancellationTask: Task<Void, Never>?
     private var directDownloadTasks: [String: Task<Void, Never>] = [:]
 
-    private init() {}
+    private var parentalObserver: AnyCancellable?
+    private init() {
+        parentalObserver = ParentalControlManager.shared.$blocksImageGeneration
+            .sink { [weak self] restricted in
+                guard restricted else { return }
+                self?.cancel()
+                self?.image = nil
+                self?.resultURL = nil
+                self?.resultPrompt = nil
+            }
+    }
 
     // MARK: - Installed-state helpers
 
@@ -302,6 +319,11 @@ final class ImageGenerationService: ObservableObject {
     }
 
     func deleteModel(_ model: Model) {
+        // Delete is reachable from the Models page while Image studio works.
+        guard !isWorking else {
+            ToastCenter.shared.error("Model in use", detail: "Wait for the image to finish, then delete the model.")
+            return
+        }
         let dir = repoDirectory(model.id)
         try? FileManager.default.removeItem(at: dir)
         if model.id == selectedModelID { state = .idle }
@@ -309,6 +331,22 @@ final class ImageGenerationService: ObservableObject {
     }
 
     // MARK: - Generation
+
+    /// Removes the current app-owned result without deleting models or exports.
+    func discardResult() {
+        guard !isWorking else { return }
+        if let resultURL, FileManager.default.fileExists(atPath: resultURL.path) {
+            do { try FileManager.default.removeItem(at: resultURL) }
+            catch {
+                ToastCenter.shared.error("Could not delete image", detail: "Try again after closing any active share sheet.")
+                return
+            }
+        }
+        image = nil
+        resultURL = nil
+        resultPrompt = nil
+        resultModelID = nil
+    }
 
     func cancel() {
         guard generationLifetime.isRunning, !generationLifetime.isCancelled else { return }
@@ -323,6 +361,23 @@ final class ImageGenerationService: ObservableObject {
                   negativePrompt: String = "",
                   steps: Int? = nil,
                   seed: UInt64? = nil) {
+        guard genTask == nil, !generationLifetime.isRunning else { return }
+        if let restriction = AIContentPolicy.imageRequestRestriction(prompt) {
+            state = .failed(restriction)
+            statusMessage = restriction
+            return
+        }
+        guard let restriction = ParentalControlManager.shared.imageGenerationRestriction else {
+            beginGeneration(prompt: prompt,
+                            negativePrompt: AIContentPolicy.negativePrompt(including: negativePrompt),
+                            steps: steps, seed: seed)
+            return
+        }
+        state = .failed(restriction)
+        statusMessage = restriction
+    }
+
+    private func beginGeneration(prompt: String, negativePrompt: String, steps: Int?, seed: UInt64?) {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             ToastCenter.shared.info("Enter a prompt first")
@@ -529,8 +584,20 @@ final class ImageGenerationService: ObservableObject {
         do {
             // Return PNG Data (Sendable) from the gate — CGImage / UIImage are
             // not reliably Sendable across the actor boundary.
-            let availForCap = avail
             let pngData = try await MLXGenerationGate.shared.run { [self] () -> Data in
+                guard await MainActor.run(body: {
+                    self.generationLifetime.accepts(requestID)
+                }), !Task.isCancelled else { throw CancellationError() }
+                mlxClearCache()
+                // Downloading and waiting for the gate can take minutes.
+                // Recheck here, immediately before native model allocation.
+                let memory = MemoryAdvisor.memorySnapshot
+                guard memory.available >= needed else {
+                    throw NSError(domain: "MemoryAdvisor", code: 2, userInfo: [
+                        NSLocalizedDescriptionKey:
+                            "Not enough memory for \(model.displayName) now (~\(needed.formattedBytes) needed, \(memory.available.formattedBytes) available). Unload other models and retry."
+                    ])
+                }
                 // Bound MLX's allocator for the duration of THIS generation only.
                 // IOSLocalLLMApp deliberately leaves the cache unbounded globally —
                 // a low global cap starves the resident LLM and triggers Metal
@@ -546,33 +613,22 @@ final class ImageGenerationService: ObservableObject {
                 // (This mirrors the working TokenAI app's `tuneMLXMemory`.)
                 let prevCacheLimit = MLX.Memory.cacheLimit
                 let prevMemoryLimit = MLX.Memory.memoryLimit
-                // Always set a hard MLX memory ceiling — never leave it
-                // unbounded, even when the live measurement is unavailable
-                // (availForCap == 0 on simulator or early boot). Without
-                // this limit, MLX's unbounded allocator can push the process
-                // past the per-process ceiling and trigger a jetsam OOM kill
-                // — the exact crash this code path suffered during image
-                // generation on iPhone 18,2 (12 GB device, ~6.2 GB entitled
-                // per-process cap, SDXL Turbo ~5.2 GB working set + load
-                // spike exceeding available headroom).
-                //
                 // The cushion covers the transient load spike (on-disk read,
                 // float16→8-bit quantization, Metal upload) that briefly
                 // doubles the resident weight pages. 1 GB empirically fits
                 // SDXL Turbo and SD 2.1 on an entitled 12 GB device.
-                let limit: Int64
-                if availForCap > 0 {
-                    // measured headroom minus load-spike cushion, floored
-                    // at 1 GB so small-positive values still get a limit
-                    let cushion: Int64 = 1_024 * 1024 * 1024
-                    limit = max(1_024 * 1024 * 1024, Int64(availForCap) - cushion)
-                } else {
-                    // no measurement available — use a conservative ceiling
-                    // so MLX stays within the per-process limit on an
-                    // average device without starving the generation
-                    limit = 2_048 * 1024 * 1024
+                let allocated = MemoryBytes.add(Int64(MLX.Memory.activeMemory), Int64(MLX.Memory.cacheMemory))
+                let budget = MLXAllocationBudget.resolve(
+                    allocated: allocated, memory: memory, reserve: 1_024 * 1024 * 1024
+                )
+                // This is a TOTAL MLX limit. No fixed floor or missing-sample
+                // fallback may exceed the kernel's freshly measured grant.
+                guard budget.additional > 0 else {
+                    throw NSError(domain: "MemoryAdvisor", code: 2, userInfo: [
+                        NSLocalizedDescriptionKey: "Not enough memory headroom for image generation. Unload other models and retry."
+                    ])
                 }
-                MLX.Memory.memoryLimit = Int(limit)
+                MLX.Memory.memoryLimit = Int(clamping: budget.limit)
                 MLX.Memory.cacheLimit = 32 * 1024 * 1024
                 defer {
                     MLX.Memory.cacheLimit = prevCacheLimit
@@ -655,11 +711,13 @@ final class ImageGenerationService: ObservableObject {
                 return data
             }
 
-            guard generationLifetime.accepts(requestID), !Task.isCancelled else { return }
+            guard generationLifetime.accepts(requestID), !Task.isCancelled,
+                  !ParentalControlManager.shared.blocksImageGeneration else { return }
             let artifact = try await Task.detached(priority: .userInitiated) {
                 try Self.prepareResult(pngData, requestID: requestID)
             }.value
-            guard generationLifetime.accepts(requestID), !Task.isCancelled else {
+            guard generationLifetime.accepts(requestID), !Task.isCancelled,
+                  !ParentalControlManager.shared.blocksImageGeneration else {
                 try? FileManager.default.removeItem(at: artifact.url)
                 return
             }
@@ -736,6 +794,11 @@ final class ImageGenerationService: ObservableObject {
         _ model: Model,
         progress: @escaping (Double) -> Void
     ) async throws {
+        guard let revision = AppStoreModelPolicy.downloadRevision(for: model.id) else {
+            throw NSError(domain: "ImageGen", code: -2, userInfo: [
+                NSLocalizedDescriptionKey: AppStoreModelPolicy.missingRevisionMessage
+            ])
+        }
         let dir = repoDirectory(model.id)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
@@ -776,7 +839,7 @@ final class ImageGenerationService: ObservableObject {
             }
 
             let encoded = rel.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? rel
-            guard let url = URL(string: "https://huggingface.co/\(model.id)/resolve/main/\(encoded)") else {
+            guard let url = URL(string: "https://huggingface.co/\(model.id)/resolve/\(revision)/\(encoded)") else {
                 throw URLError(.badURL)
             }
 

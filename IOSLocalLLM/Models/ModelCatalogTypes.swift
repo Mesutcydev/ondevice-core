@@ -523,12 +523,14 @@ enum LocalModelRegistry {
     }
 
     static func storedVisionSelectionID(_ storedRepoID: String) -> String {
+        let migrated = AppStoreModelPolicy.visionSelection(storedRepoID)
+        if migrated != storedRepoID { return migrated }
         guard !storedRepoID.isEmpty else { return defaultVisionSelectionID }
         return legacyVisionSelectionAliases[storedRepoID.lowercased()] ?? storedRepoID
     }
 
     static func isDefaultVisionSelection(_ selectionID: String) -> Bool {
-        selectionID.isEmpty || selectionID == defaultVisionSelectionID
+        !AppStoreModelPolicy.isPublicDistribution && (selectionID.isEmpty || selectionID == defaultVisionSelectionID)
     }
 
     static func persistedVisionRepoID(for selectionID: String) -> String {

@@ -1,0 +1,5 @@
+This Stability AI Model is licensed under the Stability AI Community License, Copyright © Stability AI Ltd. All Rights Reserved
+
+Source: https://huggingface.co/stabilityai/sdxl-turbo
+Audited revision: 71153311d3dbb46851df1931d3ca6e939de83304
+No model weights are included in the source distribution.

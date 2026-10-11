@@ -36,6 +36,10 @@ final class AppSettings: ObservableObject {
     /// chunks. MLX still materializes its full weights — only GGUF truly pages
     /// weights from storage. The legacy key preserves existing user choices.
     @AppStorage("largeGGUFPagingEnabled")  var largeModelLowMemoryEnabled: Bool = false
+    /// Opt-in cache experiment for supported dense MLX text models. Existing
+    /// rotating/recurrent, vision, Core AI, GGUF, and Edge0 paths are unchanged.
+    @AppStorage(MLXAssistantKVCachePolicy.preferenceKey)
+    var assistantTurboQuantEnabled: Bool = false
     /// Max total seconds a model load may run before the watchdog auto-cancels
     /// it (reusing the same safe path as the Stop button). 0 disables the
     /// watchdog. Default 10 minutes — long enough for a multi-GB cold download

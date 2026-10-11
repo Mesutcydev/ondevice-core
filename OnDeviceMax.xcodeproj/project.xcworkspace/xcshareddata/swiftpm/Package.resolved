@@ -14,7 +14,7 @@
       "kind": "remoteSourceControl",
       "location": "https://github.com/PrismML-Eng/mlx-swift.git",
       "state": {
-        "revision": "e40e0a57a6f7ad08dc3fd87ad598a7aa6407d230"
+        "revision": "2a673fa8324ca9900f37445db1f66f4400e4af15"
       }
     },
     {
@@ -22,8 +22,8 @@
       "kind": "remoteSourceControl",
       "location": "https://github.com/ml-explore/mlx-swift-lm",
       "state": {
-        "revision": "bd4b7434e6bdb588c7ef55706ff8904cb7fd4c57",
-        "version": "3.31.4"
+        "revision": "3b339ad6e3b3f44c8121ecff5131c7fd55e075e6",
+        "version": "3.32.3"
       }
     },
     {

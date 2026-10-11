@@ -41,7 +41,7 @@ final class CodingAssistantRuntimeBackend: RuntimeEngineBackend {
         options: GenerationOptions
     ) async throws -> AsyncThrowingStream<TokenEvent, Error> {
         let service = CodingAssistantService.shared
-        guard service.activeModel.id == model.id else {
+        guard !service.activeExecutionLocation.isCloud, service.activeModel.id == model.id else {
             throw RuntimeError.modelNotLoaded(model.repoID)
         }
         return AsyncThrowingStream { continuation in

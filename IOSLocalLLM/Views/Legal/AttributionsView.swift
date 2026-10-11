@@ -13,7 +13,7 @@ struct AttributionsView: View {
 
     private var grouped: [(category: String, items: [Attribution])] {
         let dict = Dictionary(grouping: LegalDocuments.attributions, by: { $0.category })
-        let order = ["Language Model", "Vision–Language", "Object Detection",
+        let order = ["Language Model", "Vision–Language", "Object Detection", "Image Generation",
                      "Text-to-Speech", "Framework", "Service"]
         return order.compactMap { cat in
             guard let items = dict[cat] else { return nil }
@@ -35,6 +35,14 @@ struct AttributionsView: View {
                     .padding(.top, 4)
 
                     headerSection
+
+                    Text(verbatim: "Built with Llama")
+                        .font(T.sans(18, .semibold))
+                        .foregroundStyle(T.ink)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 18)
+                        .accessibilityIdentifier("legal.llamaAttribution")
 
                     ForEach(grouped, id: \.category) { group in
                         KSection(title: group.category.lowercased()
@@ -70,7 +78,7 @@ struct AttributionsView: View {
                 KMono(text: "thank you to the open-source community",
                        size: 12, weight: .semibold, color: T.ink)
             }
-            Text("OnDevice is built on the work of many researchers and engineers who released their models, frameworks, and tools openly. Each is listed below with its license and source.")
+            Text("OnDevice uses models, frameworks, and tools from many researchers and engineers. Selected components are listed below. The app also includes license texts in its third-party notices, and model details link to the selected source repository.")
                 .font(T.sans(11))
                 .foregroundColor(T.ink2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -93,11 +101,11 @@ struct AttributionsView: View {
             VStack(alignment: .leading, spacing: 10) {
                 noteRow(glyph: "●", color: T.accent,
                         title: "apple ml research models",
-                        body: "FastVLM models are distributed by Apple under the Apple Sample Code License / Apple ML Research license. They may only be used as permitted by that license.")
+                        body: "Apple's FastVLM sample code and model weights have separate licenses. Research model weights are excluded from the public App Store build.")
                 Rectangle().fill(T.rule).frame(height: 1)
                 noteRow(glyph: "●", color: T.accent,
-                        title: "tongyi qianwen license",
-                        body: "Qwen models permit commercial use with attribution under the Tongyi Qianwen License. Review the license before any commercial redistribution.")
+                        title: "model-specific licenses",
+                        body: "Model families and sizes can use different licenses. Review the exact repository's terms; Llama, Liquid AI, Stability AI, and other custom licenses include additional conditions beyond an open-source license tag.")
             }
             .padding(14)
             .kGlass(cornerRadius: StudioRadius.tile, fallbackFill: T.surface)

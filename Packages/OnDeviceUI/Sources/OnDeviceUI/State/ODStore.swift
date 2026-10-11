@@ -37,6 +37,7 @@ public final class ODStore: ObservableObject {
     @Published public var personas: [ODPersona] = []
     @Published public var selectedPersonaID: String?
     @Published public var imagePrompt = ""
+    @Published public var imageGenerationRestriction: String?
     @Published public var selectedImageModelID: String?
     @Published public var imagePhase: ODImagePhase = .idle
     /// Local file URL or a host-controlled remote result. This package does not save or upload it.

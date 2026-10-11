@@ -100,7 +100,7 @@ struct VisualModelPickerView: View {
         NavigationStack {
             List {
                     if hasStaleMLXSelection { staleSelectionCard }
-                    defaultRow
+                    if !AppStoreModelPolicy.isPublicDistribution { defaultRow }
                     if !downloadedVLMs.isEmpty {
                         downloadedSection
                     }

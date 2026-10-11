@@ -121,6 +121,53 @@ final class CoreAIModelStoreTests: XCTestCase {
         XCTAssertEqual(store.manifest?.id, "second-pack")
     }
 
+    func testRemovingSelectedPackByLibraryIDDeletesItsFilesAndKeepsSibling() throws {
+        let first = try installRemovalFixture(id: "first-pack")
+        let second = try installRemovalFixture(id: "second-pack")
+        try store.selectModel(id: first.assistantSelectionID)
+
+        try store.removeModel(id: first.assistantSelectionID)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: first.installationURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: second.resourcesURL.path))
+        XCTAssertNil(store.installedModel(id: first.assistantSelectionID))
+        XCTAssertEqual(store.installations.map(\.id), [second.id])
+        XCTAssertEqual(store.manifest?.id, second.id)
+        store.refresh()
+        XCTAssertEqual(store.manifest?.id, second.id)
+    }
+
+    func testRemovingImportedPrefixedIdentityPreservesOtherSelection() throws {
+        let kept = try installRemovalFixture(id: "kept-pack")
+        let imported = try installRemovalFixture(id: "coreai:imported-pack")
+        try store.selectModel(id: kept.assistantSelectionID)
+        XCTAssertEqual(imported.assistantSelectionID, "coreai:imported-pack")
+
+        try store.removeModel(id: imported.assistantSelectionID)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: imported.installationURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: kept.resourcesURL.path))
+        XCTAssertEqual(store.manifest?.id, kept.id)
+        XCTAssertEqual(store.installations.map(\.id), [kept.id])
+    }
+
+    func testRemovingLastPackClearsInstallationAndPersistedSelection() throws {
+        let installed = try installRemovalFixture(id: "last-pack")
+        try store.removeModel(id: installed.assistantSelectionID)
+        XCTAssertTrue(store.installations.isEmpty)
+        XCTAssertNil(store.modelResourcesURL)
+        XCTAssertNil(defaults.string(forKey: "CoreAI.installedVersion"))
+        XCTAssertThrowsError(try store.removeModel(id: installed.assistantSelectionID))
+    }
+
+    private func installRemovalFixture(id: String) throws -> CoreAIInstalledModel {
+        let source = tempRoot.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        try makeMinimalPack(at: source, name: "Fixture.aimodel")
+        try store.importModel(from: source, preferredID: id, preferredDisplayName: id)
+        return try XCTUnwrap(store.installedModel(id: id))
+    }
+
     func testImportRejectsParentContainingMultipleRuntimeBundles() throws {
         let wrapper = tempRoot.appendingPathComponent("variants", isDirectory: true)
         let first = wrapper.appendingPathComponent("int4", isDirectory: true)
@@ -253,6 +300,52 @@ final class CoreAIModelStoreTests: XCTestCase {
             )
         ) { error in
             XCTAssertEqual(error as? CoreAIModelStoreError, .invalidStagingLocation)
+        }
+    }
+
+    func testCustomEncoderImportIsAClassifierAndPersistsAcrossRefresh() throws {
+        let pack = tempRoot.appendingPathComponent("classifier", isDirectory: true)
+        try FileManager.default.createDirectory(at: pack, withIntermediateDirectories: true)
+        try makeMinimalPack(at: pack, name: "classifier.aimodel")
+        try ClassifierTestFixtures.metadata().write(to: pack.appendingPathComponent("metadata.json"))
+
+        let manifest = try store.importModel(from: pack, preferredID: "hf:custom/encoder#ios", preferredDisplayName: "Classifier")
+        XCTAssertEqual(manifest.capabilities.classification, true)
+        XCTAssertFalse(manifest.capabilities.textGeneration)
+        XCTAssertFalse(manifest.capabilities.streaming)
+        XCTAssertEqual(manifest.contextWindow, 512)
+        XCTAssertEqual(manifest.maximumOutputTokens, 0)
+        store.refresh()
+        XCTAssertEqual(store.installations.count, 1)
+        XCTAssertTrue(store.installedAssistantModels().isEmpty)
+    }
+
+    func testMalformedEncoderImportDoesNotFallThroughToChat() throws {
+        let pack = tempRoot.appendingPathComponent("invalid-classifier", isDirectory: true)
+        try FileManager.default.createDirectory(at: pack, withIntermediateDirectories: true)
+        try makeMinimalPack(at: pack, name: "classifier.aimodel")
+        try Data(#"{"metadata_version":"0.2","kind":"encoder"}"#.utf8)
+            .write(to: pack.appendingPathComponent("metadata.json"))
+        XCTAssertThrowsError(try store.importModel(from: pack)) {
+            XCTAssertEqual($0 as? CoreAIModelStoreError, .unsupportedModel)
+        }
+        XCTAssertTrue(store.installations.isEmpty)
+    }
+
+    func testLegacyManifestDecodesWithoutClassificationField() throws {
+        let old = try JSONEncoder().encode(makeManifest(id: "old-chat", version: "v1"))
+        let decoded = try JSONDecoder().decode(CoreAIModelManifest.self, from: old)
+        XCTAssertNil(decoded.capabilities.classification)
+        XCTAssertTrue(decoded.capabilities.textGeneration)
+    }
+
+    func testMacOnlyJuliaCatalogPackIsRefusedByIPhoneStore() throws {
+        let pack = tempRoot.appendingPathComponent("mac-julia", isDirectory: true)
+        try FileManager.default.createDirectory(at: pack, withIntermediateDirectories: true)
+        try makeMinimalPack(at: pack, name: "classifier.aimodel")
+        try ClassifierTestFixtures.metadata().write(to: pack.appendingPathComponent("metadata.json"))
+        XCTAssertThrowsError(try store.importModel(from: pack, preferredID: "zoo-julia-1", preferredDisplayName: "Julia 1")) {
+            XCTAssertEqual($0 as? CoreAIModelStoreError, .unsupportedModel)
         }
     }
 

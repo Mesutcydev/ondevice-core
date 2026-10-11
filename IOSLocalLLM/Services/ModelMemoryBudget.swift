@@ -29,6 +29,19 @@ struct ProcessMemoryBudget: Equatable, Sendable {
     }
 }
 
+/// MLX's allocator limit is a total allocation count. Live process headroom
+/// already deducts existing MLX buffers, so add those buffers back exactly
+/// once. Never invent a minimum grant when the kernel reports zero headroom.
+struct MLXAllocationBudget: Equatable, Sendable {
+    let limit: Int64
+    let additional: Int64
+
+    static func resolve(allocated: Int64, memory: ProcessMemoryBudget, reserve: Int64) -> Self {
+        let additional = max(0, memory.available - max(0, reserve))
+        return .init(limit: MemoryBytes.add(allocated, additional), additional: additional)
+    }
+}
+
 /// Saturating byte math: malformed model metadata must not wrap or trap into
 /// a smaller requirement. Saturation always causes admission to refuse.
 enum MemoryBytes {
@@ -66,7 +79,8 @@ struct MLXModelMemoryEstimate: Equatable, Sendable {
     static func estimate(
         weights: Int64, config: [String: Any], contextTokens: Int,
         rotatingCache: Bool, kvBits: Int, prefillTokens: Int,
-        allocatorCache: Int64, runtimeReserve: Int64
+        allocatorCache: Int64, runtimeReserve: Int64,
+        kvScheme: String? = nil
     ) -> Self? {
         let text = config["text_config"] as? [String: Any] ?? config
         let architecture = text["model_type"] as? String ?? config["model_type"] as? String ?? ""
@@ -119,13 +133,30 @@ struct MLXModelMemoryEstimate: Equatable, Sendable {
         // Cache growth uses 256-token blocks. Rotating prefill temporarily
         // retains a chunk beyond the window; account for both cases.
         let tokens = ceil(Double(contextTokens) / 256) * 256 + Double(prefillTokens)
-        let kv = 2 * Double(attentionLayers) * Double(kvHeads) * tokens * rowBytes
+        var kv = 2 * Double(attentionLayers) * Double(kvHeads) * tokens * rowBytes
+        if kvScheme == "turbo8v3", !rotatingCache {
+            // TurboQuant prefills in full precision, then compresses for
+            // decode. Budget raw + packed storage overlapping at conversion;
+            // decode savings must never relax the prefill admission gate.
+            // Keys: 8-bit affine U32 + FP32 scale/bias per 64 elements.
+            // Values: 3-bit U32 packing + one FP32 norm per head/token.
+            let keyRow = ceil(Double(headDim * 8) / 32) * 4
+                + ceil(Double(headDim) / 64) * 8
+            let valueRow = ceil(Double(headDim * 3) / 32) * 4 + 4
+            let rawRows = 2 * Double(headDim) * scalarBytes
+            kv = Double(attentionLayers) * Double(kvHeads) * tokens
+                * (rawRows + keyRow + valueRow)
+        }
         let chunk = Double(prefillTokens)
         // Workspace estimate for projections, gated MLP, logits, and one
         // layer's cache replacement/quantization transient. No layer-count
         // multiplier: layers execute sequentially.
         let activations = chunk * (4 * Double(hidden) + 3 * Double(intermediate) + Double(vocabulary)) * scalarBytes
-        let cacheTransient = 2 * Double(kvHeads) * tokens * Double(headDim) * scalarBytes
+        // TurboQuant's conversion/normalization works in FP32 even for a
+        // half-precision model. Keep that per-layer workspace in admission.
+        let transientScalarBytes = kvScheme == "turbo8v3" && !rotatingCache
+            ? max(4, scalarBytes) : scalarBytes
+        let cacheTransient = 2 * Double(kvHeads) * tokens * Double(headDim) * transientScalarBytes
         return .init(
             weights: weights, kvCache: MemoryBytes.count(kv),
             recurrentState: MemoryBytes.count(recurrentBytes),

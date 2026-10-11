@@ -246,6 +246,14 @@ final class LocalModelImportService: ObservableObject {
         // the GGUF pair sit where the loader and the readiness check expect.
         normalizeModelLayout(at: dest)
 
+        do {
+            try ModelCheckpointCompatibility.validateMLXDirectory(dest)
+        } catch {
+            // Only remove our staging copy; preserve the user's original.
+            try? FileManager.default.removeItem(at: dest)
+            throw error
+        }
+
         // Edge0 checkpoints have a native runtime only under their curated
         // identities. The artifact validators prove the exact release before
         // anything is moved into a preset destination.
@@ -411,7 +419,9 @@ final class LocalModelImportService: ObservableObject {
               let architectures = json["architectures"] as? [String]
         else { return present.contains("config.json") ? [] : ["config.json"] }
         let required = architectures.contains("Qwen3_5MoeForConditionalGeneration")
-            ? Edge0_35BModelArtifacts.downloadAllowlist
+            ? (present.contains(Edge0_35BRepackedExperts.manifestName)
+                ? Edge0_35BModelArtifacts.repackedRequiredFiles
+                : Edge0_35BModelArtifacts.downloadAllowlist)
             : Edge0ModelArtifacts.requiredFiles
         return required.filter { !present.contains($0) }
     }

@@ -1,0 +1,135 @@
+{
+  "metadata_version": "0.2",
+  "kind": "encoder",
+  "decision": {
+    "head": "encoder",
+    "layout": "laya",
+    "window": 512,
+    "head_max_len": 256,
+    "source_max_len": 1024,
+    "option_text_tokens": 48,
+    "cls_token_id": 2,
+    "sep_token_id": 1,
+    "pad_token_id": 0,
+    "mask_token_id": 4,
+    "functions": {
+      "main": "main",
+      "act": "act"
+    },
+    "inputs": {
+      "input_ids": {
+        "dtype": "int32",
+        "shape": [
+          1,
+          512
+        ],
+        "padding": "right, PAD 0"
+      },
+      "attention_mask": {
+        "dtype": "int32",
+        "shape": [
+          1,
+          512
+        ],
+        "values": "1 real token, 0 padding"
+      },
+      "qtype_onehot": {
+        "dtype": "float32",
+        "shape": [
+          1,
+          3
+        ],
+        "order": [
+          "choice",
+          "score",
+          "noul"
+        ]
+      }
+    },
+    "outputs": {
+      "token_logits": {
+        "dtype": "float32",
+        "shape": [
+          1,
+          512
+        ],
+        "read": "at the option marker positions"
+      },
+      "pooled_cls": {
+        "dtype": "float32",
+        "shape": [
+          1,
+          768
+        ],
+        "read": "input of the act function"
+      }
+    },
+    "act": {
+      "inputs": {
+        "pooled_cls": {
+          "dtype": "float32",
+          "shape": [
+            1,
+            768
+          ]
+        },
+        "feats": {
+          "dtype": "float32",
+          "shape": [
+            1,
+            4
+          ],
+          "order": [
+            "top1",
+            "top1_minus_top2",
+            "entropy_over_ln_max_k_2",
+            "max_k_2_over_255"
+          ],
+          "from": "softmax of the RAW marker logits (no temperature)"
+        }
+      },
+      "outputs": {
+        "act_logits": {
+          "dtype": "float32",
+          "shape": [
+            1,
+            2
+          ],
+          "class_0": "direct answer"
+        }
+      }
+    },
+    "source_temperature": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "temperature": [
+      2.042901414492613,
+      3.684653192472766,
+      3.629100511692587
+    ],
+    "temperature_by_options": {
+      "choice:2": 1.397546128996061,
+      "choice:3-5": 1.3591985667953796,
+      "choice:6-10": 1.0,
+      "choice:11+": 2.445877143176841,
+      "score:3-5": 3.684653192472766,
+      "noul:2": 3.629100511692587
+    },
+    "calibration_provenance": "litert-community/Laya-Multilingual-LiteRT laya_ml_calibration.json (4415 examples, six balanced fits; choice:6-10 fixed at T=1)"
+  },
+  "source": {
+    "hf_model_id": "convaiinnovations/laya",
+    "hf_revision": "1c5edc17a7acd8701df6fc341c0d179f1c62c982",
+    "subfolder": "multilingual"
+  },
+  "assets": {
+    "main": "laya_ml_wfp16_s512.h18p.aimodelc"
+  },
+  "language": {
+    "tokenizer": "convaiinnovations/laya/multilingual/tokenizer",
+    "vocab_size": 256000,
+    "max_context_length": 512
+  }
+}

@@ -117,6 +117,70 @@ final class Edge0_35BExpertLoaderTests: Edge0MLXTestCase {
 
     // MARK: - Expert loads
 
+    func testRepackedExpertMatchesAllNineOriginalTensorsWithOneRead() async throws {
+        try Edge0TestDevice.requireSimulatorMLXSupport()
+        let parts = Edge0_35BRepackedExperts.expectedParts
+        let expert = 255
+        let originalURL = directory.appendingPathComponent("model.safetensors")
+        let packedURL = directory.appendingPathComponent("experts-L00.bin")
+        FileManager.default.createFile(atPath: originalURL.path, contents: nil)
+        FileManager.default.createFile(atPath: packedURL.path, contents: nil)
+        let original = try FileHandle(forWritingTo: originalURL)
+        let packed = try FileHandle(forWritingTo: packedURL)
+        var locations = [String: Edge0TensorLocation]()
+        var cursor: UInt64 = 0
+        var block = Data()
+        for (number, part) in parts.enumerated() {
+            let name = "language_model.model.layers.0.mlp.switch_mlp.\(part.name)"
+            let total = UInt64(part.bytes) * 256
+            locations[name] = Edge0TensorLocation(
+                name: name, shard: originalURL.lastPathComponent,
+                payloadOffset: cursor, byteCount: total,
+                dtype: part.dtype == "U32" ? .u32 : .bf16, shape: [256] + part.shape
+            )
+            let bytes = Data(repeating: UInt8(number + 1), count: part.bytes)
+            try original.seek(toOffset: cursor + UInt64(expert * part.bytes))
+            try original.write(contentsOf: bytes)
+            block.append(bytes)
+            cursor += total
+        }
+        try original.truncate(atOffset: cursor)
+        try original.close()
+        try packed.seek(toOffset: UInt64(expert * block.count))
+        try packed.write(contentsOf: block)
+        try packed.close()
+        let index = Edge0SafetensorsIndex(
+            locations: locations, shardNames: [originalURL.lastPathComponent],
+            fileSizes: [originalURL.lastPathComponent: cursor]
+        )
+        let manifest = Edge0_35BRepackedExperts(
+            format: Edge0_35BRepackedExperts.formatName,
+            sourceRepo: Edge0ModelFamily.qwen35MoERepoID,
+            sourceRevision: Edge0ModelFamily.qwen35MoEPinnedRevision,
+            layers: 40, expertsPerLayer: 256, blockBytes: block.count,
+            parts: parts, fileSHA256: [:]
+        )
+        let stores = try Edge0TensorStoreSet(
+            directory: directory, shardNames: [originalURL.lastPathComponent, packedURL.lastPathComponent]
+        )
+        let key = Edge0ExpertKey(layer: 0, expert: expert)
+        let ordinary = try await Edge0_35BExpertLoader(index: index, stores: stores, layer: 0).load(key)
+        XCTAssertEqual(stores.readStatistics().totalReads, 9)
+        let converted = try await Edge0_35BExpertLoader(
+            index: index, stores: stores, layer: 0, repacked: manifest, readaheadHints: true
+        ).load(key)
+        XCTAssertEqual(stores.readStatistics().totalReads, 10)
+        for (left, right) in [(ordinary.gate, converted.gate), (ordinary.up, converted.up), (ordinary.down, converted.down)] {
+            for (a, b) in [(left.weight, right.weight), (left.scales, right.scales), (left.biases, right.biases)] {
+                XCTAssertEqual(a.shape, b.shape)
+                XCTAssertEqual(a.dtype, b.dtype)
+                XCTAssertEqual(a.asData().data, b.asData().data)
+            }
+        }
+        XCTAssertEqual(ordinary.byteSize, converted.byteSize)
+        await stores.closeAll()
+    }
+
     func testLoaderReadsExactPerExpertSlices() async throws {
         try Edge0TestDevice.requireSimulatorMLXSupport()
         let index = try writeFixture(layer: 0)

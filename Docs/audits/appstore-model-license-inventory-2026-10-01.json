@@ -1,0 +1,2568 @@
+{
+  "auditDate": "2026-10-01",
+  "purpose": "Source and revision evidence, including declared upstream models. License tags are author declarations, not approval of product use. Conditional licenses and owner eligibility require review. No model weights were fetched.",
+  "models": [
+    {
+      "repository": "Edge0/Edge0-35B-A3B-preview",
+      "requestedRevision": "main",
+      "revision": "3fe15cbf2bd5bbcdfd611035e1ac88971ff1cdab",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Qwen/Qwen3.6-35B-A3B"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "Edge0/Edge0-8B-A1B-preview",
+      "requestedRevision": "main",
+      "revision": "269b9a2c4a69d897c50e9f4e125328481d7c0fcf",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "inclusionAI/Ling-3.0-tiny-base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "FluidInference/silero-vad-coreml",
+      "requestedRevision": "b419383c55c110e2c9271fa6ee0ea83d03c70d96",
+      "revision": "b419383c55c110e2c9271fa6ee0ea83d03c70d96",
+      "licenseTag": "mit",
+      "baseModels": [
+        "onnx-community/silero-vad"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "HuggingFaceTB/SmolLM2-360M-Instruct",
+      "requestedRevision": "main",
+      "revision": "a10cc1512eabd3dde888204e902eca88bddb4951",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "HuggingFaceTB/SmolLM2-360M"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "HuggingFaceTB/SmolLM3-3B",
+      "requestedRevision": "main",
+      "revision": "a07cc9a04f16550a088caea529712d1d335b0ac1",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "HuggingFaceTB/SmolLM3-3B-Base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "HuggingFaceTB/SmolLM3-3B-Base",
+      "requestedRevision": "main",
+      "revision": "d78a42f79198603e614095753484a04c10c2b940",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "HuggingFaceTB/SmolVLM-500M-Instruct",
+      "requestedRevision": "main",
+      "revision": "a7da5b986cb59b408707209984f360a5f4ad7e47",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "HuggingFaceTB/SmolLM2-360M-Instruct",
+        "google/siglip-base-patch16-512"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "HuggingFaceTB/SmolVLM2-500M-Video-Instruct",
+      "requestedRevision": "main",
+      "revision": "7b375e1b73b11138ff12fe22c8f2822d8fe03467",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "HuggingFaceTB/SmolVLM-500M-Instruct"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "KittenML/kitten-tts-micro-0.8",
+      "requestedRevision": "main",
+      "revision": "1ccf72b2c2048fd17efac7de2fab32d10e225084",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "KittenML/kitten-tts-mini-0.8",
+      "requestedRevision": "main",
+      "revision": "c02725660cea441db4c383af69f1f26f5cd00947",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "KittenML/kitten-tts-nano-0.8-int8",
+      "requestedRevision": "main",
+      "revision": "84781d74e29ee25217551556398b42f80593a813",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "LiquidAI/LFM2.5-1.2B-Base",
+      "requestedRevision": "main",
+      "revision": "7453bca97ca1e67754c4035a4b4c584e1c9dd725",
+      "licenseTag": "other",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/LiquidAI/LFM2.5-1.2B-Base/resolve/7453bca97ca1e67754c4035a4b4c584e1c9dd725/LICENSE",
+          "sha256": "5188f2b355da20647257a3156db5834c794e5fb5e6d8dc4d4cdbb3180e75b85b",
+          "localPath": "LICENSES/Models/LiquidAI--LFM2.5-1.2B-Base/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "LiquidAI/LFM2.5-1.2B-Instruct",
+      "requestedRevision": "main",
+      "revision": "0f604ada3f766f9f257460c4c9f0b5d6f69d431b",
+      "licenseTag": "other",
+      "baseModels": "LiquidAI/LFM2.5-1.2B-Base",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct/resolve/0f604ada3f766f9f257460c4c9f0b5d6f69d431b/LICENSE",
+          "sha256": "61d7e939a05911c765b7e98ffaa1ab5ca6c0174a65350766c25cb10197d19fc8",
+          "localPath": "LICENSES/Models/LiquidAI--LFM2.5-1.2B-Instruct/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "LiquidAI/LFM2.5-2.6B",
+      "requestedRevision": "main",
+      "revision": "654f9463ce32b05d0429d76fe1f580b27d4c1ac0",
+      "licenseTag": "other",
+      "baseModels": "LiquidAI/LFM2.5-2.6B-Base",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/LiquidAI/LFM2.5-2.6B/resolve/654f9463ce32b05d0429d76fe1f580b27d4c1ac0/LICENSE",
+          "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+          "localPath": "LICENSES/Models/LiquidAI--LFM2.5-2.6B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "LiquidAI/LFM2.5-2.6B-Base",
+      "requestedRevision": "main",
+      "revision": "c57bdaed1ef166fe3095dda07f4a5e789ad5321e",
+      "licenseTag": "other",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/LiquidAI/LFM2.5-2.6B-Base/resolve/c57bdaed1ef166fe3095dda07f4a5e789ad5321e/LICENSE",
+          "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+          "localPath": "LICENSES/Models/LiquidAI--LFM2.5-2.6B-Base/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "LiquidAI/LFM2.5-350M",
+      "requestedRevision": "main",
+      "revision": "9e6c6ccf47cd318696e137d381a7ded8fe4df09f",
+      "licenseTag": "other",
+      "baseModels": "LiquidAI/LFM2.5-350M-Base",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/LiquidAI/LFM2.5-350M/resolve/9e6c6ccf47cd318696e137d381a7ded8fe4df09f/LICENSE",
+          "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+          "localPath": "LICENSES/Models/LiquidAI--LFM2.5-350M/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "LiquidAI/LFM2.5-350M-Base",
+      "requestedRevision": "main",
+      "revision": "9960764e30892e01f29a6dc23df2533fcd8bd5ae",
+      "licenseTag": "other",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/LiquidAI/LFM2.5-350M-Base/resolve/9960764e30892e01f29a6dc23df2533fcd8bd5ae/LICENSE",
+          "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+          "localPath": "LICENSES/Models/LiquidAI--LFM2.5-350M-Base/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "LiquidAI/LFM2.5-VL-3B",
+      "requestedRevision": "main",
+      "revision": "35a118d938ce6d123ac2d371649f24a8efb69058",
+      "licenseTag": "other",
+      "baseModels": "LiquidAI/LFM2.5-2.6B-Base",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/LiquidAI/LFM2.5-VL-3B/resolve/35a118d938ce6d123ac2d371649f24a8efb69058/LICENSE",
+          "sha256": "30adf9d6478191fb87f2424f63ba0728598335aaf99cd2848ef17e8e545fe94b",
+          "localPath": "LICENSES/Models/LiquidAI--LFM2.5-VL-3B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "LiquidAI/LFM2.5-VL-450M",
+      "requestedRevision": "main",
+      "revision": "fc6221ca597f3315e4f82fc2df606783267b34ba",
+      "licenseTag": "other",
+      "baseModels": "LiquidAI/LFM2.5-350M",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/LiquidAI/LFM2.5-VL-450M/resolve/fc6221ca597f3315e4f82fc2df606783267b34ba/LICENSE",
+          "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+          "localPath": "LICENSES/Models/LiquidAI--LFM2.5-VL-450M/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Lykon/dreamshaper-8",
+      "requestedRevision": "main",
+      "revision": "a7e52b98680b1ba8ff7bce97c7f9f2e2e5337917",
+      "licenseTag": "creativeml-openrail-m",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "Nanbeige/Nanbeige4-3B-Base",
+      "requestedRevision": "main",
+      "revision": "8eeb73458b8e0ae66f612ef32eca7b1e47f63f47",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "Nanbeige/Nanbeige4.1-3B",
+      "requestedRevision": "main",
+      "revision": "9c4555c37921c0982af8fffeee1e0a6e6b953c4f",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Nanbeige/Nanbeige4-3B-Base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "Nanbeige/Nanbeige4.2-3B",
+      "requestedRevision": "main",
+      "revision": "b82e54bd609793562a75cbf9337970a93369eab5",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Nanbeige/Nanbeige4.2-3B-Base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "Nanbeige/Nanbeige4.2-3B-Base",
+      "requestedRevision": "main",
+      "revision": "4a38e817c14b9f2c4b69b1e05cbda90395872f6b",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "Qwen/Qwen2.5-0.5B",
+      "requestedRevision": "main",
+      "revision": "060db6499f32faf8b98477b0a26969ef7d8b9987",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B/resolve/060db6499f32faf8b98477b0a26969ef7d8b9987/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen2.5-0.5B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen2.5-0.5B-Instruct",
+      "requestedRevision": "main",
+      "revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen2.5-0.5B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/resolve/7ae557604adf67be50417f59c2c2f167def9a775/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen2.5-0.5B-Instruct/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen2.5-1.5B",
+      "requestedRevision": "main",
+      "revision": "8faed761d45a263340a0528343f099c05c9a4323",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B/resolve/8faed761d45a263340a0528343f099c05c9a4323/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen2.5-1.5B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen2.5-1.5B-Instruct",
+      "requestedRevision": "main",
+      "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen2.5-1.5B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct/resolve/989aa7980e4cf806f80c7fef2b1adb7bc71aa306/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen2.5-1.5B-Instruct/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen2.5-7B",
+      "requestedRevision": "main",
+      "revision": "d149729398750b98c0af14eb82c78cfe92750796",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen2.5-7B/resolve/d149729398750b98c0af14eb82c78cfe92750796/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen2.5-7B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen2.5-Coder-0.5B",
+      "requestedRevision": "main",
+      "revision": "8123ea2e9354afb7ffcc6c8641d1b2f5ecf18301",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Qwen/Qwen2.5-0.5B"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B/resolve/8123ea2e9354afb7ffcc6c8641d1b2f5ecf18301/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen2.5-Coder-0.5B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+      "requestedRevision": "main",
+      "revision": "ea3f2471cf1b1f0db85067f1ef93848e38e88c25",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Qwen/Qwen2.5-Coder-0.5B"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B-Instruct/resolve/ea3f2471cf1b1f0db85067f1ef93848e38e88c25/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen2.5-Coder-0.5B-Instruct/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen2.5-Coder-1.5B",
+      "requestedRevision": "main",
+      "revision": "df3ce67c0e24480f20468b6ef2894622d69eb73b",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Qwen/Qwen2.5-1.5B"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B/resolve/df3ce67c0e24480f20468b6ef2894622d69eb73b/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen2.5-Coder-1.5B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+      "requestedRevision": "main",
+      "revision": "2e1fd397ee46e1388853d2af2c993145b0f1098a",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Qwen/Qwen2.5-Coder-1.5B"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct/resolve/2e1fd397ee46e1388853d2af2c993145b0f1098a/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen2.5-Coder-1.5B-Instruct/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen2.5-Math-1.5B",
+      "requestedRevision": "main",
+      "revision": "4a83ca6e4526a4f2da3aa259ec36c259f66b2ab2",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen2.5-1.5B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen2.5-Math-1.5B/resolve/4a83ca6e4526a4f2da3aa259ec36c259f66b2ab2/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen2.5-Math-1.5B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen2.5-Math-1.5B-Instruct",
+      "requestedRevision": "main",
+      "revision": "aafeb0fc6f22cbf0eaeed126eff8be45b0360a35",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen2.5-Math-1.5B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen2.5-Math-1.5B-Instruct/resolve/aafeb0fc6f22cbf0eaeed126eff8be45b0360a35/LICENSE",
+          "sha256": "c156170b718ec29139d3653d40ed1986fd92fb7e0959b5c71f3c48f62e6636f4",
+          "localPath": "LICENSES/Models/Qwen--Qwen2.5-Math-1.5B-Instruct/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3-0.6B",
+      "requestedRevision": "main",
+      "revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Qwen/Qwen3-0.6B-Base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3-0.6B/resolve/c1899de289a04d12100db370d81485cdf75e47ca/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen3-0.6B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3-0.6B-Base",
+      "requestedRevision": "main",
+      "revision": "da87bfb608c14b7cf20ba1ce41287e8de496c0cd",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3-0.6B-Base/resolve/da87bfb608c14b7cf20ba1ce41287e8de496c0cd/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen3-0.6B-Base/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3-1.7B",
+      "requestedRevision": "main",
+      "revision": "70d244cc86ccca08cf5af4e1e306ecf908b1ad5e",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Qwen/Qwen3-1.7B-Base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3-1.7B/resolve/70d244cc86ccca08cf5af4e1e306ecf908b1ad5e/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen3-1.7B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3-1.7B-Base",
+      "requestedRevision": "main",
+      "revision": "ea980cb0a6c2ae4b936e82123acc929f1cec04c1",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3-1.7B-Base/resolve/ea980cb0a6c2ae4b936e82123acc929f1cec04c1/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen3-1.7B-Base/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3-4B",
+      "requestedRevision": "main",
+      "revision": "1cfa9a7208912126459214e8b04321603b3df60c",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Qwen/Qwen3-4B-Base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3-4B/resolve/1cfa9a7208912126459214e8b04321603b3df60c/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen3-4B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3-4B-Base",
+      "requestedRevision": "main",
+      "revision": "906bfd4b4dc7f14ee4320094d8b41684abff8539",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3-4B-Base/resolve/906bfd4b4dc7f14ee4320094d8b41684abff8539/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen3-4B-Base/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3-4B-Instruct-2507",
+      "requestedRevision": "main",
+      "revision": "cdbee75f17c01a7cc42f958dc650907174af0554",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507/resolve/cdbee75f17c01a7cc42f958dc650907174af0554/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen3-4B-Instruct-2507/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3-4B-Thinking-2507",
+      "requestedRevision": "main",
+      "revision": "768f209d9ea81521153ed38c47d515654e938aea",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3-4B-Thinking-2507/resolve/768f209d9ea81521153ed38c47d515654e938aea/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen3-4B-Thinking-2507/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3-8B",
+      "requestedRevision": "main",
+      "revision": "b968826d9c46dd6066d109eabc6255188de91218",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Qwen/Qwen3-8B-Base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3-8B/resolve/b968826d9c46dd6066d109eabc6255188de91218/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/Qwen--Qwen3-8B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3-8B-Base",
+      "requestedRevision": "main",
+      "revision": "49e3418fbbbca6ecbdf9608b4d22e5a407081db4",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "Qwen/Qwen3-VL-2B-Instruct",
+      "requestedRevision": "main",
+      "revision": "89644892e4d85e24eaac8bacfd4f463576704203",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "Qwen/Qwen3-VL-4B-Instruct",
+      "requestedRevision": "main",
+      "revision": "ebb281ec70b05090aa6165b016eac8ec08e71b17",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "Qwen/Qwen3.5-0.8B",
+      "requestedRevision": "main",
+      "revision": "2fc06364715b967f1860aea9cf38778875588b17",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Qwen/Qwen3.5-0.8B-Base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3.5-0.8B/resolve/2fc06364715b967f1860aea9cf38778875588b17/LICENSE",
+          "sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
+          "localPath": "LICENSES/Models/Qwen--Qwen3.5-0.8B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3.5-0.8B-Base",
+      "requestedRevision": "main",
+      "revision": "dc7cdfe2ee4154fa7e30f5b51ca41bfa40174e68",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3.5-0.8B-Base/resolve/dc7cdfe2ee4154fa7e30f5b51ca41bfa40174e68/LICENSE",
+          "sha256": "50cbab8a892c5f2993b8c7351a99182507472def3b1374558308605d99b86b32",
+          "localPath": "LICENSES/Models/Qwen--Qwen3.5-0.8B-Base/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3.5-2B",
+      "requestedRevision": "main",
+      "revision": "15852e8c16360a2fea060d615a32b45270f8a8fc",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Qwen/Qwen3.5-2B-Base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3.5-2B/resolve/15852e8c16360a2fea060d615a32b45270f8a8fc/LICENSE",
+          "sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
+          "localPath": "LICENSES/Models/Qwen--Qwen3.5-2B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3.5-2B-Base",
+      "requestedRevision": "main",
+      "revision": "b1485b2fa6dfa1287294f269f5fb618e03d52d7c",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3.5-2B-Base/resolve/b1485b2fa6dfa1287294f269f5fb618e03d52d7c/LICENSE",
+          "sha256": "50cbab8a892c5f2993b8c7351a99182507472def3b1374558308605d99b86b32",
+          "localPath": "LICENSES/Models/Qwen--Qwen3.5-2B-Base/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3.5-9B-Base",
+      "requestedRevision": "main",
+      "revision": "68c46c4b3498877f3ef123c856ecfde50c39f404",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3.5-9B-Base/resolve/68c46c4b3498877f3ef123c856ecfde50c39f404/LICENSE",
+          "sha256": "50cbab8a892c5f2993b8c7351a99182507472def3b1374558308605d99b86b32",
+          "localPath": "LICENSES/Models/Qwen--Qwen3.5-9B-Base/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3.6-27B",
+      "requestedRevision": "main",
+      "revision": "6a9e13bd6fc8f0983b9b99948120bc37f49c13e9",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3.6-27B/resolve/6a9e13bd6fc8f0983b9b99948120bc37f49c13e9/LICENSE",
+          "sha256": "50cbab8a892c5f2993b8c7351a99182507472def3b1374558308605d99b86b32",
+          "localPath": "LICENSES/Models/Qwen--Qwen3.6-27B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "Qwen/Qwen3.6-35B-A3B",
+      "requestedRevision": "main",
+      "revision": "995ad96eacd98c81ed38be0c5b274b04031597b0",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/Qwen/Qwen3.6-35B-A3B/resolve/995ad96eacd98c81ed38be0c5b274b04031597b0/LICENSE",
+          "sha256": "50cbab8a892c5f2993b8c7351a99182507472def3b1374558308605d99b86b32",
+          "localPath": "LICENSES/Models/Qwen--Qwen3.6-35B-A3B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "SupersonicLabs/Julia-1",
+      "requestedRevision": "main",
+      "revision": "a85b127321d580d65176c89ced8273f305745d85",
+      "licenseTag": "apache-2.0",
+      "baseModels": "jhu-clsp/mmBERT-small",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "aether-models/eurollm-1.7b-instruct",
+      "requestedRevision": "3ed1743a0b15f6d4950d523562aa42b114969fd8",
+      "revision": "3ed1743a0b15f6d4950d523562aa42b114969fd8",
+      "licenseTag": "apache-2.0",
+      "baseModels": "utter-project/EuroLLM-1.7B-Instruct",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/aether-models/eurollm-1.7b-instruct/resolve/3ed1743a0b15f6d4950d523562aa42b114969fd8/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "localPath": "LICENSES/Models/aether-models--eurollm-1.7b-instruct/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "aether-models/granite-4.0-1b",
+      "requestedRevision": "2b5d83696b7455ee02a79596cd077a93a2e78ba9",
+      "revision": "2b5d83696b7455ee02a79596cd077a93a2e78ba9",
+      "licenseTag": "apache-2.0",
+      "baseModels": "ibm-granite/granite-4.0-1b",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/aether-models/granite-4.0-1b/resolve/2b5d83696b7455ee02a79596cd077a93a2e78ba9/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "localPath": "LICENSES/Models/aether-models--granite-4.0-1b/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "aether-models/granite-4.0-h-350m",
+      "requestedRevision": "ea24ac837112b7b082e52cd51bc83b38467ae659",
+      "revision": "ea24ac837112b7b082e52cd51bc83b38467ae659",
+      "licenseTag": "apache-2.0",
+      "baseModels": "ibm-granite/granite-4.0-h-350m",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/aether-models/granite-4.0-h-350m/resolve/ea24ac837112b7b082e52cd51bc83b38467ae659/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "localPath": "LICENSES/Models/aether-models--granite-4.0-h-350m/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "aether-models/qwen3-1.7b",
+      "requestedRevision": "9424554369f1c4fd2f80af64847ba2d938e2c58a",
+      "revision": "9424554369f1c4fd2f80af64847ba2d938e2c58a",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen3-1.7B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/aether-models/qwen3-1.7b/resolve/9424554369f1c4fd2f80af64847ba2d938e2c58a/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/aether-models--qwen3-1.7b/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "aether-models/qwen3-4b-instruct-2507",
+      "requestedRevision": "1bd7de3abec265601b6d2473e7b6557223e2dbc1",
+      "revision": "1bd7de3abec265601b6d2473e7b6557223e2dbc1",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen3-4B-Instruct-2507",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/aether-models/qwen3-4b-instruct-2507/resolve/1bd7de3abec265601b6d2473e7b6557223e2dbc1/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/aether-models--qwen3-4b-instruct-2507/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "aether-models/smollm3-3b",
+      "requestedRevision": "2d9e78f3665bd28ae73f9f44b22917f0b86f3491",
+      "revision": "2d9e78f3665bd28ae73f9f44b22917f0b86f3491",
+      "licenseTag": "apache-2.0",
+      "baseModels": "HuggingFaceTB/SmolLM3-3B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/aether-models/smollm3-3b/resolve/2d9e78f3665bd28ae73f9f44b22917f0b86f3491/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "localPath": "LICENSES/Models/aether-models--smollm3-3b/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "apple/FastVLM-0.5B",
+      "requestedRevision": "main",
+      "revision": "16375720c2d673fa583e57e9876afde27549c7d0",
+      "licenseTag": "apple-amlr",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/apple/FastVLM-0.5B/resolve/16375720c2d673fa583e57e9876afde27549c7d0/LICENSE",
+          "sha256": "d8f5d9dfbdb60dc81b8f1720421699e7811070f0b46f6668f90253d5ac8c0b20",
+          "localPath": "LICENSES/Models/apple--FastVLM-0.5B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "aufklarer/Kokoro-82M-CoreML",
+      "requestedRevision": "main",
+      "revision": "f8ff771e4cab0bb3368e8af3a090a7e847485401",
+      "licenseTag": "apache-2.0",
+      "baseModels": "hexgrad/Kokoro-82M",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "convaiinnovations/laya",
+      "requestedRevision": "main",
+      "revision": "55cf4c4ebb4ebe31b2550e8bdf3bd21b99753851",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "deepreinforce-ai/Ornith-1.0-9B",
+      "requestedRevision": "main",
+      "revision": "83dc1f5e24ef8527af019a6b3bf66ac0f1c2c999",
+      "licenseTag": "mit",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "ggerganov/whisper.cpp",
+      "requestedRevision": "main",
+      "revision": "5359861c739e955e79d9a303bcbc70fb988958b1",
+      "licenseTag": "mit",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "ggml-org/SmolVLM2-500M-Video-Instruct-GGUF",
+      "requestedRevision": "main",
+      "revision": "ccd7aae53bcb1997355c2f094959e72b3642ce17",
+      "licenseTag": "apache-2.0",
+      "baseModels": "HuggingFaceTB/SmolVLM2-500M-Video-Instruct",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "ggml-org/gemma-3-4b-it-GGUF",
+      "requestedRevision": "main",
+      "revision": "d0976223747697cb51e056d85c532013931fe52e",
+      "licenseTag": "gemma",
+      "baseModels": [
+        "google/gemma-3-4b-it"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "google/embeddinggemma-300m",
+      "requestedRevision": "main",
+      "revision": "57c266a740f537b4dc058e1b0cda161fd15afa75",
+      "licenseTag": "gemma",
+      "baseModels": null,
+      "gated": "manual",
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "google/gemma-2-2b",
+      "requestedRevision": "main",
+      "revision": "c5ebcd40d208330abc697524c919956e692655cf",
+      "licenseTag": "gemma",
+      "baseModels": null,
+      "gated": "manual",
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "google/gemma-2-2b-it",
+      "requestedRevision": "main",
+      "revision": "299a8560bedf22ed1c72a8a11e7dce4a7f9f51f8",
+      "licenseTag": "gemma",
+      "baseModels": "google/gemma-2-2b",
+      "gated": "manual",
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "google/gemma-3-4b-it",
+      "requestedRevision": "main",
+      "revision": "093f9f388b31de276ce2de164bdc2081324b9767",
+      "licenseTag": "gemma",
+      "baseModels": "google/gemma-3-4b-pt",
+      "gated": "manual",
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "google/gemma-3-4b-pt",
+      "requestedRevision": "main",
+      "revision": "cc012e0a6d0787b4adcc0fa2c4da74402494554d",
+      "licenseTag": "gemma",
+      "baseModels": null,
+      "gated": "manual",
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "google/siglip-base-patch16-512",
+      "requestedRevision": "main",
+      "revision": "753a949581523b60257d93e18391e8c27f72eb22",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "hexgrad/Kokoro-82M",
+      "requestedRevision": "main",
+      "revision": "f3ff3571791e39611d31c381e3a41a3af07b4987",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "yl4579/StyleTTS2-LJSpeech"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "ibm-granite/granite-4.0-1b",
+      "requestedRevision": "main",
+      "revision": "6a7381ba1f54d684ff508d991aeb7dc580157103",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "ibm-granite/granite-4.0-1b-base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "ibm-granite/granite-4.0-1b-base",
+      "requestedRevision": "main",
+      "revision": "15148e99f8ca689325e2067ba282b23dec6670c7",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "ibm-granite/granite-4.0-h-1b",
+      "requestedRevision": "main",
+      "revision": "d18cca4c121edb87d022116d281ce212c9136f57",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "ibm-granite/granite-4.0-h-1b-base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "ibm-granite/granite-4.0-h-1b-base",
+      "requestedRevision": "main",
+      "revision": "8d34631309affca6f6f8350684ddcb8994b0dc31",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "ibm-granite/granite-4.0-h-350m",
+      "requestedRevision": "main",
+      "revision": "3b17b717b8f2f5d305b0a92c1491e239aeda19c8",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "ibm-granite/granite-4.0-h-350m-base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "ibm-granite/granite-4.0-h-350m-base",
+      "requestedRevision": "main",
+      "revision": "dc555b6939c863bb96034d1eae7601da36bd42e4",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "inclusionAI/Ling-3.0-tiny-base",
+      "requestedRevision": "main",
+      "revision": "bab7297fa02713af237e378bf21107718b8e0e1a",
+      "licenseTag": "mit",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "jhu-clsp/mmBERT-small",
+      "requestedRevision": "main",
+      "revision": "abc32620dd4f6ab06f5fbe905dc25f310618e09f",
+      "licenseTag": "mit",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "kevinqz/Qwen2.5-0.5B-Instruct-CoreAI",
+      "requestedRevision": "f08c9d63fbfc9bc7aa86388da880b6e8ae339979",
+      "revision": "f08c9d63fbfc9bc7aa86388da880b6e8ae339979",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen2.5-0.5B-Instruct",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/kevinqz/Qwen2.5-0.5B-Instruct-CoreAI/resolve/f08c9d63fbfc9bc7aa86388da880b6e8ae339979/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/kevinqz--Qwen2.5-0.5B-Instruct-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "kevinqz/Qwen2.5-1.5B-Instruct-CoreAI",
+      "requestedRevision": "f903417cb9ac4b3c4c53c16aefd7f097cc6b8338",
+      "revision": "f903417cb9ac4b3c4c53c16aefd7f097cc6b8338",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen2.5-1.5B-Instruct",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/kevinqz/Qwen2.5-1.5B-Instruct-CoreAI/resolve/f903417cb9ac4b3c4c53c16aefd7f097cc6b8338/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/kevinqz--Qwen2.5-1.5B-Instruct-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "kevinqz/Qwen2.5-Coder-0.5B-Instruct-CoreAI",
+      "requestedRevision": "408f4506b9f4058e054e7bbd58a45189b382ee65",
+      "revision": "408f4506b9f4058e054e7bbd58a45189b382ee65",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen2.5-Coder-0.5B-Instruct",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/kevinqz/Qwen2.5-Coder-0.5B-Instruct-CoreAI/resolve/408f4506b9f4058e054e7bbd58a45189b382ee65/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/kevinqz--Qwen2.5-Coder-0.5B-Instruct-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "kevinqz/Qwen2.5-Coder-1.5B-Instruct-CoreAI",
+      "requestedRevision": "34a0aa5d8bea15bfe620b962bd02f9fe98c0a836",
+      "revision": "34a0aa5d8bea15bfe620b962bd02f9fe98c0a836",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/kevinqz/Qwen2.5-Coder-1.5B-Instruct-CoreAI/resolve/34a0aa5d8bea15bfe620b962bd02f9fe98c0a836/LICENSE",
+          "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+          "localPath": "LICENSES/Models/kevinqz--Qwen2.5-Coder-1.5B-Instruct-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "kevinqz/Qwen2.5-Math-1.5B-Instruct-CoreAI",
+      "requestedRevision": "dcbf0826f06f38e5269f830864f33224b57cf6a9",
+      "revision": "dcbf0826f06f38e5269f830864f33224b57cf6a9",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen2.5-Math-1.5B-Instruct",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/kevinqz/Qwen2.5-Math-1.5B-Instruct-CoreAI/resolve/dcbf0826f06f38e5269f830864f33224b57cf6a9/LICENSE",
+          "sha256": "c156170b718ec29139d3653d40ed1986fd92fb7e0959b5c71f3c48f62e6636f4",
+          "localPath": "LICENSES/Models/kevinqz--Qwen2.5-Math-1.5B-Instruct-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "meta-llama/Llama-3.1-8B-Instruct",
+      "requestedRevision": "main",
+      "revision": "0e9e39f249a16976918f6564b8830bc894c89659",
+      "licenseTag": "llama3.1",
+      "baseModels": "meta-llama/Meta-Llama-3.1-8B",
+      "gated": "manual",
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct/resolve/0e9e39f249a16976918f6564b8830bc894c89659/LICENSE",
+          "sha256": "64e1b2889b7892e6bbe7a7ed5bfe6ff793c61f9d584345f8f41cf9f5cb30a369",
+          "localPath": "LICENSES/Models/meta-llama--Llama-3.1-8B-Instruct/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "meta-llama/Llama-3.2-3B-Instruct",
+      "requestedRevision": "main",
+      "revision": "0cb88a4f764b7a12671c53f0838cd831a0843b95",
+      "licenseTag": "llama3.2",
+      "baseModels": null,
+      "gated": "manual",
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE.txt",
+          "url": "https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct/resolve/0cb88a4f764b7a12671c53f0838cd831a0843b95/LICENSE.txt",
+          "sha256": "0b4284c1f87029e67654c7953afa16279961632cf73dcfe33374c4c2f298fa35",
+          "localPath": "LICENSES/Models/meta-llama--Llama-3.2-3B-Instruct/LICENSE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "meta-llama/Meta-Llama-3.1-8B",
+      "requestedRevision": "main",
+      "revision": "d04e592bb4f6aa9cfee91e2e20afa771667e1d4b",
+      "licenseTag": "llama3.1",
+      "baseModels": null,
+      "gated": "manual",
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/meta-llama/Meta-Llama-3.1-8B/resolve/d04e592bb4f6aa9cfee91e2e20afa771667e1d4b/LICENSE",
+          "sha256": "64e1b2889b7892e6bbe7a7ed5bfe6ff793c61f9d584345f8f41cf9f5cb30a369",
+          "localPath": "LICENSES/Models/meta-llama--Meta-Llama-3.1-8B/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "microsoft/FastContext-1.0-4B-SFT",
+      "requestedRevision": "main",
+      "revision": null,
+      "licenseTag": null,
+      "baseModels": null,
+      "gated": null,
+      "error": "HTTP Error 401: Unauthorized",
+      "licenseFiles": []
+    },
+    {
+      "repository": "microsoft/Phi-3.5-mini-instruct",
+      "requestedRevision": "main",
+      "revision": "2fe192450127e6a83f7441aef6e3ca586c338b77",
+      "licenseTag": "mit",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/microsoft/Phi-3.5-mini-instruct/resolve/2fe192450127e6a83f7441aef6e3ca586c338b77/LICENSE",
+          "sha256": "fa8235e5b48faca34e3ca98cf4f694ef08bd216d28b58071a1f85b1d50cb814d",
+          "localPath": "LICENSES/Models/microsoft--Phi-3.5-mini-instruct/LICENSE"
+        },
+        {
+          "path": "NOTICE.md",
+          "url": "https://huggingface.co/microsoft/Phi-3.5-mini-instruct/resolve/2fe192450127e6a83f7441aef6e3ca586c338b77/NOTICE.md",
+          "sha256": "a3386cc7125ec75ed34d4f0a340c47782982095e251d322e01d8ecab22d87ba4",
+          "localPath": "LICENSES/Models/microsoft--Phi-3.5-mini-instruct/NOTICE.md"
+        }
+      ]
+    },
+    {
+      "repository": "mlboydaisuke/BitCPM-8B-CoreAI",
+      "requestedRevision": "21a907f5d2a6d77f27596d5c1562e92f1184ce82",
+      "revision": "21a907f5d2a6d77f27596d5c1562e92f1184ce82",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "openbmb/BitCPM-CANN-8B"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/mlboydaisuke/BitCPM-8B-CoreAI/resolve/21a907f5d2a6d77f27596d5c1562e92f1184ce82/LICENSE",
+          "sha256": "02bfb4e7d6b97b410c822a0c9a47d848b14d62362fa940a08d33b7556ee06e69",
+          "localPath": "LICENSES/Models/mlboydaisuke--BitCPM-8B-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "mlboydaisuke/FastContext-1.0-4B-CoreAI",
+      "requestedRevision": "4e24f350e9e8dbcf44712758cc14ee4ba4423e32",
+      "revision": "4e24f350e9e8dbcf44712758cc14ee4ba4423e32",
+      "licenseTag": "mit",
+      "baseModels": "microsoft/FastContext-1.0-4B-SFT",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/mlboydaisuke/FastContext-1.0-4B-CoreAI/resolve/4e24f350e9e8dbcf44712758cc14ee4ba4423e32/LICENSE",
+          "sha256": "83e87848e06922a24114bfb8ecf153554cecb6afff9d3e334f964555e5c798ad",
+          "localPath": "LICENSES/Models/mlboydaisuke--FastContext-1.0-4B-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "mlboydaisuke/Julia-1-CoreAI",
+      "requestedRevision": "d1e943545c64e20e73a88ae1f890227c349e22ba",
+      "revision": "d1e943545c64e20e73a88ae1f890227c349e22ba",
+      "licenseTag": "apache-2.0",
+      "baseModels": "SupersonicLabs/Julia-1",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/mlboydaisuke/Julia-1-CoreAI/resolve/d1e943545c64e20e73a88ae1f890227c349e22ba/LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "localPath": "LICENSES/Models/mlboydaisuke--Julia-1-CoreAI/LICENSE"
+        },
+        {
+          "path": "LICENSE-NOTE.md",
+          "url": "https://huggingface.co/mlboydaisuke/Julia-1-CoreAI/resolve/d1e943545c64e20e73a88ae1f890227c349e22ba/LICENSE-NOTE.md",
+          "sha256": "4670f123942007bc60b1525ab2ab726a37ebd020178cf0312a23df636b97de47",
+          "localPath": "LICENSES/Models/mlboydaisuke--Julia-1-CoreAI/LICENSE-NOTE.md"
+        }
+      ]
+    },
+    {
+      "repository": "mlboydaisuke/LFM2.5-1.2B-CoreAI",
+      "requestedRevision": "3e3241cbcf368a663768dcc4e5785c4f0a02bae4",
+      "revision": "3e3241cbcf368a663768dcc4e5785c4f0a02bae4",
+      "licenseTag": "other",
+      "baseModels": "LiquidAI/LFM2.5-1.2B-Instruct",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/mlboydaisuke/LFM2.5-1.2B-CoreAI/resolve/3e3241cbcf368a663768dcc4e5785c4f0a02bae4/LICENSE",
+          "sha256": "5188f2b355da20647257a3156db5834c794e5fb5e6d8dc4d4cdbb3180e75b85b",
+          "localPath": "LICENSES/Models/mlboydaisuke--LFM2.5-1.2B-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "mlboydaisuke/LFM2.5-2.6B-CoreAI",
+      "requestedRevision": "0e43b1a408515f3937a20a5bfa0e25d8f24f9704",
+      "revision": "0e43b1a408515f3937a20a5bfa0e25d8f24f9704",
+      "licenseTag": "other",
+      "baseModels": "LiquidAI/LFM2.5-2.6B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/mlboydaisuke/LFM2.5-2.6B-CoreAI/resolve/0e43b1a408515f3937a20a5bfa0e25d8f24f9704/LICENSE",
+          "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+          "localPath": "LICENSES/Models/mlboydaisuke--LFM2.5-2.6B-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "mlboydaisuke/LFM2.5-VL-3B-CoreAI",
+      "requestedRevision": "746fc8fc159bfae1f741fe403091ee1da4900407",
+      "revision": "746fc8fc159bfae1f741fe403091ee1da4900407",
+      "licenseTag": "other",
+      "baseModels": "LiquidAI/LFM2.5-VL-3B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/mlboydaisuke/LFM2.5-VL-3B-CoreAI/resolve/746fc8fc159bfae1f741fe403091ee1da4900407/LICENSE",
+          "sha256": "30adf9d6478191fb87f2424f63ba0728598335aaf99cd2848ef17e8e545fe94b",
+          "localPath": "LICENSES/Models/mlboydaisuke--LFM2.5-VL-3B-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "mlboydaisuke/LFM2.5-VL-450M-CoreAI",
+      "requestedRevision": "95da9d04dfff53376b0bb603e9c8e3cb27129341",
+      "revision": "95da9d04dfff53376b0bb603e9c8e3cb27129341",
+      "licenseTag": "other",
+      "baseModels": "LiquidAI/LFM2.5-VL-450M",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/mlboydaisuke/LFM2.5-VL-450M-CoreAI/resolve/95da9d04dfff53376b0bb603e9c8e3cb27129341/LICENSE",
+          "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+          "localPath": "LICENSES/Models/mlboydaisuke--LFM2.5-VL-450M-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "mlboydaisuke/Laya-Multilingual-CoreAI",
+      "requestedRevision": "3fe58a5ed7857b41f5c7ba8c0f46ce420b42cf02",
+      "revision": "3fe58a5ed7857b41f5c7ba8c0f46ce420b42cf02",
+      "licenseTag": "apache-2.0",
+      "baseModels": "convaiinnovations/laya",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/mlboydaisuke/Laya-Multilingual-CoreAI/resolve/3fe58a5ed7857b41f5c7ba8c0f46ce420b42cf02/LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "localPath": "LICENSES/Models/mlboydaisuke--Laya-Multilingual-CoreAI/LICENSE"
+        },
+        {
+          "path": "LICENSE-NOTE.md",
+          "url": "https://huggingface.co/mlboydaisuke/Laya-Multilingual-CoreAI/resolve/3fe58a5ed7857b41f5c7ba8c0f46ce420b42cf02/LICENSE-NOTE.md",
+          "sha256": "eef8e7fc73729b2f89adba740e2f4cfb07ffc5ec1d5d8a51bed29030ddd62ba7",
+          "localPath": "LICENSES/Models/mlboydaisuke--Laya-Multilingual-CoreAI/LICENSE-NOTE.md"
+        }
+      ]
+    },
+    {
+      "repository": "mlboydaisuke/MiniCPM5-1B-CoreAI",
+      "requestedRevision": "f38d143ec50cb2e54d8388479b919e3b9283943b",
+      "revision": "f38d143ec50cb2e54d8388479b919e3b9283943b",
+      "licenseTag": "apache-2.0",
+      "baseModels": "openbmb/MiniCPM5-1B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/mlboydaisuke/MiniCPM5-1B-CoreAI/resolve/f38d143ec50cb2e54d8388479b919e3b9283943b/LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "localPath": "LICENSES/Models/mlboydaisuke--MiniCPM5-1B-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "mlboydaisuke/MiniCPM5-2B-CoreAI",
+      "requestedRevision": "ac8cbe3d429f2922a1543a0eeecc72125dd10d29",
+      "revision": "ac8cbe3d429f2922a1543a0eeecc72125dd10d29",
+      "licenseTag": "apache-2.0",
+      "baseModels": "openbmb/MiniCPM5-2B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/mlboydaisuke/MiniCPM5-2B-CoreAI/resolve/ac8cbe3d429f2922a1543a0eeecc72125dd10d29/LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "localPath": "LICENSES/Models/mlboydaisuke--MiniCPM5-2B-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "mlboydaisuke/Nanbeige4.1-3B-CoreAI",
+      "requestedRevision": "e926b56e803a9198d4114cf28450d58f964dd6ff",
+      "revision": "e926b56e803a9198d4114cf28450d58f964dd6ff",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Nanbeige/Nanbeige4.1-3B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlboydaisuke/Nemotron-3-Nano-4B-CoreAI",
+      "requestedRevision": "7f1bd3064909f36292510ad65532585d63f0eac2",
+      "revision": "7f1bd3064909f36292510ad65532585d63f0eac2",
+      "licenseTag": "other",
+      "baseModels": "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/mlboydaisuke/Nemotron-3-Nano-4B-CoreAI/resolve/7f1bd3064909f36292510ad65532585d63f0eac2/LICENSE",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "repository": "mlboydaisuke/Qwen3-ASR-1.7B-CoreAI",
+      "requestedRevision": "dd975d70e982670d3916c2b0b45cec2917cf9b82",
+      "revision": "dd975d70e982670d3916c2b0b45cec2917cf9b82",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlboydaisuke/Qwen3-VL-2B-CoreAI",
+      "requestedRevision": "1f74a6862bc463955b557629f0fdce6ba7b5c256",
+      "revision": "1f74a6862bc463955b557629f0fdce6ba7b5c256",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen3-VL-2B-Instruct",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/mlboydaisuke/Qwen3-VL-2B-CoreAI/resolve/1f74a6862bc463955b557629f0fdce6ba7b5c256/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "localPath": "LICENSES/Models/mlboydaisuke--Qwen3-VL-2B-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "mlboydaisuke/Youtu-LLM-2B-CoreAI",
+      "requestedRevision": "9c14bbe376739f4c86ed5449185db36f778d179b",
+      "revision": "9c14bbe376739f4c86ed5449185db36f778d179b",
+      "licenseTag": "other",
+      "baseModels": "tencent/Youtu-LLM-2B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlboydaisuke/embeddinggemma-300m-CoreAI",
+      "requestedRevision": "74f6d1fe2a566dde8ae2d13fae4f5f73e8a16055",
+      "revision": "74f6d1fe2a566dde8ae2d13fae4f5f73e8a16055",
+      "licenseTag": "gemma",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlboydaisuke/granite-4.0-h-CoreAI",
+      "requestedRevision": "2349d8e26d749e4c503b0b5999c84057665b8524",
+      "revision": "2349d8e26d749e4c503b0b5999c84057665b8524",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "ibm-granite/granite-4.0-h-1b",
+        "ibm-granite/granite-4.0-h-350m"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/mlboydaisuke/granite-4.0-h-CoreAI/resolve/2349d8e26d749e4c503b0b5999c84057665b8524/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "localPath": "LICENSES/Models/mlboydaisuke--granite-4.0-h-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "mlboydaisuke/qwen3-0.6b-CoreAI-official",
+      "requestedRevision": "7406ece3596e2ea16185a98ae32aafd2753d40a3",
+      "revision": "7406ece3596e2ea16185a98ae32aafd2753d40a3",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen3-0.6B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlboydaisuke/qwen3-1.7b-CoreAI-official",
+      "requestedRevision": "ebf5486333ffc59130a6f37c7d208e03ebd3169c",
+      "revision": "ebf5486333ffc59130a6f37c7d208e03ebd3169c",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen3-1.7B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlboydaisuke/qwen3-4b-CoreAI-official",
+      "requestedRevision": "f3d6746370fbb73ee57f2de9ebe111eb628287f1",
+      "revision": "f3d6746370fbb73ee57f2de9ebe111eb628287f1",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen3-4B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlboydaisuke/qwen3.5-0.8B-CoreAI",
+      "requestedRevision": "b98ad07f1ae7c07fb3e5967091600177f48844c2",
+      "revision": "b98ad07f1ae7c07fb3e5967091600177f48844c2",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen3.5-0.8B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlboydaisuke/qwen3.5-2B-CoreAI",
+      "requestedRevision": "14e77014db5ae2f3de94825165f5ae58bededd7d",
+      "revision": "14e77014db5ae2f3de94825165f5ae58bededd7d",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen3.5-2B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlboydaisuke/whisper-large-v3-turbo-CoreAI-official",
+      "requestedRevision": "73b73edfede83cdeff3492663cbd123105d79b59",
+      "revision": "73b73edfede83cdeff3492663cbd123105d79b59",
+      "licenseTag": "mit",
+      "baseModels": "openai/whisper-large-v3-turbo",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Llama-3.1-8B-Instruct-4bit",
+      "requestedRevision": "main",
+      "revision": "90215b22ec18e72f623dde2ea7af4097025160e2",
+      "licenseTag": "llama3.1",
+      "baseModels": "meta-llama/Llama-3.1-8B-Instruct",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Llama-3.2-1B-Instruct-4bit",
+      "requestedRevision": "main",
+      "revision": "08231374eeacb049a0eade7922910865b8fce912",
+      "licenseTag": "llama3.2",
+      "baseModels": "mlx-community/Llama-3.2-1B-Instruct-bf16",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Llama-3.2-1B-Instruct-bf16",
+      "requestedRevision": "main",
+      "revision": "863c846a9ac6fad4e49e1743d52984dff262e953",
+      "licenseTag": "llama3.2",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Llama-3.2-3B-Instruct",
+      "requestedRevision": "main",
+      "revision": "96e4e2ca7926fab2eb52b1cdea46a934af630f0a",
+      "licenseTag": "llama3.2",
+      "baseModels": "meta-llama/Llama-3.2-3B-Instruct",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Llama-3.2-3B-Instruct-4bit",
+      "requestedRevision": "main",
+      "revision": "7f0dc925e0d0afb0322d96f9255cfddf2ba5636e",
+      "licenseTag": "llama3.2",
+      "baseModels": "mlx-community/Llama-3.2-3B-Instruct",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Ornith-1.0-9B-4bit",
+      "requestedRevision": "main",
+      "revision": "1e980b9742a9e554a4d57e90b4c597811fb2fc4e",
+      "licenseTag": "mit",
+      "baseModels": "deepreinforce-ai/Ornith-1.0-9B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Phi-3.5-mini-instruct-4bit",
+      "requestedRevision": "main",
+      "revision": "7b2052fd882fe017300d4d42a4eb06a27b816af4",
+      "licenseTag": "mit",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Qwen2.5-0.5B-Instruct-4bit",
+      "requestedRevision": "main",
+      "revision": "a5339a4131f135d0fdc6a5c8b5bbed2753bbe0f3",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen2.5-0.5B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Qwen2.5-1.5B-Instruct-4bit",
+      "requestedRevision": "main",
+      "revision": "8b403126fc14f14cfc99bb4cfa72ecbc129ea677",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen2.5-1.5B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Qwen2.5-7B-Instruct-4bit",
+      "requestedRevision": "main",
+      "revision": "c26a38f6a37d0a51b4e9a1eb3026530fa35d9fed",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen2.5-7B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Qwen2.5-Coder-1.5B-Instruct-4bit",
+      "requestedRevision": "main",
+      "revision": "b3252a2f97102b1fb1571fec2c9b27219a8536be",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Qwen/Qwen2.5-Coder-1.5B"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Qwen3-0.6B-4bit",
+      "requestedRevision": "main",
+      "revision": "73e3e38d981303bc594367cd910ea6eb48349da8",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen3-0.6B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Qwen3-1.7B-4bit",
+      "requestedRevision": "main",
+      "revision": "3b1b1768f8f8cf8351c712464f906e86c2b8269e",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen3-1.7B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Qwen3-4B-4bit",
+      "requestedRevision": "main",
+      "revision": "4dcb3d101c2a062e5c1d4bb173588c54ea6c4d25",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen3-4B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Qwen3-4B-Instruct-2507-4bit",
+      "requestedRevision": "main",
+      "revision": "50d427756c6b1b2fe0c0a10f67fbda1fc8e82c1b",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen3-4B-Instruct-2507",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Qwen3-4B-Instruct-2507-8bit",
+      "requestedRevision": "main",
+      "revision": "0e42af58449718de7931ee04f28191fbe6c43a56",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen3-4B-Instruct-2507",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Qwen3-4B-Thinking-2507-4bit",
+      "requestedRevision": "main",
+      "revision": "627b019c66f22d4de0a641d289b41497651a55c9",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen3-4B-Thinking-2507",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Qwen3-8B-4bit",
+      "requestedRevision": "main",
+      "revision": "545dc4251c05440727734bcd94334791f6ab0192",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Qwen/Qwen3-8B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Qwen3-VL-2B-Instruct-4bit",
+      "requestedRevision": "main",
+      "revision": "9c4f5209e57b31f4b9dfba735de3fb983739c9cc",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Qwen3-VL-4B-Instruct-4bit",
+      "requestedRevision": "main",
+      "revision": "2fd8dacbdb8f1e54b8c005f081ec5bf79c56376b",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Qwen3.5-4B-4bit",
+      "requestedRevision": "main",
+      "revision": "0e7ffd5c629ef7719d4cbc04069232580bfa9d9c",
+      "licenseTag": null,
+      "baseModels": null,
+      "gated": false,
+      "error": "HTTP Error 404: Not Found",
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/Qwen3.5-9B-4bit",
+      "requestedRevision": "main",
+      "revision": "8b2b98c00a6b4d291155e4890773ca8f769aee53",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Qwen/Qwen3.5-9B-Base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/gemma-2-2b-it-4bit",
+      "requestedRevision": "main",
+      "revision": "2c715097ff9c081a6ac1e5cd239e2ac756b5bd99",
+      "licenseTag": "gemma",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "mlx-community/gemma-4-12B-it-4bit",
+      "requestedRevision": "main",
+      "revision": "73bcf09092aa277861d5a191b989b666f7f32e8f",
+      "licenseTag": null,
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16",
+      "requestedRevision": "main",
+      "revision": "dfaf35de3e30f1867dd8dbc38a7fc9fb52d3914f",
+      "licenseTag": "other",
+      "baseModels": "nvidia/NVIDIA-Nemotron-Nano-9B-v2",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-4B-BF16/resolve/dfaf35de3e30f1867dd8dbc38a7fc9fb52d3914f/LICENSE",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    },
+    {
+      "repository": "nvidia/NVIDIA-Nemotron-Nano-12B-v2",
+      "requestedRevision": "main",
+      "revision": "f428df0ec725fed457b89cfca54dc26500fb88c1",
+      "licenseTag": "other",
+      "baseModels": [
+        "nvidia/NVIDIA-Nemotron-Nano-12B-v2-Base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "nvidia/NVIDIA-Nemotron-Nano-12B-v2-Base",
+      "requestedRevision": "main",
+      "revision": "78dc93a79e2533922ac8ad2c16f79b7fb747970d",
+      "licenseTag": "other",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "nvidia/NVIDIA-Nemotron-Nano-9B-v2",
+      "requestedRevision": "main",
+      "revision": "6533e8de2c68e4536bf7c411d7a3ce5734111476",
+      "licenseTag": "other",
+      "baseModels": [
+        "nvidia/NVIDIA-Nemotron-Nano-12B-v2-Base",
+        "nvidia/NVIDIA-Nemotron-Nano-12B-v2"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "onnx-community/silero-vad",
+      "requestedRevision": "main",
+      "revision": "e71cae966052b992a7eca6b17738916ce0eca4ec",
+      "licenseTag": "mit",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/onnx-community/silero-vad/resolve/e71cae966052b992a7eca6b17738916ce0eca4ec/LICENSE",
+          "sha256": "2e63e9a38b6e8fc0c7bc37ce174caca1862870856c6daf5697cfb785e925520b",
+          "localPath": "LICENSES/Models/onnx-community--silero-vad/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "openai/whisper-large-v3",
+      "requestedRevision": "main",
+      "revision": "06f233fe06e710322aca913c1bc4249a0d71fce1",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "openai/whisper-large-v3-turbo",
+      "requestedRevision": "main",
+      "revision": "41f01f3fe87f28c78e2fbf8b568835947dd65ed9",
+      "licenseTag": "mit",
+      "baseModels": [
+        "openai/whisper-large-v3"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "openbmb/BitCPM-CANN-8B",
+      "requestedRevision": "main",
+      "revision": "9a60ff7a487c1d71ba66fbd211748c0c768dc4a1",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "openbmb/MiniCPM4-8B"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "openbmb/MiniCPM4-8B",
+      "requestedRevision": "main",
+      "revision": "bb2ae14cf59d4ca769c4e42ece54cc3b82a58ef7",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "openbmb/MiniCPM5-1B",
+      "requestedRevision": "main",
+      "revision": "87179e5c1f455ef22e6223592d2d61351b525bfc",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "openbmb/MiniCPM5-2B",
+      "requestedRevision": "main",
+      "revision": "f97400052a43d642bbc6e9975e2397e3ae6a6b52",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "prism-ml/Bonsai-1.7B-mlx-1bit",
+      "requestedRevision": "main",
+      "revision": "fac480d016cf265838ad087f9f3f2abac4a2c1a5",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "prism-ml/Bonsai-1.7B-unpacked"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/prism-ml/Bonsai-1.7B-mlx-1bit/resolve/fac480d016cf265838ad087f9f3f2abac4a2c1a5/LICENSE",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+          "localPath": "LICENSES/Models/prism-ml--Bonsai-1.7B-mlx-1bit/LICENSE"
+        },
+        {
+          "path": "NOTICE.txt",
+          "url": "https://huggingface.co/prism-ml/Bonsai-1.7B-mlx-1bit/resolve/fac480d016cf265838ad087f9f3f2abac4a2c1a5/NOTICE.txt",
+          "sha256": "0458cf19671f24d21121422f771b19dccda75152b9fbb95c518b151ece0a04a3",
+          "localPath": "LICENSES/Models/prism-ml--Bonsai-1.7B-mlx-1bit/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "prism-ml/Bonsai-1.7B-unpacked",
+      "requestedRevision": "main",
+      "revision": "a7f720bd688d7563714f3118edd97b83d06f0615",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/prism-ml/Bonsai-1.7B-unpacked/resolve/a7f720bd688d7563714f3118edd97b83d06f0615/LICENSE",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+          "localPath": "LICENSES/Models/prism-ml--Bonsai-1.7B-unpacked/LICENSE"
+        },
+        {
+          "path": "NOTICE.txt",
+          "url": "https://huggingface.co/prism-ml/Bonsai-1.7B-unpacked/resolve/a7f720bd688d7563714f3118edd97b83d06f0615/NOTICE.txt",
+          "sha256": "0458cf19671f24d21121422f771b19dccda75152b9fbb95c518b151ece0a04a3",
+          "localPath": "LICENSES/Models/prism-ml--Bonsai-1.7B-unpacked/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "prism-ml/Bonsai-27B-mlx-1bit",
+      "requestedRevision": "main",
+      "revision": "ef22f239c670078e1507f9769bcaa66657332b96",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Qwen/Qwen3.6-27B"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE.txt",
+          "url": "https://huggingface.co/prism-ml/Bonsai-27B-mlx-1bit/resolve/ef22f239c670078e1507f9769bcaa66657332b96/LICENSE.txt",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+          "localPath": "LICENSES/Models/prism-ml--Bonsai-27B-mlx-1bit/LICENSE.txt"
+        },
+        {
+          "path": "NOTICE.txt",
+          "url": "https://huggingface.co/prism-ml/Bonsai-27B-mlx-1bit/resolve/ef22f239c670078e1507f9769bcaa66657332b96/NOTICE.txt",
+          "sha256": "cef33f95425f9802de78b7b22db0faca84d2216661432a9afcf9620949c21f7e",
+          "localPath": "LICENSES/Models/prism-ml--Bonsai-27B-mlx-1bit/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "prism-ml/Bonsai-4B-mlx-1bit",
+      "requestedRevision": "main",
+      "revision": "3d25c52f7fa171affb188e27796be61be3df52db",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "prism-ml/Bonsai-4B-unpacked"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/prism-ml/Bonsai-4B-mlx-1bit/resolve/3d25c52f7fa171affb188e27796be61be3df52db/LICENSE",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+          "localPath": "LICENSES/Models/prism-ml--Bonsai-4B-mlx-1bit/LICENSE"
+        },
+        {
+          "path": "NOTICE.txt",
+          "url": "https://huggingface.co/prism-ml/Bonsai-4B-mlx-1bit/resolve/3d25c52f7fa171affb188e27796be61be3df52db/NOTICE.txt",
+          "sha256": "0234e8eefadc54f307b7a86fb905ce23a92aabd82644c11d125e0b507168b9d9",
+          "localPath": "LICENSES/Models/prism-ml--Bonsai-4B-mlx-1bit/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "prism-ml/Bonsai-4B-unpacked",
+      "requestedRevision": "main",
+      "revision": "b2529e9641629dce5e6be5fa44492bc249f1a58a",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/prism-ml/Bonsai-4B-unpacked/resolve/b2529e9641629dce5e6be5fa44492bc249f1a58a/LICENSE",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+          "localPath": "LICENSES/Models/prism-ml--Bonsai-4B-unpacked/LICENSE"
+        },
+        {
+          "path": "NOTICE.txt",
+          "url": "https://huggingface.co/prism-ml/Bonsai-4B-unpacked/resolve/b2529e9641629dce5e6be5fa44492bc249f1a58a/NOTICE.txt",
+          "sha256": "0234e8eefadc54f307b7a86fb905ce23a92aabd82644c11d125e0b507168b9d9",
+          "localPath": "LICENSES/Models/prism-ml--Bonsai-4B-unpacked/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "prism-ml/Bonsai-8B-mlx-1bit",
+      "requestedRevision": "main",
+      "revision": "019934f87a61a654e3960ea22f53688e0d2c49ba",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "prism-ml/Bonsai-8B-unpacked"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/prism-ml/Bonsai-8B-mlx-1bit/resolve/019934f87a61a654e3960ea22f53688e0d2c49ba/LICENSE",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+          "localPath": "LICENSES/Models/prism-ml--Bonsai-8B-mlx-1bit/LICENSE"
+        },
+        {
+          "path": "NOTICE.txt",
+          "url": "https://huggingface.co/prism-ml/Bonsai-8B-mlx-1bit/resolve/019934f87a61a654e3960ea22f53688e0d2c49ba/NOTICE.txt",
+          "sha256": "7334e66ce48a4ee267ee936c7d2a4f16bd865c766c60ba56b9e04526fae33e0b",
+          "localPath": "LICENSES/Models/prism-ml--Bonsai-8B-mlx-1bit/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "prism-ml/Bonsai-8B-unpacked",
+      "requestedRevision": "main",
+      "revision": "376f381570d6115bc03f82adcfa4af0c7672ae54",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/prism-ml/Bonsai-8B-unpacked/resolve/376f381570d6115bc03f82adcfa4af0c7672ae54/LICENSE",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+          "localPath": "LICENSES/Models/prism-ml--Bonsai-8B-unpacked/LICENSE"
+        },
+        {
+          "path": "NOTICE.txt",
+          "url": "https://huggingface.co/prism-ml/Bonsai-8B-unpacked/resolve/376f381570d6115bc03f82adcfa4af0c7672ae54/NOTICE.txt",
+          "sha256": "7334e66ce48a4ee267ee936c7d2a4f16bd865c766c60ba56b9e04526fae33e0b",
+          "localPath": "LICENSES/Models/prism-ml--Bonsai-8B-unpacked/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "prism-ml/Ternary-Bonsai-1.7B-mlx-2bit",
+      "requestedRevision": "main",
+      "revision": "5f3e306330f636cfc6c6241b4850fae6711c5985",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "prism-ml/Ternary-Bonsai-1.7B-unpacked"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-1.7B-mlx-2bit/resolve/5f3e306330f636cfc6c6241b4850fae6711c5985/LICENSE",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+          "localPath": "LICENSES/Models/prism-ml--Ternary-Bonsai-1.7B-mlx-2bit/LICENSE"
+        },
+        {
+          "path": "NOTICE.txt",
+          "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-1.7B-mlx-2bit/resolve/5f3e306330f636cfc6c6241b4850fae6711c5985/NOTICE.txt",
+          "sha256": "0458cf19671f24d21121422f771b19dccda75152b9fbb95c518b151ece0a04a3",
+          "localPath": "LICENSES/Models/prism-ml--Ternary-Bonsai-1.7B-mlx-2bit/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "prism-ml/Ternary-Bonsai-1.7B-unpacked",
+      "requestedRevision": "main",
+      "revision": "3aca840085293d026ce6f6b80fafdae937fd2eeb",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-1.7B-unpacked/resolve/3aca840085293d026ce6f6b80fafdae937fd2eeb/LICENSE",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+          "localPath": "LICENSES/Models/prism-ml--Ternary-Bonsai-1.7B-unpacked/LICENSE"
+        },
+        {
+          "path": "NOTICE.txt",
+          "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-1.7B-unpacked/resolve/3aca840085293d026ce6f6b80fafdae937fd2eeb/NOTICE.txt",
+          "sha256": "0458cf19671f24d21121422f771b19dccda75152b9fbb95c518b151ece0a04a3",
+          "localPath": "LICENSES/Models/prism-ml--Ternary-Bonsai-1.7B-unpacked/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "prism-ml/Ternary-Bonsai-27B-mlx-2bit",
+      "requestedRevision": "main",
+      "revision": "70f75f3ad081ab840a42f3304c02c27e7f89bfb7",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "Qwen/Qwen3.6-27B"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE.txt",
+          "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-27B-mlx-2bit/resolve/70f75f3ad081ab840a42f3304c02c27e7f89bfb7/LICENSE.txt",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+          "localPath": "LICENSES/Models/prism-ml--Ternary-Bonsai-27B-mlx-2bit/LICENSE.txt"
+        },
+        {
+          "path": "NOTICE.txt",
+          "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-27B-mlx-2bit/resolve/70f75f3ad081ab840a42f3304c02c27e7f89bfb7/NOTICE.txt",
+          "sha256": "cef33f95425f9802de78b7b22db0faca84d2216661432a9afcf9620949c21f7e",
+          "localPath": "LICENSES/Models/prism-ml--Ternary-Bonsai-27B-mlx-2bit/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "prism-ml/Ternary-Bonsai-4B-mlx-2bit",
+      "requestedRevision": "main",
+      "revision": "e1374ad6bf9b1b56afd743936b8faa33c409a75f",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "prism-ml/Ternary-Bonsai-4B-unpacked"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-4B-mlx-2bit/resolve/e1374ad6bf9b1b56afd743936b8faa33c409a75f/LICENSE",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+          "localPath": "LICENSES/Models/prism-ml--Ternary-Bonsai-4B-mlx-2bit/LICENSE"
+        },
+        {
+          "path": "NOTICE.txt",
+          "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-4B-mlx-2bit/resolve/e1374ad6bf9b1b56afd743936b8faa33c409a75f/NOTICE.txt",
+          "sha256": "0234e8eefadc54f307b7a86fb905ce23a92aabd82644c11d125e0b507168b9d9",
+          "localPath": "LICENSES/Models/prism-ml--Ternary-Bonsai-4B-mlx-2bit/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "prism-ml/Ternary-Bonsai-4B-unpacked",
+      "requestedRevision": "main",
+      "revision": "4485fae7a00129467b9329b738110d88b2942a1a",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-4B-unpacked/resolve/4485fae7a00129467b9329b738110d88b2942a1a/LICENSE",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+          "localPath": "LICENSES/Models/prism-ml--Ternary-Bonsai-4B-unpacked/LICENSE"
+        },
+        {
+          "path": "NOTICE.txt",
+          "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-4B-unpacked/resolve/4485fae7a00129467b9329b738110d88b2942a1a/NOTICE.txt",
+          "sha256": "0234e8eefadc54f307b7a86fb905ce23a92aabd82644c11d125e0b507168b9d9",
+          "localPath": "LICENSES/Models/prism-ml--Ternary-Bonsai-4B-unpacked/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "prism-ml/Ternary-Bonsai-8B-mlx-2bit",
+      "requestedRevision": "main",
+      "revision": "9260b24298e4211e804663e9f519962cf59f34be",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "prism-ml/Ternary-Bonsai-8B-unpacked"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-8B-mlx-2bit/resolve/9260b24298e4211e804663e9f519962cf59f34be/LICENSE",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+          "localPath": "LICENSES/Models/prism-ml--Ternary-Bonsai-8B-mlx-2bit/LICENSE"
+        },
+        {
+          "path": "NOTICE.txt",
+          "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-8B-mlx-2bit/resolve/9260b24298e4211e804663e9f519962cf59f34be/NOTICE.txt",
+          "sha256": "7334e66ce48a4ee267ee936c7d2a4f16bd865c766c60ba56b9e04526fae33e0b",
+          "localPath": "LICENSES/Models/prism-ml--Ternary-Bonsai-8B-mlx-2bit/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "prism-ml/Ternary-Bonsai-8B-unpacked",
+      "requestedRevision": "main",
+      "revision": "ac20f03fc62e872399218b659c8e949dfca05769",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-8B-unpacked/resolve/ac20f03fc62e872399218b659c8e949dfca05769/LICENSE",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+          "localPath": "LICENSES/Models/prism-ml--Ternary-Bonsai-8B-unpacked/LICENSE"
+        },
+        {
+          "path": "NOTICE.txt",
+          "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-8B-unpacked/resolve/ac20f03fc62e872399218b659c8e949dfca05769/NOTICE.txt",
+          "sha256": "7334e66ce48a4ee267ee936c7d2a4f16bd865c766c60ba56b9e04526fae33e0b",
+          "localPath": "LICENSES/Models/prism-ml--Ternary-Bonsai-8B-unpacked/NOTICE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "segmind/SSD-1B",
+      "requestedRevision": "main",
+      "revision": "60987f37e94cd59c36b1cba832b9f97b57395a10",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "segmind/Segmind-Vega",
+      "requestedRevision": "main",
+      "revision": "7714c4363e5856ff974a4f4b068e8691f26d0b40",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "snakers4/silero-vad",
+      "requestedRevision": "main",
+      "revision": null,
+      "licenseTag": null,
+      "baseModels": null,
+      "gated": null,
+      "error": "HTTP Error 401: Unauthorized",
+      "licenseFiles": []
+    },
+    {
+      "repository": "stabilityai/sd-turbo",
+      "requestedRevision": "main",
+      "revision": "b261bac6fd2cf515557d5d0707481eafa0485ec2",
+      "licenseTag": null,
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE.md",
+          "url": "https://huggingface.co/stabilityai/sd-turbo/resolve/b261bac6fd2cf515557d5d0707481eafa0485ec2/LICENSE.md",
+          "sha256": "d6f6b1a4dce5c852bd6d7d9482d002baf0ccdb71e662250b73be9eec8764ee8d",
+          "localPath": "LICENSES/Models/stabilityai--sd-turbo/LICENSE.md"
+        }
+      ]
+    },
+    {
+      "repository": "stabilityai/sdxl-turbo",
+      "requestedRevision": "main",
+      "revision": "71153311d3dbb46851df1931d3ca6e939de83304",
+      "licenseTag": "other",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE.md",
+          "url": "https://huggingface.co/stabilityai/sdxl-turbo/resolve/71153311d3dbb46851df1931d3ca6e939de83304/LICENSE.md",
+          "sha256": "d6f6b1a4dce5c852bd6d7d9482d002baf0ccdb71e662250b73be9eec8764ee8d",
+          "localPath": "LICENSES/Models/stabilityai--sdxl-turbo/LICENSE.md"
+        }
+      ]
+    },
+    {
+      "repository": "stabilityai/stable-diffusion-2-1-base",
+      "requestedRevision": "main",
+      "revision": null,
+      "licenseTag": null,
+      "baseModels": null,
+      "gated": null,
+      "error": "HTTP Error 401: Unauthorized",
+      "licenseFiles": []
+    },
+    {
+      "repository": "stable-diffusion-v1-5/stable-diffusion-v1-5",
+      "requestedRevision": "main",
+      "revision": "451f4fe16113bff5a5d2269ed5ad43b0592e9a14",
+      "licenseTag": "creativeml-openrail-m",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "tencent/Youtu-LLM-2B",
+      "requestedRevision": "main",
+      "revision": "8b0e73594661a945a7f5aafc737b63e3d8ad3f75",
+      "licenseTag": "other",
+      "baseModels": [
+        "tencent/Youtu-LLM-2B-Base"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE.txt",
+          "url": "https://huggingface.co/tencent/Youtu-LLM-2B/resolve/8b0e73594661a945a7f5aafc737b63e3d8ad3f75/LICENSE.txt",
+          "sha256": "7ef64a58bdbe3ca4dc3299df7ef969cb41065301852356d152309dc471f97c7b",
+          "localPath": "LICENSES/Models/tencent--Youtu-LLM-2B/LICENSE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "tencent/Youtu-LLM-2B-Base",
+      "requestedRevision": "main",
+      "revision": "7b32c99715f9459c8b9ed2ba44dea5af507ae264",
+      "licenseTag": "other",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE.txt",
+          "url": "https://huggingface.co/tencent/Youtu-LLM-2B-Base/resolve/7b32c99715f9459c8b9ed2ba44dea5af507ae264/LICENSE.txt",
+          "sha256": "7ef64a58bdbe3ca4dc3299df7ef969cb41065301852356d152309dc471f97c7b",
+          "localPath": "LICENSES/Models/tencent--Youtu-LLM-2B-Base/LICENSE.txt"
+        }
+      ]
+    },
+    {
+      "repository": "ukint-vs/Nanbeige4.2-3B-CoreAI",
+      "requestedRevision": "a55c2286a55d623ba18e0bd6489b260de4512a40",
+      "revision": "a55c2286a55d623ba18e0bd6489b260de4512a40",
+      "licenseTag": "apache-2.0",
+      "baseModels": "Nanbeige/Nanbeige4.2-3B",
+      "gated": false,
+      "error": null,
+      "licenseFiles": [
+        {
+          "path": "LICENSE",
+          "url": "https://huggingface.co/ukint-vs/Nanbeige4.2-3B-CoreAI/resolve/a55c2286a55d623ba18e0bd6489b260de4512a40/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "localPath": "LICENSES/Models/ukint-vs--Nanbeige4.2-3B-CoreAI/LICENSE"
+        }
+      ]
+    },
+    {
+      "repository": "utter-project/EuroLLM-1.7B",
+      "requestedRevision": "main",
+      "revision": "c730cd9b616799ace3c65e927d63191446f59374",
+      "licenseTag": "apache-2.0",
+      "baseModels": null,
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "utter-project/EuroLLM-1.7B-Instruct",
+      "requestedRevision": "main",
+      "revision": "a25c7fa65fc2a644e6270b8940dbe295b51da681",
+      "licenseTag": "apache-2.0",
+      "baseModels": [
+        "utter-project/EuroLLM-1.7B"
+      ],
+      "gated": false,
+      "error": null,
+      "licenseFiles": []
+    },
+    {
+      "repository": "yl4579/StyleTTS2-LJSpeech",
+      "requestedRevision": "main",
+      "revision": "359e81ba0dc3756215905fa8e1f4ddbab6438a22",
+      "licenseTag": null,
+      "baseModels": null,
+      "gated": false,
+      "error": "HTTP Error 404: Not Found",
+      "licenseFiles": []
+    }
+  ]
+}

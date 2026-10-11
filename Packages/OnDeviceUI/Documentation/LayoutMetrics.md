@@ -1,8 +1,8 @@
 # Layout metrics
 
-The current chat reference places model selection in the centered navigation item. The composer keeps the writing area and attachment, microphone and Send/Stop controls. Image attachments have 96-point previews (112 at accessibility sizes), with independent 44-point removal targets. The writing inset is fixed, like system layout margins.
+Local and API model selection stay in the centered navigation item. The pill shows only the model name. Both modes keep the writing area and attachment, microphone and Send/Stop controls. Switching selection retains the draft and scroll state. Image attachments have 96-point previews (112 at accessibility sizes), with independent 44-point removal targets. The writing inset is fixed, like system layout margins.
 
-The chat composer is one app-owned panel: draft attachments, writing area, then a separate control footer. Its structure follows the reviewed official Codex desktop composer, adapted to OnDevice's supported local-model and attachment actions. This document defines its dimensions and responsive equations without assigning geometry to Apple's native navigation or tab bars.
+The chat composer is one app-owned panel in both modes: draft attachments, writing area, then a separate control footer. The dimensions and responsive equations below do not assign geometry to Apple's native navigation or tab bars.
 
 `Sources/OnDeviceUI/Theme/ODTheme.swift` defines the shared `ODLayout` constants and helpers. SwiftUI measures the actual text and native buttons. The layout accepts those measurements; it does not force controls into predicted dimensions.
 
@@ -45,7 +45,7 @@ Let **W** be the horizontal width available inside the system safe area. With **
 
 `C = max(0, W − 2G)`
 
-The writing area is above the controls, so its width does not lose space to a side-by-side attachment or Send button. The footer has its own flexible horizontal layout.
+In local mode the writing area is above the controls, so its width does not lose space to a side-by-side attachment or Send button. The footer has its own flexible horizontal layout.
 
 For an illustrative **W = 393 pt**, using the declared app insets:
 

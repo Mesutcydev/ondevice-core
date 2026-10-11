@@ -38,6 +38,9 @@ public struct ChatMessage: Identifiable, Codable, Hashable, Sendable {
     public var generationTokensPerSecond: Double? = nil
     /// Wall-clock time from creating the assistant turn until completion.
     public var generationDuration: TimeInterval? = nil
+    /// Actual reasoning phase timing, kept with the turn across lazy row reuse.
+    public var reasoningStartedAt: Date? = nil
+    public var reasoningDuration: TimeInterval? = nil
     /// Backend identity captured when this assistant turn starts. Optional so
     /// conversations written by older builds decode unchanged.
     public var generationModelID: String? = nil
@@ -131,6 +134,8 @@ public struct ChatMessage: Identifiable, Codable, Hashable, Sendable {
         lhs.isJSONMode == rhs.isJSONMode &&
         lhs.generationTokensPerSecond == rhs.generationTokensPerSecond &&
         lhs.generationDuration == rhs.generationDuration &&
+        lhs.reasoningStartedAt == rhs.reasoningStartedAt &&
+        lhs.reasoningDuration == rhs.reasoningDuration &&
         lhs.generationModelID == rhs.generationModelID &&
         lhs.generationExecutionLocation == rhs.generationExecutionLocation &&
         lhs.documentSources == rhs.documentSources &&
@@ -149,6 +154,8 @@ public struct ChatMessage: Identifiable, Codable, Hashable, Sendable {
         hasher.combine(isJSONMode)
         hasher.combine(generationTokensPerSecond)
         hasher.combine(generationDuration)
+        hasher.combine(reasoningStartedAt)
+        hasher.combine(reasoningDuration)
         hasher.combine(generationModelID)
         hasher.combine(generationExecutionLocation)
         hasher.combine(hitTokenLimit)

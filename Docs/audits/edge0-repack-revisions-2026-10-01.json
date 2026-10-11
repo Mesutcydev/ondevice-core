@@ -1,0 +1,254 @@
+{
+  "repository": "Edge0/Edge0-35B-A3B-preview",
+  "verifiedAt": "2026-10-01T20:47:15.301245+00:00",
+  "revisions": [
+    "1ff9f4478890faec0368c5463b621d1036d5b518",
+    "3fe15cbf2bd5bbcdfd611035e1ac88971ff1cdab"
+  ],
+  "method": "Compared Hugging Face revision API metadata including Git blob IDs and LFS SHA-256; no model weights downloaded.",
+  "changedFiles": [
+    "README.md"
+  ],
+  "files": [
+    {
+      "path": ".gitattributes",
+      "identical": true,
+      "gitBlobIds": [
+        "51e12ba319419a6d2695db5ecc706fd866fa2476",
+        "51e12ba319419a6d2695db5ecc706fd866fa2476"
+      ],
+      "lfsSHA256": [
+        null,
+        null
+      ]
+    },
+    {
+      "path": "20260908-223115.jpg",
+      "identical": true,
+      "gitBlobIds": [
+        "65e6063dffcd7542ba4efe50e4aebdb706cfe729",
+        "65e6063dffcd7542ba4efe50e4aebdb706cfe729"
+      ],
+      "lfsSHA256": [
+        "d7285e3c6d5f1039a8b5283031e27fd48aa0cebbb9fb57d180903481eeb8f204",
+        "d7285e3c6d5f1039a8b5283031e27fd48aa0cebbb9fb57d180903481eeb8f204"
+      ]
+    },
+    {
+      "path": "20260910-105854.mp4",
+      "identical": true,
+      "gitBlobIds": [
+        "c822f26b1822163205af3722aae9706b3ed49cc1",
+        "c822f26b1822163205af3722aae9706b3ed49cc1"
+      ],
+      "lfsSHA256": [
+        "b266d0ec149cb752581789df5846c23ca345501051ee9cc86de31415ed4d6a59",
+        "b266d0ec149cb752581789df5846c23ca345501051ee9cc86de31415ed4d6a59"
+      ]
+    },
+    {
+      "path": "README.md",
+      "identical": false,
+      "gitBlobIds": [
+        "bbea5fe63ebd92c48834983f83cfad82e93f0f88",
+        "0cd78753ea1cbfe15010f77186af7ee1879002f8"
+      ],
+      "lfsSHA256": [
+        null,
+        null
+      ]
+    },
+    {
+      "path": "chat_template.jinja",
+      "identical": true,
+      "gitBlobIds": [
+        "a8755d827c0a7b614c246c4060dfd58ab352a8ff",
+        "a8755d827c0a7b614c246c4060dfd58ab352a8ff"
+      ],
+      "lfsSHA256": [
+        null,
+        null
+      ]
+    },
+    {
+      "path": "config.json",
+      "identical": true,
+      "gitBlobIds": [
+        "e3a2334ebf2df216742ef3ed4b784417bfffe6fc",
+        "e3a2334ebf2df216742ef3ed4b784417bfffe6fc"
+      ],
+      "lfsSHA256": [
+        null,
+        null
+      ]
+    },
+    {
+      "path": "configuration.json",
+      "identical": true,
+      "gitBlobIds": [
+        "d24dba949ee1fe70cc810e4c4709a0bddf4e06ba",
+        "d24dba949ee1fe70cc810e4c4709a0bddf4e06ba"
+      ],
+      "lfsSHA256": [
+        null,
+        null
+      ]
+    },
+    {
+      "path": "generation_config.json",
+      "identical": true,
+      "gitBlobIds": [
+        "023756cfadf88e5bf69eefeee3e172f38c448d64",
+        "023756cfadf88e5bf69eefeee3e172f38c448d64"
+      ],
+      "lfsSHA256": [
+        null,
+        null
+      ]
+    },
+    {
+      "path": "lora_edge0_35b.safetensors",
+      "identical": true,
+      "gitBlobIds": [
+        "0f7a5cabbbc46029a243b04e3b2ee52228d61421",
+        "0f7a5cabbbc46029a243b04e3b2ee52228d61421"
+      ],
+      "lfsSHA256": [
+        "a407f6d27bb55e39e6461bd4bce1fd90489e70c7582b68a796fb764bdb441ec1",
+        "a407f6d27bb55e39e6461bd4bce1fd90489e70c7582b68a796fb764bdb441ec1"
+      ]
+    },
+    {
+      "path": "model-00001-of-00004.safetensors",
+      "identical": true,
+      "gitBlobIds": [
+        "bea008d39b90161870dd885d98d7457b3da79b78",
+        "bea008d39b90161870dd885d98d7457b3da79b78"
+      ],
+      "lfsSHA256": [
+        "f7fff28fecb8221e53787c6339c938b113bcb94c7bbc60d09a8826eba08ef1ab",
+        "f7fff28fecb8221e53787c6339c938b113bcb94c7bbc60d09a8826eba08ef1ab"
+      ]
+    },
+    {
+      "path": "model-00002-of-00004.safetensors",
+      "identical": true,
+      "gitBlobIds": [
+        "6ef94e647bb187f65d947435b781d2727e52e067",
+        "6ef94e647bb187f65d947435b781d2727e52e067"
+      ],
+      "lfsSHA256": [
+        "31dcdb1c49eebdb1505bd14e3cb33f9cf900bd2546b638f2464694ae763a033f",
+        "31dcdb1c49eebdb1505bd14e3cb33f9cf900bd2546b638f2464694ae763a033f"
+      ]
+    },
+    {
+      "path": "model-00003-of-00004.safetensors",
+      "identical": true,
+      "gitBlobIds": [
+        "3fc47ae0adc479169737d38bd840896acb5aeab0",
+        "3fc47ae0adc479169737d38bd840896acb5aeab0"
+      ],
+      "lfsSHA256": [
+        "3e66de06a1f03dade16a612a368cfce4a4c9caa4efd7d28185454384082cec03",
+        "3e66de06a1f03dade16a612a368cfce4a4c9caa4efd7d28185454384082cec03"
+      ]
+    },
+    {
+      "path": "model-00004-of-00004.safetensors",
+      "identical": true,
+      "gitBlobIds": [
+        "6103cd4079c374472fa36695e8ee53336ab88c03",
+        "6103cd4079c374472fa36695e8ee53336ab88c03"
+      ],
+      "lfsSHA256": [
+        "a5d0cf03519c26f8b506df6b0ba60526e5c08c8cea22d0c21ce92950e58a5422",
+        "a5d0cf03519c26f8b506df6b0ba60526e5c08c8cea22d0c21ce92950e58a5422"
+      ]
+    },
+    {
+      "path": "model.safetensors.index.json",
+      "identical": true,
+      "gitBlobIds": [
+        "d309b52405f24901a3ed5a522234af97812cc947",
+        "d309b52405f24901a3ed5a522234af97812cc947"
+      ],
+      "lfsSHA256": [
+        null,
+        null
+      ]
+    },
+    {
+      "path": "preprocessor_config.json",
+      "identical": true,
+      "gitBlobIds": [
+        "2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+        "2ea84a437d448ff71b08df68fdd949d5cc4ebb64"
+      ],
+      "lfsSHA256": [
+        null,
+        null
+      ]
+    },
+    {
+      "path": "prerouter_edge0_35b.safetensors",
+      "identical": true,
+      "gitBlobIds": [
+        "fd3db2c27b37f9efd1bf1dc81a6c984c34d3b9e3",
+        "fd3db2c27b37f9efd1bf1dc81a6c984c34d3b9e3"
+      ],
+      "lfsSHA256": [
+        "93d07af08e1f5c8d174e941016740cb4d2c143c6b90f33581237679eca9b006f",
+        "93d07af08e1f5c8d174e941016740cb4d2c143c6b90f33581237679eca9b006f"
+      ]
+    },
+    {
+      "path": "processor_config.json",
+      "identical": true,
+      "gitBlobIds": [
+        "a3be3e79470d0a5befe0ba5247dfad8717d84529",
+        "a3be3e79470d0a5befe0ba5247dfad8717d84529"
+      ],
+      "lfsSHA256": [
+        null,
+        null
+      ]
+    },
+    {
+      "path": "tokenizer.json",
+      "identical": true,
+      "gitBlobIds": [
+        "67741b04f23bfdb46501f748ce27865ec82eccfb",
+        "67741b04f23bfdb46501f748ce27865ec82eccfb"
+      ],
+      "lfsSHA256": [
+        "87a7830d63fcf43bf241c3c5242e96e62dd3fdc29224ca26fed8ea333db72de4",
+        "87a7830d63fcf43bf241c3c5242e96e62dd3fdc29224ca26fed8ea333db72de4"
+      ]
+    },
+    {
+      "path": "tokenizer_config.json",
+      "identical": true,
+      "gitBlobIds": [
+        "a068e2468cff426a9b105006e74e044030a6faf4",
+        "a068e2468cff426a9b105006e74e044030a6faf4"
+      ],
+      "lfsSHA256": [
+        null,
+        null
+      ]
+    },
+    {
+      "path": "vocab.json",
+      "identical": true,
+      "gitBlobIds": [
+        "0aa0ce0658d60ac4a5d609f4eadb0e8e43514176",
+        "0aa0ce0658d60ac4a5d609f4eadb0e8e43514176"
+      ],
+      "lfsSHA256": [
+        null,
+        null
+      ]
+    }
+  ]
+}

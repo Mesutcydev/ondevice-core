@@ -118,6 +118,7 @@ struct Edge0_35BGenerationMetrics: Sendable, Equatable {
     var sessionReuseApplied = false
     var sessionReusedTokens = 0
     var sessionPrefillTokens = 0
+    var expertStorageLayout = "safetensors"
 
     var prefillBytesPerPromptToken: UInt64 {
         prefillPool.bytesPerToken(promptTokens)
@@ -287,6 +288,7 @@ final class Edge0_35BEngine: @unchecked Sendable {
     /// Phase 5M: value the expert loaders froze at load time. Authoritative
     /// "effective" half of the readahead requested/effective pair.
     private(set) var readaheadHintsEnabled = false
+    private(set) var expertStorageLayout = "safetensors"
 
     /// Pool-budget accounting frozen at load time (audit findings 1+2).
     /// Authoritative "effective" half of the accounting requested/effective
@@ -329,14 +331,15 @@ final class Edge0_35BEngine: @unchecked Sendable {
         // The index is already parsed for loading, so tensor/payload
         // accounting comes for free.
         let index = try Edge0SafetensorsIndex.openSharded(in: directory)
+        let repacked = try Edge0_35BRepackedExperts.openIfPresent(in: directory)
         var enrichedSummary = summary
         Edge0_35BModelArtifacts.applyWeightAccounting(
-            Edge0_35BModelArtifacts.weightAccounting(for: index),
+            Edge0_35BModelArtifacts.weightAccounting(for: index, repacked: repacked),
             to: &enrichedSummary
         )
         let stores = try Edge0TensorStoreSet(
             directory: directory,
-            shardNames: index.shardNames,
+            shardNames: index.shardNames + (repacked?.expertFileNames ?? []),
             maxConcurrentReads: engineConfiguration.maxConcurrentReads
         )
         // Captured once per load: the readahead A/B runner switches arms by
@@ -354,6 +357,7 @@ final class Edge0_35BEngine: @unchecked Sendable {
                     index: index,
                     stores: stores,
                     layer: layer,
+                    repacked: repacked,
                     readaheadHints: readaheadEnabled
                 )
             }
@@ -371,7 +375,8 @@ final class Edge0_35BEngine: @unchecked Sendable {
                 directory: directory,
                 index: index,
                 stores: stores,
-                pool: pool
+                pool: pool,
+                repacked: repacked
             )
 
             // 4. Real tokenizer/template for the chat path.
@@ -387,6 +392,7 @@ final class Edge0_35BEngine: @unchecked Sendable {
             self.configuration = configuration
             self.engineConfiguration = engineConfiguration
             self.readaheadHintsEnabled = readaheadEnabled
+            self.expertStorageLayout = repacked == nil ? "safetensors" : "repacked-v1"
             self.poolAccountingCaptured = poolAccounting
             self.installSummary = enrichedSummary
             self.eosTokenIDs = requestedEOS
@@ -426,6 +432,7 @@ final class Edge0_35BEngine: @unchecked Sendable {
         pool = nil
         configuration = nil
         engineConfiguration = nil
+        expertStorageLayout = "safetensors"
         installSummary = nil
         lastGenerationMetrics = nil
     }
@@ -939,7 +946,8 @@ final class Edge0_35BEngine: @unchecked Sendable {
             poolAccountingEffective: poolAccountingCaptured,
             sessionReuseApplied: reusedTokenCount > 0,
             sessionReusedTokens: reusedTokenCount,
-            sessionPrefillTokens: prefillTokenCount
+            sessionPrefillTokens: prefillTokenCount,
+            expertStorageLayout: expertStorageLayout
         )
         // Atomic compare-and-clear: a cancel() that already handed ownership
         // to a newer generation must not have it stolen by this completion.

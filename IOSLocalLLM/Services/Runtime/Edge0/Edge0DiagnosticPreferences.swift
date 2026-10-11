@@ -3,10 +3,10 @@ import Foundation
 // MARK: - Edge0DiagnosticPreferences
 //
 // Preference scope for the 35B speed diagnostic. The runner captures a
-// snapshot before overriding anything and restores it from its `defer` on
-// EVERY exit — normal completion, cancellation, and thrown errors. The
-// restore always writes back the captured values (a user's intentional
-// setting), never hard-coded defaults.
+// snapshot before overriding anything, drains the diagnostic runtime, then
+// restores it on every exit — completion, cancellation, and thrown errors.
+// Restoring preferences alone cannot change a loaded engine's cache or read
+// concurrency. The next chat must load a fresh engine with the saved values.
 //
 // Kept free of app-layer types so the restoration path is executable in the
 // macOS real-checkpoint harness (the app's CodingAssistantService cannot be
@@ -22,6 +22,7 @@ enum Edge0DiagnosticPreferences {
         let advisoryPrerouter: Bool
         let routerReadbackMode: Int
         let componentProfilingEnabled: Bool
+        let sessionReuse: Bool
         /// Phase 5M candidate. Captured here so a diagnostic run can never
         /// leave kernel readahead enabled behind it, and so both arms of an
         /// A/B observe the same readahead state (it is set at model load).
@@ -50,6 +51,8 @@ enum Edge0DiagnosticPreferences {
                     Edge0EnginePreferences.edge0_35BRouterReadbackMode,
                 componentProfilingEnabled:
                     Edge0EnginePreferences.componentProfilingEnabled,
+                sessionReuse:
+                    Edge0EnginePreferences.edge0_35BSessionReuse,
                 readaheadHints:
                     Edge0EnginePreferences.edge0_35BReadaheadHints,
                 poolAccounting:
@@ -73,18 +76,29 @@ enum Edge0DiagnosticPreferences {
                 routerReadbackMode
             Edge0EnginePreferences.componentProfilingEnabled =
                 componentProfilingEnabled
+            Edge0EnginePreferences.edge0_35BSessionReuse = sessionReuse
             Edge0EnginePreferences.edge0_35BReadaheadHints = readaheadHints
             Edge0EnginePreferences.edge0_35BPoolAccounting = poolAccounting
         }
     }
 
-    /// Runs `body` inside a captured scope. This is the same capture +
-    /// `defer restore` pair the runner uses in `performRun`.
+    /// Await cleanup before restoring preferences or returning control to
+    /// chat. Cleanup must drain even when the body throws or is cancelled.
+    @MainActor
     static func withRestoration<T>(
+        cleanup: () async -> Void = {},
         _ body: () async throws -> T
     ) async rethrows -> T {
         let snapshot = Snapshot.capture()
         defer { snapshot.restore() }
-        return try await body()
+        let result: T
+        do {
+            result = try await body()
+        } catch {
+            await cleanup()
+            throw error
+        }
+        await cleanup()
+        return result
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 struct CoreAIModelCapabilities: Codable, Equatable, Sendable {
     let textGeneration: Bool
@@ -9,6 +10,8 @@ struct CoreAIModelCapabilities: Codable, Equatable, Sendable {
     let toolCalling: Bool
     let reasoning: Bool
     let concurrentExecution: Bool
+    /// Optional for compatibility with manifests written before classifiers.
+    var classification: Bool? = nil
 }
 
 struct CoreAIExpectedModelFile: Codable, Equatable, Sendable {
@@ -59,7 +62,7 @@ struct CoreAIInstalledModel: Identifiable, Equatable, Sendable {
         if CoreAIZooCatalog.model(forSelectionID: manifest.id) != nil {
             return CoreAIZooCatalog.assistantModel(forSelectionID: manifest.id)
         }
-        guard manifest.capabilities.textGeneration else { return nil }
+        guard manifest.capabilities.textGeneration, manifest.capabilities.classification != true else { return nil }
         var capabilities: Set<ModelCapability> = []
         if manifest.capabilities.reasoning { capabilities.insert(.thinking) }
         if manifest.capabilities.toolCalling { capabilities.insert(.tools) }
@@ -235,6 +238,9 @@ final class CoreAIModelStore: ObservableObject {
         preferredID: String,
         preferredDisplayName: String
     ) throws {
+        if let restriction = AppStoreModelPolicy.restriction(for: preferredID) {
+            throw CoreAIInferenceError.unavailable(restriction)
+        }
         let previouslySelectedID = manifest?.id
         state = .validating
         do {
@@ -567,7 +573,9 @@ final class CoreAIModelStore: ObservableObject {
         let totalBytes = Self.recursiveFileBytes(in: resources)
         let manifestID = preferredID ?? Self.defaultModelID
         let catalogModel = CoreAIZooCatalog.model(forSelectionID: manifestID)
-        let supportsTextGeneration = CoreAIZooCatalog.isTextGenerationPack(id: manifestID)
+        let classifier = try Self.classifierContract(in: resources)
+        let supportsTextGeneration = classifier == nil
+            && CoreAIZooCatalog.isTextGenerationPack(id: manifestID)
         let manifest = CoreAIModelManifest(
             id: manifestID,
             displayName: preferredDisplayName ?? "Core AI model",
@@ -579,10 +587,10 @@ final class CoreAIModelStore: ObservableObject {
             },
             totalDownloadBytes: totalBytes,
             minimumOSVersion: "27.0",
-            supportedDeviceFamilies: ["iPhone"],
+            supportedDeviceFamilies: catalogModel?.pathPrefix?.hasPrefix("macos/") == true ? ["Mac"] : ["iPhone"],
             supportedArchitectures: ["arm64"],
-            contextWindow: catalogModel?.contextWindow ?? 32_768,
-            maximumOutputTokens: 2_048,
+            contextWindow: classifier?.window ?? catalogModel?.contextWindow ?? 32_768,
+            maximumOutputTokens: classifier == nil ? 2_048 : 0,
             capabilities: CoreAIModelCapabilities(
                 textGeneration: supportsTextGeneration,
                 streaming: supportsTextGeneration,
@@ -591,7 +599,8 @@ final class CoreAIModelStore: ObservableObject {
                 guidedGeneration: false,
                 toolCalling: catalogModel?.supportsTools ?? false,
                 reasoning: catalogModel?.supportsThinking ?? false,
-                concurrentExecution: false
+                concurrentExecution: false,
+                classification: classifier != nil
             ),
             tokenizerIdentifier: nil,
             licenseNotice: catalogModel?.licenseNotice
@@ -660,6 +669,15 @@ final class CoreAIModelStore: ObservableObject {
             atPath: root.appendingPathComponent("tokenizer/tokenizer.json").path
         )
         let hasModelFile = !(try Self.collectModelFiles(in: root)).isEmpty
+        if manifest.capabilities.classification == true
+            || CoreAIZooCatalog.model(forSelectionID: manifest.id)?.category == .classifier {
+            guard hasMetadata else { throw CoreAIModelStoreError.missingMetadata }
+            guard hasTokenizer else { throw CoreAIModelStoreError.missingTokenizer }
+            guard let contract = try Self.classifierContract(in: root),
+                  fileManager.fileExists(atPath: try contract.modelURL(in: root).path),
+                  hasModelFile else { throw CoreAIModelStoreError.unsupportedModel }
+            return
+        }
         if manifest.capabilities.textGeneration {
             guard hasMetadata else { throw CoreAIModelStoreError.missingMetadata }
             guard hasTokenizer else { throw CoreAIModelStoreError.missingTokenizer }
@@ -717,6 +735,17 @@ final class CoreAIModelStore: ObservableObject {
               fileManager.fileExists(atPath: asset.path) else {
             throw CoreAIModelStoreError.missingModelResource
         }
+    }
+
+    /// Classify free-text Hub imports by their actual runtime contract, too.
+    /// Otherwise an unknown encoder ID defaults to chat and fails at load.
+    private static func classifierContract(in root: URL) throws -> CoreAIClassifierContract? {
+        let url = root.appendingPathComponent("metadata.json")
+        guard let data = try? Data(contentsOf: url),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              object["kind"] as? String == "encoder" else { return nil }
+        do { return try CoreAIClassifierContract(metadata: data) }
+        catch { throw CoreAIModelStoreError.unsupportedModel }
     }
 }
 

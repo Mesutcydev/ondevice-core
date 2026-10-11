@@ -152,6 +152,7 @@ final class ConversationStore: ObservableObject {
         // Strip any reasoning so the list reads cleanly.
         var changed = false
         conversations = stored.map { conv in
+            if conv.gitHubWorkspace?.changes.contains(where: \.needsEncryptionMigration) == true { changed = true }
             guard conv.title.contains("<think>") else { return conv }
             var c = conv
             c.title = Self.stripReasoningFromTitle(conv.title)
@@ -260,6 +261,15 @@ final class ConversationStore: ObservableObject {
         scheduleSave()
     }
 
+    /// Repository scope and staged file snapshots contain no authentication material.
+    func setGitHubWorkspace(_ workspace: GitHubWorkspaceDraft?, for id: UUID) {
+        guard let index = conversations.firstIndex(where: { $0.id == id }),
+              conversations[index].gitHubWorkspace != workspace else { return }
+        conversations[index].gitHubWorkspace = workspace
+        conversations[index].updatedAt = .now
+        scheduleSave()
+    }
+
     // MARK: - Pagination
 
     /// Returns the most recent `pageSize` messages for a conversation, plus
@@ -295,6 +305,8 @@ struct StoredConversation: Identifiable, Codable {
     /// Model selected for this thread. Optional keeps older conversation files
     /// decodable; nil means use the user's default assistant model.
     var assistantModelID: String?
+    /// Optional for legacy records. Scope and draft belong to this chat, not a global selection.
+    var gitHubWorkspace: GitHubWorkspaceDraft?
     /// Bounded model-facing memory made from turns older than the live context
     /// window. The full transcript remains in `messages` for display/export.
     var contextMemory: ConversationContextMemory?
@@ -374,6 +386,8 @@ struct StoredMessage: Codable {
     var timestamp: Date
     var generationTokensPerSecond: Double?
     var generationDuration: TimeInterval?
+    var reasoningStartedAt: Date?
+    var reasoningDuration: TimeInterval?
     var generationModelID: String?
     var generationExecutionLocation: ModelExecutionLocation?
     var hitTokenLimit: Bool?
@@ -387,6 +401,8 @@ struct StoredMessage: Codable {
         self.timestamp = msg.timestamp
         self.generationTokensPerSecond = msg.generationTokensPerSecond
         self.generationDuration = msg.generationDuration
+        self.reasoningStartedAt = msg.reasoningStartedAt
+        self.reasoningDuration = msg.reasoningDuration
         self.generationModelID = msg.generationModelID
         self.generationExecutionLocation = msg.generationExecutionLocation
         self.hitTokenLimit = msg.hitTokenLimit
@@ -407,6 +423,8 @@ struct StoredMessage: Codable {
             hitTokenLimit: hitTokenLimit
         )
         message.documentSources = documentSources
+        message.reasoningStartedAt = reasoningStartedAt
+        message.reasoningDuration = reasoningDuration
         return message
     }
 }
@@ -451,6 +469,17 @@ struct ConversationContextMemory: Codable, Equatable {
     var summary: String
     var compactedThroughMessageID: UUID
     var updatedAt: Date
+    var estimatedTokensBefore: Int? = nil
+    var estimatedTokensAfter: Int? = nil
+    var modelDisplayName: String? = nil
+
+    var compactionNotice: String {
+        if let before = estimatedTokensBefore, let after = estimatedTokensAfter {
+            let model = modelDisplayName.map { " with \($0)" } ?? ""
+            return "Earlier context was compacted from approximately \(before.formatted()) to \(after.formatted()) tokens to continue safely\(model)."
+        }
+        return "Earlier context was compacted to keep this conversation within the model’s context window."
+    }
 }
 
 struct ConversationContextPreparation {
@@ -469,7 +498,8 @@ enum ConversationContextCompactor {
     static func prepare(
         messages: [ChatMessage],
         existingMemory: ConversationContextMemory?,
-        maxTokens: Int
+        maxTokens: Int,
+        modelDisplayName: String? = nil
     ) -> ConversationContextPreparation {
         guard maxTokens > 0 else {
             return .init(messages: messages, memory: existingMemory, didCompact: false)
@@ -543,17 +573,17 @@ enum ConversationContextCompactor {
             expired: expired,
             maxCharacters: max(600, Int(Double(maxTokens * 4) * memoryFraction))
         )
-        let memory = ConversationContextMemory(
+        var memory = ConversationContextMemory(
             summary: summary,
             compactedThroughMessageID: boundaryID,
-            updatedAt: .now
+            updatedAt: .now,
+            estimatedTokensBefore: estimateTokens(current),
+            modelDisplayName: modelDisplayName
         )
+        let compacted = assemble(systemMessages: systemMessages, memory: memory, dialog: recent)
+        memory.estimatedTokensAfter = estimateTokens(compacted)
         return .init(
-            messages: assemble(
-                systemMessages: systemMessages,
-                memory: memory,
-                dialog: recent
-            ),
+            messages: compacted,
             memory: memory,
             didCompact: true
         )

@@ -87,7 +87,23 @@ struct ODModelDetailView: View {
     }
 
     @ViewBuilder private func stateSection(_ model: ODModel) -> some View {
-        if model.isInstalled && !model.isSelectable {
+        if !model.isInstalled, let reason = model.unavailableReason {
+            Text(reason).font(.subheadline).foregroundStyle(ODPalette.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        } else if model.isInstalled && model.kind == .classifier {
+            VStack(alignment: .leading, spacing: ODLayout.labelGap) {
+                Label("Installed for typed decisions", systemImage: "checklist")
+                    .font(.headline)
+                Text("Choose options, score against a rubric, or ask a yes/no question in the Classifiers workspace.")
+                    .font(.subheadline).foregroundStyle(ODPalette.secondary)
+                ODPrimaryButton("Use classifier", symbol: "checklist") {
+                    performAfterDismiss(.loadModelInWorkspace(model.id, .classifier))
+                }.disabled(!store.canPerformActions)
+                ODPrimaryButton("Manage Core AI pack", symbol: "cpu") {
+                    performAfterDismiss(.openCoreAIPacks)
+                }
+            }
+        } else if model.isInstalled && !model.isSelectable {
             VStack(alignment: .leading, spacing: ODLayout.labelGap) {
                 if let reason = model.unavailableReason {
                     Label("Installed, but unavailable", systemImage: "exclamationmark.circle")
@@ -106,12 +122,16 @@ struct ODModelDetailView: View {
         } else if let status = model.downloadStatus {
             VStack(alignment: .leading, spacing: ODLayout.elementGap) {
                 Text(status).font(.headline)
+                if let detail = model.downloadDetail {
+                    Text(detail).font(.subheadline).foregroundStyle(ODPalette.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 if status != "Download failed" {
                     ProgressView(value: model.downloadProgress)
-                        .accessibilityLabel("Model download progress")
+                        .accessibilityLabel(model.downloadDetail == nil ? "Model download progress" : "Model preparation progress")
                 }
                 if model.isDownloadPaused || status == "Download failed" {
-                    ODPrimaryButton("Resume download", symbol: "arrow.clockwise") {
+                    ODPrimaryButton(model.downloadDetail == nil ? "Resume download" : "Resume preparation", symbol: "arrow.clockwise") {
                         performAfterDismiss(.modelAction(modelID: model.id, command: .download))
                     }
                 }
@@ -218,6 +238,7 @@ struct ODModelDetailView: View {
                         .buttonStyle(ODPressButtonStyle())
                         .disabled(!store.canPerformActions || !model.isInstalled
                                   || store.phase(for: model).isPreparing || store.isResponding)
+                        .accessibilityIdentifier("model.delete.\(model.id)")
                     } else {
                         Button { performAfterDismiss(.modelAction(modelID: model.id, command: command)) } label: {
                             ODWorkspaceLinkLabel(title: command.title, symbol: command == .export ? "square.and.arrow.up" : "slider.horizontal.3")
@@ -238,7 +259,7 @@ struct ODModelDetailView: View {
         case .vision: return "Open Lens"
         case .voice: return "Open Voice"
         case .image: return "Select for Image studio"
-        case .utility: return "Manage pack"
+        case .utility, .classifier: return "Manage pack"
         }
     }
     private func destinationSymbol(_ model: ODModel) -> String {
@@ -247,7 +268,7 @@ struct ODModelDetailView: View {
         case .vision: return "camera"
         case .voice: return "waveform"
         case .image: return "checkmark"
-        case .utility: return "cpu"
+        case .utility, .classifier: return "cpu"
         }
     }
     private func openDestination(_ model: ODModel) {
@@ -258,7 +279,7 @@ struct ODModelDetailView: View {
         case .image:
             performAfterDismiss(.loadModel(model.id))
             return
-        case .utility:
+        case .utility, .classifier:
             performAfterDismiss(.openCoreAIPacks)
             return
         }

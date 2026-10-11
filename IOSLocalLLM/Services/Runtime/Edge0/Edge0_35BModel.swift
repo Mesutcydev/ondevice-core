@@ -1063,9 +1063,10 @@ final class Edge0_35BModel: @unchecked Sendable {
     ) async throws -> Edge0_35BModel {
         let configuration = try Self.configuration(from: directory)
         let index = try Edge0SafetensorsIndex.openSharded(in: directory)
+        let repacked = try Edge0_35BRepackedExperts.openIfPresent(in: directory)
         let stores = try Edge0TensorStoreSet(
             directory: directory,
-            shardNames: index.shardNames
+            shardNames: index.shardNames + (repacked?.expertFileNames ?? [])
         )
         do {
             return try await load(
@@ -1073,7 +1074,8 @@ final class Edge0_35BModel: @unchecked Sendable {
                 configuration: configuration,
                 index: index,
                 stores: stores,
-                pool: pool
+                pool: pool,
+                repacked: repacked
             )
         } catch {
             await stores.closeAll()
@@ -1087,7 +1089,8 @@ final class Edge0_35BModel: @unchecked Sendable {
         directory: URL,
         index: Edge0SafetensorsIndex,
         stores: Edge0TensorStoreSet,
-        pool: Edge0ExpertPool<Edge0_35BExpertWeights>
+        pool: Edge0ExpertPool<Edge0_35BExpertWeights>,
+        repacked: Edge0_35BRepackedExperts? = nil
     ) async throws -> Edge0_35BModel {
         let configuration = try Self.configuration(from: directory)
         return try await load(
@@ -1095,7 +1098,8 @@ final class Edge0_35BModel: @unchecked Sendable {
             configuration: configuration,
             index: index,
             stores: stores,
-            pool: pool
+            pool: pool,
+            repacked: repacked
         )
     }
 
@@ -1104,7 +1108,8 @@ final class Edge0_35BModel: @unchecked Sendable {
         configuration: Edge0_35BModelConfiguration,
         index: Edge0SafetensorsIndex,
         stores: Edge0TensorStoreSet,
-        pool: Edge0ExpertPool<Edge0_35BExpertWeights>
+        pool: Edge0ExpertPool<Edge0_35BExpertWeights>,
+        repacked: Edge0_35BRepackedExperts?
     ) async throws -> Edge0_35BModel {
         let loader = Edge0_35BWeightLoader(
             index: index, stores: stores, configuration: configuration
@@ -1120,7 +1125,7 @@ final class Edge0_35BModel: @unchecked Sendable {
                 weights: layerWeights,
                 configuration: configuration,
                 expertLoader: try Edge0_35BExpertLoader(
-                    index: index, stores: stores, layer: layerWeights.index
+                    index: index, stores: stores, layer: layerWeights.index, repacked: repacked
                 ),
                 pool: pool
             ))

@@ -14,6 +14,7 @@ public struct ODComposer: View {
     private let canRemove: Bool
     private let microphone: AnyView?
     private let notice: AnyView?
+    private let modelControl: AnyView?
     private let onAdd: () -> Void
     private let onRemove: (String) -> Void
     private let onSend: (String, [String]) -> Void
@@ -30,7 +31,7 @@ public struct ODComposer: View {
     public init(text: Binding<String>, focus: FocusState<Bool>.Binding,
                 attachments: [ODAttachment], isResponding: Bool,
                 canSend: Bool, canStop: Bool, canAdd: Bool, canRemove: Bool,
-                microphone: AnyView? = nil, notice: AnyView? = nil,
+                microphone: AnyView? = nil, notice: AnyView? = nil, modelControl: AnyView? = nil,
                 onVoice: (() -> Void)? = nil,
                 thinking: Bool? = nil, onThinking: ((Bool) -> Void)? = nil,
                 onAdd: @escaping () -> Void, onRemove: @escaping (String) -> Void,
@@ -45,6 +46,7 @@ public struct ODComposer: View {
         self.canRemove = canRemove
         self.microphone = microphone
         self.notice = notice
+        self.modelControl = modelControl
         self.onAdd = onAdd
         self.onRemove = onRemove
         self.onSend = onSend
@@ -57,27 +59,38 @@ public struct ODComposer: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: ODLayout.elementGap) {
             if let notice {
-                notice.padding(.horizontal, ODLayout.panelHorizontalInset)
+                notice
             }
             VStack(alignment: .leading, spacing: 0) {
+                if let modelControl {
+                    HStack(spacing: ODLayout.elementGap) {
+                        modelControl
+                        Spacer(minLength: 0)
+                    }
+                    .padding(.horizontal, writingHorizontalInset)
+                    .padding(.bottom, ODLayout.elementGap)
+                }
                 if !attachments.isEmpty {
                     attachmentStrip
                         .padding(.horizontal, writingHorizontalInset)
                         .padding(.bottom, ODLayout.composerAttachmentGap)
                 }
-                TextField("Message", text: $text, prompt: prompt, axis: .vertical)
-                    .font(.body)
-                    .foregroundStyle(ODPalette.text)
-                    .tint(ODPalette.text)
-                    .lineLimit(1...6)
-                    .submitLabel(.return)
-                    .padding(.horizontal, writingHorizontalInset)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                    .focused(focus)
-                    .accessibilityLabel("Message")
-                    .accessibilityIdentifier("chat.composer.text")
-                    .padding(.bottom, ODLayout.composerFooterGap)
-                footer
+                if modelControl != nil && !dynamicType.isAccessibilitySize {
+                    HStack(alignment: .bottom, spacing: ODLayout.unit) {
+                        addButton
+                        if let thinking, let onThinking {
+                            thinkingButton(isOn: thinking, onToggle: onThinking)
+                        }
+                        writingField.padding(.vertical, ODLayout.elementGap)
+                        actionControls
+                    }
+                    .frame(minHeight: ODLayout.minimumHit)
+                } else {
+                    writingField
+                        .padding(.horizontal, writingHorizontalInset)
+                        .padding(.bottom, ODLayout.composerFooterGap)
+                    footer
+                }
             }
             .padding(.horizontal, ODLayout.composerSideInset)
             .padding(.top, ODLayout.composerTopInset)
@@ -88,6 +101,8 @@ public struct ODComposer: View {
             .onTapGesture { focus.wrappedValue = true }
             .background(ODPalette.surface, in: composerShape)
             .overlay { composerShape.strokeBorder(ODPalette.line, lineWidth: ODLayout.hairline(displayScale: displayScale)) }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("chat.composer.panel")
             .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: text)
             .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: attachments.isEmpty)
         }
@@ -104,6 +119,19 @@ public struct ODComposer: View {
         Text("Message").foregroundStyle(ODPalette.secondary)
     }
 
+    private var writingField: some View {
+        TextField("Message", text: $text, prompt: prompt, axis: .vertical)
+            .font(.body)
+            .foregroundStyle(ODPalette.text)
+            .tint(ODPalette.text)
+            .lineLimit(1...6)
+            .submitLabel(.return)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .focused(focus)
+            .accessibilityLabel("Message")
+            .accessibilityIdentifier("chat.composer.text")
+    }
+
     private var footer: some View {
         HStack(spacing: 0) {
             addButton
@@ -111,6 +139,13 @@ public struct ODComposer: View {
                 thinkingButton(isOn: thinking, onToggle: onThinking)
             }
             Spacer(minLength: ODLayout.elementGap)
+            actionControls
+        }
+        .frame(minHeight: ODLayout.minimumHit)
+    }
+
+    private var actionControls: some View {
+        HStack(spacing: 0) {
             if microphone != nil {
                 dictationControl
                 primaryAction
@@ -118,8 +153,13 @@ public struct ODComposer: View {
             } else {
                 primaryAction
             }
+            if isResponding {
+                ODComposerPrimaryAction(symbol: "arrow.up", label: "Send message",
+                    identifier: "chat.composer.send", isEnabled: false,
+                    hapticStyle: .light, action: {})
+                    .padding(.leading, ODLayout.unit)
+            }
         }
-        .frame(minHeight: ODLayout.minimumHit)
     }
 
     /// A naked utility icon. The host view supplies the glyph and behaviour;
@@ -211,8 +251,7 @@ public struct ODComposer: View {
 
 /// The composer's single emphatic control. Its geometry never changes; only the
 /// glyph and meaning move between voice, send and stop, so the trailing corner
-/// stays anchored across states. The surface is a flat semantic fill — no glass,
-/// no gradient, no shadow.
+/// stays anchored across states. Stop uses the reference's red fill and subtle glow.
 private struct ODComposerPrimaryAction: View {
     let symbol: String
     let label: String
@@ -230,9 +269,10 @@ private struct ODComposerPrimaryAction: View {
         } label: {
             Image(systemName: symbol)
                 .font(.system(size: min(glyphSize, ODLayout.composerSendDiameter / 2), weight: .semibold))
-                .foregroundStyle(ODPalette.onSend)
+                .foregroundStyle(symbol == "stop.fill" ? Color.white : ODPalette.onSend)
                 .frame(width: ODLayout.composerSendDiameter, height: ODLayout.composerSendDiameter)
-                .background(ODPalette.send, in: Circle())
+                .background(symbol == "stop.fill" ? Color.red : ODPalette.send, in: Circle())
+                .shadow(color: symbol == "stop.fill" ? .red.opacity(0.3) : .clear, radius: 8, y: 3)
                 .frame(width: ODLayout.minimumHit, height: ODLayout.minimumHit)
                 .contentShape(Rectangle())
                 .contentTransition(.symbolEffect(.replace))
@@ -336,23 +376,31 @@ private struct ODComposerAttachment: View {
     }
 }
 
-/// Name and optional parameter token for the chat toolbar picker. The full
+/// Name and optional parameter token for the chat model pill. The full
 /// name stays on the control’s accessibility value.
 public struct ODModelMenuLabel: View {
     private let displayName: String
     private let metadata: String?
+    private let preservesName: Bool
 
-    public init(displayName: String, metadata: String? = nil) {
+    public init(displayName: String, metadata: String? = nil, preservesName: Bool = false) {
         self.displayName = displayName
         self.metadata = metadata
+        self.preservesName = preservesName
     }
 
     public var body: some View {
-        let face = ODPresentation.modelFace(displayName: displayName, metadata: metadata)
+        let face: (title: String, size: String?, accessibleName: String) = preservesName
+            ? (displayName, nil, displayName)
+            : ODPresentation.modelFace(displayName: displayName, metadata: metadata)
         HStack(spacing: 6) {
+            Circle()
+                .fill(ODPalette.secondary)
+                .frame(width: 6, height: 6)
+                .accessibilityHidden(true)
             Text(face.title.isEmpty ? "Select model" : face.title)
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(ODPalette.text)
+                .font(.subheadline)
+                .foregroundStyle(ODPalette.secondary)
                 .lineLimit(1)
                 .truncationMode(.tail)
             if let size = face.size {
@@ -362,11 +410,16 @@ public struct ODModelMenuLabel: View {
                     .lineLimit(1)
                     .layoutPriority(1)
             }
-            Image(systemName: "chevron.down")
+            Image(systemName: "chevron.up.chevron.down")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(ODPalette.secondary)
                 .accessibilityHidden(true)
         }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .frame(minHeight: ODLayout.minimumHit)
+        .background(ODPalette.input, in: Capsule())
+        .overlay { Capsule().strokeBorder(ODPalette.line, lineWidth: 1) }
     }
 }
 

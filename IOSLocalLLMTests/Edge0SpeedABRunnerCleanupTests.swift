@@ -3,26 +3,22 @@ import XCTest
 
 // MARK: - Edge0SpeedABRunnerCleanupTests
 //
-// Phase 5K closeout: the 35B speed diagnostic overrides several engine
-// preferences for the duration of a run. Its cleanup path (the
-// `PreferenceScope` restore executed from the runner's `defer`) must put the
-// ORIGINAL values back on every exit class — normal completion, thrown
-// error, and cancellation — and must never write harcoded defaults over a
-// user's intentional setting.
-//
-// These tests drive the real scope wrapper the runner uses
-// (`withPreferenceScope`), plus one end-to-end `run()`/`cancel()` check.
+// The runner must drain its load-captured runtime and restore the original
+// preferences on every exit. Scope barriers are covered separately by
+// Edge0DiagnosticPreferencesTests; these retain the runner integration checks.
 
 @MainActor
 final class Edge0SpeedABRunnerCleanupTests: XCTestCase {
 
     private func resetPreferences() {
+        Edge0EnginePreferences.poolCapacityBytesOverride = nil
         Edge0EnginePreferences.edge0_35BRouterReadbackMode = 0
         Edge0EnginePreferences.edge0_35BAdvisoryPrerouter = false
         Edge0EnginePreferences.edge0_35BStagedEvalWindow = 1
         Edge0EnginePreferences.edge0_35BMicrobatchGroupSize = 4
         Edge0EnginePreferences.edge0_35BExecutionMode = .staged
         Edge0EnginePreferences.componentProfilingEnabled = false
+        Edge0EnginePreferences.edge0_35BSessionReuse = true
         Edge0EnginePreferences.edge0_35BReadaheadHints = false
         Edge0EnginePreferences.expertLoadConcurrency = 4
         Edge0EnginePreferences.edge0_35BPoolAccounting = .legacy

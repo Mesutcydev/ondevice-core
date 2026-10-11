@@ -504,7 +504,9 @@ struct Edge0_35BExpertReadPlan: Sendable {
 
 struct Edge0_35BExpertLoader: Sendable {
     let stores: Edge0TensorStoreSet
-    let readPlan: Edge0_35BExpertReadPlan
+    let readPlan: Edge0_35BExpertReadPlan?
+    let repacked: Edge0_35BRepackedExperts?
+    let layer: Int
     /// Phase 5M: advisory kernel readahead over expert byte ranges before
     /// their preads. Default OFF; captured once per engine load.
     var readaheadHints = false
@@ -514,15 +516,19 @@ struct Edge0_35BExpertLoader: Sendable {
         index: Edge0SafetensorsIndex,
         stores: Edge0TensorStoreSet,
         layer: Int,
+        repacked: Edge0_35BRepackedExperts? = nil,
         readaheadHints: Bool = false
     ) throws {
-        self.init(
-            stores: stores,
-            readPlan: try Edge0_35BExpertReadPlan.build(
-                layer: layer, index: index
-            ),
-            readaheadHints: readaheadHints
-        )
+        self.stores = stores
+        self.repacked = repacked
+        self.layer = layer
+        self.readaheadHints = readaheadHints
+        if let repacked {
+            _ = try repacked.location(layer: layer, expert: 0)
+            self.readPlan = nil
+        } else {
+            self.readPlan = try Edge0_35BExpertReadPlan.build(layer: layer, index: index)
+        }
     }
 
     init(
@@ -532,6 +538,8 @@ struct Edge0_35BExpertLoader: Sendable {
     ) {
         self.stores = stores
         self.readPlan = readPlan
+        self.repacked = nil
+        self.layer = readPlan.layer
         self.readaheadHints = readaheadHints
     }
 
@@ -588,6 +596,34 @@ struct Edge0_35BExpertLoader: Sendable {
     }
 
     func load(_ key: Edge0ExpertKey) async throws -> Edge0_35BExpertWeights {
+        guard key.layer == layer, key.expert >= 0,
+              key.expert < (repacked?.expertsPerLayer ?? readPlan?.gate.weight.location.shape.first ?? 0) else {
+            throw Edge0_35BRepackedExperts.Failure.invalidExpert(layer: key.layer, expert: key.expert)
+        }
+        if let repacked {
+            let location = try repacked.location(layer: layer, expert: key.expert)
+            if readaheadHints {
+                stores.adviseSlice(location, byteOffset: 0, byteLength: repacked.blockBytes)
+            }
+            let block = try await stores.read(location).bytes
+            try Task.checkCancellation()
+            func projection(_ number: Int) -> Edge0ExpertQuantizedMatrix {
+                func tensor(_ part: Edge0_35BRepackedExperts.Part) -> MLXArray {
+                    MLXArray(
+                        block.subdata(in: part.offset..<(part.offset + part.bytes)),
+                        part.shape, dtype: part.dtype == "U32" ? .uint32 : .bfloat16
+                    )
+                }
+                let start = number * 3
+                return Edge0ExpertQuantizedMatrix(
+                    weight: tensor(repacked.parts[start]),
+                    scales: tensor(repacked.parts[start + 1]),
+                    biases: tensor(repacked.parts[start + 2])
+                )
+            }
+            return Edge0_35BExpertWeights(gate: projection(0), up: projection(1), down: projection(2))
+        }
+        guard let readPlan else { throw Edge0_35BWeightError.badGeometry("missing expert read plan") }
         async let gate = matrix(readPlan.gate, expert: key.expert)
         async let up = matrix(readPlan.up, expert: key.expert)
         async let down = matrix(readPlan.down, expert: key.expert)

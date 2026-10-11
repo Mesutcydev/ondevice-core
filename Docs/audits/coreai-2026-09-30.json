@@ -1,0 +1,675 @@
+{
+  "auditDate": "2026-09-30",
+  "discoveredRepositoryIDs": 362,
+  "inspectedRepositoryIdentities": 143,
+  "bundleMetadataCollections": 141,
+  "originalPinnedPacks": 27,
+  "phonePacks": 34,
+  "packs": [
+    {
+      "id": "zoo-qwen3-0.6b-official-ios",
+      "name": "Qwen3 0.6B \u00b7 Official iOS",
+      "repo": "mlboydaisuke/qwen3-0.6b-CoreAI-official",
+      "rev": "7406ece3596e2ea16185a98ae32aafd2753d40a3",
+      "prefix": "ios",
+      "bytes": 456296751,
+      "category": "officialRecipe",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/mlboydaisuke/qwen3-0.6b-CoreAI-official/tree/7406ece3596e2ea16185a98ae32aafd2753d40a3/ios",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-qwen3-1.7b-official-ios-gpu",
+      "name": "Qwen3 1.7B \u00b7 Official iOS GPU",
+      "repo": "mlboydaisuke/qwen3-1.7b-CoreAI-official",
+      "rev": "ebf5486333ffc59130a6f37c7d208e03ebd3169c",
+      "prefix": "ios-gpu",
+      "bytes": 1119872856,
+      "category": "officialRecipe",
+      "context": 1024,
+      "treeURL": "https://huggingface.co/mlboydaisuke/qwen3-1.7b-CoreAI-official/tree/ebf5486333ffc59130a6f37c7d208e03ebd3169c/ios-gpu",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-qwen3-4b-official-ios",
+      "name": "Qwen3 4B \u00b7 Official iOS",
+      "repo": "mlboydaisuke/qwen3-4b-CoreAI-official",
+      "rev": "f3d6746370fbb73ee57f2de9ebe111eb628287f1",
+      "prefix": "ios",
+      "bytes": 2502148395,
+      "category": "officialRecipe",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/mlboydaisuke/qwen3-4b-CoreAI-official/tree/f3d6746370fbb73ee57f2de9ebe111eb628287f1/ios",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-qwen25-0.5b-instruct",
+      "name": "Qwen2.5 0.5B Instruct",
+      "repo": "kevinqz/Qwen2.5-0.5B-Instruct-CoreAI",
+      "rev": "f08c9d63fbfc9bc7aa86388da880b6e8ae339979",
+      "prefix": "int8",
+      "bytes": 541238540,
+      "category": "chat",
+      "context": 1024,
+      "treeURL": "https://huggingface.co/kevinqz/Qwen2.5-0.5B-Instruct-CoreAI/tree/f08c9d63fbfc9bc7aa86388da880b6e8ae339979/int8",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-qwen25-coder-0.5b",
+      "name": "Qwen2.5 Coder 0.5B",
+      "repo": "kevinqz/Qwen2.5-Coder-0.5B-Instruct-CoreAI",
+      "rev": "408f4506b9f4058e054e7bbd58a45189b382ee65",
+      "prefix": "int8",
+      "bytes": 541238633,
+      "category": "chat",
+      "context": 1024,
+      "treeURL": "https://huggingface.co/kevinqz/Qwen2.5-Coder-0.5B-Instruct-CoreAI/tree/408f4506b9f4058e054e7bbd58a45189b382ee65/int8",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-granite-4.0-h-350m",
+      "name": "Granite 4.0-H 350M",
+      "repo": "aether-models/granite-4.0-h-350m",
+      "rev": "ea24ac837112b7b082e52cd51bc83b38467ae659",
+      "prefix": "ios-any-gpu",
+      "bytes": 691007111,
+      "category": "chat",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/aether-models/granite-4.0-h-350m/tree/ea24ac837112b7b082e52cd51bc83b38467ae659/ios-any-gpu",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-minicpm5-1b",
+      "name": "MiniCPM5 1B",
+      "repo": "mlboydaisuke/MiniCPM5-1B-CoreAI",
+      "rev": "f38d143ec50cb2e54d8388479b919e3b9283943b",
+      "prefix": "int8",
+      "bytes": 1158613345,
+      "category": "chat",
+      "context": 1024,
+      "treeURL": "https://huggingface.co/mlboydaisuke/MiniCPM5-1B-CoreAI/tree/f38d143ec50cb2e54d8388479b919e3b9283943b/int8",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-qwen35-0.8b",
+      "name": "Qwen3.5 0.8B",
+      "repo": "mlboydaisuke/qwen3.5-0.8B-CoreAI",
+      "rev": "b98ad07f1ae7c07fb3e5967091600177f48844c2",
+      "prefix": "gpu-pipelined-b2/qwen3_5_0_8b_decode_int8hu_block32_sym",
+      "bytes": 1337858025,
+      "category": "chat",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/mlboydaisuke/qwen3.5-0.8B-CoreAI/tree/b98ad07f1ae7c07fb3e5967091600177f48844c2/gpu-pipelined-b2/qwen3_5_0_8b_decode_int8hu_block32_sym",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-qwen25-math-1.5b",
+      "name": "Qwen2.5 Math 1.5B",
+      "repo": "kevinqz/Qwen2.5-Math-1.5B-Instruct-CoreAI",
+      "rev": "dcbf0826f06f38e5269f830864f33224b57cf6a9",
+      "prefix": "int8",
+      "bytes": 1656659317,
+      "category": "chat",
+      "context": 1024,
+      "treeURL": "https://huggingface.co/kevinqz/Qwen2.5-Math-1.5B-Instruct-CoreAI/tree/dcbf0826f06f38e5269f830864f33224b57cf6a9/int8",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-qwen25-coder-1.5b",
+      "name": "Qwen2.5 Coder 1.5B",
+      "repo": "kevinqz/Qwen2.5-Coder-1.5B-Instruct-CoreAI",
+      "rev": "34a0aa5d8bea15bfe620b962bd02f9fe98c0a836",
+      "prefix": "int8",
+      "bytes": 1656659323,
+      "category": "chat",
+      "context": 8192,
+      "treeURL": "https://huggingface.co/kevinqz/Qwen2.5-Coder-1.5B-Instruct-CoreAI/tree/34a0aa5d8bea15bfe620b962bd02f9fe98c0a836/int8",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-qwen25-1.5b-instruct",
+      "name": "Qwen2.5 1.5B Instruct",
+      "repo": "kevinqz/Qwen2.5-1.5B-Instruct-CoreAI",
+      "rev": "f903417cb9ac4b3c4c53c16aefd7f097cc6b8338",
+      "prefix": "int8",
+      "bytes": 1656659388,
+      "category": "chat",
+      "context": 1024,
+      "treeURL": "https://huggingface.co/kevinqz/Qwen2.5-1.5B-Instruct-CoreAI/tree/f903417cb9ac4b3c4c53c16aefd7f097cc6b8338/int8",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-lfm25-1.2b",
+      "name": "LFM2.5 1.2B Instruct",
+      "repo": "mlboydaisuke/LFM2.5-1.2B-CoreAI",
+      "rev": "3e3241cbcf368a663768dcc4e5785c4f0a02bae4",
+      "prefix": "gpu-pipelined-b2/lfm2_5_1_2b_instruct_decode_int8hu_block32_sym",
+      "bytes": 1701927366,
+      "category": "chat",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/mlboydaisuke/LFM2.5-1.2B-CoreAI/tree/3e3241cbcf368a663768dcc4e5785c4f0a02bae4/gpu-pipelined-b2/lfm2_5_1_2b_instruct_decode_int8hu_block32_sym",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-qwen3-1.7b-aether",
+      "name": "Qwen3 1.7B \u00b7 iOS GPU",
+      "repo": "aether-models/qwen3-1.7b",
+      "rev": "9424554369f1c4fd2f80af64847ba2d938e2c58a",
+      "prefix": "ios-any-gpu",
+      "bytes": 1738451082,
+      "category": "chat",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/aether-models/qwen3-1.7b/tree/9424554369f1c4fd2f80af64847ba2d938e2c58a/ios-any-gpu",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-granite-4.0-1b",
+      "name": "Granite 4.0 1B",
+      "repo": "aether-models/granite-4.0-1b",
+      "rev": "2b5d83696b7455ee02a79596cd077a93a2e78ba9",
+      "prefix": "ios-any-gpu",
+      "bytes": 1743936100,
+      "category": "chat",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/aether-models/granite-4.0-1b/tree/2b5d83696b7455ee02a79596cd077a93a2e78ba9/ios-any-gpu",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-granite-4.0-h-1b",
+      "name": "Granite 4.0-H 1B",
+      "repo": "mlboydaisuke/granite-4.0-h-CoreAI",
+      "rev": "2349d8e26d749e4c503b0b5999c84057665b8524",
+      "prefix": "gpu-pipelined-b2/granite_4_0_h_1b_decode_int8hu_block32_sym",
+      "bytes": 1872605842,
+      "category": "chat",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/mlboydaisuke/granite-4.0-h-CoreAI/tree/2349d8e26d749e4c503b0b5999c84057665b8524/gpu-pipelined-b2/granite_4_0_h_1b_decode_int8hu_block32_sym",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-eurollm-1.7b-instruct",
+      "name": "EuroLLM 1.7B Instruct",
+      "repo": "aether-models/eurollm-1.7b-instruct",
+      "rev": "3ed1743a0b15f6d4950d523562aa42b114969fd8",
+      "prefix": "ios-any-gpu",
+      "bytes": 1931164337,
+      "category": "chat",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/aether-models/eurollm-1.7b-instruct/tree/3ed1743a0b15f6d4950d523562aa42b114969fd8/ios-any-gpu",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-youtu-llm-2b",
+      "name": "Youtu LLM 2B",
+      "repo": "mlboydaisuke/Youtu-LLM-2B-CoreAI",
+      "rev": "9c14bbe376739f4c86ed5449185db36f778d179b",
+      "prefix": "gpu-pipelined-b2/youtu_llm_2b_decode_absorbed_int8_msdpa_g32",
+      "bytes": 2157473558,
+      "category": "chat",
+      "context": 8192,
+      "treeURL": "https://huggingface.co/mlboydaisuke/Youtu-LLM-2B-CoreAI/tree/9c14bbe376739f4c86ed5449185db36f778d179b/gpu-pipelined-b2/youtu_llm_2b_decode_absorbed_int8_msdpa_g32",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-fastcontext-4b",
+      "name": "FastContext 1.0 4B",
+      "repo": "mlboydaisuke/FastContext-1.0-4B-CoreAI",
+      "rev": "4e24f350e9e8dbcf44712758cc14ee4ba4423e32",
+      "prefix": "gpu",
+      "bytes": 2279562468,
+      "category": "chat",
+      "context": 8192,
+      "treeURL": "https://huggingface.co/mlboydaisuke/FastContext-1.0-4B-CoreAI/tree/4e24f350e9e8dbcf44712758cc14ee4ba4423e32/gpu",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-minicpm5-2b",
+      "name": "MiniCPM5 2B",
+      "repo": "mlboydaisuke/MiniCPM5-2B-CoreAI",
+      "rev": "ac8cbe3d429f2922a1543a0eeecc72125dd10d29",
+      "prefix": "int8",
+      "bytes": 2684881620,
+      "category": "chat",
+      "context": 1024,
+      "treeURL": "https://huggingface.co/mlboydaisuke/MiniCPM5-2B-CoreAI/tree/ac8cbe3d429f2922a1543a0eeecc72125dd10d29/int8",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-qwen35-2b",
+      "name": "Qwen3.5 2B",
+      "repo": "mlboydaisuke/qwen3.5-2B-CoreAI",
+      "rev": "14e77014db5ae2f3de94825165f5ae58bededd7d",
+      "prefix": "gpu-pipelined-b2/qwen3_5_2b_decode_int8hu_block32_sym",
+      "bytes": 3046585891,
+      "category": "chat",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/mlboydaisuke/qwen3.5-2B-CoreAI/tree/14e77014db5ae2f3de94825165f5ae58bededd7d/gpu-pipelined-b2/qwen3_5_2b_decode_int8hu_block32_sym",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-bitcpm-8b",
+      "name": "BitCPM 8B \u00b7 ternary",
+      "repo": "mlboydaisuke/BitCPM-8B-CoreAI",
+      "rev": "21a907f5d2a6d77f27596d5c1562e92f1184ce82",
+      "prefix": "gpu-pipelined/bitcpm_8b_decode_ternary_s1",
+      "bytes": 3184455525,
+      "category": "chat",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/mlboydaisuke/BitCPM-8B-CoreAI/tree/21a907f5d2a6d77f27596d5c1562e92f1184ce82/gpu-pipelined/bitcpm_8b_decode_ternary_s1",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-smollm3-3b",
+      "name": "SmolLM3 3B",
+      "repo": "aether-models/smollm3-3b",
+      "rev": "2d9e78f3665bd28ae73f9f44b22917f0b86f3491",
+      "prefix": "ios-h18p-gpu",
+      "bytes": 3285009137,
+      "category": "chat",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/aether-models/smollm3-3b/tree/2d9e78f3665bd28ae73f9f44b22917f0b86f3491/ios-h18p-gpu",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-lfm25-2.6b",
+      "name": "LFM2.5 2.6B",
+      "repo": "mlboydaisuke/LFM2.5-2.6B-CoreAI",
+      "rev": "0e43b1a408515f3937a20a5bfa0e25d8f24f9704",
+      "prefix": "gpu-pipelined/lfm2_5_2_6b_decode_int8hu_block32_sym",
+      "bytes": 3655085252,
+      "category": "chat",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/mlboydaisuke/LFM2.5-2.6B-CoreAI/tree/0e43b1a408515f3937a20a5bfa0e25d8f24f9704/gpu-pipelined/lfm2_5_2_6b_decode_int8hu_block32_sym",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-qwen3-4b-instruct-2507",
+      "name": "Qwen3 4B Instruct 2507",
+      "repo": "aether-models/qwen3-4b-instruct-2507",
+      "rev": "1bd7de3abec265601b6d2473e7b6557223e2dbc1",
+      "prefix": "ios-h18p-gpu",
+      "bytes": 4041759267,
+      "category": "chat",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/aether-models/qwen3-4b-instruct-2507/tree/1bd7de3abec265601b6d2473e7b6557223e2dbc1/ios-h18p-gpu",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-nanbeige41-3b",
+      "name": "Nanbeige4.1 3B",
+      "repo": "mlboydaisuke/Nanbeige4.1-3B-CoreAI",
+      "rev": "e926b56e803a9198d4114cf28450d58f964dd6ff",
+      "prefix": "gpu-pipelined-b2/nanbeige4_1_3b_decode_int8hu_block32_sym",
+      "bytes": 4600132783,
+      "category": "chat",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/mlboydaisuke/Nanbeige4.1-3B-CoreAI/tree/e926b56e803a9198d4114cf28450d58f964dd6ff/gpu-pipelined-b2/nanbeige4_1_3b_decode_int8hu_block32_sym",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-nemotron-3-nano-4b",
+      "name": "Nemotron 3 Nano 4B",
+      "repo": "mlboydaisuke/Nemotron-3-Nano-4B-CoreAI",
+      "rev": "7f1bd3064909f36292510ad65532585d63f0eac2",
+      "prefix": "ios-h18p/nemotron_3_nano_4b_decode_int8hu",
+      "bytes": 4628965401,
+      "category": "chat",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/mlboydaisuke/Nemotron-3-Nano-4B-CoreAI/tree/7f1bd3064909f36292510ad65532585d63f0eac2/ios-h18p/nemotron_3_nano_4b_decode_int8hu",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-nanbeige42-3b",
+      "name": "Nanbeige4.2 3B",
+      "repo": "ukint-vs/Nanbeige4.2-3B-CoreAI",
+      "rev": "a55c2286a55d623ba18e0bd6489b260de4512a40",
+      "prefix": "gpu-pipelined/nanbeige4_2_3b_decode_int8hu_block32_sym_s1",
+      "bytes": 4930824809,
+      "category": "chat",
+      "context": 4096,
+      "treeURL": "https://huggingface.co/ukint-vs/Nanbeige4.2-3B-CoreAI/tree/a55c2286a55d623ba18e0bd6489b260de4512a40/gpu-pipelined/nanbeige4_2_3b_decode_int8hu_block32_sym_s1",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-lfm25-vl-450m",
+      "name": "LFM2.5 VL 450M",
+      "repo": "mlboydaisuke/LFM2.5-VL-450M-CoreAI",
+      "rev": "95da9d04dfff53376b0bb603e9c8e3cb27129341",
+      "prefix": "ios-h18p",
+      "bytes": 1190071987,
+      "category": "vision",
+      "context": 8192,
+      "treeURL": "https://huggingface.co/mlboydaisuke/LFM2.5-VL-450M-CoreAI/tree/95da9d04dfff53376b0bb603e9c8e3cb27129341/ios-h18p",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-lfm25-vl-3b",
+      "name": "LFM2.5 VL 3B",
+      "repo": "mlboydaisuke/LFM2.5-VL-3B-CoreAI",
+      "rev": "746fc8fc159bfae1f741fe403091ee1da4900407",
+      "prefix": "ios-h18p",
+      "bytes": 3055824901,
+      "category": "vision",
+      "context": 8192,
+      "treeURL": "https://huggingface.co/mlboydaisuke/LFM2.5-VL-3B-CoreAI/tree/746fc8fc159bfae1f741fe403091ee1da4900407/ios-h18p",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-qwen3-vl-2b",
+      "name": "Qwen3-VL 2B",
+      "repo": "mlboydaisuke/Qwen3-VL-2B-CoreAI",
+      "rev": "1f74a6862bc463955b557629f0fdce6ba7b5c256",
+      "prefix": "gpu-pipelined",
+      "bytes": 5414782294,
+      "category": "vision",
+      "context": 8192,
+      "treeURL": "https://huggingface.co/mlboydaisuke/Qwen3-VL-2B-CoreAI/tree/1f74a6862bc463955b557629f0fdce6ba7b5c256/gpu-pipelined",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-embeddinggemma-300m",
+      "name": "EmbeddingGemma 300M",
+      "repo": "mlboydaisuke/embeddinggemma-300m-CoreAI",
+      "rev": "74f6d1fe2a566dde8ae2d13fae4f5f73e8a16055",
+      "prefix": "model",
+      "bytes": 1277545469,
+      "category": "utility",
+      "context": 2048,
+      "treeURL": "https://huggingface.co/mlboydaisuke/embeddinggemma-300m-CoreAI/tree/74f6d1fe2a566dde8ae2d13fae4f5f73e8a16055/model",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-qwen3-asr-1.7b",
+      "name": "Qwen3-ASR 1.7B",
+      "repo": "mlboydaisuke/Qwen3-ASR-1.7B-CoreAI",
+      "rev": "dd975d70e982670d3916c2b0b45cec2917cf9b82",
+      "prefix": "gpu-pipelined",
+      "bytes": 3102222264,
+      "category": "utility",
+      "context": 8192,
+      "treeURL": "https://huggingface.co/mlboydaisuke/Qwen3-ASR-1.7B-CoreAI/tree/dd975d70e982670d3916c2b0b45cec2917cf9b82/gpu-pipelined",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-whisper-large-v3-turbo",
+      "name": "Whisper large-v3-turbo",
+      "repo": "mlboydaisuke/whisper-large-v3-turbo-CoreAI-official",
+      "rev": "73b73edfede83cdeff3492663cbd123105d79b59",
+      "prefix": "ios-h18p",
+      "bytes": 3234997726,
+      "category": "utility",
+      "context": 448,
+      "treeURL": "https://huggingface.co/mlboydaisuke/whisper-large-v3-turbo-CoreAI-official/tree/73b73edfede83cdeff3492663cbd123105d79b59/ios-h18p",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-laya-multilingual",
+      "name": "Laya Multilingual",
+      "repo": "mlboydaisuke/Laya-Multilingual-CoreAI",
+      "rev": "3fe58a5ed7857b41f5c7ba8c0f46ce420b42cf02",
+      "prefix": "ios-h18p/wfp16-s512",
+      "bytes": 681051433,
+      "category": "classifier",
+      "context": 512,
+      "treeURL": "https://huggingface.co/mlboydaisuke/Laya-Multilingual-CoreAI/tree/3fe58a5ed7857b41f5c7ba8c0f46ce420b42cf02/ios-h18p/wfp16-s512",
+      "phoneCatalog": true,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    },
+    {
+      "id": "zoo-julia-1",
+      "name": "Julia-1",
+      "repo": "mlboydaisuke/Julia-1-CoreAI",
+      "rev": "d1e943545c64e20e73a88ae1f890227c349e22ba",
+      "prefix": "macos/fp32-s1024",
+      "bytes": 627543671,
+      "category": "classifier",
+      "context": 1024,
+      "treeURL": "https://huggingface.co/mlboydaisuke/Julia-1-CoreAI/tree/d1e943545c64e20e73a88ae1f890227c349e22ba/macos/fp32-s1024",
+      "phoneCatalog": false,
+      "verified": {
+        "paginatedTree": true,
+        "exactSubtreeBytes": true,
+        "directRangeHTTP": 206,
+        "directRangeBytes": 1024,
+        "localCoreAIInference": false
+      }
+    }
+  ]
+}

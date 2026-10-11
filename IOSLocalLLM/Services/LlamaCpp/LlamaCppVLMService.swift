@@ -194,6 +194,10 @@ final class LlamaCppVLMService: ObservableObject {
     /// first. Concurrent calls on the same repoID are guarded via
     /// `loadingRepoID` (same pattern as LensInferenceLoop.switchTo).
     func switchTo(repoID: String) async {
+        if let restriction = AppStoreModelPolicy.restriction(for: repoID) {
+            state = .failed(restriction)
+            return
+        }
         // Claim the transition before the first await. A same- or different-
         // repo request arriving during native teardown/load must not enter a
         // second constructor and stack two GGUF models in memory.

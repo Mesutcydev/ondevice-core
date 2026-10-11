@@ -44,7 +44,12 @@ final class LegalAcceptanceManager: ObservableObject {
     /// back to false (or changing only their wording) actually re-prompts,
     /// instead of the version-only `needsAcceptance` silently swallowing it.
     var needsAnyAcceptance: Bool {
+        #if targetEnvironment(macCatalyst)
+        // Mac App Store 2.4.5(vi): no mandatory license gate at launch.
+        return false
+        #else
         needsAcceptance || needsDisclaimerAcceptance || needsDeviceSafetyAcceptance
+        #endif
     }
 
     /// Human-readable acceptance date, or nil if never accepted.

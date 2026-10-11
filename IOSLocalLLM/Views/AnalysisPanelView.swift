@@ -429,23 +429,13 @@ struct AnalysisPanelView: View {
 }
 
 // MARK: - StreamingCaret
-// Blinking caret shown while FastVLM is generating.
+// Reply caret shared with the chat and reasoning views.
 
 struct StreamingCaret: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.koduTheme) private var T
-    @ScaledMetric(relativeTo: .body) private var caretHeight: CGFloat = 16
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 15, paused: reduceMotion || scenePhase != .active)) { context in
-            let phase = context.date.timeIntervalSinceReferenceDate * .pi * 2 / 1.2
-            RoundedRectangle(cornerRadius: StudioRadius.panel)
-                .fill(T.ink)
-                .frame(width: 2, height: caretHeight)
-                .opacity(reduceMotion ? 0.65 : 0.35 + 0.65 * (sin(phase) + 1) / 2)
-        }
-        .accessibilityHidden(true)
+        ODStreamingCaret(color: T.ink)
     }
 }
 

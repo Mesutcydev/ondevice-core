@@ -1559,6 +1559,8 @@ actor LocalAPIServer {
         var timedOut = false
     }
     private var activeInference: ActiveInference?
+    private var classifierTask: Task<Data, Error>?
+    private var classifierConnectionID: ObjectIdentifier?
     /// One embedded image can occupy ~16 MB as base64 inside JSON.
     private let maxRequestBytes = 20 * 1024 * 1024
     private let requestTimeout: TimeInterval = 30
@@ -1606,6 +1608,8 @@ actor LocalAPIServer {
     }
 
     func stop() {
+        classifierTask?.cancel()
+        if classifierTask != nil { Task { @MainActor in CoreAIInferenceService.shared.cancelClassifier() } }
         listener?.cancel()
         listener = nil
         listenerID = nil
@@ -1669,6 +1673,14 @@ actor LocalAPIServer {
     }
 
     private func connectionChanged(_ state: NWConnection.State, connectionID: ObjectIdentifier) async {
+        if classifierConnectionID == connectionID {
+            switch state {
+            case .failed, .cancelled:
+                classifierTask?.cancel()
+                await MainActor.run { CoreAIInferenceService.shared.cancelClassifier() }
+            default: break
+            }
+        }
         guard case .failed = state else {
             if case .cancelled = state, let inference = activeInference,
                inference.connectionID == connectionID {
@@ -1796,6 +1808,17 @@ actor LocalAPIServer {
             await describeAPI(connection, corsOrigin: corsOrigin)
         case ("GET", "/v1/models"):
             await listOpenAIModels(connection, corsOrigin: corsOrigin)
+        case ("GET", "/v1/classifiers"):
+            let payload = await MainActor.run {
+                LocalAPIResponse.json(["object": "list", "data": CoreAIClassifierHost.models.map { model in
+                    ["id": model.id, "name": model.name, "context_length": model.window,
+                     "loaded": CoreAIInferenceService.shared.loadedClassifierID == model.id,
+                     "tasks": ["choice", "score", "boolean"]] as [String: Any]
+                }])
+            }
+            await respond(connection, status: 200, contentType: "application/json", data: payload, corsOrigin: corsOrigin)
+        case ("POST", "/v1/classifiers/activate"), ("POST", "/v1/classifications"):
+            await runClassifier(request, connection: connection, corsOrigin: corsOrigin)
         case ("GET", "/v1/aider/config"):
             await aiderConfiguration(connection, corsOrigin: corsOrigin)
         case ("POST", "/v1/chat/completions"):
@@ -1818,6 +1841,65 @@ actor LocalAPIServer {
             await run(request, connection: connection, dialect: .ollamaGenerate)
         default:
             await error(connection, status: 404, message: "Endpoint not supported", dialect: request.path == "/v1/messages" ? .anthropic : .openAIChat, corsOrigin: corsOrigin)
+        }
+    }
+
+    private func runClassifier(_ request: HTTPRequest, connection: NWConnection, corsOrigin: String?) async {
+        guard request.headers["content-type"]?.lowercased().hasPrefix("application/json") == true else {
+            await error(connection, status: 415, message: "Content-Type must be application/json", dialect: .openAIChat, corsOrigin: corsOrigin)
+            return
+        }
+        let activating = request.path == "/v1/classifiers/activate"
+        let activationID: String?
+        let classification: ClassifierRequest?
+        do {
+            activationID = activating ? try LocalClassifierAPI.decodeActivation(request.body ?? Data()) : nil
+            classification = activating ? nil : try LocalClassifierAPI.decodeRequest(request.body ?? Data())
+        } catch {
+            await self.error(connection, status: 400, message: "Invalid classifier request. Supply model, input, instructions, type and matching task fields.", dialect: .openAIChat, corsOrigin: corsOrigin)
+            return
+        }
+        guard classifierTask == nil, let lease = await RemoteInferenceGate.shared.acquire() else {
+            await error(connection, status: 409, message: "Model busy", dialect: .openAIChat, corsOrigin: corsOrigin)
+            return
+        }
+        let servingListener = listenerID
+        let job = Task { @MainActor in
+            let controller = CoreAIClassifierHost.workbench
+            if let activationID {
+                try await controller.activate(id: activationID)
+                guard let model = controller.activeModel else { throw CoreAIInferenceError.modelMissing }
+                return LocalAPIResponse.json(["id": model.id, "loaded": true, "context_length": model.window,
+                    "supports_calibration": model.supportsCalibration, "direct_answer_head": model.hasDirectAnswerHead])
+            }
+            guard let classification else { throw CoreAIClassifierError.invalidQuestion }
+            let result = try await controller.run(classification)
+            var payload = ClassifierResultExport.object(result)
+            payload["model"] = classification.model
+            return LocalAPIResponse.json(payload)
+        }
+        classifierTask = job; classifierConnectionID = ObjectIdentifier(connection)
+        let deadline = Task {
+            try? await Task.sleep(for: .seconds(180))
+            guard !Task.isCancelled else { return }
+            job.cancel()
+            await MainActor.run { CoreAIInferenceService.shared.cancelClassifier() }
+        }
+        defer {
+            deadline.cancel(); classifierTask = nil; classifierConnectionID = nil
+            Task { await RemoteInferenceGate.shared.release(lease) }
+        }
+        do {
+            let result = try await job.value
+            guard listenerID == servingListener else { return }
+            await respond(connection, status: 200, contentType: "application/json", data: result, corsOrigin: corsOrigin)
+        } catch is CancellationError {
+            guard listenerID == servingListener else { return }
+            await error(connection, status: 408, message: "Classifier request cancelled", dialect: .openAIChat, corsOrigin: corsOrigin)
+        } catch {
+            let status = (error as? CoreAIClassifierError) == .busy ? 409 : (error is CoreAIClassifierError ? 400 : 503)
+            guard listenerID == servingListener else { return }
+            await self.error(connection, status: status, message: error.localizedDescription, dialect: .openAIChat, corsOrigin: corsOrigin)
         }
     }
 
@@ -1886,7 +1968,7 @@ actor LocalAPIServer {
             let service = CodingAssistantService.shared
             return (service.activeModel.id, service.activeModel.repoID,
                     service.state == .ready,
-                    service.activeExecutionLocation != .applePrivateCloud,
+                    !service.activeExecutionLocation.isCloud,
                     service.isVisionChatCapable)
         }
         let usesCurrentOllamaModel = decoded.model.isEmpty
@@ -2518,7 +2600,7 @@ actor LocalAPIServer {
             "openai_base_url": "/v1",
             "ollama_base_url": "/api",
             "endpoints": ["/v1/models", "/v1/models/{model}", "/v1/aider/config", "/v1/chat/completions",
-                          "/v1/responses", "/v1/messages", "/api/tags", "/api/ps",
+                          "/v1/responses", "/v1/messages", "/v1/classifiers", "/v1/classifiers/activate", "/v1/classifications", "/api/tags", "/api/ps",
                           "/api/version", "/api/show", "/api/chat", "/api/generate"]
         ])
         await respond(connection, status: 200, contentType: "application/json",
@@ -3136,7 +3218,7 @@ final class LocalAPIManager: ObservableObject {
               case .running = state else { return }
         let assistant = CodingAssistantService.shared
         guard !assistant.isModelLoaded,
-              assistant.activeExecutionLocation != .applePrivateCloud else { return }
+              !assistant.activeExecutionLocation.isCloud else { return }
         switch assistant.state {
         case .loading, .generating: return
         case .unloaded, .ready, .failed: break

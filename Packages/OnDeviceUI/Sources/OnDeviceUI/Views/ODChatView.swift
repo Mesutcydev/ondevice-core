@@ -266,7 +266,7 @@ struct ODChatView: View {
             }
         } label: {
             ODModelMenuLabel(displayName: store.selectedModel?.name ?? "",
-                             metadata: store.selectedModel?.metadata)
+                             preservesName: store.selectedModelID?.hasPrefix("api:") == true)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Model")

@@ -2,20 +2,54 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- IOSLocalLLM runs entirely on-device.
-         No tracking, no analytics, no telemetry. No user data leaves the
-         device EXCEPT: (1) model downloads from huggingface.co (anonymous
-         GET, no PII; an optional user-supplied HF token is sent only for
-         gated repos), and (2) OPTIONAL iCloud sync — when the user turns it
-         on, conversation content is stored in the user's OWN private CloudKit
-         database (not collected by us; Apple does not require declaring data
-         kept in the user's private CloudKit DB). Both are user-initiated. -->
+    <!-- Local inference by default; no tracking, analytics or telemetry.
+         Explicit network features include model downloads/search, web search,
+         local API/paired bridge, optional private CloudKit sync, external
+         links, and Apple Private Cloud in provisioned builds after consent.
+         App Store privacy answers must be reviewed for the shipped features. -->
     <key>NSPrivacyTracking</key>
     <false/>
     <key>NSPrivacyTrackingDomains</key>
     <array/>
     <key>NSPrivacyCollectedDataTypes</key>
-    <array/>
+    <array>
+        <!-- Optional search APIs retain queries. Account-scoped tokens and
+             network metadata may link requests to the provider account.
+             The app does not de-identify the query before transmission. -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeSearchHistory</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+                <string>NSPrivacyCollectedDataTypePurposeOther</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeUserID</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+        </dict>
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeOtherDataTypes</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array><string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string></array>
+        </dict>
+    </array>
     <!-- Required-reason APIs we use, with the Apple-approved purpose codes.
          Reference: https://developer.apple.com/documentation/bundleresources/privacy_manifest_files -->
     <key>NSPrivacyAccessedAPITypes</key>
@@ -36,6 +70,8 @@
             <key>NSPrivacyAccessedAPITypeReasons</key>
             <array>
                 <string>C617.1</string>
+                <!-- Metadata of model folders explicitly selected in Files. -->
+                <string>3B52.1</string>
             </array>
         </dict>
         <dict>

@@ -1,39 +1,45 @@
 import Foundation
-
-enum CoreAIInferenceError: LocalizedError, Equatable {
-    case unavailable(String)
-    case modelMissing
-    case unsupportedCapability(String)
-    case invalidImage(String)
-    case generationFailed
-    case emptyConversation
-
-    var errorDescription: String? {
-        switch self {
-        case .unavailable(let message): return message
-        case .modelMissing: return "Download a Core AI pack from the Models tab first."
-        case .unsupportedCapability(let capability): return "The selected Core AI model does not support \(capability)."
-        case .invalidImage(let message): return message
-        case .generationFailed: return "Core AI could not complete the local generation."
-        case .emptyConversation: return "The request has no user message for Core AI to answer."
-        }
-    }
-}
+import Combine
+import UIKit
 
 /// Small app-facing facade. The Core AI SDK is isolated behind this type so
 /// the existing API server and safety/lifecycle code do not import SDK types.
 @MainActor
-final class CoreAIInferenceService {
+final class CoreAIInferenceService: ObservableObject {
     static let shared = CoreAIInferenceService()
 
-    private(set) var isReady = false
+    @Published private(set) var isReady = false
     /// Assistant selection id (`coreai:…`) of the pack currently specialized.
     /// `isReady` alone is not enough: the store can point at pack B while
     /// this runtime still holds pack A.
-    private(set) var loadedSelectionID: String?
+    @Published private(set) var loadedSelectionID: String?
+    @Published private(set) var loadedClassifierID: String?
+    private var classifier: CoreAIClassifierAdapter?
+    private var classifierLoadTask: Task<CoreAIClassifierAdapter, Error>?
+    private var loadingClassifierID: String?
+    private var classifierOperation: Task<CoreAIClassifierAnswer, Error>?
+    private var textLoadTask: Task<CoreAIRuntime, Error>?
+    private var loadingSelectionID: String?
+    private var lifetime: UInt64 = 0
+    private var unloadTask: Task<Void, Never>?
+    private var unloadingPackIDs: Set<String> = []
+    private var backgroundObserver: NSObjectProtocol?
     private var runtime: CoreAIRuntime?
 
-    private init() {}
+    /// An in-flight specialization may already be reading pack files before
+    /// the loaded identity is published. Removal must drain it as well.
+    func isUsingPack(_ selectionID: String) -> Bool {
+        unloadingPackIDs.contains(selectionID)
+            || [loadedSelectionID, loadedClassifierID, loadingSelectionID, loadingClassifierID].contains(selectionID)
+    }
+
+    private init() {
+        backgroundObserver = NotificationCenter.default.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { _ in
+            Task { @MainActor in
+                if self.classifier != nil || self.classifierLoadTask != nil { await self.unload() }
+            }
+        }
+    }
 
     func isLoaded(as selectionID: String) -> Bool {
         Self.isCurrentRuntime(
@@ -65,8 +71,13 @@ final class CoreAIInferenceService {
               let manifest = CoreAIModelStore.shared.manifest else {
             throw CoreAIInferenceError.modelMissing
         }
-        guard manifest.capabilities.textGeneration else {
+        guard manifest.capabilities.textGeneration,
+              manifest.capabilities.classification != true,
+              CoreAIZooCatalog.isTextGenerationPack(id: manifest.id) else {
             throw CoreAIInferenceError.unsupportedCapability("text generation")
+        }
+        if let restriction = AppStoreModelPolicy.restriction(for: manifest.id) {
+            throw CoreAIInferenceError.unavailable(restriction)
         }
         let selectionID = CoreAIInstalledModel.assistantSelectionID(for: manifest.id)
         if isLoaded(as: selectionID), runtime != nil {
@@ -78,15 +89,28 @@ final class CoreAIInferenceService {
             category: "coreai"
         )
         await unload()
-        let runtime = makeRuntime()
-        do {
+        let ticket = lifetime
+        let pending = Task { @MainActor in
+            let runtime = self.makeRuntime()
             try await runtime.load(resourcesAt: url)
+            try Task.checkCancellation()
+            return runtime
+        }
+        textLoadTask = pending
+        loadingSelectionID = selectionID
+        let runtime: CoreAIRuntime
+        do {
+            runtime = try await pending.value
+            try Task.checkCancellation()
+            guard ticket == lifetime else { throw CancellationError() }
+            textLoadTask = nil
+            loadingSelectionID = nil
         } catch {
             // A failed reload must not leave the previous multi-gigabyte
             // runtime resident (and `isReady` true) while the service state
             // reports failure — memory admission and the API's readiness
             // gate would both be lying.
-            await unload()
+            if ticket == lifetime { await unload() }
             Diagnostics.shared.error(
                 "Core AI runtime load failed · \(manifest.id) · \(error.localizedDescription)",
                 category: "coreai"
@@ -125,15 +149,129 @@ final class CoreAIInferenceService {
         runtime?.cancel()
     }
 
+    func loadClassifier(id: String) async throws -> ClassifierModelInfo {
+        guard let installed = CoreAIModelStore.shared.installedModel(id: id),
+              installed.manifest.capabilities.classification == true || CoreAIZooCatalog.model(forSelectionID: id)?.category == .classifier else {
+            throw CoreAIInferenceError.unavailable("Install a supported classifier from Models first.")
+        }
+        let selection = installed.assistantSelectionID
+        if loadedClassifierID == selection, let classifier {
+            return await classifierInfo(classifier, installed: installed)
+        }
+        // Uses the same drain-before-load path as Assistant, Lens and Image.
+        try await ModelResidency.shared.prepareForClassifier()
+        try Task.checkCancellation()
+        if let reason = MemoryAdvisor.safetyBlocker(for: selection, runtime: .coreAI) {
+            throw CoreAIInferenceError.unavailable(reason)
+        }
+        try Self.checkClassifierSafety()
+        let ticket = lifetime
+        let pending = Task { @MainActor in
+            #if canImport(CoreAI)
+            let adapter = try await CoreAIClassifierRuntime.loadAdmittedAdapter(resourcesAt: installed.resourcesURL, checkSafety: {
+                try await MainActor.run { try Self.checkClassifierSafety() }
+            })
+            try Task.checkCancellation()
+            return adapter
+            #else
+            throw CoreAIInferenceError.unavailable("Core AI classifiers require the iOS 27 device runtime.")
+            #endif
+        }
+        classifierLoadTask = pending
+        loadingClassifierID = selection
+        do {
+            let adapter = try await withTaskCancellationHandler {
+                try await pending.value
+            } onCancel: { pending.cancel() }
+            try Task.checkCancellation()
+            guard ticket == lifetime else { throw CancellationError() }
+            classifierLoadTask = nil; loadingClassifierID = nil
+            classifier = adapter; loadedClassifierID = selection
+            return await classifierInfo(adapter, installed: installed)
+        } catch {
+            if ticket == lifetime { classifierLoadTask = nil; loadingClassifierID = nil }
+            throw error
+        }
+    }
+
+    func classify(_ request: ClassifierRequest) async throws -> CoreAIClassifierAnswer {
+        guard loadedClassifierID == request.model, let classifier else {
+            throw CoreAIInferenceError.unavailable("Activate this classifier before running it.")
+        }
+        guard classifierOperation == nil else { throw CoreAIClassifierError.busy }
+        try Self.checkClassifierSafety()
+        let question = try request.question
+        let ticket = lifetime
+        ModelResidency.shared.cancelPrefetch()
+        let pending = Task {
+            try await classifier.classify(state: request.input, question: question,
+                calibration: request.calibrated == true ? .published : .source)
+        }
+        classifierOperation = pending
+        defer { if lifetime == ticket { classifierOperation = nil } }
+        return try await withTaskCancellationHandler {
+            let answer = try await pending.value
+            try Task.checkCancellation()
+            guard lifetime == ticket else { throw CancellationError() }
+            return answer
+        } onCancel: {
+            pending.cancel()
+            Task { await classifier.cancel() }
+        }
+    }
+
+    func validateClassifier(_ request: ClassifierRequest) async throws -> Int {
+        guard loadedClassifierID == request.model, let classifier else { throw CoreAIInferenceError.modelMissing }
+        return try await classifier.validate(state: request.input, question: request.question)
+    }
+
+    func cancelClassifier() {
+        classifierLoadTask?.cancel(); classifierOperation?.cancel()
+        if let classifier { Task { await classifier.cancel() } }
+    }
+
+    private func classifierInfo(_ adapter: CoreAIClassifierAdapter, installed: CoreAIInstalledModel) async -> ClassifierModelInfo {
+        let contract = adapter.contract
+        return ClassifierModelInfo(id: installed.assistantSelectionID, name: installed.manifest.displayName,
+            window: contract.window, supportsCalibration: contract.calibratedTemperatures != nil,
+            hasDirectAnswerHead: contract.actFunction != nil)
+    }
+
+    private static func checkClassifierSafety() throws {
+        try Task.checkCancellation()
+        guard UIApplication.shared.applicationState == .active else { throw CancellationError() }
+        if let reason = DeviceSafetyMonitor.shared.stopReason { throw CoreAIInferenceError.unavailable(reason.detail) }
+        if MemoryAdvisor.processAvailableMemory < 128_000_000 {
+            throw CoreAIInferenceError.unavailable("Not enough memory to safely run the classifier. Unload the model and free memory before retrying.")
+        }
+    }
+
     func unload() async {
-        runtime?.cancel()
-        runtime = nil
-        isReady = false
-        loadedSelectionID = nil
+        if let unloadTask { await unloadTask.value; return }
+        // Published readiness clears immediately, but SDK jobs can still hold
+        // these files until the asynchronous drain completes.
+        unloadingPackIDs = Set([loadedSelectionID, loadedClassifierID, loadingSelectionID, loadingClassifierID].compactMap { $0 })
+        lifetime &+= 1
+        isReady = false; loadedSelectionID = nil; loadedClassifierID = nil
+        runtime?.cancel(); textLoadTask?.cancel(); cancelClassifier()
+        let textLoad = textLoadTask, load = classifierLoadTask, operation = classifierOperation
+        let pending = Task { @MainActor in
+            if let textLoad { _ = try? await textLoad.value }
+            if let load { _ = try? await load.value }
+            if let operation { _ = try? await operation.value }
+            self.runtime = nil; self.classifier = nil
+            self.textLoadTask = nil; self.classifierLoadTask = nil; self.classifierOperation = nil
+            self.loadingSelectionID = nil; self.loadingClassifierID = nil
+        }
+        unloadTask = pending
+        await pending.value
+        unloadTask = nil
+        unloadingPackIDs.removeAll()
     }
 }
 
-private protocol CoreAIRuntime: AnyObject {
+@MainActor
+private protocol CoreAIRuntime: AnyObject, Sendable {
     func load(resourcesAt url: URL) async throws
     func generate(
         messages: [ChatMessage],
@@ -150,6 +288,7 @@ import FoundationModels
 import CoreAILanguageModels
 
 @available(iOS 27.0, *)
+@MainActor
 private final class CoreAIAvailableRuntime: CoreAIRuntime {
     private var model: CoreAILanguageModel?
     private var task: Task<Void, Error>?
@@ -284,7 +423,7 @@ private final class CoreAIAvailableRuntime: CoreAIRuntime {
         task = nil
     }
 
-    private static func hermesEnvelope(
+    private nonisolated static func hermesEnvelope(
         id: String,
         name: String,
         argumentsJSON: String
@@ -311,6 +450,7 @@ private final class CoreAIAvailableRuntime: CoreAIRuntime {
 }
 #endif
 
+@MainActor
 private final class CoreAIUnavailableRuntime: CoreAIRuntime {
     func load(resourcesAt url: URL) async throws {
         throw CoreAIInferenceError.unavailable("Build this target with the Xcode 27 SDK to use Core AI.")

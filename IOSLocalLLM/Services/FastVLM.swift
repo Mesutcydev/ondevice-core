@@ -654,6 +654,15 @@ public class FastVLM: Module, VLMModel, KVCacheDimensionProvider {
 
     // MARK: - LanguageModel protocol
 
+    public func prepare(
+        _ input: LMInput, cache: [any KVCache], state: LMOutput.State?,
+        prefill: PrefillParameters
+    ) throws -> PrepareResult {
+        // MLX LM 3.32 uses a typed prefill request. Preserve this adapter's
+        // existing single-forward multimodal embedding/vision path.
+        try prepare(input, cache: cache, windowSize: prefill.stepSize)
+    }
+
     public func prepare(_ input: LMInput, cache: [any KVCache], windowSize: Int?) throws -> PrepareResult {
         // API in mlx-swift-examples 2.29.1 uses `frames:` property
         let gridThw = input.image?.frames

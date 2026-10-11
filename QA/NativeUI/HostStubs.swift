@@ -24,26 +24,33 @@ final class ImageGenerationService: ObservableObject {
     }
     enum State { case idle, failed(String), generating }
     static let shared = ImageGenerationService()
-    static let catalog = [Model(id: "fixture", displayName: "Local image model", subtitle: "Review fixture", sizeLabel: "Sample data")]
+    static let catalog = Bundle.main.object(forInfoDictionaryKey: "AppStoreScreenshotScene") != nil
+        ? [Model(id: "stable-diffusion-v1-5/stable-diffusion-v1-5", displayName: "Stable Diffusion 1.5", subtitle: "512², classic, versatile", sizeLabel: "~4.3 GB")]
+        : [Model(id: "fixture", displayName: "Local image model", subtitle: "Review fixture", sizeLabel: "Sample data")]
     @Published var image: UIImage? = UIImage(named: "studio-example")
     @Published var resultPrompt: String? = "A quiet house beside a mountain lake."
-    let resultURL = Bundle.main.url(forResource: "studio-example", withExtension: "png")
+    @Published var resultURL = Bundle.main.url(forResource: "studio-example", withExtension: "png")
     let isCancelling = false
     @Published var state: State = .idle
-    @Published var selectedModelID = "fixture"
+    @Published var selectedModelID = ImageGenerationService.catalog[0].id
     var selectedModel: Model { Self.catalog[0] }
     var isWorking: Bool { if case .generating = state { return true }; return false }
     var statusMessage = "Review fixture"
     var directDownloadErrors: [String: String] = [:]
     func select(_ id: String) { selectedModelID = id }
     func isInstalled(_ model: Model) -> Bool { !ProcessInfo.processInfo.arguments.contains("-image-no-model") }
-    func isDownloading(_ model: Model) -> Bool { false }
-    func downloadProgress(for model: Model) -> Double { 0 }
+    func isDownloading(_ model: Model) -> Bool { ProcessInfo.processInfo.arguments.contains("-image-downloading") }
+    func downloadProgress(for model: Model) -> Double { 0.42 }
     func startDownload(_ model: Model) {}
     func deleteModel(_ model: Model) {}
     func generate(prompt: String, negativePrompt: String, steps: Int?) {
+        if let restriction = AIContentPolicy.imageRequestRestriction(prompt) {
+            state = .failed(restriction)
+            return
+        }
         state = ProcessInfo.processInfo.arguments.contains("-image-failure") ? .failed("Review fixture: image model could not load.") : .generating
     }
+    func discardResult() { image = nil; resultURL = nil; resultPrompt = nil }
     func cancel() { state = .idle }
 }
 
@@ -106,6 +113,7 @@ enum LocalAPIValidation {
 }
 struct AssistantModelPickerView: View {
     var downloadedOnly = false
+    var allowsAPIProviders = true
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         // Mirror the production picker's dismissal affordance: a navigation

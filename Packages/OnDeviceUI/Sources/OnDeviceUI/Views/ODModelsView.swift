@@ -32,7 +32,7 @@ struct ODModelsView: View {
                 // with a usable role, keep unsupported roles out of "Use".
                 (model.isSelectable ? model.supportedKinds : model.declaredKinds).contains($0)
             } ?? true)
-            && (trimmedQuery.isEmpty || "\(model.name) \(model.metadata) \(model.id)".localizedCaseInsensitiveContains(trimmedQuery))
+            && (trimmedQuery.isEmpty || "\(model.name) \(model.metadata) \(model.id) \(model.workspaceLabel) \(model.summary ?? "")".localizedCaseInsensitiveContains(trimmedQuery))
             && seen.insert(model.id).inserted
         }
         guard scope == .installed else { return matches }
@@ -58,6 +58,14 @@ struct ODModelsView: View {
                         }
                         .pickerStyle(.segmented).accessibilityIdentifier("models.scope")
                         ODCapabilityChips(kind: $kind)
+                            .onChange(of: kind) { _, selected in
+                                // A new classifier has no installed row yet. Show
+                                // its catalog rather than landing on an empty page.
+                                if selected == .classifier && scope == .installed
+                                    && !store.models.contains(where: { $0.isInstalled && $0.declaredKinds.contains(.classifier) }) {
+                                    scope = .discover
+                                }
+                            }
                     }
 
                     if scope == .discover && trimmedQuery.isEmpty {
@@ -116,7 +124,7 @@ struct ODModelsView: View {
                     if scope == .installed && trimmedQuery.isEmpty {
                         Button { store.send(.manageStorage) } label: {
                             ODLibraryRow(title: "Manage model storage",
-                                         detail: "\(installedCount) on device · \(store.metrics.modelStorageBytes.map(ODFormat.bytes) ?? "Storage not measured") used",
+                                         detail: "\(installedCount) on device · \(store.metrics.modelStorageBytes.map { "\(ODFormat.bytes($0)) used" } ?? "Storage not measured")",
                                          symbol: "internaldrive")
                         }
                         .buttonStyle(ODPressButtonStyle())
@@ -493,7 +501,7 @@ private struct ODModelCard: View {
                                     .fixedSize()
                             }
                         }
-                        Text(model.isInstalled && !model.isSelectable
+                        Text(model.isInstalled && !model.isSelectable && model.kind != .classifier
                              ? "Installed · runtime unavailable"
                              : (summary.isEmpty ? model.workspaceLabel : summary))
                             .font(.subheadline)
@@ -566,16 +574,24 @@ private struct ODModelCard: View {
                             $0.isFinite ? min(1, max(0, $0)) : nil
                         })
                             .tint(ODPalette.text)
-                            .accessibilityLabel("Model download progress")
+                            .accessibilityLabel(model.downloadDetail == nil ? "Model download progress" : "Model preparation progress")
+                    }
+                    if let detail = model.downloadDetail {
+                        Text(detail).font(.footnote).foregroundStyle(ODPalette.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 Spacer(minLength: 0)
+                if (model.availableCommands ?? []).contains(.download) || (model.availableCommands ?? []).contains(.pauseDownload) {
                 circleButton(model.isDownloadPaused || status == "Download failed" ? "arrow.clockwise" : "pause.fill",
                              label: model.isDownloadPaused || status == "Download failed" ? "Resume" : "Pause",
                              id: "model.pauseResume.\(model.id)",
                              action: model.isDownloadPaused || status == "Download failed" ? onDownload : onPause)
+                }
+                if (model.availableCommands ?? []).contains(.cancelDownload) {
                 circleButton("xmark", label: "Cancel download", id: "model.cancel.\(model.id)") {
                     cancelConfirmationPresented = true
+                }
                 }
             }
             .transition(.opacity)
@@ -630,7 +646,7 @@ private struct ODModelCard: View {
             Label("Needs attention", systemImage: "exclamationmark.circle.fill")
                 .font(.footnote.weight(.medium)).foregroundStyle(ODPalette.red)
         case .unloaded:
-            Label(model.isInstalled ? "Installed" : "Not installed",
+            Label(model.isInstalled ? "Installed" : (model.unavailableReason == nil ? "Not installed" : "Unavailable on this device"),
                   systemImage: model.isInstalled ? "checkmark.circle" : "icloud.and.arrow.down")
                 .font(.footnote).foregroundStyle(ODPalette.secondary)
         }

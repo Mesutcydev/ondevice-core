@@ -1,6 +1,92 @@
 import XCTest
 
 final class NativeUIFlows: XCTestCase {
+    @MainActor func testInstalledCoreAIChatPackCanCancelThenConfirmDeletion() {
+        verifyCoreAIRemoval(packID: "zoo-qwen3-0.6b-official-ios")
+    }
+
+    @MainActor func testInstalledCoreAIClassifierCanCancelThenConfirmDeletion() {
+        verifyCoreAIRemoval(packID: "zoo-laya-multilingual")
+    }
+
+    @MainActor private func verifyCoreAIRemoval(packID: String) {
+        let app = XCUIApplication()
+        app.launchArguments = ["-screen", "models", "-coreai-installed", packID, "-action-probe"]
+        app.launch()
+        let id = "coreai:\(packID)"
+        let row = app.buttons["model.row.\(id)"]
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.tap()
+        let delete = app.buttons["model.delete.\(id)"]
+        XCTAssertTrue(delete.waitForExistence(timeout: 5))
+        for _ in 0..<3 where !delete.isHittable { app.swipeUp() }
+        delete.tap()
+        XCTAssertTrue(app.staticTexts["Delete this model?"].waitForExistence(timeout: 3))
+        // iOS 27 may present this confirmation as a popover, where tapping
+        // outside dismisses it and the system omits the explicit Cancel row.
+        if app.buttons["Cancel"].exists { app.buttons["Cancel"].tap() }
+        else { app.navigationBars["Model details"].tap() }
+        XCTAssertFalse(app.staticTexts["Delete this model?"].exists)
+        XCTAssertTrue(delete.waitForExistence(timeout: 3))
+        XCTAssertFalse(app.staticTexts["fixture.action"].label.contains("delete"))
+        capture("coreai-\(packID)-delete-cancel")
+
+        delete.tap()
+        let confirm = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Delete "))
+            .matching(NSPredicate(format: "identifier != %@", "model.delete.\(id)")).firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 3))
+        confirm.tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(
+            format: "identifier == %@ AND label CONTAINS %@ AND label CONTAINS %@",
+            "fixture.action", id, "delete"
+        )).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(row.exists)
+        XCTAssertTrue(app.buttons["model.row.review/kept-model"].exists)
+        app.buttons["models.scope.discover"].tap()
+        XCTAssertTrue(app.buttons["model.download.\(id)"].waitForExistence(timeout: 5))
+        capture("coreai-\(packID)-removed-can-download-again")
+    }
+
+    @MainActor func testClassifierCatalogIsVisibleAndDownloadRoutesToHost() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-screen", "models", "-classifier-catalog", "-action-probe"]
+        app.launch()
+        let classifiers = app.buttons["models.capability.classifier"]
+        XCTAssertTrue(classifiers.waitForExistence(timeout: 10))
+        classifiers.tap()
+        let laya = app.buttons["model.row.coreai:zoo-laya-multilingual"]
+        let julia = app.buttons["model.row.coreai:zoo-julia-1"]
+        XCTAssertTrue(laya.waitForExistence(timeout: 5))
+        XCTAssertTrue(julia.exists)
+        XCTAssertFalse(app.buttons["model.download.coreai:zoo-julia-1"].exists)
+        let download = app.buttons["model.download.coreai:zoo-laya-multilingual"]
+        XCTAssertTrue(download.exists)
+        capture("models-classifiers-discover")
+        download.tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(
+            format: "identifier == %@ AND label CONTAINS %@ AND label CONTAINS %@",
+            "fixture.action", "zoo-laya-multilingual", "download"
+        )).firstMatch.waitForExistence(timeout: 3))
+        julia.tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "publisher has only validated")).firstMatch.waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["Download model"].exists)
+        capture("models-julia-mac-availability")
+    }
+
+    @MainActor func testInstalledClassifierUseOpensAndActivatesWorkbench() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-screen", "models", "-classifier-catalog", "-classifier-installed", "-classifier-input"]
+        app.launch()
+        app.buttons["models.capability.classifier"].tap()
+        let row = app.buttons["model.row.coreai:zoo-laya-multilingual"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["model.download.coreai:zoo-laya-multilingual"].exists)
+        app.buttons["model.use.coreai:zoo-laya-multilingual"].tap()
+        XCTAssertTrue(app.navigationBars["Classifiers"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["classifier.unload"].waitForExistence(timeout: 5))
+        capture("classifier-active-workbench")
+    }
+
     @MainActor func testUnifiedModelAppearsInBothFiltersAndUseChoosesWorkspace() {
         let app = XCUIApplication()
         app.launchArguments = ["-screen", "models", "-model-dual-role", "-action-probe"]
@@ -201,8 +287,8 @@ final class NativeUIFlows: XCTestCase {
         XCTAssertTrue(latest.waitForExistence(timeout: 10))
         XCTAssertTrue(composer.waitForExistence(timeout: 10))
         app.swipeUp()
-        // The text starts 16 pt inside the card (ODLayout.composerTopInset);
-        // the band that matters lies between the message and the card.
+        // Local selection stays in the header; measure the gap above the
+        // composer from its writing field and top inset.
         XCTAssertLessThanOrEqual(composer.frame.minY - 16 - latest.frame.maxY, 20,
                                  "The latest message should not leave an empty scroll band above the composer")
         capture("chat-latest-compact-dark")
@@ -215,12 +301,17 @@ final class NativeUIFlows: XCTestCase {
         let example = app.buttons["Lakeside cabin"]
         XCTAssertTrue(example.waitForExistence(timeout: 5))
         capture("brief-image-empty-light")
+        // Getting the model is one tap and never waits for a prompt.
+        let download = app.buttons["image.create"]
+        XCTAssertEqual(download.label, "Download")
+        XCTAssertTrue(download.isEnabled, "An empty prompt must not block the model download")
         example.tap()
         let field = app.descendants(matching: .any).matching(identifier: "image.draft.prompt").firstMatch
         XCTAssertEqual(field.value as? String, "A quiet lakeside cabin at sunrise, soft watercolor")
         XCTAssertFalse(app.buttons["Cancel"].exists)
         app.buttons["keyboard.dismiss"].tap()
-        app.buttons["Choose model"].tap()
+        app.buttons["image.model"].tap()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Image model")).firstMatch.tap()
         XCTAssertTrue(app.navigationBars["Image models"].waitForExistence(timeout: 3))
         app.buttons["Done"].tap()
         navigate(app, to: "models")
@@ -325,16 +416,17 @@ final class NativeUIFlows: XCTestCase {
         let field = app.descendants(matching: .any).matching(identifier: "chat.composer.text").firstMatch
         let add = app.buttons["chat.composer.add"]
         XCTAssertTrue(field.waitForExistence(timeout: 5))
-        // The gap above the action row belongs to no control; the card owns it.
+        // The gap between the model row and input belongs to the card.
+        let model = app.buttons["chat.modelPicker"]
         app.coordinate(withNormalizedOffset: .zero)
-            .withOffset(CGVector(dx: app.frame.midX, dy: (field.frame.maxY + add.frame.minY) / 2))
+            .withOffset(CGVector(dx: app.frame.midX, dy: (model.frame.maxY + field.frame.minY) / 2))
             .tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
         let lineHeight = field.frame.height
-        let gap = add.frame.minY - field.frame.maxY
+        let gap = add.frame.maxY - field.frame.maxY
         field.typeText("First line\nSecond line")
         XCTAssertGreaterThan(field.frame.height, lineHeight * 1.5)
-        XCTAssertEqual(add.frame.minY - field.frame.maxY, gap, accuracy: 1)
+        XCTAssertEqual(add.frame.maxY - field.frame.maxY, gap, accuracy: 1)
         capture("composer-card-focus-two-lines")
     }
 
@@ -775,17 +867,19 @@ final class NativeUIFlows: XCTestCase {
             XCTAssertLessThanOrEqual(add.frame.maxX, send.frame.minX)
             let writing = app.descendants(matching: .any).matching(identifier: "chat.composer.text").firstMatch
             XCTAssertLessThan(model.frame.maxY, writing.frame.minY,
-                              "The model picker belongs in the top bar, above the composer")
-            XCTAssertEqual(writing.frame.width, CGFloat(width - 88), accuracy: 1,
-                           "The writing area includes the scaled 16pt text inset on each side")
+                              "The model pill sits above the input inside the composer")
+            XCTAssertGreaterThanOrEqual(writing.frame.minX, add.frame.maxX)
+            XCTAssertLessThanOrEqual(writing.frame.maxX, send.frame.minX)
+            XCTAssertGreaterThan(writing.frame.width, 100,
+                                 "The inline input must retain useful writing space")
             capture("composer-width-\(width)-long-model")
             app.terminate()
         }
         let shortModelApp = launch()
         let shortModel = shortModelApp.buttons["Model"]
         XCTAssertLessThan(shortModel.frame.width, 160,
-                          "A short model label should remain compact in the top bar")
-        capture("composer-model-picker-top")
+                          "A short model pill should remain compact")
+        capture("composer-model-picker-inside")
         shortModelApp.terminate()
 
         let productionFooter = launch(["-production-footer", "-dark"])
@@ -793,8 +887,8 @@ final class NativeUIFlows: XCTestCase {
         let microphone = productionFooter.buttons["chat.composer.microphone"]
         XCTAssertTrue(microphone.isHittable)
         XCTAssertEqual(selectedModel.value as? String, "Ornith 1.5 9B")
-        XCTAssertLessThan(selectedModel.frame.width, 135,
-                          "The active model should stay compact in the navigation bar")
+        XCTAssertLessThan(selectedModel.frame.width, 180,
+                          "The active model pill should stay compact")
         XCTAssertLessThan(selectedModel.frame.maxY, microphone.frame.minY)
         capture("composer-top-model-ornith-dark")
         productionFooter.terminate()

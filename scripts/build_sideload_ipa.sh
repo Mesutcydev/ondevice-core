@@ -48,6 +48,7 @@ xcodebuild archive \
   -archivePath "$ARCHIVE" \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
+  ONDEVICE_MODEL_POLICY=RESEARCH_MODE ONDEVICE_RESEARCH_BUILD=YES \
   > build/sideload-archive.log 2>&1 \
   || { tail -80 build/sideload-archive.log; die "archive failed"; }
 [[ -d "$APP" ]] || die "archive contains no OnDeviceMax.app"

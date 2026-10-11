@@ -210,6 +210,7 @@ final class LensInferenceLoop: ObservableObject {
     /// which corrupts the MLX GPU scheduler. Identical pattern to
     /// the old MLXVisionService's `loadingRepoID`.
     private var loadingRepoID: String?
+    private var loadLifetime = PresentationRequestLifetime()
 
 
     /// Observer for the memory-pressure cache-drop broadcast. Held for
@@ -250,6 +251,10 @@ final class LensInferenceLoop: ObservableObject {
     }
 
     func switchTo(repoID: String, preserveMatchingAssistant: Bool = false) async {
+        if let restriction = AppStoreModelPolicy.restriction(for: repoID) {
+            state = .failed(restriction)
+            return
+        }
         // Lifecycle guard: refuse loads during .inactive/.background transitions.
         guard !newRequestsSuspended else {
             Diagnostics.shared.breadcrumb(
@@ -269,6 +274,7 @@ final class LensInferenceLoop: ObservableObject {
         // doesn't keep returning "could not process this frame".
         if let active = activeRepoID, active == repoID, container != nil {
             await drainCompetingRuntimes(preservingAssistant: preserveAssistant)
+            guard activeRepoID == repoID, container != nil, !Task.isCancelled else { return }
             if case .failed = state {
                 Diagnostics.shared.notice(
                     "VLM recovered from prior failure · \(repoID.components(separatedBy: "/").last ?? repoID)",
@@ -287,21 +293,32 @@ final class LensInferenceLoop: ObservableObject {
         // it after memory preflight, leaving a multi-second window where Gemma
         // and Qwen switches both entered and loaded two containers in series,
         // with the first still resident during the second load.
-        if let loadingRepoID {
+        if loadLifetime.isRunning {
             Diagnostics.shared.breadcrumb(
-                "VLM switch ignored · requested=\(repoID) · already loading=\(loadingRepoID)",
+                "VLM switch ignored · requested=\(repoID) · already loading=\(loadingRepoID ?? "retiring")",
                 category: "lens"
             )
             return
         }
+        guard let loadID = loadLifetime.begin() else { return }
         loadingRepoID = repoID
-        defer { if loadingRepoID == repoID { loadingRepoID = nil } }
+        defer {
+            if Task.isCancelled, loadLifetime.accepts(loadID) {
+                container = nil
+                activeRepoID = nil
+                capabilities = nil
+                state = .unloaded
+                Task { await MLXGenerationGate.shared.clearCacheWhenIdle() }
+            }
+            if loadLifetime.finish(loadID) { loadingRepoID = nil }
+        }
 
         // Cancel the old inference, wait for the app-wide MLX gate to drain,
         // and only then clear buffers. Swift Task.cancel() is cooperative and
         // does not interrupt an already-submitted Metal command buffer.
         await unloadForModelSwitch()
         await drainCompetingRuntimes(preservingAssistant: preserveAssistant)
+        guard loadLifetime.accepts(loadID), !Task.isCancelled else { return }
 
         // Memory gate. Refuse a load if we don't have ~1.6× the
         // estimated weight size available in process.
@@ -453,10 +470,7 @@ final class LensInferenceLoop: ObservableObject {
 
         var lastError: String?
         for (index, candidate) in candidates.enumerated() {
-            guard loadingRepoID == repoID else {
-                state = .unloaded
-                return
-            }
+            guard loadLifetime.accepts(loadID), !Task.isCancelled else { return }
             // Open with "Preparing" by default and only switch to
             // "Downloading" once we've seen genuine network-slow
             // progress (≥3 s elapsed AND <20% complete). Same
@@ -489,7 +503,10 @@ final class LensInferenceLoop: ObservableObject {
             // Built outside the load chain so none of its closures capture
             // self; the loader may call this until the load finishes.
             let reportProgress: @Sendable (String) -> Void = { [weak self] text in
-                Task { @MainActor in self?.state = .loading(text) }
+                Task { @MainActor in
+                    guard let self, self.loadLifetime.accepts(loadID) else { return }
+                    self.state = .loading(text)
+                }
             }
 
             // Prefer a directory-based config when weights are
@@ -505,12 +522,25 @@ final class LensInferenceLoop: ObservableObject {
             }
 
             do {
+                if let stagedURL {
+                    try ModelCheckpointCompatibility.validateMLXDirectory(stagedURL)
+                }
                 let candidateProfile = MLXVLMExecutionProfile.resolve(repoID: candidate)
-                let loaded = try await MLXGenerationGate.shared.run {
+                try await MLXGenerationGate.shared.run { [weak self] in
+                    let owner = self
+                    guard await MainActor.run(body: {
+                        owner?.loadLifetime.accepts(loadID) == true
+                    }) else { throw MLXGenerationGate.Cancelled() }
+                    let memory = MemoryAdvisor.memorySnapshot
+                    guard Int64(clamping: required) <= memory.available else {
+                        throw NSError(domain: "MemoryAdvisor", code: 2, userInfo: [
+                            NSLocalizedDescriptionKey: "Memory headroom changed while this vision model was waiting. Unload other models and retry."
+                        ])
+                    }
                     try await Self.withMLXMemoryCap(
                         cacheLimitBytes: candidateProfile.cacheLimitBytes
                     ) {
-                        let c = try await VLMModelFactory.shared.loadContainer(from: HubApiDownloader(), configuration: config) { progress in
+                        var loaded: ModelContainer? = try await VLMModelFactory.shared.loadContainer(from: HubApiDownloader(), configuration: config) { progress in
                             let pct = Int(progress.fractionCompleted * 100)
                             let elapsed = Date().timeIntervalSince(loadStart)
                             if !latch.isNetwork,
@@ -522,20 +552,24 @@ final class LensInferenceLoop: ObservableObject {
                             let verb = latch.isNetwork ? "Downloading" : "Preparing"
                             reportProgress("\(verb) \(pct)%")
                         }
+                        await MainActor.run { [owner, loaded] in
+                            guard let owner, owner.loadLifetime.accepts(loadID),
+                                  UIApplication.shared.applicationState == .active,
+                                  !Task.isCancelled else { return }
+                            owner.container = loaded
+                        }
+                        loaded = nil
                         mlxClearCache()
-                        return c
                     }
                 }
-                guard loadingRepoID == repoID,
+                guard loadLifetime.accepts(loadID), container != nil,
+                      !Task.isCancelled,
                       UIApplication.shared.applicationState == .active else {
                     // An explicit unload/tab switch or background transition
                     // superseded this load while native code was finishing.
                     // Drop the result instead of resurrecting a resident model.
-                    state = .unloaded
-                    await MLXGenerationGate.shared.clearCacheWhenIdle()
                     return
                 }
-                container = loaded
                 activeRepoID = candidate
                 let memoryAfterLoad = MLX.Memory.snapshot()
 
@@ -570,6 +604,7 @@ final class LensInferenceLoop: ObservableObject {
                 ModelResidency.shared.schedulePrefetch(currentTab: .lens)
                 return
             } catch is MLXGenerationGate.Cancelled {
+                guard loadLifetime.accepts(loadID) else { return }
                 // Backgrounded or cancelAll() fired mid-load — clean
                 // cancel, don't walk the fallback list.
                 container = nil
@@ -578,6 +613,7 @@ final class LensInferenceLoop: ObservableObject {
                 state = .unloaded
                 return
             } catch {
+                guard loadLifetime.accepts(loadID), !Task.isCancelled else { return }
                 lastError = error.localizedDescription
                 Diagnostics.shared.warning(
                     "VLM candidate failed · \(candidate) · \(error.localizedDescription)",
@@ -618,6 +654,7 @@ final class LensInferenceLoop: ObservableObject {
         // Supersede an in-progress switchTo so its eventual load result is
         // discarded by the guard immediately after MLXGenerationGate.run.
         loadingRepoID = nil
+        loadLifetime.cancel()
         container = nil
         activeRepoID = nil
         capabilities = nil
@@ -886,7 +923,7 @@ final class LensInferenceLoop: ObservableObject {
                                     quantizedKVStart: 0,
                                     temperature: 0.7,
                                     topP: 0.9,
-                                    prefillStepSize: executionProfile.prefillStepSize
+                                    prefill: .init(stepSize: executionProfile.prefillStepSize, chunking: .remainder)
                                 )
                                 let stream = try MLXLMCommon.generate(
                                     input: lmInput, parameters: params, context: context
@@ -1143,21 +1180,25 @@ final class LensInferenceLoop: ObservableObject {
     private static func withMLXMemoryCap<T>(
         cacheLimitBytes: Int,
         _ body: () async throws -> T
-    ) async rethrows -> T {
+    ) async throws -> T {
         let prevCache = MLX.Memory.cacheLimit
         let prevMem = MLX.Memory.memoryLimit
-        let avail = max(0, MemoryAdvisor.availableMemoryForModel)
-        let currentMLX = Int64(MLX.Memory.activeMemory) + Int64(MLX.Memory.cacheMemory)
+        let memory = MemoryAdvisor.memorySnapshot
+        let currentMLX = MemoryBytes.add(Int64(MLX.Memory.activeMemory), Int64(MLX.Memory.cacheMemory))
         // memoryLimit is a TOTAL MLX allocation limit, not a remaining-headroom
         // limit. The old code set it to `available - cushion`; once model weights
         // were resident that could put the limit below activeMemory, causing MLX
         // allocation waits that never made progress (watchdog kill). Add current
         // MLX allocation back, then reserve ordinary app headroom.
-        let additional = max(0, avail - MemoryAdvisor.loadHeadroomReserve)
-        let limit = avail > 0
-            ? max(1_024 * 1024 * 1024, currentMLX + additional)
-            : 2_048 * 1024 * 1024
-        MLX.Memory.memoryLimit = Int(limit)
+        let budget = MLXAllocationBudget.resolve(
+            allocated: currentMLX, memory: memory, reserve: MemoryAdvisor.loadHeadroomReserve
+        )
+        guard budget.additional > 0 else {
+            throw NSError(domain: "MemoryAdvisor", code: 2, userInfo: [
+                NSLocalizedDescriptionKey: "Not enough memory headroom to run this vision model. Unload other models and retry."
+            ])
+        }
+        MLX.Memory.memoryLimit = Int(clamping: budget.limit)
         MLX.Memory.cacheLimit = max(0, cacheLimitBytes)
         defer {
             MLX.Memory.cacheLimit = prevCache

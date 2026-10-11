@@ -111,7 +111,13 @@ enum AssistantModelCatalog {
     /// share an architecture already proven by an existing preset
     /// (Qwen3, Qwen2.5, Llama 3.x) so a refresh can't silently 404 or
     /// hit an unsupported-arch load failure.
-    static let presets: [AssistantModel] = [
+    static var presets: [AssistantModel] {
+        guard AppStoreModelPolicy.isPublicDistribution,
+              !AppStoreModelPolicy.auditedRevisions.isEmpty else { return sourcePresets }
+        return sourcePresets.filter { AppStoreModelPolicy.downloadRevision(for: $0.repoID) != nil }
+    }
+
+    private static let sourcePresets: [AssistantModel] = [
         // ── Qwen3 4B 2507 refresh ─────────────────────────────────────────
         // The "2507" Instruct/Thinking refresh is a large quality jump over
         // the original Qwen3-4B and is now published by mlx-community (the

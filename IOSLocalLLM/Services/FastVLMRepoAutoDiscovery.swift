@@ -40,6 +40,7 @@ final class FastVLMRepoAutoDiscovery {
     /// and returns the resolved ID. Returns nil if nothing in the candidate
     /// list responded.
     func discover() async -> String? {
+        guard !AppStoreModelPolicy.isPublicDistribution else { return nil }
         let stored = AppSettings.shared.fastVLMRepoID
         var triedOrder: [String] = []
         if !stored.isEmpty { triedOrder.append(stored) }

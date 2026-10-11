@@ -35,6 +35,25 @@ final class ModelResidency: ObservableObject {
 
     private init() {}
 
+    /// Classifier activation participates in the existing single-runtime policy.
+    /// Drain producers before sampling admission or specializing another graph.
+    func prepareForClassifier() async throws {
+        if VoiceConversationService.shared.phase.isActiveForPresentation {
+            throw CoreAIInferenceError.unavailable("End the voice conversation before activating a classifier.")
+        }
+        if case .generating = CodingAssistantService.shared.state { throw CoreAIClassifierError.busy }
+        if case .loading = CodingAssistantService.shared.state { throw CoreAIClassifierError.busy }
+        if ImageGenerationService.shared.isWorking { throw CoreAIClassifierError.busy }
+        cancelPrefetch()
+        await CodingAssistantService.shared.unloadAndWaitForCleanup()
+        MLXVisionService.shared.unload()
+        FastVLMService.shared.unload()
+        await LlamaCppVLMService.shared.unloadAndWaitForCleanup()
+        ImageGenerationService.shared.unload()
+        await MLXGenerationGate.shared.clearCacheWhenIdle()
+        try Task.checkCancellation()
+    }
+
     // MARK: - Tier budget table
     //
     // Per-device-class hard budget for "both models combined." Used by

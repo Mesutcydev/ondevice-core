@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
 """Bundle the licenses accompanying the native and Swift code in an IPA."""
 from pathlib import Path
+import argparse
 import re
 import sys
 
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('app', type=Path)
+parser.add_argument('log', type=Path, nargs='?')
+parser.add_argument('--checkouts-root', type=Path)
+args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
-app, log = Path(sys.argv[1]), Path(sys.argv[2])
+app = args.app
 paths = [root / 'LICENSE', root / 'THIRD_PARTY_NOTICES.md']
 paths.extend(sorted((root / 'LICENSES').glob('*')))
+for pattern in ['LICENSE*', 'NOTICE*', 'COPYING*']:
+    paths.extend(sorted((root / 'LICENSES' / 'Models').rglob(pattern)))
+paths.append(root / 'Docs/audits/appstore-model-license-inventory-2026-10-01.json')
 for folder in ['LICENSES', 'Packages/VoiceAgentOrb', 'Packages/coreai-models',
                'ThirdParty/llama.cpp', 'ThirdParty/whisper.cpp', 'ThirdParty/thinking-orbs',
                'IOSLocalLLM/Vendor/StableDiffusion', 'IOSLocalLLM/Resources/Voice',
@@ -15,10 +24,14 @@ for folder in ['LICENSES', 'Packages/VoiceAgentOrb', 'Packages/coreai-models',
     base = root / folder
     for pattern in ['LICENSE*', 'NOTICE*', 'COPYING*']:
         paths.extend(sorted(base.glob(pattern)))
-checkouts = sorted(set(re.findall(r'(/[^\n" ]+/SourcePackages/checkouts)/', log.read_text())))
+checkouts = ([str(args.checkouts_root)] if args.checkouts_root else
+             sorted(set(re.findall(r'(/[^\n" ]+/SourcePackages/checkouts)/', args.log.read_text())))
+             if args.log else [])
 if not checkouts:
     raise SystemExit('No resolved package checkout paths found in archive log')
 for location in checkouts:
+    if not Path(location).is_dir():
+        raise SystemExit('Resolved package checkout directory is missing')
     for package in sorted(Path(location).iterdir()):
         if package.is_dir():
             for pattern in ['LICENSE*', 'NOTICE*', 'COPYING*']:

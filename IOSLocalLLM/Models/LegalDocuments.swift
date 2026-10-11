@@ -15,12 +15,12 @@ enum LegalDocuments {
     // MARK: - Versioning
     // Bump this whenever any legal text materially changes. Existing users
     // will be re-prompted to accept on app launch.
-    static let currentVersion = 4
+    static let currentVersion = 6
 
     // MARK: - Public URLs
-    static let privacyPolicyURL = "https://github.com/Mesutcydev/ios-local-llm/blob/main/PRIVACY_POLICY.md"
+    static let privacyPolicyURL = "https://ondevice.fun/privacy/"
     static let eulaURL          = "https://github.com/Mesutcydev/ios-local-llm/blob/main/LICENSE"
-    static let supportURL       = "https://github.com/Mesutcydev/ios-local-llm/issues"
+    static let supportURL       = "https://ondevice.fun/support/"
 
     // MARK: - Privacy Policy
 
@@ -29,37 +29,48 @@ enum LegalDocuments {
 
     **Last updated:** \(currentVersionDate)
 
-    OnDevice ("we", "the app") is designed with privacy as the core principle. All AI processing happens entirely on your device. We do not operate any servers and we do not collect, store, transmit, or sell your personal data.
+    OnDevice Max runs AI locally by default. The project operates no account, analytics, advertising, or inference backend and does not sell personal data. Optional network features send requests to providers, which may collect and retain them as described below.
 
-    ## 1. What we do NOT collect
+    ## 1. Project-operated collection
+    The project does not operate a service that receives the following content. Optional providers have separate collection and retention practices described below.
     - We do **not** collect images, video, or photos captured by the camera.
     - We do **not** collect any text you enter, including chat conversations with the on-device assistant.
     - We do **not** collect analytics, telemetry, crash reports, device identifiers, advertising identifiers, or any other usage data.
-    - We do **not** use cookies or web beacons.
-    - We do **not** sell, rent, or share data with third parties because we do not collect any data.
+    - The project operates no cookie or web-beacon tracking service. Optional providers and websites apply their own privacy practices.
+    - We do **not** sell or rent your data. Providers receive only the information needed for the optional network features you choose below.
 
     ## 2. What stays on your device
-    - **Camera frames** captured for analysis are processed in-memory and discarded immediately. They are never written to disk by the app unless you explicitly save them via the iOS share sheet.
-    - **Photos** you import from your Photo Library are read into memory, analysed, and discarded.
-    - **Chat conversations** with the Assistant are stored locally in the app's sandbox (Documents folder). You can delete them at any time. They are never uploaded.
-    - **Downloaded AI models** (e.g. Qwen3, FastVLM, KittenTTS) are stored in the app's sandbox. They are downloaded directly from Hugging Face on first use and used entirely locally afterwards.
+    - **Camera content** is processed locally. Captures, selected attachments, and analysis history may be retained locally by the features you use.
+    - **Photos and attachments** you select can be retained locally with your conversations or analysis history. Shared content is staged in the app's protected App Group container so the app can receive it when opened.
+    - **Chat conversations** with the Assistant are stored locally in the app's sandbox. You can delete them at any time. Optional iCloud sync and Apple Private Cloud are described below.
+    - **Downloaded AI models** are stored in the app's sandbox and execute locally. Model downloads require network access.
+    - **Parental controls** store a salted derived parent PIN, restrictions, and retry limits in device-only Keychain storage. They are not transmitted and are preserved when app data is cleared. Changing or removing controls requires the parent PIN.
+    - **Generated images** are stored locally for viewing and sharing. Copies exported to Photos or another app remain under that destination's control.
 
     ## 3. Network usage
     The app connects to the network only for explicit features:
     - **Model search and download:** Hugging Face receives the request. A saved Hugging Face token is included only when required for a gated repository.
-    - **Web search:** When you enable web search and submit a query, the configured provider receives that query under its own terms.
+    - **Web search and fetch:** The configured provider receives a search query, request metadata, and your provider credential where configured. An assistant-proposed query can include conversation information. “Ask Every Time” requests approval; “Always Allow” permits later requests without separate approval. Fetched websites receive their URL request and network metadata.
     - **Mac Bridge and Local API Server:** When enabled, paired clients communicate with the app over your local network.
     - **iCloud sync:** When enabled, Apple stores conversations in your private CloudKit database.
+    - **Apple Private Cloud:** In builds with Apple's entitlement, selecting this model requires a separate privacy consent. The request's prompt and included conversation context are sent to Apple's Private Cloud Compute service for inference under Apple's privacy practices. This is remote inference, and local models do not silently switch to it.
+    - **API providers:** After you configure and select an API model and accept its separate disclosure, the selected endpoint receives included conversation text, system instructions, tool results, attached file excerpts, and supported images. The provider and its model operators apply their own privacy, retention, and billing terms. API keys stay in device-only Keychain storage. Catalog refresh sends credentials and request metadata without conversation content; saving settings and opening the picker make no request. Local models never silently switch to an API provider. Custom HTTP endpoints on trusted private networks are unencrypted in transit.
     - **External documentation and links:** These open only after your action.
+    - **GitHub repository tools:** Off by default. After you connect GitHub, enable tools and select a repository/branch, GitHub receives authentication, request metadata, scoped file requests and approved commits, branches, pull requests or reverts. Credentials stay in device-only Keychain and never enter chat model requests. File edits remain a protected conversation draft until review. An API model receives included repository excerpts/tool results under its separate disclosure. Disconnecting deletes the saved token and turns off GitHub tools.
 
     There is no OnDevice telemetry channel, remote configuration service, analytics SDK, or advertising SDK.
+
+    Search providers can retain requests. Brave Search API documents query retention up to 90 days unless a qualifying enterprise zero-retention arrangement applies. Tavily describes query collection, potential service improvement use, and limited sharing with search index providers. Exa and DuckDuckGo apply their published policies. SearXNG and custom endpoints apply the selected operator's practices. Provider policy links are in the public Privacy Policy; OnDevice cannot promise zero retention for these optional features.
 
     ## 4. Permissions we request
     - **Camera:** Required to capture frames for live analysis. Disable in iOS Settings any time; the app will continue to work with imported photos only.
     - **Photo Library:** Optional. Only requested when you tap the photo picker. The app accesses only photos you explicitly select.
+    - **Microphone and speech recognition:** Used when you start a voice conversation or dictation. Local speech engines process audio on the device.
+    - **Local network:** Used when you enable the Local API Server or paired Mac bridge, or choose a custom API endpoint on your private network.
+    - **Save to Photos:** Used when you choose to save a generated image.
 
     ## 5. Children
-    The app is not directed at children under 13. We do not knowingly process data from children. If you are a parent or guardian and believe a child is using the app contrary to this policy, please contact us via the Support link in Settings.
+    The app is not directed at children under 13. The project operates no personal-data backend, but optional features send requests to providers under their privacy terms. A parent can set a PIN to restrict image generation in the app. Parental controls do not verify age and do not replace iOS Screen Time. Separate app safeguards add chat safety instructions and image-request phrase checks locally; these are not reliable classifiers of every request or generated image. Contact us via the Support link for questions.
 
     ## 6. Third-party AI models
     The app uses third-party AI models that run on your device. We are not the authors of these models. Each model's license, source repository, and citation is shown in **Settings → Legal → Attributions**. A model may be open source, source-available, community-licensed, or restricted to research use; review its terms before downloading or using it.
@@ -77,10 +88,10 @@ enum LegalDocuments {
     A live indicator in the assistant tab reports requests made through the app's monitored networking layer. It is a useful diagnostic, not a system-wide packet monitor.
 
     ## 11. Data retention
-    All app data is stored in the app's iOS sandbox. Conversations are stored encrypted-at-rest (`completeFileProtectionUnlessOpen`). You can wipe all on-device data at any time via **Settings → Privacy & Reset → Wipe all on-device data**. Uninstalling the app also removes everything we've stored on the device.
+    Conversations are stored in the app sandbox with file protection (`completeFileProtectionUnlessOpen`). Settings offers local data-clearing controls. The parent PIN and restrictions are deliberately preserved by data clearing. Uninstalling removes the app sandbox, but Keychain records can survive; remove parental controls using the parent PIN before uninstalling to remove that record. Exported content and optional iCloud copies require deletion in their respective destinations.
 
     ## 12. Your rights
-    Because we do not collect personal data, there is nothing for us to access, correct, port, or delete on your behalf. All of your data is on your device, under your control. If you believe we have nevertheless processed your personal data, contact us via the Support link.
+    The project operates no personal-data backend. Local content is controlled on your device. For information transmitted by optional features, contact the receiving provider about its access, correction, and deletion procedures. Contact us via the Support link for questions about the app.
 
     ## 13. Changes
     If we change this policy we will update the "Last updated" date and re-prompt for acceptance inside the app.
@@ -109,7 +120,7 @@ enum LegalDocuments {
     A model may be open source, source-available, community-licensed, non-commercial, or research-only. **Review the license shown by the model source before downloading, using, modifying, or redistributing it.** Apple FastVLM model weights, for example, are licensed for research purposes only and are not part of the MIT-licensed source distribution.
 
     ## 3. AI-generated content
-    The app runs third-party AI models entirely on your device. Outputs are generated by statistical models and may be:
+    The app runs third-party models locally and, when available and explicitly selected, Apple's optional Private Cloud model remotely. Outputs are generated by statistical models and may be:
     - Factually incorrect, outdated, fabricated, or misleading ("hallucinations").
     - Biased, offensive, or unsafe.
     - Inappropriate or harmful in your context (medical, legal, financial, safety-critical, security, or other regulated domains).
@@ -127,10 +138,10 @@ enum LegalDocuments {
     These are intrinsic properties of on-device AI inference. Do not use the app where device heat could cause harm, and stop using it if the device becomes uncomfortably hot.
 
     ## 5. Camera, microphone, and image use
-    Some features capture camera frames, microphone audio, or photo-library images. **You are solely responsible for ensuring you have the legal right to capture and analyse any image, video, or audio you process with the app**, including obtaining any necessary consent from persons captured. The app processes this data entirely on-device and does not transmit it anywhere, but local processing does not relieve you of consent and privacy obligations under your local law.
+    Some features process camera frames, microphone audio, or photos you select. Local engines process these on the device. Optional API providers, web search, iCloud sync and Apple Private Cloud can send the content described in the Privacy Policy after your action and consent. These choices do not remove your responsibility to obtain any required consent from people whose content you capture.
 
     ## 6. Network usage and privacy
-    The app makes outbound network requests only for user-initiated or explicitly enabled features: searching or downloading from Hugging Face, web search, Mac Bridge and Local API communication on your local network, optional iCloud sync, and external documentation or links you choose to open. Each provider, including Hugging Face, Apple iCloud, and any configured search provider, applies its own terms and privacy policy. Use of any downloaded model is subject to that model's own license, which you must read and comply with.
+    The app makes outbound requests for model search/downloads, enabled web search, the local API and paired bridge, optional API providers after selection and consent, optional iCloud sync, Apple Private Cloud after its separate consent in entitled builds, and links you choose to open. Each provider applies its own privacy terms. Downloaded models retain their own licenses.
 
     ## 7. No warranty
     IOS_LOCAL_LLM, THIRD-PARTY COMPONENTS, MODELS, AND AI OUTPUTS ARE PROVIDED **"AS IS"**, WITHOUT WARRANTY OF ANY KIND, TO THE MAXIMUM EXTENT PERMITTED BY THEIR APPLICABLE LICENSES AND BY LAW. The complete MIT warranty disclaimer is included with the source distribution.
@@ -186,20 +197,22 @@ enum LegalDocuments {
     - Anything you share with another person.
 
     ## 6. On-device privacy (not anonymity)
-    All AI inference happens on your device. The app makes no telemetry calls and does not transmit your prompts, images, or audio. The only outbound network requests are:
+    AI inference uses your selected runtime. Downloaded models run on your device. The app operates no telemetry or inference backend. Optional network features can transmit conversation information or other data as described in the Privacy Policy:
     - Searches and downloads from `huggingface.co` when you explicitly request them; gated repositories may include a token you saved.
-    - Web search when you enable it and submit a query.
+    - Web search and fetch when you enable them. Assistant-proposed queries can include conversation information, and providers can retain requests.
     - Mac Bridge or Local API communication on your local network when enabled.
     - iCloud synchronization when enabled.
+    - Apple Private Cloud inference only in authorized builds, after you select it and consent to sending the prompt and included conversation context to Apple.
+    - API model inference after explicit selection and provider consent, and model catalog requests when you choose Refresh models.
     - External documentation and links when you choose them.
 
-    A live indicator in the assistant tab lights up whenever ANY network request is in flight. On-device processing protects you from cloud-side data retention but does **not** make your use anonymous to your network provider, your device-management policies, or anyone with physical access to your unlocked device.
+    A live indicator reports requests made through the app's monitored networking layer; it is not a system-wide packet monitor. Local inference avoids sending the generation request to a cloud model, but does **not** make your use anonymous to your network provider, your device-management policies, or anyone with physical access to your unlocked device.
 
     ## 7. Device thermals and battery
     Running large models is computationally intensive. Your device will warm up, occasionally significantly, and battery will drain faster than during normal use. iOS may throttle performance to protect the device, and we apply additional protections (token-cap reduction, generation refusal, mid-stream halts) when iOS reports a "serious" or "critical" thermal state. **Do not place the device on flammable surfaces, do not charge in an enclosed space while running heavy generation, and stop using the app if the device becomes uncomfortably hot.**
 
     ## 8. Bias and content
-    The underlying models were trained on large, primarily English, internet-sourced datasets and reflect biases, errors, and offensive content present in that data. The app does **not** add content filters beyond what each model includes. Adult, harassing, or otherwise inappropriate output is possible and is the model's behaviour, not ours.
+    The underlying models can reflect biases, errors, and offensive content in their training data. OnDevice adds safety instructions to chat requests and checks image requests for some explicit-content phrases. Image models that support negative prompts also receive additional exclusions. These safeguards are not comprehensive prompt or image-output classifiers, and inappropriate output remains possible. Use **Report content concern** in an image's or response's action menu to open support; nothing is attached or sent automatically. Stop generation and delete content that concerns you.
 
     ## 9. Voice / text-to-speech outputs
     Spoken output is synthesized from text by a TTS model. Tone and emphasis may differ from what a human reader would convey. Do not rely on voice mode for time-critical or safety-critical instructions, and do not assume the spoken version captures every detail of the written reply.
@@ -223,7 +236,7 @@ enum LegalDocuments {
     - **Heat** — your device will become warm, sometimes hot, during model loading and long replies. This is normal for sustained GPU/Neural-Engine work and is the same effect you'd see from a long gaming session or a long video-call.
     - **Battery drain** — battery percentage will drop faster than during normal use. Heavy daily use will also accelerate long-term battery wear, the same as other intensive apps.
     - **Background termination** — iOS may suspend or terminate the app to recover memory or thermal headroom, especially on older devices or when many apps are running.
-    - **Network usage** — only when you download a model. Downloads can be several gigabytes; use Wi-Fi.
+    - **Network usage** — model downloads can be several gigabytes; use Wi-Fi. Optional web search, iCloud, local-network features, and authorized Apple Private Cloud builds also use the network as described in the Privacy Policy.
 
     ## What we do to protect your device
     - **Thermal-aware token caps** — when iOS reports the device is "warm," we shorten replies. When "hot," we pause generation and tell you.
@@ -248,6 +261,36 @@ enum LegalDocuments {
     static let attributions: [Attribution] = [
 
         // ── On-device LLMs ───────────────────────────────────────────────────
+        Attribution(
+            name: "Llama 3.1",
+            author: "Meta Platforms, Inc. / mlx-community",
+            license: "Llama 3.1 Community License",
+            licenseURL: "https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct/blob/main/LICENSE",
+            sourceURL: "https://huggingface.co/mlx-community/Meta-Llama-3.1-8B-Instruct-4bit",
+            paperURL: nil,
+            note: "Built with Llama. Llama 3.1 is licensed under the Llama 3.1 Community License, Copyright © Meta Platforms, Inc. All Rights Reserved. Use is subject to Meta's Acceptable Use Policy and additional commercial terms.",
+            category: "Language Model"
+        ),
+        Attribution(
+            name: "Llama 3.2 (text models)",
+            author: "Meta Platforms, Inc. / mlx-community",
+            license: "Llama 3.2 Community License",
+            licenseURL: "https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct/blob/main/LICENSE.txt",
+            sourceURL: "https://huggingface.co/mlx-community/Llama-3.2-3B-Instruct-4bit",
+            paperURL: nil,
+            note: "Built with Llama. Llama 3.2 is licensed under the Llama 3.2 Community License, Copyright © Meta Platforms, Inc. All Rights Reserved. Use is subject to Meta's Acceptable Use Policy and additional commercial terms.",
+            category: "Language Model"
+        ),
+        Attribution(
+            name: "LFM 2.5",
+            author: "Liquid AI, Inc.",
+            license: "LFM Open License v1.0",
+            licenseURL: "https://huggingface.co/LiquidAI/LFM2.5-1.2B-Instruct/blob/main/LICENSE",
+            sourceURL: "https://huggingface.co/LiquidAI",
+            paperURL: nil,
+            note: "Available as optional text, vision, and audio models. This is a custom license with a commercial-use revenue threshold; it is not Apache-2.0. The publisher and users must satisfy the terms applying to their use.",
+            category: "Language Model"
+        ),
         Attribution(
             name: "Qwen3-4B (mlx-community 4-bit)",
             author: "Alibaba Cloud / Tongyi Lab",
@@ -289,6 +332,18 @@ enum LegalDocuments {
             paperURL: "https://arxiv.org/abs/2412.13303",
             note: "Optional research-licensed model weights are not distributed in this source repository. Review LICENSE_MODEL before downloading or using them.",
             category: "Vision–Language"
+        ),
+
+        // ── Image generation ─────────────────────────────────────────────────
+        Attribution(
+            name: "SD Turbo / SDXL Turbo",
+            author: "Stability AI",
+            license: "Stability AI Community License",
+            licenseURL: "https://huggingface.co/stabilityai/sd-turbo/blob/b261bac6fd2cf515557d5d0707481eafa0485ec2/LICENSE.md",
+            sourceURL: "https://huggingface.co/stabilityai",
+            paperURL: nil,
+            note: "Powered by Stability AI. Optional image-generation models. Commercial use requires registration and satisfaction of the license's revenue conditions, or a separate license from Stability AI. Other image models have their own licenses.",
+            category: "Image Generation"
         ),
 
         // ── Text-to-speech ───────────────────────────────────────────────────
@@ -384,7 +439,7 @@ enum LegalDocuments {
         let f = DateFormatter()
         f.dateStyle = .long
         f.timeStyle = .none
-        return f.string(from: Date(timeIntervalSinceReferenceDate: 806_976_000)) // 2026-07-29
+        return f.string(from: Date(timeIntervalSince1970: 1_791_417_600)) // 2026-10-08
     }
 }
 

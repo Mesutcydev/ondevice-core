@@ -5,6 +5,19 @@ and intends to use semantic version tags for source releases.
 
 ## [Unreleased]
 
+### Added
+
+- Optional GitHub repository tools, off by default, with device sign-in,
+  device-only Keychain credentials, per-chat repo/branch selection, staged edits,
+  native publication review, atomic commits, branches, pull requests and forward reverts.
+
+### Changed
+
+- Kept the chat model picker at the top for both local and API models, shortened
+  its pill to the model name, and matched API provider rows to the local model list.
+- Removed assistant sparkle badges and restored the ruled reasoning timer and
+  animated reply bar through waiting, reasoning, and answer streaming.
+
 ### Build history
 
 - **47 (2026-09-21):** Switched FastVLM's default to a reachable repository,
@@ -31,6 +44,14 @@ and intends to use semantic version tags for source releases.
   clearance below the composer and a leading keyboard-dismiss key. These
   changes are inferred from source modification times before the build 52
   archive; no separate release note was recorded.
+- **83 (2026-10-09):** Added the opt-in TurboQuant cache update, retaining the
+  PrismML Bonsai 1-bit runtime and existing memory/refusal paths. Corrected
+  metadata-cache actor declarations and classifier metadata diagnostics.
+  Release archives now require the reviewed dependency lockfiles and support
+  explicit owner API signing authentication. Fresh 1.0 (83) export is verified
+  and available to internal TestFlight testers. Physical-device unit execution
+  remains blocked by signature trust; public App Review conditions remain open.
+  See `Docs/APP_STORE_RELEASE_AUDIT_2026-10-09.md`.
 
 Builds 47–49 received device reports that drove the next round of fixes. The
 full release hardware gate, including real inference, camera and microphone
@@ -174,6 +195,30 @@ unavailable without its encoder package.
 - Removed LensFramePreparer's duplicated `modelMinimumSide` switch (and its
   stale TODO); the tile-fit path already reads the single source of truth,
   `VLMCapabilities.minimumProcessorSide`.
+
+## [1.0.1] - 2026-10-10
+
+### Added
+
+- Thirteen public API provider presets and custom endpoints, with Keychain
+  credentials, explicit catalog refresh, manual model IDs, and API privacy consent.
+- Chat tool-result pills, context-compaction notices, timed reasoning animation,
+  and a red Stop button, retaining the existing scrolling and streaming caret.
+
+### Changed
+
+- API provider/model selection stays in the composer; local model selection
+  stays in the centered top bar. Switching preserves the conversation and draft.
+- Provider configuration and model selection use the app's shared Settings cards,
+  semantic typography, appearance, and native monochrome controls.
+- App and share-extension release metadata now use **1.0.1 (1)**.
+
+## [1.0] - App Store candidate
+
+- Set the app and share extension to version 1.0, build 1, for the fresh
+  OnDevice Max App Store Connect record. Public App Store submission remains
+  subject to the open compliance and hardware checks in
+  `Docs/APP_STORE_COMPLIANCE_AUDIT_2026-10-01.md`.
 
 ## [1.0.0] - 2026-09-17
 

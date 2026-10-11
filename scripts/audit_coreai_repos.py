@@ -11,14 +11,24 @@ Hugging Face tree API.
 from __future__ import annotations
 
 import json
+import re
 import sys
 import urllib.error
 import urllib.request
 from collections import defaultdict
 
-API = "https://huggingface.co/api/models/{repo}/tree/{rev}?recursive=1"
+API = "https://huggingface.co/api/models/{repo}/tree/{rev}?recursive=1&limit=1000"
 
 DEFAULT_REPOS = [
+    # September 30 additions and typed encoder decision packs.
+    "mlboydaisuke/Julia-1-CoreAI@d1e943545c64e20e73a88ae1f890227c349e22ba",
+    "mlboydaisuke/Laya-Multilingual-CoreAI@3fe58a5ed7857b41f5c7ba8c0f46ce420b42cf02",
+    "aether-models/granite-4.0-h-350m@ea24ac837112b7b082e52cd51bc83b38467ae659",
+    "aether-models/qwen3-1.7b@9424554369f1c4fd2f80af64847ba2d938e2c58a",
+    "aether-models/granite-4.0-1b@2b5d83696b7455ee02a79596cd077a93a2e78ba9",
+    "aether-models/eurollm-1.7b-instruct@3ed1743a0b15f6d4950d523562aa42b114969fd8",
+    "aether-models/smollm3-3b@2d9e78f3665bd28ae73f9f44b22917f0b86f3491",
+    "aether-models/qwen3-4b-instruct-2507@1bd7de3abec265601b6d2473e7b6557223e2dbc1",
     # Official-recipe conversions (Apple's own export recipes, stock runtime).
     "mlboydaisuke/qwen3-0.6b-CoreAI-official",
     "mlboydaisuke/qwen3-1.7b-CoreAI-official@ebf5486333ffc59130a6f37c7d208e03ebd3169c",
@@ -68,13 +78,16 @@ DEFAULT_REPOS = [
 
 
 def fetch_tree(repo: str, rev: str = "main") -> list[dict] | None:
-    req = urllib.request.Request(
-        API.format(repo=repo, rev=rev),
-        headers={"Accept": "application/json", "User-Agent": "coreai-audit/1.0"},
-    )
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            return json.loads(resp.read().decode())
+        url = API.format(repo=repo, rev=rev)
+        entries = []
+        while url:
+            req = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "coreai-audit/1.0"})
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                entries.extend(json.loads(resp.read().decode()))
+                next_link = re.search(r'<([^>]+)>;\s*rel="next"', resp.headers.get("Link", ""))
+                url = next_link[1] if next_link else None
+        return entries
     except urllib.error.HTTPError as exc:
         print(f"  !! HTTP {exc.code} for {repo}")
         return None
@@ -144,7 +157,7 @@ def main() -> int:
         json.dump(out, fh, indent=2)
     print(f"\nwrote /tmp/coreai_repo_audit.json ({len(out)} repos)")
     print("flags: M=.aimodel present  J=metadata.json present  T=tokenizer present")
-    return 0
+    return 0 if len(out) == len(repos) else 1
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ import SwiftUI
 struct AssistantModelPickerView: View {
 
     let downloadedOnly: Bool
+    let allowsAPIProviders: Bool
 
     @ObservedObject private var assistant = CodingAssistantService.shared
     @ObservedObject private var center = ModelDownloadCenter.shared
@@ -14,6 +15,7 @@ struct AssistantModelPickerView: View {
     @ObservedObject private var safety = DeviceSafetyMonitor.shared
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var coreAIStore = CoreAIModelStore.shared
+    @ObservedObject private var apiProviders = APIProviderStore.shared
     @Environment(\.dismiss) private var dismiss
     @Environment(\.koduTheme) private var T
 
@@ -24,8 +26,9 @@ struct AssistantModelPickerView: View {
     @State private var isImporting = false
     @State private var isActivating = false
 
-    init(downloadedOnly: Bool = false) {
+    init(downloadedOnly: Bool = false, allowsAPIProviders: Bool = true) {
         self.downloadedOnly = downloadedOnly
+        self.allowsAPIProviders = allowsAPIProviders
     }
 
     private var recommendedAssistant: AssistantModel? {
@@ -289,6 +292,16 @@ struct AssistantModelPickerView: View {
                         importSection
                         customSection
                     }
+                if allowsAPIProviders {
+                    APIProviderModelSection(store: apiProviders, selectedID: assistant.activeSelectionID) { id in
+                        guard !isActivating else { return }
+                        isActivating = true
+                        Task {
+                            if await assistant.selectAPIModel(id, persistAsDefault: true) { dismiss() }
+                            isActivating = false
+                        }
+                    }
+                }
             }
             .listStyle(.insetGrouped).scrollContentBackground(.hidden)
             .navigationTitle(downloadedOnly ? "Chat model" : "Default model")
@@ -322,7 +335,8 @@ struct AssistantModelPickerView: View {
     @ViewBuilder
     private var availablePickerContent: some View {
         if availableLocalModels.isEmpty && unavailableDownloadedModels.isEmpty
-            && !assistant.applePrivateCloudStatus.canSend {
+            && !assistant.applePrivateCloudStatus.canSend
+            && (!allowsAPIProviders || !apiProviders.providers.contains(where: { !$0.models.isEmpty && apiProviders.canUse($0) })) {
             ContentUnavailableView(
                 "No chat models installed",
                 systemImage: "internaldrive",
@@ -379,7 +393,7 @@ struct AssistantModelPickerView: View {
     }
 
     private func availableRow(for model: AssistantModel) -> some View {
-        let isActive = assistant.activeModel.id == model.id && assistant.activeExecutionLocation != .applePrivateCloud
+        let isActive = assistant.activeModel.id == model.id && !assistant.activeExecutionLocation.isCloud
         let isDefault = settings.assistantModelID == model.id
         let runsHere = model.platformCompatibility?.supportsCurrentPlatform ?? true
         return HStack(spacing: 8) {

@@ -13,7 +13,7 @@ struct CoreAIModelsSectionView: View {
     @ObservedObject private var assistant = CodingAssistantService.shared
     @Environment(\.koduTheme) private var T
 
-    @State private var expanded = false
+    @State private var expanded = true
     @State private var pendingRemovalID: String?
 
     init(showsCatalog: Bool = true, query: String = "") {
@@ -21,9 +21,13 @@ struct CoreAIModelsSectionView: View {
         self.query = query
     }
 
-    private var chatPacks: [CoreAIZooModel] {
-        CoreAIZooCatalog.iphoneLanguageModels.filter {
-            $0.category == .officialRecipe || $0.category == .chat
+    private var catalogPacks: [CoreAIZooModel] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return CoreAIModelLibrary.catalog.filter {
+            trimmed.isEmpty || "\($0.displayName) \($0.hfRepo) \($0.category.rawValue)".localizedCaseInsensitiveContains(trimmed)
+        }.sorted {
+            if ($0.category == .classifier) != ($1.category == .classifier) { return $0.category == .classifier }
+            return $0.category.rawValue < $1.category.rawValue
         }
     }
 
@@ -59,7 +63,7 @@ struct CoreAIModelsSectionView: View {
             if showsCatalog {
                 DisclosureGroup(isExpanded: $expanded) {
                     LazyVStack(spacing: 10) {
-                        ForEach(chatPacks) { model in
+                        ForEach(catalogPacks) { model in
                             packCard(model)
                         }
                     }
@@ -177,6 +181,11 @@ struct CoreAIModelsSectionView: View {
                     .buttonStyle(StudioPressStyle())
                     .disabled(isActive)
                 }
+                if installed.manifest.capabilities.classification == true || CoreAIZooCatalog.model(forSelectionID: installed.assistantSelectionID)?.category == .classifier {
+                    Button("Use classifier") {
+                        ODBridge.shared.store.send(.loadModelInWorkspace(installed.assistantSelectionID, .classifier))
+                    }.accessibilityIdentifier("coreai.useClassifier.\(installed.id)")
+                }
                 Button {
                     pendingRemovalID = installed.id
                 } label: {
@@ -245,6 +254,7 @@ struct CoreAIModelsSectionView: View {
             }
 
             HStack(spacing: 6) {
+                badge(model.category == .classifier ? "Classifier" : model.category.title)
                 badge(model.approxDownloadBytes.formattedBytes)
                 badge(model.pathPrefix ?? "repo")
                 if model.supportsThinking { badge("thinking") }
@@ -260,6 +270,9 @@ struct CoreAIModelsSectionView: View {
                 Label("Installed", systemImage: "checkmark.circle.fill")
                     .font(T.sans(11, .semibold))
                     .foregroundStyle(T.good)
+            } else if CoreAIZooCatalog.macOnlyClassifierModels.contains(where: { $0.id == model.id }) {
+                Label("Mac Core AI pack · unavailable for iPhone download", systemImage: "desktopcomputer")
+                    .font(T.sans(11)).foregroundStyle(T.ink2)
             } else if let manager {
                 CoreAIDownloadControlsView(manager: manager)
             } else {
@@ -286,28 +299,6 @@ struct CoreAIModelsSectionView: View {
     }
 
     private func removeInstalledPack(id: String) {
-        Task {
-            let defaults = AppSettings.shared
-            let removedSelectionID = id.hasPrefix("coreai:") ? id : "coreai:\(id)"
-            if assistant.activeExecutionLocation == .localCoreAI,
-               assistant.activeModel.id == removedSelectionID {
-                await assistant.adoptSelectionWithoutLoading(
-                    AssistantModelCatalog.presets[0]
-                )
-            }
-            if defaults.assistantModelID == removedSelectionID {
-                defaults.assistantModelID = AssistantModelCatalog.presets[0].id
-                defaults.hasPickedAssistantModel = false
-            }
-            do {
-                try store.removeModel(id: id)
-                ToastCenter.shared.success(
-                    "Core AI pack removed",
-                    detail: "MLX and GGUF models were not changed."
-                )
-            } catch {
-                ToastCenter.shared.error("Couldn’t remove Core AI pack", detail: error.localizedDescription)
-            }
-        }
+        CoreAIDownloadCenter.shared.handleDeletion(id: id)
     }
 }

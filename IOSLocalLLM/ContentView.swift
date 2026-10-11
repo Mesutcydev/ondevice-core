@@ -15,7 +15,6 @@ struct ContentView: View {
 
     @StateObject private var camera: CameraService
     @StateObject private var analysis: AnalysisService
-    @StateObject private var reviewPrompt = ReviewPromptService.shared
 
     @State private var showSettings = false
     /// Full searchable conversation list, opened from Home. The Assistant tab
@@ -93,6 +92,7 @@ struct ContentView: View {
             deviceContent: AnyView(NativeDeviceView(onOpenMenu: { odBridge.store.conversationsPresented = true })),
             voiceContent: AnyView(VoiceConversationView(startOnAppear: false)),
             apiServerContent: AnyView(LocalAPIServerView(onOpenMenu: { odBridge.store.conversationsPresented = true })),
+            classifierContent: AnyView(CoreAIClassifierHostView(onOpenMenu: { odBridge.store.conversationsPresented = true })),
             lensResultContent: { presented in
                 AnyView(Group {
                     if let result = analysis.activeResult {
@@ -200,9 +200,11 @@ struct ContentView: View {
             for: UIApplication.willEnterForegroundNotification)
         ) { _ in
             ModelDownloadCenter.shared.refreshAllStates()
+            if !legal.needsAnyAcceptance { bridge.receiveQueuedShare() }
         }
         .onAppear {
             updateToastLane(for: selectedTab)
+            if !legal.needsAnyAcceptance { bridge.receiveQueuedShare() }
             // Setup ordering matters here.
             //
             // 1. DeviceTierAdvisor.apply*IfNeeded MUST run synchronously on
@@ -252,6 +254,9 @@ struct ContentView: View {
         // resident and bleed the assistant's cream T.bg onto the lens.
         .onChange(of: bridge.requestedTab) { _, newTab in
             applyRequestedTab(newTab)
+        }
+        .onChange(of: legal.needsAnyAcceptance) { _, needsAcceptance in
+            if !needsAcceptance { bridge.receiveQueuedShare() }
         }
         // Settings sheet
         .sheet(isPresented: $showSettings) {
@@ -382,20 +387,6 @@ struct ContentView: View {
         )) {
             OnboardingOnePager { settings.hasSeenOnboarding = true }
         }
-        // Rate-the-app pre-prompt — service decides when (≥5 turns,
-        // ≥3 days installed, ≥30 days cooldown). Mounted at the root so
-        // it surfaces regardless of which tab is active when the
-        // threshold is hit. Suppressed during the legal gate so we
-        // never stack sheets.
-        .sheet(isPresented: Binding(
-            get: { reviewPrompt.shouldShowPrompt
-                    && !legal.needsAnyAcceptance },
-            set: { newValue in
-                if !newValue { reviewPrompt.userDeferred() }
-            }
-        )) {
-            ReviewPromptSheet()
-        }
     }
 
     // MARK: - Workbench bridge
@@ -425,7 +416,7 @@ struct ContentView: View {
     /// app's drives memory lifecycle and predates the redesign.
     private static func hostTab(for tab: ODTab) -> Tab {
         switch tab {
-        case .home, .imageStudio, .device, .apiServer: return .home
+        case .home, .imageStudio, .device, .apiServer, .classifiers: return .home
         case .chat:   return .assistant
         case .lens:   return .camera
         case .voice:  return .voice
@@ -555,6 +546,39 @@ struct ContentView: View {
         // made every one of them a dead end — including the destructive one the
         // user had already confirmed.
         routes.modelCommand = { modelID, command in
+            // Curated Core AI packs use their own validated pack downloader.
+            // Forward the explicit user intent without routing into MLX/GGUF.
+            if let pack = CoreAIZooCatalog.model(forSelectionID: modelID) {
+                switch command {
+                case .download:
+                    guard CoreAIZooCatalog.iphoneLanguageModels.contains(where: { $0.id == pack.id }) else { return }
+                    guard CoreAIModelStore.shared.installedModel(id: pack.id) == nil else { return }
+                    CoreAIDownloadCenter.shared.start(model: pack)
+                    HapticManager.impact(.medium)
+                    return
+                case .pauseDownload:
+                    CoreAIDownloadCenter.shared.existing(id: pack.id)?.pause()
+                    return
+                case .cancelDownload:
+                    CoreAIDownloadCenter.shared.existing(id: pack.id)?.cancel()
+                    return
+                default: break
+                }
+            }
+            // Image models use ImageGenerationService's weights-only download.
+            if let image = ImageGenerationService.model(forID: modelID) {
+                switch command {
+                case .download:
+                    ImageGenerationService.shared.startDownload(image)
+                    HapticManager.impact(.medium)
+                case .delete:
+                    ImageGenerationService.shared.deleteModel(image)
+                default:
+                    ImageGenerationService.shared.select(modelID)
+                    odBridge.store.secondaryRoute = .imageStudio
+                }
+                return
+            }
             switch command {
             case .details:
                 odBridge.store.selectedTab = .models
@@ -590,6 +614,7 @@ struct ContentView: View {
                     case .vision: showVisualModelPicker = true
                     case .voice: showVoiceEnginePicker = true
                     case .image, .utility: odBridge.store.secondaryRoute = .imageStudio
+                    case .classifier: showCoreAIPacks = true
                     }
                 } else if let model = AssistantModelCatalog.selection(forStoredID: modelID) {
                     modelSettingsTarget = AssistantModelSettingsTarget(model: model)
@@ -605,7 +630,9 @@ struct ContentView: View {
                                              detail: "This model has no file on disk yet.")
                 }
             case .delete:
-                if let model = Self.downloadableModel(matching: modelID) {
+                if modelID.hasPrefix("coreai:") {
+                    CoreAIDownloadCenter.shared.handleDeletion(id: modelID)
+                } else if let model = Self.downloadableModel(matching: modelID) {
                     // Same entry point the model manager's own confirmation
                     // uses: it resets active selections and unloads services
                     // before the files go, and surfaces failures as a toast.

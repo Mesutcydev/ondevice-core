@@ -34,7 +34,7 @@ public enum ModelExecutionLocation: String, Codable, Hashable, Sendable {
     case localCoreAI       // user-downloaded Core AI .aimodel resource pack
     case localSystem       // Apple on-device system model (FoundationModels)
     case applePrivateCloud // Apple Private Cloud Compute (this file)
-    case externalCloud     // reserved — third-party API providers (none today)
+    case externalCloud     // explicitly configured third-party API endpoint
 
     /// Classifies a stored assistant-model selection id. Everything that isn't
     /// the PCC identity is treated as a local model — the existing default.
@@ -42,6 +42,7 @@ public enum ModelExecutionLocation: String, Codable, Hashable, Sendable {
     /// `AssistantModel` (which is embedded in Codable records elsewhere).
     public static func of(assistantModelID id: String) -> ModelExecutionLocation {
         if id == ApplePrivateCloud.modelID { return .applePrivateCloud }
+        if id.hasPrefix("api:") { return .externalCloud }
         if id.hasPrefix("coreai:") { return .localCoreAI }
         return .localDownloaded
     }

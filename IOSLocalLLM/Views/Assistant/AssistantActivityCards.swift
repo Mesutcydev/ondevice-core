@@ -1,4 +1,5 @@
 import SwiftUI
+import OnDeviceUI
 
 // MARK: - Shared chrome
 
@@ -113,12 +114,12 @@ struct AssistantStreamingStatusCard: View {
 
 struct AssistantRunningToolCard: View {
     let name: String
+    @State private var eventID = UUID()
 
     var body: some View {
-        AssistantLiveStatusRow(
-            title: AssistantActivity.statusTitle(.runningTool(name)),
-            symbol: AssistantActivity.symbol(forTool: name)
-        )
+        ODToolPillStrip(events: [.init(id: eventID,
+            title: AssistantActivity.statusTitle(.runningTool(name)), status: .running)])
+        .padding(.horizontal, ODLayout.pageInset)
         .accessibilityLabel(AssistantActivity.statusTitle(.runningTool(name)))
     }
 }

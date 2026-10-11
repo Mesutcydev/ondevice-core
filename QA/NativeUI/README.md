@@ -18,6 +18,9 @@ Launch arguments for manual inspection:
 | Argument | Effect |
 | --- | --- |
 | `-screen composer` | Shared composer with explicit fixture status; default screen |
+| `-screen agent-chat`, `-agent-completed`, `-agent-waiting` | Production tool pills, reasoning timer/disclosure, streaming bar, compaction notice and composer; optional completed or waiting phase |
+| `-screen api-providers`, `-screen api-chat`, `-api-empty` | Production provider settings/model picker with isolated credential storage and a mocked catalog; all model selection stays in the top bar; optional empty configuration |
+| `-screen github-settings`, `-screen github-chat`, `-github-enabled`, `-github-selected`, `-github-disconnected` | Production GitHub settings, repo/branch picker and review with mocked HTTP and isolated credentials; default-off toggle, optional enabled/selected/disconnected state |
 | `-screen home`, `conversation`, `models`, `voice`, `lens`, `settings`, `device` | Current package screen and native shell |
 | `-screen image`, `onboarding` | Actual host view with isolated state |
 | `-dark` | Dark appearance |
@@ -27,6 +30,32 @@ Launch arguments for manual inspection:
 | `-large-type` | Largest accessibility text in the composer fixture |
 | `-attachments`, `-no-microphone`, `-reject` | Composer acceptance and capability cases |
 | `-model-unloaded`, `-camera-denied`, `-lens-analyzing` | Explicit model/Lens state fixtures |
+| `-model-actions -model-preparing`, `-model-actions -preparation-paused` | Model storage preparation progress and resume/storage guidance |
+| `-coreai-installed zoo-qwen3-0.6b-official-ios` or `-coreai-installed zoo-laya-multilingual` | Installed Core AI pack deletion, confirmation/cancel and download-again fixture |
+
+For manual Argent review without launch arguments, add a
+`RepackPreparationFixture` string to the **built review app's** `Info.plist`,
+with value `preparing` or `paused`, then install and launch that QA bundle.
+The override only controls fixtures; it does not convert or download a model.
+For Core AI removal review, use a `CoreAIRemovalFixture` string with a catalog
+pack ID in the built review bundle. This changes fixture state only; filesystem
+removal and selection recovery are tested separately with temporary packs.
+
+For App Store screenshot capture, set `AppStoreScreenshotScene` in a copied
+**built review app's** `Info.plist` to `home`, `conversation`, `sidebar`,
+`models`, `voice`, or `image`. Install and launch that QA copy through Argent.
+The presets use the production interface with illustrative conversations and
+model state. They use public catalog identities, omit fabricated storage and
+performance measurements, and show Image Studio before generation. The image
+preset uses the QA host's in-memory parental-control storage; production
+Keychain protection is unchanged. These captures establish interface
+appearance, not download, inference, voice, or camera functionality.
+
+The 1.0 (81) English screenshot set is under the ignored
+`AppStoreScreenshots/1.0-81/` directory. Its manifest records the source,
+dimensions, alpha status, and SHA-256 of each original native PNG. Upload the
+six files in `en-US/iphone-6.9/` in numbered order. The local `preview.html`
+gallery is for review and is not an App Store upload asset.
 
 These fixture flags do not change system accessibility settings. The Settings fixture forces its launch appearance, so its screenshot establishes rendering only; appearance persistence is checked by the package contract test. Voice controls verify separate intents/state, not audio output.
 

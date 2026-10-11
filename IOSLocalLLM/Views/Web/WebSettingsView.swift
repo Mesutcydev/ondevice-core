@@ -373,10 +373,16 @@ struct WebSettingsView: View {
     private var privacyCard: some View {
         VStack(alignment: .leading, spacing: 6) {
             KCaption(text: "privacy")
-            Text("Model inference runs locally on this device. Web Access is optional. When enabled, the app may send a short search query or a URL you provide to the search provider you chose. Your chat history, attachments, and personal content are not sent. Fetched pages are processed on this device and given to the local model as reference material. You can turn Web Access off at any time.")
+            Text("Local models run on this device. Web Access sends search queries and URL requests to the selected provider or website. An assistant-proposed query can include information from your conversation. Providers receive request metadata and may retain requests under their own terms. Ask Every Time lets you review each request; Always Allow permits subsequent requests automatically. You can turn Web Access off at any time.")
                 .font(T.sans(12))
                 .foregroundColor(T.ink2)
                 .fixedSize(horizontal: false, vertical: true)
+            Link("Brave API privacy", destination: URL(string: "https://api-dashboard.search.brave.com/app/documentation/general/privacy-policy")!)
+            Link("Tavily privacy", destination: URL(string: "https://www.tavily.com/privacy")!)
+            Link("Exa privacy", destination: URL(string: "https://exa.ai/privacy-policy")!)
+            Link("DuckDuckGo privacy", destination: URL(string: "https://duckduckgo.com/privacy")!)
+            Text("For SearXNG or a custom endpoint, check the operator's privacy policy.")
+                .font(.footnote).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)

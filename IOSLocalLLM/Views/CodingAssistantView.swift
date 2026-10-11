@@ -49,6 +49,8 @@ struct CodingAssistantView: View {
     @StateObject private var assistant = CodingAssistantService.shared
     @StateObject private var store = ConversationStore.shared
     @StateObject private var bridge = AppBridge.shared
+    @StateObject private var gitHub = GitHubWorkspaceService()
+    @ObservedObject private var gitHubConnection = GitHubConnectionStore.shared
     @ObservedObject private var personaStore = PersonaStore.shared
     @ObservedObject private var legal = LegalAcceptanceManager.shared
     @ObservedObject private var loc = LocalizationService.shared
@@ -94,6 +96,11 @@ struct CodingAssistantView: View {
     /// Message IDs whose reasoning rule is expanded in place.
     @State private var reasoningExpanded: Set<UUID> = []
     @State private var showSettings = false
+    @State private var showGitHub = false
+    @State private var gitHubReview: GitHubReviewPlan?
+    @State private var gitHubManualReviewScope: ChatPresentationRequest?
+    @State private var pendingToolGitHub: ToolGitHubApproval?
+    @State private var gitHubUploadFiles: [FileAttachmentService.Attachment] = []
     @State private var showBenchmark = false
     @State private var showCompare = false
     @State private var showMacros = false
@@ -201,6 +208,12 @@ struct CodingAssistantView: View {
         let call: ToolCall
         let depth: Int
     }
+    struct ToolGitHubApproval {
+        let planID: UUID
+        let name: String
+        let depth: Int
+        let scope: ChatPresentationRequest
+    }
     /// Filter text for in-conversation search. Non-empty value swaps the
     /// scrollview into a filtered view that only shows matching messages.
     @State private var conversationFilter: String = ""
@@ -234,6 +247,12 @@ struct CodingAssistantView: View {
         // creates a conspicuous band around the inset composer.
         NavigationStack {
             VStack(spacing: 0) {
+                if gitHubConnection.isEnabled {
+                    GitHubRepositoryIndicator(selection: gitHub.draft?.selection,
+                        changes: gitHub.draft?.changes.count ?? 0, isAvailable: gitHub.isAvailable,
+                        onSelect: { if isGenerating { stopGeneration() }; inputFocused = false; showGitHub = true },
+                        onReview: { openGitHubReview() })
+                }
                 if showConversationSearch {
                     conversationSearchBar
                 }
@@ -264,9 +283,15 @@ struct CodingAssistantView: View {
                                             : nil
                                     )
                                 }
-                                ForEach(filteredMessages) { msg in
-                                    transcriptRow(msg)
-                                        .id(msg.id)
+                                ForEach(AssistantActivity.transcriptRows(filteredMessages)) { row in
+                                    Group {
+                                        if row.isToolGroup {
+                                            AssistantToolResultStrip(messages: row.messages)
+                                        } else if let message = row.messages.first {
+                                            transcriptRow(message)
+                                        }
+                                    }
+                                    .id(row.id)
                                 }
                                 activityCards
                             }
@@ -429,7 +454,7 @@ struct CodingAssistantView: View {
                     .accessibilityIdentifier("navigation.menu")
                 }
                 ToolbarItem(placement: .principal) {
-                    composerModelMenu
+                    chatModelMenu
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     chatOptionsMenu
@@ -471,11 +496,23 @@ struct CodingAssistantView: View {
                     .presentationContentInteraction(.scrolls)
             }
             .sheet(isPresented: $showRuntimeDetails) {
+                if assistant.activeExecutionLocation == .externalCloud, let target = assistant.selectedAPITarget {
+                    NavigationStack {
+                        APIProviderModelsView(store: .shared, providerID: target.provider.id,
+                                              selectedID: assistant.activeSelectionID) { id in
+                            Task {
+                                if await assistant.selectAPIModel(id, persistAsDefault: true) { showRuntimeDetails = false }
+                            }
+                        }
+                        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showRuntimeDetails = false } } }
+                    }
+                } else {
                 AssistantRuntimeDetailsSheetHost(
                     model: assistant.activeModel,
                     status: modelStatusDescriptor.title,
                     onSwitchModel: { showModelPicker = true }
                 )
+                }
             }
             .sheet(isPresented: $showSamplerControls) {
                 SamplingSettingsSheet(
@@ -491,6 +528,17 @@ struct CodingAssistantView: View {
             }
             .sheet(isPresented: $showSettings) {
                 SettingsView(assistant: CodingAssistantService.shared)
+            }
+            .sheet(isPresented: $showGitHub) {
+                NavigationStack {
+                    GitHubRepositoryPicker(workspace: gitHub)
+                        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showGitHub = false } } }
+                }
+            }
+            .sheet(item: $gitHubReview) { plan in
+                GitHubReviewView(workspace: gitHub, plan: plan) { result, approved in
+                    finishGitHubReview(plan: plan, result: result, approved: approved)
+                }
             }
             .sheet(isPresented: $showBenchmark) {
                 BenchmarkView()
@@ -656,14 +704,29 @@ struct CodingAssistantView: View {
             messages = []
             currentConversationID = nil
             conversationContextMemory = nil
+            gitHub.restore(nil)
+            gitHubUploadFiles = []
             restorePresentation(nil)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background || phase == .inactive {
+                if gitHub.isRunning || pendingToolGitHub != nil { stopGeneration() }
                 persistCurrentConversation()
                 savePresentation()
                 store.flush()
             }
+        }
+        .onChange(of: gitHub.draft) { _, draft in
+            guard draft != nil || currentConversationID != nil else { return }
+            if currentConversationID == nil {
+                currentConversationID = store.create().id
+                UserDefaults.standard.set(currentConversationID!.uuidString, forKey: "chat.lastConversationID")
+            }
+            if let id = currentConversationID { store.setGitHubWorkspace(draft, for: id) }
+        }
+        .onChange(of: gitHubConnection.revision) { _, _ in
+            if pendingToolGitHub != nil || runningToolName.map(GitHubWorkspaceService.toolNames.contains) == true { stopGeneration() }
+            gitHubReview = nil
         }
         // Consume bridge code from camera capture
         .onAppear {
@@ -720,6 +783,7 @@ struct CodingAssistantView: View {
                 consumeOpenConversation()
             }
             if !active {
+                if gitHub.isRunning || pendingToolGitHub != nil { stopGeneration() }
                 dictationResetID = UUID()
                 inputFocused = false
                 KeyboardDismiss.now()
@@ -861,6 +925,8 @@ struct CodingAssistantView: View {
         messages = []
         currentConversationID = nil
         conversationContextMemory = nil
+        gitHub.restore(nil)
+        gitHubUploadFiles = []
         restorePresentation(nil)
         UserDefaults.standard.removeObject(forKey: "chat.lastConversationID")
         restoreDefaultModelForNewConversation()
@@ -876,6 +942,8 @@ struct CodingAssistantView: View {
         messages = []
         currentConversationID = nil
         conversationContextMemory = nil
+        gitHub.restore(nil)
+        gitHubUploadFiles = []
         restorePresentation(nil)
         UserDefaults.standard.removeObject(forKey: "chat.lastConversationID")
         if let id { store.delete(id: id) }
@@ -901,8 +969,15 @@ struct CodingAssistantView: View {
         messages = conv.messages.map { $0.chatMessage }
         currentConversationID = conv.id
         conversationContextMemory = conv.contextMemory
+        gitHub.restore(conv.gitHubWorkspace)
+        gitHubUploadFiles = []
         restorePresentation(conv.presentation)
         UserDefaults.standard.set(conv.id.uuidString, forKey: "chat.lastConversationID")
+        if let id = conv.assistantModelID, id.hasPrefix("api:") {
+            guard id != assistant.activeSelectionID else { return }
+            Task { await assistant.selectAPIModel(id, persistAsDefault: false, restoring: true) }
+            return
+        }
         if conv.assistantModelID == ApplePrivateCloud.modelID,
            ApplePrivateCloud.isSupportedOnCurrentOS {
             guard assistant.activeSelectionID != ApplePrivateCloud.modelID else {
@@ -1004,8 +1079,10 @@ struct CodingAssistantView: View {
         draftImageIDs = presentation.imageIDs
         legacyDraftImageID = presentation.legacyImageID
         followsConversation = presentation.followsLatest
-        readingMessageID = presentation.readingMessageID
-        if let id = presentation.readingMessageID, !presentation.followsLatest {
+        readingMessageID = presentation.readingMessageID.map {
+            AssistantActivity.transcriptRowID(for: $0, in: filteredMessages)
+        }
+        if let id = readingMessageID, !presentation.followsLatest {
             Task { @MainActor in
                 await Task.yield()
                 scrollProxy?.scrollTo(id, anchor: .top)
@@ -1016,6 +1093,12 @@ struct CodingAssistantView: View {
     /// A new thread always starts from the explicit default. Switching a
     /// model inside another conversation must not leak into future chats.
     private func restoreDefaultModelForNewConversation() {
+        if AppSettings.shared.assistantModelID.hasPrefix("api:") {
+            let id = AppSettings.shared.assistantModelID
+            guard id != assistant.activeSelectionID else { return }
+            Task { await assistant.selectAPIModel(id, persistAsDefault: false, restoring: true) }
+            return
+        }
         if AppSettings.shared.assistantModelID == ApplePrivateCloud.modelID,
            ApplePrivateCloud.isSupportedOnCurrentOS {
             guard assistant.activeSelectionID != ApplePrivateCloud.modelID else {
@@ -1070,7 +1153,7 @@ struct CodingAssistantView: View {
     /// sheet so the conversation keeps visual priority.
     private var modelStatusBar: some View {
         Button {
-            if assistant.activeExecutionLocation == .applePrivateCloud {
+            if assistant.activeExecutionLocation.isCloud {
                 showModelPicker = true
                 Task { await assistant.refreshApplePrivateCloudStatus() }
                 HapticManager.impact(.light)
@@ -1103,6 +1186,7 @@ struct CodingAssistantView: View {
                     modelStatusDescriptor.title == "Ready"
                         ? {
                             switch assistant.activeExecutionLocation {
+                            case .externalCloud: return "Ready via API provider"
                             case .applePrivateCloud: return "Ready via Apple Private Cloud"
                             case .localCoreAI:       return "Ready via Apple Core AI"
                             default:                 return "Ready on device"
@@ -1157,7 +1241,7 @@ struct CodingAssistantView: View {
     }
 
     private var canLoadSelectedModel: Bool {
-        guard assistant.activeExecutionLocation != .applePrivateCloud else {
+        guard !assistant.activeExecutionLocation.isCloud else {
             return false
         }
         return switch assistant.state {
@@ -1167,7 +1251,7 @@ struct CodingAssistantView: View {
     }
 
     private var modelProgressTitle: String {
-        guard assistant.activeExecutionLocation != .applePrivateCloud else { return modelStatusDescriptor.title }
+        guard !assistant.activeExecutionLocation.isCloud else { return modelStatusDescriptor.title }
         if case .loading(let detail) = assistant.state, detail.localizedCaseInsensitiveContains("downloading") {
             return "Downloading model"
         }
@@ -1175,6 +1259,7 @@ struct CodingAssistantView: View {
     }
 
     private var isModelPreparing: Bool {
+        if assistant.activeExecutionLocation == .externalCloud { return false }
         if assistant.activeExecutionLocation == .applePrivateCloud {
             return assistant.applePrivateCloudGenerationState == .generating
         }
@@ -1185,6 +1270,10 @@ struct CodingAssistantView: View {
     }
 
     private var modelLoadFailure: String? {
+        if assistant.activeExecutionLocation == .externalCloud {
+            if case .failed(let message) = assistant.apiProviderGenerationState { return message }
+            return nil
+        }
         if assistant.activeExecutionLocation == .applePrivateCloud,
            case .failed(let error) = assistant.applePrivateCloudGenerationState {
             return error.localizedDescription
@@ -1419,6 +1508,9 @@ struct CodingAssistantView: View {
     }
 
     private var statusGlyph: String {
+        if assistant.activeExecutionLocation == .externalCloud {
+            return assistant.isGeneratingSelectedTarget ? "◐" : assistant.canGenerateSelectedTarget ? "●" : "○"
+        }
         if assistant.activeExecutionLocation == .applePrivateCloud {
             return assistant.applePrivateCloudGenerationState == .generating ? "◐" : "●"
         }
@@ -1431,6 +1523,10 @@ struct CodingAssistantView: View {
         }
     }
     private var statusColor: Color {
+        if assistant.activeExecutionLocation == .externalCloud {
+            if case .failed = assistant.apiProviderGenerationState { return T.bad }
+            return assistant.isGeneratingSelectedTarget ? T.accent : assistant.canGenerateSelectedTarget ? T.good : T.ink3
+        }
         if assistant.activeExecutionLocation == .applePrivateCloud {
             if assistant.applePrivateCloudGenerationState == .generating {
                 return T.accent
@@ -1452,6 +1548,12 @@ struct CodingAssistantView: View {
     }
 
     private var modelStatusDescriptor: (symbol: String, title: String, badge: String?, color: Color) {
+        if assistant.activeExecutionLocation == .externalCloud {
+            if assistant.isGeneratingSelectedTarget { return ("network", "Generating", "API", T.accent) }
+            if case .failed = assistant.apiProviderGenerationState { return ("exclamationmark.circle", "Request failed", "API", T.bad) }
+            return assistant.canGenerateSelectedTarget ? ("network", "Ready", "API", T.good)
+                : ("network", "Configure API provider", "API", T.ink3)
+        }
         if assistant.activeExecutionLocation == .applePrivateCloud {
             if assistant.applePrivateCloudGenerationState == .generating {
                 return ("sparkles", "Generating", "cloud", T.accent)
@@ -1730,6 +1832,9 @@ struct CodingAssistantView: View {
 
     private var statusLabel: String {
         let name = assistant.activeDisplayName.lowercased()
+        if assistant.activeExecutionLocation == .externalCloud {
+            return "\(name) · \(modelStatusDescriptor.title.lowercased())"
+        }
         if assistant.activeExecutionLocation == .applePrivateCloud {
             if assistant.applePrivateCloudGenerationState == .generating {
                 return "\(name) · generating…"
@@ -1797,7 +1902,7 @@ struct CodingAssistantView: View {
                                         StudioAnswerActionRow(
                                             provenance: answerProvenance,
                                             footnote: answerFootnote(for: msg),
-                                            canRegenerate: assistant.state == .ready,
+                                            canRegenerate: assistant.canGenerateSelectedTarget,
                                             onCopy: {
                                                 UIPasteboard.general.string = msg.content
                                                 ToastCenter.shared.info(loc.t("Copied"))
@@ -1811,7 +1916,7 @@ struct CodingAssistantView: View {
                                                     VoiceService.shared.speak(msg.content)
                                                 }
                                             },
-                                            onQuickAction: assistant.state == .ready
+                                            onQuickAction: assistant.canGenerateSelectedTarget
                                                 ? { sendQuickAction($0) } : nil
                                         )
                                         .padding(.horizontal, 20)
@@ -1849,6 +1954,14 @@ struct CodingAssistantView: View {
 
             Section(loc.t("This chat")) {
                 Button {
+                    if isGenerating { stopGeneration() }
+                    inputFocused = false
+                    showGitHub = true
+                } label: {
+                    Label("GitHub repository", systemImage: "arrow.triangle.branch")
+                    Text(gitHubConnection.isEnabled ? gitHub.draft?.selection.label ?? "Choose repository" : "Off")
+                }
+                Button {
                     showPersonaPicker = true
                     HapticManager.impact(.light)
                 } label: {
@@ -1873,7 +1986,11 @@ struct CodingAssistantView: View {
 
             Section {
                 Menu {
-                    Button(loc.t("Runtime details"), systemImage: "cpu") { showRuntimeDetails = true }
+                    Button(loc.t(assistant.activeExecutionLocation == .externalCloud ? "API provider details" : "Runtime details"),
+                           systemImage: assistant.activeExecutionLocation == .externalCloud ? "network" : "cpu") {
+                        if assistant.activeExecutionLocation == .externalCloud && assistant.selectedAPITarget == nil { showModelPicker = true }
+                        else { showRuntimeDetails = true }
+                    }
                     Button(loc.t("Benchmark model"), systemImage: "speedometer") { showBenchmark = true }
                     // A/B compare — heavier workflow, max-tier only.
                     if !DeviceTierAdvisor.shouldHideHeavyFeatures {
@@ -2030,22 +2147,33 @@ struct CodingAssistantView: View {
         }
     }
 
-    private var composerModelMenu: some View {
+    private var chatModelMenu: some View {
         Button {
             inputFocused = false
             ODBridge.shared.store.requestExclusiveOperation("Changing the active model") {
                 showModelPicker = true
             }
         } label: {
-            ODModelMenuLabel(displayName: assistant.activeDisplayName)
+            ODModelMenuLabel(displayName: assistant.activeModelName,
+                             preservesName: assistant.activeExecutionLocation == .externalCloud)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Choose chat model")
-        .accessibilityValue(ODPresentation.modelName(assistant.activeDisplayName))
+        .accessibilityValue(assistant.activeExecutionLocation == .externalCloud
+                            ? assistant.activeModelName : ODPresentation.modelName(assistant.activeModelName))
         .accessibilityIdentifier("chat.modelPicker")
     }
 
     private var composerNotice: AnyView? {
+        let state = composerStateNotice
+        guard let memory = conversationContextMemory else { return state }
+        return AnyView(VStack(alignment: .leading, spacing: ODLayout.elementGap) {
+            if let state { state }
+            ODContextCompactionBanner(message: memory.compactionNotice)
+        })
+    }
+
+    private var composerStateNotice: AnyView? {
         if isPreparingImageContext {
             return AnyView(Label("Reading image", systemImage: "photo").font(.footnote).foregroundStyle(.secondary).odShimmer())
         }
@@ -2264,7 +2392,7 @@ struct CodingAssistantView: View {
             )
         }
         if let name = runningToolName, pendingToolWeb == nil, pendingToolFile == nil, pendingToolConfirm == nil {
-            AssistantRunningToolCard(name: name)
+            AssistantRunningToolCard(name: name).id(name)
         }
         if let status = imageActivityStatus {
             AssistantImageGenerationCard(status: status, detail: imageGen.statusMessage)
@@ -2306,7 +2434,7 @@ struct CodingAssistantView: View {
         if submissionPreparing { return true }
         if messages.contains(where: \.isStreaming) { return true }
         if isPreparingImageContext || documentSearchID != nil || pendingWebPermission != nil || webPreparationID != nil { return true }
-        if pendingToolWeb != nil || pendingToolFile != nil || runningToolName != nil {
+        if pendingToolWeb != nil || pendingToolFile != nil || pendingToolGitHub != nil || runningToolName != nil || gitHub.isRunning {
             return true
         }
         return assistant.isGeneratingSelectedTarget
@@ -2349,9 +2477,16 @@ struct CodingAssistantView: View {
         pendingToolWeb = nil
         pendingToolFile = nil
         pendingToolConfirm = nil
+        gitHub.cancel()
+        pendingToolGitHub = nil
+        gitHubReview = nil
+        gitHubManualReviewScope = nil
         showToolFilePicker = false
         runningToolName = nil
         if let idx = messages.lastIndex(where: { $0.isStreaming }) {
+            AssistantActivity.normalizeCompletedReply(&messages[idx],
+                expectsImplicitThinking: assistant.replyStartsInsideThinking)
+            AssistantActivity.finishReasoningTiming(&messages[idx])
             messages[idx].wasInterrupted = true
             messages[idx].isStreaming = false
         }
@@ -2370,8 +2505,18 @@ struct CodingAssistantView: View {
     }
 
     @MainActor
+    private func appendAssistantToken(_ token: String, at index: Int, allowsThinking: Bool = true) {
+        messages[index].content += token
+        AssistantActivity.updateReasoningTiming(&messages[index],
+            expectsImplicitThinking: allowsThinking && assistant.replyStartsInsideThinking)
+    }
+
+    @MainActor
     private func recordGenerationMetrics(messageID: UUID, tokensPerSecond: Double) {
         guard let idx = messages.firstIndex(where: { $0.id == messageID }) else { return }
+        AssistantActivity.normalizeCompletedReply(&messages[idx],
+            expectsImplicitThinking: assistant.replyStartsInsideThinking)
+        AssistantActivity.finishReasoningTiming(&messages[idx])
         if tokensPerSecond > 0 {
             messages[idx].generationTokensPerSecond = tokensPerSecond
         }
@@ -2564,7 +2709,7 @@ struct CodingAssistantView: View {
                 Task { @MainActor in
                     guard self.accepts(responseScope) else { return }
                     if let idx = self.messages.firstIndex(where: { $0.id == messageID }) {
-                        self.messages[idx].content += token
+                        self.appendAssistantToken(token, at: idx)
                     }
                 }
             },
@@ -2609,7 +2754,7 @@ struct CodingAssistantView: View {
     private func preparedRuntimeContext(_ source: [ChatMessage]) -> [ChatMessage] {
         let rebuilt = withCurrentSystemPrompt(source)
         let policyAdjustedSource: [ChatMessage]
-        if assistant.activeModel.runtime == .coreAI {
+        if assistant.activeExecutionLocation != .externalCloud && assistant.activeModel.runtime == .coreAI {
             policyAdjustedSource = CoreAIConversationPlanner.applyingCompactPromptPolicy(
                 to: rebuilt,
                 toolsEnabled: activeModelToolsEnabled
@@ -2621,7 +2766,8 @@ struct CodingAssistantView: View {
         let prepared = ConversationContextCompactor.prepare(
             messages: policyAdjustedSource,
             existingMemory: previous,
-            maxTokens: assistant.currentInputBudget
+            maxTokens: assistant.currentInputBudget,
+            modelDisplayName: assistant.activeDisplayName
         )
         conversationContextMemory = prepared.memory
         if prepared.memory != previous, let id = currentConversationID {
@@ -2636,18 +2782,26 @@ struct CodingAssistantView: View {
     private func withCurrentSystemPrompt(_ source: [ChatMessage]) -> [ChatMessage] {
         let dialog = source.filter { $0.role != .system }
         let persona = PersonaStore.shared.active
-        let coreAI = assistant.activeModel.runtime == .coreAI
+        let coreAI = assistant.activeExecutionLocation != .externalCloud && assistant.activeModel.runtime == .coreAI
         let budget = assistant.currentInputBudget
         let tools: CodingAssistantService.PromptContext.Tools = activeModelToolsEnabled
             ? (coreAI || budget <= 2_048 ? .compact : .full)
             : (AppSettings.shared.toolsEnabled && coreAI ? .unavailable : .none)
-        let prompt = CodingAssistantService.composeSystemPrompt(.init(
+        var prompt = CodingAssistantService.composeSystemPrompt(.init(
             persona: persona.systemPrompt,
             memory: MemoryStore.shared.contextBlock(forPersonaID: persona.id),
             tools: tools,
             messages: dialog,
             inputBudget: budget
         ))
+        if activeModelToolsEnabled {
+            let repositoryTools = gitHub.promptAddendum(compact: coreAI || budget <= 2_048)
+            if !repositoryTools.isEmpty { prompt += "\n\n" + repositoryTools }
+            let uploads = availableGitHubImageAttachments.map(\.name) + gitHubUploadFiles.map(\.displayName)
+            if gitHub.isAvailable, !uploads.isEmpty {
+                prompt += "\nUser attachments available for upload_attachment: " + uploads.joined(separator: ", ")
+            }
+        }
         return [ChatMessage(role: .system, content: prompt)] + dialog
     }
 
@@ -2667,7 +2821,8 @@ struct CodingAssistantView: View {
     /// Core AI must honor its curated dialect capability. MLX/GGUF retain the
     /// tolerant text-tool path that existed before Core AI was added.
     private var activeModelToolsEnabled: Bool {
-        ToolRunner.toolsEnabled(
+        if assistant.activeExecutionLocation == .externalCloud { return AppSettings.shared.toolsEnabled }
+        return ToolRunner.toolsEnabled(
             settingEnabled: AppSettings.shared.toolsEnabled,
             runtime: assistant.activeModel.runtime,
             modelSupportsTools: assistant.activeModel.supportsTools
@@ -2716,7 +2871,7 @@ struct CodingAssistantView: View {
                 Task { @MainActor in
                     guard self.accepts(responseScope) else { return }
                     if let idx = self.messages.firstIndex(where: { $0.id == msgID }) {
-                        self.messages[idx].content += token
+                        self.appendAssistantToken(token, at: idx)
                     }
                 }
             },
@@ -2813,7 +2968,7 @@ struct CodingAssistantView: View {
                 Task { @MainActor in
                     guard self.accepts(responseScope) else { return }
                     if let idx = self.messages.firstIndex(where: { $0.id == messageID }) {
-                        self.messages[idx].content += token
+                        self.appendAssistantToken(token, at: idx)
                     }
                 }
             },
@@ -2881,6 +3036,7 @@ struct CodingAssistantView: View {
     ) {
         let scope = captureRequest()
         let replyID = messages.last(where: \.isStreaming)?.id
+        assistant.apiConversationID = scope.conversationID
         let failure = ChatGenerationFailure()
         generationFailure = nil
         Diagnostics.shared.breadcrumb("chat request started · request=\(scope.id)", category: "chat-presentation")
@@ -2912,6 +3068,7 @@ struct CodingAssistantView: View {
                     self.submissionPreparing = false
                     self.generationFailure = detail
                     if let index = self.messages.firstIndex(where: { $0.id == replyID }) {
+                        AssistantActivity.finishReasoningTiming(&self.messages[index])
                         self.messages[index].isStreaming = false
                     }
                     self.persistCurrentConversation()
@@ -2976,6 +3133,7 @@ struct CodingAssistantView: View {
         operationID = UUID()
         let submission = captureRequest()
         acceptedSubmission = submission
+        gitHubUploadFiles = submission.draft.files
         submissionPreparing = true
         userAbortedToolTurn = false
         let trimmed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -3238,7 +3396,7 @@ struct CodingAssistantView: View {
                     Task { @MainActor in
                         guard self.accepts(responseScope) else { return }
                         if let idx = self.messages.firstIndex(where: { $0.id == msgID }) {
-                            self.messages[idx].content += token
+                            self.appendAssistantToken(token, at: idx)
                             self.stopAfterCompleteToolCallIfNeeded(messageID: msgID)
                         }
                     }
@@ -3276,7 +3434,7 @@ struct CodingAssistantView: View {
                             // Tool protocol JSON is transport, not an answer.
                             // Remove it from the visible transcript and replace
                             // it with the eventual natural-language synthesis.
-                            self.messages.removeAll { $0.id == msgID }
+                            self.retainReasoningBeforeTool(messageID: msgID)
                             self.persistCurrentConversation()
                             await self.executeToolCallAndFollowUp(call)
                             return
@@ -3314,15 +3472,95 @@ struct CodingAssistantView: View {
         }
     }
 
+    private var availableGitHubImageAttachments: [GitHubUserAttachment] {
+        guard let message = messages.last(where: { $0.role == .user && AssistantActivity.parseToolResult($0.content) == nil }) else { return [] }
+        let images = message.imageThumbnails.isEmpty
+            ? message.imageThumbnailData.map { [ChatMessage.ImageAttachment(data: $0)] } ?? []
+            : message.imageThumbnails
+        return images.enumerated().map { GitHubUserAttachment(name: "image-\($0.offset + 1).jpg", data: $0.element.data) }
+    }
+
+    private func runGitHubTool(_ call: ToolCall, depth: Int) async {
+        let scope = captureRequest()
+        runningToolName = call.name
+        var attachments = availableGitHubImageAttachments
+        // Read only a file the user attached to this send. Never use a model-supplied
+        // URL or a shortened prompt excerpt as an upload's original bytes.
+        if call.name == "upload_attachment", let name = call.args["attachment_name"] as? String,
+           !attachments.contains(where: { $0.name == name }),
+           let file = gitHubUploadFiles.first(where: { $0.displayName == name }) {
+            do {
+                let data = try await Task.detached(priority: .utility) {
+                    let acquired = file.url.startAccessingSecurityScopedResource()
+                    defer { if acquired { file.url.stopAccessingSecurityScopedResource() } }
+                    let handle = try FileHandle(forReadingFrom: file.url)
+                    defer { try? handle.close() }
+                    let data = try handle.read(upToCount: GitHubClient.maximumAttachmentBytes + 1) ?? Data()
+                    guard data.count <= GitHubClient.maximumAttachmentBytes else { throw GitHubError.tooLarge }
+                    return data
+                }.value
+                attachments.append(GitHubUserAttachment(name: name, data: data))
+            } catch {
+                guard accepts(scope), !userAbortedToolTurn else { return }
+                runningToolName = nil
+                feedToolResultAndFollowUp(name: call.name,
+                    result: "Error: could not read the selected attachment. Attach it again or use a file under 1 MB.", depth: depth)
+                return
+            }
+        }
+        guard accepts(scope), !userAbortedToolTurn, activeModelToolsEnabled else { return }
+        let outcome = await gitHub.run(name: call.name, args: call.args, attachments: attachments)
+        guard accepts(scope), !Task.isCancelled, !userAbortedToolTurn else { return }
+        runningToolName = nil
+        switch outcome {
+        case .result(let result): feedToolResultAndFollowUp(name: call.name, result: result, depth: depth)
+        case .review(let plan):
+            pendingToolGitHub = ToolGitHubApproval(planID: plan.id, name: call.name, depth: depth, scope: scope)
+            inputFocused = false
+            gitHubReview = plan
+        }
+    }
+
+    private func openGitHubReview() {
+        if isGenerating { stopGeneration() }
+        inputFocused = false
+        let scope = captureRequest()
+        Task {
+            do {
+                let plan = try await gitHub.review()
+                guard accepts(scope) else { return }
+                gitHubManualReviewScope = scope
+                gitHubReview = plan
+            }
+            catch { ToastCenter.shared.error("Could not open review", detail: GitHubError.safeMessage(error)) }
+        }
+    }
+
+    private func finishGitHubReview(plan: GitHubReviewPlan, result: String, approved: Bool) {
+        if let request = pendingToolGitHub, request.planID == plan.id {
+            pendingToolGitHub = nil
+            guard accepts(request.scope), !userAbortedToolTurn else { return }
+            feedToolResultAndFollowUp(name: request.name, result: result, depth: request.depth)
+        } else if approved, let scope = gitHubManualReviewScope, accepts(scope) {
+            messages.append(ChatMessage(role: .user, content: ToolRunner.resultBlock(name: "request_user_approval", result: result)))
+            persistCurrentConversation()
+        }
+        gitHubManualReviewScope = nil
+    }
+
     /// Runs a tool call, appends the result as a user message, and asks
     /// the assistant for a follow-up synthesis. Keeps the loop bounded to
     /// one tool call per send to avoid runaway chains.
     /// Hard cap on chained tool calls within one user turn — stops a model
     /// that loops on tools from running forever.
-    private static let maxToolDepth = 5
+    private var maxToolDepth: Int { gitHub.isAvailable ? 25 : 5 }
 
     private func executeToolCallAndFollowUp(_ call: ToolCall, depth: Int = 0) async {
         guard AssistantActivity.shouldFollowUpAfterTool(aborted: userAbortedToolTurn) else { return }
+        if GitHubWorkspaceService.toolNames.contains(call.name) {
+            await runGitHubTool(call, depth: depth)
+            return
+        }
         // Web access is consent-gated. When the model asks to search and the
         // user's mode is "ask every time", ToolRunner.runWebSearch would just
         // hard-fail (it can't pop UI from inside the runner). Intercept here
@@ -3525,7 +3763,7 @@ struct CodingAssistantView: View {
                 Task { @MainActor in
                     guard self.accepts(responseScope) else { return }
                     if let idx = self.messages.firstIndex(where: { $0.id == messageID }) {
-                        self.messages[idx].content += token
+                        self.appendAssistantToken(token, at: idx)
                     }
                 }
             },
@@ -3586,7 +3824,7 @@ struct CodingAssistantView: View {
                 Task { @MainActor in
                     guard self.accepts(responseScope) else { return }
                     if let idx = self.messages.firstIndex(where: { $0.id == followID }) {
-                        self.messages[idx].content += token
+                        self.appendAssistantToken(token, at: idx)
                         self.stopAfterCompleteToolCallIfNeeded(messageID: followID)
                     }
                 }
@@ -3604,13 +3842,13 @@ struct CodingAssistantView: View {
                     let streamedCall = self.detectedStreamingToolCalls.removeValue(
                         forKey: followID
                     )
-                    let nextCall = self.activeModelToolsEnabled && depth + 1 < Self.maxToolDepth
+                    let nextCall = self.activeModelToolsEnabled && depth + 1 < self.maxToolDepth
                         ? streamedCall ?? self.messages
                             .first(where: { $0.id == followID })
                             .flatMap({ ToolRunner.extractCall(from: $0.content) })
                         : nil
                     if let next = nextCall {
-                        self.messages.removeAll { $0.id == followID }
+                        self.retainReasoningBeforeTool(messageID: followID)
                         self.persistCurrentConversation()
                         await self.executeToolCallAndFollowUp(next, depth: depth + 1)
                         return
@@ -3640,6 +3878,15 @@ struct CodingAssistantView: View {
                 }
             }
         )
+    }
+
+    /// Keep the same persisted row when a reply becomes a tool call. Protocol
+    /// JSON remains model context; the user's disclosure retains the thoughts.
+    private func retainReasoningBeforeTool(messageID: UUID) {
+        guard let index = messages.firstIndex(where: { $0.id == messageID }) else { return }
+        if !AssistantActivity.retainReasoningForTool(&messages[index]) {
+            messages.remove(at: index)
+        }
     }
 
     /// Keeps the persisted/UI message compact while giving the model the tool
@@ -3745,7 +3992,7 @@ struct CodingAssistantView: View {
     /// Standard GGUFs keep the native KV when possible; otherwise this
     /// re-prefills an open assistant turn (still no fake "continue" user message).
     private func continueTruncatedReply() {
-        guard assistant.state == .ready,
+        guard assistant.canGenerateSelectedTarget,
               let idx = AssistantActivity.continuationMessageIndex(in: messages)
         else { return }
         operationID = UUID()
@@ -3770,7 +4017,7 @@ struct CodingAssistantView: View {
                 Task { @MainActor in
                     guard self.accepts(responseScope) else { return }
                     if let i = self.messages.firstIndex(where: { $0.id == msgID }) {
-                        self.messages[i].content += token
+                        self.appendAssistantToken(token, at: i)
                         self.stopAfterCompleteToolCallIfNeeded(messageID: msgID)
                     }
                 }
@@ -3792,7 +4039,7 @@ struct CodingAssistantView: View {
                             .flatMap({ ToolRunner.extractCall(from: $0.content) })
                         : nil
                     if let call = toolCall {
-                        self.messages.removeAll { $0.id == msgID }
+                        self.retainReasoningBeforeTool(messageID: msgID)
                         self.persistCurrentConversation()
                         await self.executeToolCallAndFollowUp(call)
                         return
@@ -3842,7 +4089,7 @@ struct CodingAssistantView: View {
                 Task { @MainActor in
                     guard self.accepts(responseScope) else { return }
                     if let idx = self.messages.firstIndex(where: { $0.id == msgID }) {
-                        self.messages[idx].content += token
+                        self.appendAssistantToken(token, at: idx)
                     }
                 }
             },
@@ -4152,7 +4399,7 @@ struct CodingAssistantView: View {
                         Task { @MainActor in
                             guard self.accepts(scope) else { return }
                             if let idx = self.messages.firstIndex(where: { $0.id == assistantMsgID }) {
-                                self.messages[idx].content += token
+                                self.appendAssistantToken(token, at: idx, allowsThinking: false)
                             }
                         }
                     },
@@ -4200,7 +4447,7 @@ struct CodingAssistantView: View {
                         Task { @MainActor in
                             guard self.accepts(scope) else { return }
                             if let idx = self.messages.firstIndex(where: { $0.id == assistantMsgID }) {
-                                self.messages[idx].content += token
+                                self.appendAssistantToken(token, at: idx, allowsThinking: false)
                             }
                         }
                     },
@@ -4271,6 +4518,7 @@ struct CodingAssistantView: View {
         // Loading a 2+ GB model before the gate is cleared causes an OOM kill
         // from iOS Jetsam while the legal acceptance screen is still visible.
         guard isActive, !legal.needsAcceptance else { return }
+        if assistant.activeExecutionLocation == .externalCloud { return }
         if assistant.activeExecutionLocation == .applePrivateCloud {
             await assistant.refreshApplePrivateCloudStatus()
             return
@@ -4558,6 +4806,8 @@ struct MessageBubble: View, Equatable {
         lhs.message.imageThumbnails == rhs.message.imageThumbnails &&
         lhs.message.generationTokensPerSecond == rhs.message.generationTokensPerSecond &&
         lhs.message.generationDuration == rhs.message.generationDuration &&
+        lhs.message.reasoningStartedAt == rhs.message.reasoningStartedAt &&
+        lhs.message.reasoningDuration == rhs.message.reasoningDuration &&
         lhs.message.documentSources == rhs.message.documentSources &&
         lhs.message.role == rhs.message.role &&
         lhs.message.generationModelID == rhs.message.generationModelID &&
@@ -4588,10 +4838,7 @@ struct MessageBubble: View, Equatable {
     }
 
     private func toolResultChip(_ tr: (name: String, result: String)) -> some View {
-        AssistantToolResultCard(name: tr.name, result: tr.result)
-            .frame(maxWidth: 520, alignment: .leading)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 6)
+        AssistantToolResultStrip(messages: [message])
     }
 
     // User content follows the current neutral, naturally sized bubble.
@@ -4673,13 +4920,12 @@ struct MessageBubble: View, Equatable {
         .accessibilityLabel("Attached image")
     }
 
-    // Assistant turn — full-measure prose. No bubble, no glass, no avatar:
-    // the answer reads as a document on the page. Only state that is not
-    // obvious (Apple Private Cloud, interrupted, token limit) keeps a compact
-    // mono line; a normal finished answer is bare prose.
+    // Assistant turns keep their full-measure prose and streaming caret. A compact
+    // agent identity sits above the answer; exceptional state keeps its meta line.
     private var assistantBubble: some View {
         let S = T.studio
         return VStack(alignment: .leading, spacing: 8) {
+            ODAgentLabel()
             // The answering side gets the same speaker rule as the asking
             // side, named for whatever actually produced the text. Symmetry is
             // the point: in a transcript neither party is the guest.
@@ -4688,22 +4934,13 @@ struct MessageBubble: View, Equatable {
                 // .equatable() wires AssistantMarkdownView's `==` into
                 // SwiftUI diffing so parseBlocks only re-runs when this
                 // bubble's own content / streaming state changes.
-                if message.isStreaming && message.content.isEmpty {
-                    Text("Preparing reply")
-                        .font(.subheadline)
-                        .foregroundStyle(T.ink2)
-                        .odShimmer()
-                        .accessibilityIdentifier("chat.reply.preparing")
-                        .transition(.opacity)
-                } else {
-                    AssistantMarkdownView(content: message.content, isStreaming: message.isStreaming)
-                        .equatable()
-                        .transition(.opacity)
-                }
+                AssistantMarkdownView(content: message.content, isStreaming: message.isStreaming,
+                    reasoningStartedAt: message.reasoningStartedAt,
+                    reasoningDuration: message.reasoningDuration,
+                    waitingStartedAt: message.timestamp)
+                    .equatable()
             }
-            // One crossfade from the working label to the first words; the
-            // stream itself is not animated (token bursts outrun text layout).
-            .animation(ODMotion.fade, value: message.content.isEmpty)
+            // Stream updates and completion never animate transcript layout.
 
             if let sources = message.documentSources, !sources.isEmpty {
                 DocumentSourcesButton(sources: sources)
@@ -4819,234 +5056,64 @@ struct MessageBubble: View, Equatable {
     }
 }
 
-private struct AssistantToolResultCard: View {
-    let name: String
-    let result: String
-
-    @State private var isExpanded = false
-    @Environment(\.koduTheme) private var T
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: isExpanded ? 12 : 0) {
-            Button {
-                // Keep the surrounding LazyVStack's scroll anchor stable.
-                // Animating a large web-result height change could move the
-                // card and the following answer completely out of view.
-                isExpanded.toggle()
-                HapticManager.selection()
-            } label: {
-                HStack(spacing: 10) {
-                    Image(systemName: symbol)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(T.accent)
-                        .frame(width: 28, height: 28)
-                        .background(T.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(title)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(T.ink)
-                        Text(AssistantActivity.toolResultSummary(name: name, result: result))
-                            .font(.caption)
-                            .foregroundStyle(T.ink3)
-                    }
-                    Spacer(minLength: 8)
-                    Image(systemName: "chevron.down")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(T.ink3)
-                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                        .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: isExpanded)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(title)
-            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
-            .accessibilityHint(isExpanded ? "Collapses tool details" : "Shows tool details")
-
-            if isExpanded {
-                Divider().overlay(T.rule)
-                // Tool payloads—especially web-search context—can be many
-                // screens tall. Bound them inside the card so expanding does
-                // not displace the card and the assistant reply off-screen.
-                ScrollView(.vertical) {
-                    Text(result)
-                        .font(.system(.footnote, design: .monospaced))
-                        .foregroundStyle(T.ink2)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .frame(maxHeight: 220)
-            }
-        }
-        .padding(12)
-        .glassSurface(.card, cornerRadius: StudioRadius.action)
-        .overlay {
-            RoundedRectangle(cornerRadius: StudioRadius.action, style: .continuous)
-                .stroke(T.rule.opacity(0.7), lineWidth: 0.5)
-        }
-        .accessibilityElement(children: .contain)
-    }
-
-    private var title: String {
-        name.replacingOccurrences(of: "_", with: " ").capitalized
-    }
-
-    private var symbol: String {
-        let lower = name.lowercased()
-        if lower.contains("web") || lower.contains("search") { return "globe" }
-        if lower.contains("file") { return "doc.text" }
-        if lower.contains("vision") || lower.contains("image") { return "eye" }
-        if lower.contains("memory") { return "brain.head.profile" }
-        return "wrench.and.screwdriver"
-    }
-}
-
 // MARK: - AssistantMarkdownView
 
 struct AssistantMarkdownView: View, Equatable {
     let content: String
     let isStreaming: Bool
+    var reasoningStartedAt: Date? = nil
+    var reasoningDuration: TimeInterval? = nil
+    var waitingStartedAt: Date? = nil
     @Environment(\.koduTheme) private var T
 
-    /// Reasoning-rule timing for "thought 4s". The start is stamped when a
-    /// live think block first appears; the duration is frozen the moment the
-    /// closing tag arrives so the label can't keep growing afterwards.
-    @State private var reasoningStartedAt: Date?
-    @State private var reasoningSeconds: Int?
-
-    private func noteReasoningStart() {
-        if reasoningStartedAt == nil && reasoningSeconds == nil {
-            reasoningStartedAt = Date()
-        }
-    }
-
-    private func freezeReasoningSeconds() {
-        guard reasoningSeconds == nil, let started = reasoningStartedAt else { return }
-        reasoningSeconds = max(1, Int(Date().timeIntervalSince(started).rounded()))
-    }
-
-    /// SwiftUI uses this to skip re-rendering when content + streaming state
-    /// haven't changed. Without it, every parent re-render re-parses the
-    /// markdown.
     static func == (lhs: AssistantMarkdownView, rhs: AssistantMarkdownView) -> Bool {
         lhs.content == rhs.content && lhs.isStreaming == rhs.isStreaming
+            && lhs.reasoningStartedAt == rhs.reasoningStartedAt
+            && lhs.reasoningDuration == rhs.reasoningDuration
+            && lhs.waitingStartedAt == rhs.waitingStartedAt
     }
 
     var body: some View {
-        // During streaming the body changes on every token — parseBlocks runs
-        // 30-50× per second which tanks scroll perf. Render as a lightweight
-        // streaming view; re-parse fully only once generation finishes.
-        if isStreaming {
-            streamingBody
-        } else {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(
-                    Array(parseBlocks(AssistantOutputSanitizer.clean(content)).enumerated()),
-                    id: \.offset
-                ) { _, block in
-                    switch block {
-                    case .text(let t):
-                        AssistantProseView(content: t)
-                    case .code(let lang, let code):
-                        if lang.lowercased() == "diff" {
-                            DiffView(diffText: code)
-                        } else {
-                            CodeBlock(language: lang, code: code)
-                        }
-                    case .thinking(let t, let isOpen):
-                        ThinkingBlock(content: t, isOpen: isOpen, seconds: reasoningSeconds)
-                    case .math(let latex):
-                        MathBlock(latex: latex)
-                    }
-                }
-            }
-        }
-    }
-
-    // .thinking(content, isOpen) — isOpen = true while </think> not yet seen
-    // MARK: - Streaming body
-    // Cheap per-token render: detect think-block state with simple string
-    // checks instead of running the full parseBlocks algorithm.
-
-    @ViewBuilder private var streamingBody: some View {
-        // Selection is DISABLED throughout streaming. Enabling it forces
-        // CoreText to retain selection-anchor state across every token,
-        // which pushes Futhark's line-segment allocator (the one that
-        // SIGABRTs at `createNewLineseg`) over its capacity on long
-        // streaming replies. The non-streaming branch above re-enables
-        // selection once generation finishes.
-        // The service knows whether the prompt itself opened `<think>`.
-        let expectsImplicitThinking = CodingAssistantService.shared.replyStartsInsideThinking
-        let c = normalizedThink(content)
-        if expectsImplicitThinking
-            && !c.contains("<think>")
-            && !c.contains("</think>") {
-            // Qwen thinking templates prefill the opening tag, so the token
-            // stream contains raw reasoning until the model emits </think>.
-            // Show a bounded live tail: users can follow the reasoning again,
-            // while the fixed character ceiling avoids the unbounded
-            // CoreText/Futhark layout churn that motivated the old placeholder.
-            ThinkingBlock(content: liveReasoningTail(c), isOpen: true)
-                .onAppear { noteReasoningStart() }
-        } else if c.hasPrefix("<think>") {
-            if let closeRange = c.range(of: "</think>") {
-                // Reasoning phase complete — show collapsed think block +
-                // whatever the model has generated after it so far.
-                let thinkContent = String(c[c.index(c.startIndex, offsetBy: 7)..<closeRange.lowerBound])
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                let afterThink = String(c[closeRange.upperBound...])
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-                VStack(alignment: .leading, spacing: 8) {
-                    ThinkingBlock(content: thinkContent, isOpen: false, seconds: reasoningSeconds)
-                        .onAppear { freezeReasoningSeconds() }
-                    if !afterThink.isEmpty {
-                        Text(afterThink)
-                            .font(T.conversationBody)
-                            .foregroundColor(T.ink)
-                            .lineSpacing(4)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .textSelection(.disabled)
-                    }
+        let presentation = AssistantReplyPresentation(content: content, isStreaming: isStreaming,
+            expectsImplicitThinking: isStreaming && CodingAssistantService.shared.replyStartsInsideThinking)
+        ODAssistantReplyLayout(
+            reasoning: presentation.isReasoningOpen ? presentation.liveReasoningTail : presentation.reasoning,
+            showsReasoning: presentation.hasReasoning || reasoningStartedAt != nil || presentation.isWaiting,
+            isReasoningOpen: presentation.isReasoningOpen || presentation.isWaiting,
+            seconds: reasoningDuration.map { max(0, Int($0.rounded())) },
+            startedAt: reasoningStartedAt ?? waitingStartedAt
+        ) {
+            if isStreaming {
+                if !presentation.answer.isEmpty {
+                    ODStreamingText(content: presentation.answer, font: T.conversationBody,
+                                    color: T.ink, lineSpacing: 4)
+                } else if !presentation.isReasoningOpen && !presentation.isWaiting {
+                    StreamingCaret()
                 }
             } else {
-                // Still inside <think> — stream a bounded live reasoning tail.
-                let reasoning = String(c.dropFirst(7))
-                ThinkingBlock(content: liveReasoningTail(reasoning), isOpen: true)
-                    .onAppear { noteReasoningStart() }
-            }
-        } else {
-            // No think block — plain streaming text.
-            HStack(alignment: .lastTextBaseline, spacing: 2) {
-                Text(c)
-                    .font(T.conversationBody)
-                    .foregroundColor(T.ink)
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.disabled)
-                StreamingCaret()
+                AssistantCompletedAnswer(content: presentation.answer)
             }
         }
     }
+}
 
-    /// Qwen3 "thinking" models emit only the closing </think> (the chat
-    /// template pre-fills the opening <think>). Synthesize the opening tag so
-    /// the parser collapses the reasoning instead of leaking a stray </think>.
-    private func normalizedThink(_ s: String) -> String {
-        AssistantOutputSanitizer.normalizeReasoningMarkup(s)
+/// Only answer formatting is replaced at completion; the disclosure stays mounted.
+private struct AssistantCompletedAnswer: View {
+    let content: String
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(StudioTextBlocks.parse(content).enumerated()), id: \.offset) { _, block in
+                switch block {
+                case .text(let text): AssistantProseView(content: text)
+                case .code(let language, let code):
+                    if language.lowercased() == "diff" { DiffView(diffText: code) }
+                    else { CodeBlock(language: language, code: code) }
+                case .math(let latex): MathBlock(latex: latex)
+                case .thinking: EmptyView()
+                }
+            }
+        }
     }
-
-    private func liveReasoningTail(_ source: String) -> String {
-        let limit = 1_200
-        let trimmed = source.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.count > limit else { return trimmed }
-        return "…\n" + String(trimmed.suffix(limit))
-    }
-
-    private func parseBlocks(_ text: String) -> [StudioTextBlocks.Block] {
-        StudioTextBlocks.parse(text)
-    }
-
 }
 
 /// Completed answers keep Markdown's block structure. SwiftUI Text renders
@@ -5336,88 +5403,7 @@ struct MathBlock: View {
 // isOpen = true  → model is still reasoning (animated indicator, no expand/collapse)
 // isOpen = false → reasoning complete (collapsed by default, tap to expand)
 
-struct ThinkingBlock: View {
-    let content: String
-    let isOpen: Bool
-    /// Reasoning duration in seconds — shown as `thought 4s` once the phase
-    /// completed in this session. Nil for reopened conversations, which have
-    /// no timing to show.
-    var seconds: Int? = nil
-
-    @State private var expanded = false
-    @Environment(\.koduTheme) private var T
-
-    private var S: StudioTokens { T.studio }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header row
-            Button {
-                guard !isOpen else { return }
-                withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
-            } label: {
-                // Reasoning summary is a flat rule, not a card: mono uppercase
-                // label, flexible hairline, show/hide affordance at the end.
-                HStack(spacing: 10) {
-                    if isOpen {
-                        RoundedRectangle(cornerRadius: StudioRadius.glyph, style: .continuous)
-                            .fill(S.accent)
-                            .frame(width: 6, height: 6)
-                            .opacity(0.9)
-                    } else {
-                        Text(seconds.map { "thought \($0)s" } ?? "thought")
-                            .font(T.studio.mono(11.5, .medium))
-                            .tracking(0.8)
-                            .foregroundStyle(S.ink2)
-                    }
-                    if !isOpen {
-                        Rectangle()
-                            .fill(S.rule2)
-                            .frame(height: 1)
-                            .accessibilityHidden(true)
-                    }
-                    Spacer()
-                    if !isOpen {
-                        Text(expanded ? "hide" : "show")
-                            .font(T.studio.mono(11, .medium))
-                            .tracking(0.8)
-                            .foregroundStyle(S.ink3)
-                    }
-                }
-                .padding(.vertical, 4)
-            }
-            .buttonStyle(.plain)
-            .disabled(isOpen)
-
-            if (expanded && !isOpen) || (isOpen && !content.isEmpty) {
-                Rectangle()
-                    .fill(S.rule2)
-                    .frame(height: 1)
-                    .padding(.vertical, 6)
-                    .accessibilityHidden(true)
-                if isOpen {
-                    reasoningText
-                        .textSelection(.disabled)
-                } else {
-                    reasoningText
-                        .textSelection(.enabled)
-                }
-            }
-        }
-    }
-
-    private var reasoningText: some View {
-        Text(content)
-            .font(T.studio.sans(14))
-            .foregroundStyle(S.ink2)
-            .lineSpacing(5)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.bottom, 8)
-            .transition(.opacity.combined(with: .move(edge: .top)))
-    }
-
-    private var wordCount: Int { content.split(separator: " ").count }
-}
+typealias ThinkingBlock = ODReasoningBlock
 
 // MARK: - Bucketed throttle helper
 

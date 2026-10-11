@@ -562,6 +562,11 @@ final class CodingAssistantService: ObservableObject {
     /// computation the generate paths apply, so the UI never promises a
     /// length the backend would cut off (or vice versa).
     var effectiveOutputTokenCap: Int {
+        if activeExecutionLocation == .externalCloud {
+            guard let target = selectedAPITarget else { return 0 }
+            return min(max(1, AppSettings.shared.assistantMaxTokens), target.provider.maximumOutputTokens,
+                       target.model.outputTokenLimit ?? target.provider.maximumOutputTokens)
+        }
         if isEdge0Execution {
             return min(
                 max(1, effectiveGenerationSettings.maxTokens),
@@ -599,12 +604,22 @@ final class CodingAssistantService: ObservableObject {
     @Published private(set) var applePrivateCloudStatus: ApplePCCStatus = .unsupportedOS
     @Published private(set) var applePrivateCloudGenerationState: ApplePCCGenerationState = .idle
     @Published private(set) var applePrivateCloudContextSize: Int?
+    enum APIProviderGenerationState: Equatable { case idle, generating, failed(String) }
+    @Published private(set) var apiProviderGenerationState: APIProviderGenerationState = .idle
+    @Published private(set) var apiSelectionID: String?
+
+    var selectedAPITarget: (provider: APIProviderConfiguration, model: APIProviderModel)? {
+        apiSelectionID.flatMap { APIProviderStore.shared.target($0) }
+    }
 
     /// Practical input budget used by the chat context compactor. This mirrors
     /// the runtime's device/model cap so compaction happens before the final
     /// hard safety trim in `generate()`.
     var effectiveGenerationSettings: AssistantModelGenerationSettings {
-        AssistantModelSettingsStore.shared.effectiveSettings(
+        if activeExecutionLocation == .externalCloud {
+            return .appDefaults(from: AppSettings.shared, supportsThinking: false)
+        }
+        return AssistantModelSettingsStore.shared.effectiveSettings(
             for: activeModel.repoID,
             supportsThinking: activeThinkingSwitch,
             appSettings: AppSettings.shared
@@ -621,7 +636,7 @@ final class CodingAssistantService: ObservableObject {
         )
     }
 
-    private static let architectureCache = OSAllocatedUnfairLock<[String: String]>(initialState: [:])
+    private nonisolated static let architectureCache = OSAllocatedUnfairLock<[String: String]>(initialState: [:])
 
     /// config.json `model_type` of an installed model, cached once found.
     static nonisolated func declaredArchitecture(for model: AssistantModel) -> String? {
@@ -635,9 +650,9 @@ final class CodingAssistantService: ObservableObject {
     }
 
     /// True when the selected model's reasoning can be switched per message.
-    var activeThinkingSwitch: Bool { Self.thinkingSwitch(for: activeModel) }
+    var activeThinkingSwitch: Bool { !activeExecutionLocation.isCloud && Self.thinkingSwitch(for: activeModel) }
 
-    private static let thinkingSwitchCache = OSAllocatedUnfairLock<[String: Bool]>(initialState: [:])
+    private nonisolated static let thinkingSwitchCache = OSAllocatedUnfairLock<[String: Bool]>(initialState: [:])
 
     /// A model can switch reasoning when its own chat template reads
     /// `enable_thinking` (Qwen 3/3.5, SmolLM3, Gemma 4, EXAONE 4, …). Templates
@@ -654,6 +669,10 @@ final class CodingAssistantService: ObservableObject {
     }
 
     var currentInputBudget: Int {
+        if activeExecutionLocation == .externalCloud {
+            guard let target = selectedAPITarget else { return 512 }
+            return target.provider.inputBudget(for: target.model, outputTokens: effectiveOutputTokenCap)
+        }
         if activeExecutionLocation == .applePrivateCloud {
             guard let contextSize = applePrivateCloudContextSize else {
                 // No guessed PCC window: retain only the newest prompt until
@@ -723,6 +742,7 @@ final class CodingAssistantService: ObservableObject {
     /// flight is NOT a reason to scare the user into thinking
     /// nothing is loaded. Loading/failed/unloaded all read false.
     var isModelLoaded: Bool {
+        guard !activeExecutionLocation.isCloud else { return false }
         if activeExecutionLocation == .localCoreAI {
             return CoreAIInferenceService.shared.isLoaded(as: activeModel.id)
         }
@@ -764,6 +784,10 @@ final class CodingAssistantService: ObservableObject {
     /// nominally a VLM.
     @MainActor
     private func refreshVisionChatCapability() {
+        if activeExecutionLocation == .externalCloud {
+            isVisionChatCapable = selectedAPITarget.map { $0.model.supportsImages || $0.provider.allowImages } ?? false
+            return
+        }
         let capabilities = runtimeCapabilities
         isVisionChatCapable =
             capabilities.supportsVision && capabilities.supportsSharedVisionRuntime
@@ -781,9 +805,17 @@ final class CodingAssistantService: ObservableObject {
     private var generateTask: Task<Void, Never>?
     private var pccGenerateTask: Task<Void, Never>?
     private var coreAIGenerateTask: Task<Void, Never>?
+    private var apiGenerateTask: Task<Void, Never>?
+    private var activeAPIRequestID: UUID?
+    private var activeAPIRequestFingerprint: String?
+    private var apiProviderObserver: NSObjectProtocol?
+    /// The chat host sets this to its persisted conversation ID for provider caching.
+    var apiConversationID = UUID()
+    private var temporaryAnalysisAPISelectionID: String?
     /// Single owner for drain-before-clear. Overlapping unload callers join
     /// this job instead of nilling `generateTask` and freeing a live runtime.
     private var cleanupTask: Task<Void, Never>?
+    private let loadCoordinator = ModelLoadCoordinator()
     /// Bumped by `stopGeneration`. A request parked waiting for a busy or
     /// loading runtime captures it and drops itself if Stop ran meanwhile,
     /// so a queued send can't start decoding after the user stopped.
@@ -811,6 +843,22 @@ final class CodingAssistantService: ObservableObject {
         activeExecutionLocation = ModelExecutionLocation.of(
             assistantModelID: AppSettings.shared.assistantModelID
         )
+        if activeExecutionLocation == .externalCloud { apiSelectionID = AppSettings.shared.assistantModelID }
+        refreshVisionChatCapability()
+        apiProviderObserver = NotificationCenter.default.addObserver(
+            forName: .apiProviderConfigurationsChanged, object: APIProviderStore.shared, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                self.objectWillChange.send()
+                self.refreshVisionChatCapability()
+                if let fingerprint = self.activeAPIRequestFingerprint,
+                   self.selectedAPITarget?.provider.privacyFingerprint != fingerprint
+                    || self.selectedAPITarget.map({ !APIProviderStore.shared.canUse($0.provider) }) != false {
+                    self.stopGeneration()
+                }
+            }
+        }
         // Listen for global memory warnings so we can shed the model
         // proactively before iOS Jetsam-kills us.
         memoryWarningObserver = NotificationCenter.default.addObserver(
@@ -833,6 +881,8 @@ final class CodingAssistantService: ObservableObject {
         generateTask?.cancel()
         pccGenerateTask?.cancel()
         coreAIGenerateTask?.cancel()
+        apiGenerateTask?.cancel()
+        if let apiProviderObserver { NotificationCenter.default.removeObserver(apiProviderObserver) }
         if let activePCCRequestID {
             ApplePrivateCloud.cancel(activePCCRequestID)
         }
@@ -849,18 +899,35 @@ final class CodingAssistantService: ObservableObject {
     @Published private(set) var activeModel: AssistantModel = AssistantModelCatalog.currentSelection()
 
     var activeSelectionID: String {
-        activeExecutionLocation == .applePrivateCloud
+        if activeExecutionLocation == .externalCloud { return apiSelectionID ?? "api:unavailable" }
+        return activeExecutionLocation == .applePrivateCloud
             ? ApplePrivateCloud.modelID
             : activeModel.id
     }
 
     var activeDisplayName: String {
-        activeExecutionLocation == .applePrivateCloud
+        if activeExecutionLocation == .externalCloud {
+            return selectedAPITarget.map { "\($0.model.name) · \($0.provider.name)" } ?? "API model unavailable"
+        }
+        return activeExecutionLocation == .applePrivateCloud
             ? ApplePrivateCloud.displayName
             : activeModel.displayName
     }
 
+    /// The compact chat picker shows the model; destination disclosures keep provider attribution.
+    var activeModelName: String {
+        if activeExecutionLocation == .externalCloud {
+            return selectedAPITarget?.model.name ?? "API model unavailable"
+        }
+        return activeDisplayName
+    }
+
     var canGenerateSelectedTarget: Bool {
+        if activeExecutionLocation == .externalCloud {
+            guard let target = selectedAPITarget else { return false }
+            return target.provider.hasConsent && APIProviderStore.shared.canUse(target.provider)
+                && apiProviderGenerationState != .generating
+        }
         if activeExecutionLocation == .applePrivateCloud {
             return AppSettings.shared.hasCurrentApplePCCPrivacyConsent
                 && applePrivateCloudStatus.canSend
@@ -870,6 +937,7 @@ final class CodingAssistantService: ObservableObject {
     }
 
     var isGeneratingSelectedTarget: Bool {
+        if activeExecutionLocation == .externalCloud { return apiProviderGenerationState == .generating }
         if activeExecutionLocation == .applePrivateCloud {
             return applePrivateCloudGenerationState == .generating
         }
@@ -877,6 +945,7 @@ final class CodingAssistantService: ObservableObject {
     }
 
     var selectedContextWindowTokens: Int {
+        if activeExecutionLocation == .externalCloud { return selectedAPITarget?.model.contextWindow ?? 0 }
         if activeExecutionLocation == .applePrivateCloud {
             return applePrivateCloudContextSize ?? 0
         }
@@ -891,6 +960,7 @@ final class CodingAssistantService: ObservableObject {
     /// The repo ID of the currently loaded model, or nil when nothing is
     /// resident. Used by LifecycleController for crash breadcrumbs.
     var activeModelRepoID: String? {
+        guard !activeExecutionLocation.isCloud else { return nil }
         switch state {
         case .ready, .generating:
             return activeModel.repoID
@@ -1147,10 +1217,11 @@ final class CodingAssistantService: ObservableObject {
         let languageLine = language.map { " Their device language is \($0)." } ?? ""
         let grounding = "Never invent citations, links, quotes, file contents, tool results, or live data such as news, prices or weather. If you don't know, say so."
 
-        var parts = [context.persona.trimmingCharacters(in: .whitespacesAndNewlines)]
+        var parts = [context.persona.trimmingCharacters(in: .whitespacesAndNewlines),
+                     AIContentPolicy.textInstructions]
         if compact {
             parts.append("""
-            You run privately on the user's device in OnDevice Max. Today is \(today). \
+            You are the assistant in OnDevice Max. Today is \(today). \
             Reply in the user's language.\(languageLine) Answer first and keep it short. \
             \(context.spoken ? "" : "Use short paragraphs and one list item per line. ")\(grounding)
             """)
@@ -1163,7 +1234,7 @@ final class CodingAssistantService: ObservableObject {
             rules.append("- For facts about the user, their files or current events, rely only on this conversation, attached files, and tool or web results. \(grounding)")
             parts.append("""
             Context:
-            - You are the assistant in OnDevice Max, running privately on the user's device.
+            - You are the assistant in OnDevice Max.
             - Today is \(today).
             - Reply in the language the user writes in.\(languageLine)
 
@@ -1215,13 +1286,17 @@ final class CodingAssistantService: ObservableObject {
         return [ChatMessage(role: .system, content: merged)] + messages.filter { $0.role != .system }
     }
 
+    nonisolated static func applyingContentPolicy(to messages: [ChatMessage]) -> [ChatMessage] {
+        AIContentPolicy.applyingTextInstructions(to: messages)
+    }
+
     // MARK: - Load
 
     /// Loads the currently selected Core AI pack through Apple's runtime while
     /// preserving the same service state machine the Assistant UI already
     /// observes for MLX/GGUF. The store can retain multiple packs on disk, but
     /// only the explicitly selected identity becomes the runtime resource root.
-    private func loadSelectedCoreAI() async {
+    private func loadSelectedCoreAI(loadID: UUID) async {
         switch state {
         case .loading, .generating: return
         default: break
@@ -1251,9 +1326,18 @@ final class CodingAssistantService: ObservableObject {
             return
         }
 
-        // Core AI is local and heavy — it must pass the same live
-        // RAM/thermal/low-power admission policy as MLX instead of bypassing
-        // residency protection merely because its executor is different.
+        // One heavy runtime at a time. Lens/voice stay part of the workbench,
+        // but their resident model must leave before Core AI specializes a
+        // multi-gigabyte pack.
+        MLXVisionService.shared.unload()
+        FastVLMService.shared.unload()
+        await LlamaCppVLMService.shared.unloadAndWaitForCleanup()
+        await CoreAIInferenceService.shared.unload()
+        await MLXGenerationGate.shared.clearCacheWhenIdle()
+        guard activeLoadID == loadID, !Task.isCancelled else { return }
+
+        // Sample after retiring every previous runtime; otherwise a healthy
+        // replacement is refused for memory that teardown is about to free.
         if let block = MemoryAdvisor.safetyBlocker(
             for: activeModel.id,
             allowTightFit: AppSettings.shared.largeModelLowMemoryEnabled,
@@ -1264,19 +1348,9 @@ final class CodingAssistantService: ObservableObject {
             return
         }
 
-        // One heavy runtime at a time. Lens/voice stay part of the workbench,
-        // but their resident model must leave before Core AI specializes a
-        // multi-gigabyte pack.
-        MLXVisionService.shared.unload()
-        FastVLMService.shared.unload()
-        await LlamaCppVLMService.shared.unloadAndWaitForCleanup()
-        await MLXGenerationGate.shared.clearCacheWhenIdle()
-
         state = .loading("Preparing \(selected.displayName) with Core AI…")
         tokenRate = 0
         estimatedInputTokens = 0
-        let loadID = UUID()
-        activeLoadID = loadID
         do {
             try await CoreAIInferenceService.shared.load()
             guard activeLoadID == loadID,
@@ -1359,7 +1433,7 @@ final class CodingAssistantService: ObservableObject {
     /// Loads the selected Edge0-8B checkpoint through the runtime-engine
     /// seam. Admission, draining other runtimes, and the service state
     /// machine stay identical to the MLX/GGUF path.
-    private func loadSelectedEdge0() async {
+    private func loadSelectedEdge0(loadID: UUID) async {
         switch state {
         case .loading, .generating: return
         default: break
@@ -1373,6 +1447,12 @@ final class CodingAssistantService: ObservableObject {
             )
             return
         }
+        // Pool sizing must use headroom after competing runtimes drain.
+        MLXVisionService.shared.unload()
+        FastVLMService.shared.unload()
+        await LlamaCppVLMService.shared.unloadAndWaitForCleanup()
+        await MLXGenerationGate.shared.clearCacheWhenIdle()
+        guard activeLoadID == loadID, !Task.isCancelled else { return }
         let is35B = Edge0ModelFamily.resolve(repoID: activeModel.repoID) == .qwen35MoE
         let poolSlots: Int
         let poolBytes: UInt64
@@ -1404,12 +1484,6 @@ final class CodingAssistantService: ObservableObject {
             poolBytes = budget.expertPoolBytes
         }
 
-        // One heavy runtime at a time, matching the MLX/GGUF path.
-        MLXVisionService.shared.unload()
-        FastVLMService.shared.unload()
-        await LlamaCppVLMService.shared.unloadAndWaitForCleanup()
-        await MLXGenerationGate.shared.clearCacheWhenIdle()
-
         state = .loading("Preparing \(activeModel.displayName)…")
         tokenRate = 0
         estimatedInputTokens = 0
@@ -1418,7 +1492,8 @@ final class CodingAssistantService: ObservableObject {
             let localModel = LocalModel(assistantModel: loadModel)
             let engine = try RuntimeEngineFactory.makeEngine(for: localModel)
             try await engine.load(model: localModel)
-            guard activeModel.id == loadModel.id, activeModel.runtime == .edge0MLX else {
+            guard activeLoadID == loadID, !Task.isCancelled,
+                  activeModel.id == loadModel.id, activeModel.runtime == .edge0MLX else {
                 await engine.unload()
                 return
             }
@@ -1430,6 +1505,7 @@ final class CodingAssistantService: ObservableObject {
                 category: "assistant"
             )
         } catch {
+            guard activeLoadID == loadID, !Task.isCancelled else { return }
             edge0Engine = nil
             state = .failed(error.localizedDescription)
             ToastCenter.shared.error(
@@ -1603,6 +1679,38 @@ final class CodingAssistantService: ObservableObject {
         reselectFromSettings: Bool = true,
         allowUnsafeMemoryLoad: Bool = false
     ) async {
+        // Automatic load requests can arrive while switchTo is still draining
+        // the previous model. The switch owns its explicit selection/load.
+        guard !isTransitioning || !reselectFromSettings else { return }
+        await loadCoordinator.run { [self] in
+            await performLoad(
+                allowStorageFallback: allowStorageFallback,
+                reselectFromSettings: reselectFromSettings,
+                allowUnsafeMemoryLoad: allowUnsafeMemoryLoad
+            )
+        }
+    }
+
+    private func performLoad(
+        allowStorageFallback: Bool,
+        reselectFromSettings: Bool,
+        allowUnsafeMemoryLoad: Bool
+    ) async {
+        guard !Task.isCancelled else { return }
+        // API selection never downloads a local fallback or sends a request on load.
+        if activeExecutionLocation == .externalCloud { refreshVisionChatCapability(); return }
+        let loadID = UUID()
+        activeLoadID = loadID
+        defer { if activeLoadID == loadID { activeLoadID = nil } }
+        if let cleanup = cleanupTask { await cleanup.value }
+        guard activeLoadID == loadID, !Task.isCancelled else { return }
+        let requested = Self.loadTarget(activeModel: activeModel,
+            savedDefault: AssistantModelCatalog.currentSelection(), reselectFromSettings: reselectFromSettings)
+        if let restriction = AppStoreModelPolicy.restriction(for: requested.repoID)
+            ?? AppStoreModelPolicy.restriction(for: requested.id) {
+            state = .failed(restriction)
+            return
+        }
         if activeExecutionLocation == .applePrivateCloud {
             await refreshApplePrivateCloudStatus()
             return
@@ -1614,7 +1722,7 @@ final class CodingAssistantService: ObservableObject {
                 savedDefault: AssistantModelCatalog.currentSelection(),
                 reselectFromSettings: reselectFromSettings
             )
-            await loadSelectedCoreAI()
+            await loadSelectedCoreAI(loadID: loadID)
             return
         }
 
@@ -1632,15 +1740,17 @@ final class CodingAssistantService: ObservableObject {
             activeModel = selectedModel
             if case .ready = state, sameLoadedModel { return }
             if edge0Engine != nil || ggufModel != nil || container != nil || generateTask != nil {
-                await unloadAndWaitForCleanup()
+                await unloadAndWaitForCleanup(preservingLoadID: loadID)
             }
-            await loadSelectedEdge0()
+            guard activeLoadID == loadID, !Task.isCancelled else { return }
+            await loadSelectedEdge0(loadID: loadID)
             return
         }
 
         // Resolve `model_type: nanbeige` before MLX reads config.json.
         // Registration is actor-isolated and idempotent.
         await NanbeigeMLXRegistration.register()
+        guard activeLoadID == loadID, !Task.isCancelled else { return }
 
         // Loading/generation cannot be re-entered. A `.ready` state is only a
         // no-op when its actual runtime still exists; a shared Lens container
@@ -1690,13 +1800,15 @@ final class CodingAssistantService: ObservableObject {
         if let cleanup = cleanupTask {
             await cleanup.value
         }
+        guard activeLoadID == loadID, !Task.isCancelled else { return }
         if edge0Engine != nil || ggufModel != nil || container != nil || generateTask != nil {
             Diagnostics.shared.breadcrumb(
                 "assistant reload draining resident runtime · footprint=\(MemoryAdvisor.physFootprint) · headroom=\(MemoryAdvisor.availableMemoryForModel)",
                 category: "assistant"
             )
-            await unloadAndWaitForCleanup()
+            await unloadAndWaitForCleanup(preservingLoadID: loadID)
         }
+        guard activeLoadID == loadID, !Task.isCancelled else { return }
 
         // The Lens runtime is the neutral owner for unified text+vision
         // packages. If it already has this model, attach instantly instead of
@@ -1704,6 +1816,7 @@ final class CodingAssistantService: ObservableObject {
         if let _ = LensInferenceLoop.shared.sharedContainer(for: activeModel.repoID) {
             FastVLMService.shared.unload()
             await LlamaCppVLMService.shared.unloadAndWaitForCleanup()
+            guard activeLoadID == loadID, !Task.isCancelled else { return }
             state = .ready
             refreshVisionChatCapability()
             Diagnostics.shared.breadcrumb(
@@ -1721,6 +1834,7 @@ final class CodingAssistantService: ObservableObject {
         FastVLMService.shared.unload()
         await LlamaCppVLMService.shared.unloadAndWaitForCleanup()
         await MLXGenerationGate.shared.clearCacheWhenIdle()
+        guard activeLoadID == loadID, !Task.isCancelled else { return }
 
         // Combined device-safety gate — covers RAM, live free memory, thermal
         // state, and low-power mode. Refuses outright when unsafe.
@@ -1828,8 +1942,6 @@ final class CodingAssistantService: ObservableObject {
                 return
             }
             let loadingModel = activeModel
-            let loadID = UUID()
-            activeLoadID = loadID
             do {
                 // Gemma 4 E4B uses recurrent + sliding-window state and its
                 // community quants abort while reserving the advertised 128K
@@ -1928,8 +2040,6 @@ final class CodingAssistantService: ObservableObject {
         let latch = VerbLatch(false)
 
         let loadingModel = activeModel
-        let loadID = UUID()
-        activeLoadID = loadID
 
         let isDualRole = DualRoleModelPolicy.isTextAndVision(repoID: loadingModel.repoID)
         let requiredVisionBytes = isDualRole
@@ -1983,6 +2093,9 @@ final class CodingAssistantService: ObservableObject {
         do {
             // Snapshot self-derived values up here so the gate's @Sendable
             // closure doesn't have to capture self for them.
+            if let directory = Self.preStagedDirectory(for: loadingModel) {
+                try ModelCheckpointCompatibility.validateMLXDirectory(directory)
+            }
             let modelConfig = Self.modelConfig(for: loadingModel)
             let loadFootprint = MemoryAdvisor.estimatedFootprint(for: loadingModel.id)
             let lowMemoryEnabled = AppSettings.shared.largeModelLowMemoryEnabled
@@ -1993,18 +2106,19 @@ final class CodingAssistantService: ObservableObject {
                 physicalMemoryBytes: ProcessInfo.processInfo.physicalMemory,
                 processCeilingBytes: MemoryAdvisor.processMemoryCeiling
             )
+            let loadCacheLimit = lowMemoryPolicy.cacheLimitBytes
+                ?? activeExecutionProfile.cacheLimitBytes
             // Gated so weight uploads can't race a concurrent MLXVision /
             // FastVLM load or another service's in-flight generate.
-            let loadedContainer = try await MLXGenerationGate.shared.run { [weak self, latch, loadID] in
+            try await MLXGenerationGate.shared.run { [weak self, latch, loadID] in
                 let previousMemoryLimit = MLX.Memory.memoryLimit
                 let previousCacheLimit = MLX.Memory.cacheLimit
                 if let limit = lowMemoryPolicy.memoryLimitBytes {
                     MLX.Memory.memoryLimit = limit
                 }
-                if let cache = lowMemoryPolicy.cacheLimitBytes {
-                    MLX.Memory.cacheLimit = cache
-                }
+                MLX.Memory.cacheLimit = loadCacheLimit
                 defer {
+                    mlxClearCache()
                     MLX.Memory.memoryLimit = previousMemoryLimit
                     MLX.Memory.cacheLimit = previousCacheLimit
                 }
@@ -2026,7 +2140,10 @@ final class CodingAssistantService: ObservableObject {
                 // shim Swift 6 flags "captured var 'self' in
                 // concurrently-executing code" at the Task closure.
                 let weakSelf = self
-                return try await LLMModelFactory.shared.loadContainer(
+                guard await MainActor.run(body: {
+                    weakSelf?.activeLoadID == loadID && !Task.isCancelled
+                }) else { throw MLXGenerationGate.Cancelled() }
+                var loadedContainer: ModelContainer? = try await LLMModelFactory.shared.loadContainer(
                     from: HubApiDownloader(),
                     configuration: modelConfig
                 ) { progress in
@@ -2065,21 +2182,32 @@ final class CodingAssistantService: ObservableObject {
                         weakSelf.state = .loading("\(verb) \(pct)%")
                     }
                 }
+                // Commit or discard while still owning the serial gate. A
+                // returned container would stay alive in the caller's task
+                // while another service starts loading or clearing the cache.
+                await MainActor.run { [weakSelf, loadedContainer] in
+                    guard let weakSelf, !Task.isCancelled,
+                          weakSelf.activeLoadID == loadID,
+                          weakSelf.activeModel.id == loadingModel.id else { return }
+                    weakSelf.container = loadedContainer
+                }
+                loadedContainer = nil
             }
-            guard activeLoadID == loadID, activeModel.id == loadingModel.id else {
+            guard activeLoadID == loadID, !Task.isCancelled,
+                  activeModel.id == loadingModel.id, container != nil else {
                 Diagnostics.shared.breadcrumb(
                     "discarded stale assistant load · \(loadingModel.id)",
                     category: "assistant"
                 )
                 await MLXGenerationGate.shared.clearCacheWhenIdle()
                 if activeLoadID == loadID {
+                    container = nil
                     activeLoadID = nil
                     if case .loading = state { state = .unloaded }
                 }
                 return
             }
             activeLoadID = nil
-            container = loadedContainer
             state = .ready
             refreshVisionChatCapability()
             let elapsedMs = Date().timeIntervalSince(loadStart) * 1000
@@ -2152,7 +2280,11 @@ final class CodingAssistantService: ObservableObject {
                 ToastCenter.shared.info(
                     "Loaded \(fallback.displayName) instead",
                     detail: "\(failedName) needs more storage. Switched to a model already on your device — free up space, then reselect it in the picker.")
-                await load(allowStorageFallback: false, reselectFromSettings: false)
+                // Stay inside the owner job; joining load() here would await
+                // this task itself and deadlock the storage fallback.
+                await performLoad(allowStorageFallback: false,
+                                  reselectFromSettings: false,
+                                  allowUnsafeMemoryLoad: false)
                 return
             }
 
@@ -2219,7 +2351,7 @@ final class CodingAssistantService: ObservableObject {
     /// Records whether background cleanup interrupted an explicit model load.
     /// Called before lifecycle cancellation changes the published state.
     func noteLifecycleInterruption() {
-        if case .loading = state {
+        if loadCoordinator.isLoading, !activeExecutionLocation.isCloud {
             resumeLoadAfterLifecycleInterruption = true
         }
     }
@@ -2229,14 +2361,10 @@ final class CodingAssistantService: ObservableObject {
     func resumeInterruptedLoadIfNeeded() async {
         guard resumeLoadAfterLifecycleInterruption else { return }
         resumeLoadAfterLifecycleInterruption = false
-        guard case .loading = state else {
-            state = .unloaded
-            await load()
-            return
-        }
-        // Cleanup may still be retiring the cancelled loader. The generation
-        // gate serializes this retry behind it so two model loads never overlap.
-        await MLXGenerationGate.shared.clearCacheWhenIdle()
+        // Join the entire cancelled loader, not only its Metal work. Otherwise
+        // an old completion can race the resumed selection or retain weights.
+        await unloadAndWaitForCleanup()
+        guard !Task.isCancelled else { return }
         state = .unloaded
         // Resume the model whose load was interrupted. It may be a
         // conversation-specific choice that intentionally differs from the
@@ -2313,6 +2441,16 @@ final class CodingAssistantService: ObservableObject {
         onError: (@Sendable (String) -> Void)? = nil
     ) {
         replyStartsInsideThinking = false
+        // Enforce the same app policy for API, voice, and background callers
+        // that do not use composeSystemPrompt. Keep retries idempotent and
+        // preserve the single leading system message required by templates.
+        let messages = Self.applyingContentPolicy(to: messages)
+        if activeExecutionLocation == .externalCloud {
+            generateWithAPIProvider(messages: messages, maxTokensOverride: maxTokensOverride,
+                                    jsonMode: jsonMode, resumeTruncatedReply: resumeTruncatedReply, onToken: onToken,
+                                    onComplete: onComplete, onError: onError)
+            return
+        }
         if activeExecutionLocation == .localCoreAI {
             generateWithCoreAI(
                 messages: messages,
@@ -2596,7 +2734,7 @@ final class CodingAssistantService: ObservableObject {
             repetitionPenalty: Float(repPenalty),
             presencePenalty: Float(presPenalty),
             frequencyPenalty: Float(freqPenalty),
-            prefillStepSize: executionProfile.prefillStepSize,
+            prefill: .init(stepSize: executionProfile.prefillStepSize, chunking: .remainder),
             seed: seed
         )
 
@@ -2861,6 +2999,8 @@ final class CodingAssistantService: ObservableObject {
         }
 
         let generationDirectory = Self.preStagedDirectory(for: activeModel)
+        // A setting change during a reply takes effect on the next reply.
+        let turboQuantEnabled = s.assistantTurboQuantEnabled
         let generationReserve = (s.showEdgeModels || s.largeModelLowMemoryEnabled)
             ? MemoryAdvisor.edgeHeadroomReserve : MemoryAdvisor.loadHeadroomReserve
         generateTask = Task {
@@ -3024,15 +3164,19 @@ final class CodingAssistantService: ObservableObject {
                             let tail = context.tokenizer.encode(text: resumeText, addSpecialTokens: false)
                             lmInput = LMInput(tokens: MLXArray(promptIDs + tail))
                         }
+                        let config: [String: Any]? = generationDirectory.flatMap { directory in
+                            guard let data = try? Data(contentsOf: directory.appendingPathComponent("config.json")) else {
+                                return nil
+                            }
+                            return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+                        }
                         // A load-time estimate cannot cover a later increase
                         // in response length. Recheck the actual tokenized
                         // prompt + requested output before allocating caches.
                         // Weights are already charged to live headroom.
-                        if lmInput.image == nil,
-                           let directory = generationDirectory,
-                           let data = try? Data(contentsOf: directory.appendingPathComponent("config.json")),
-                           let config = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                           let estimate = MLXModelMemoryEstimate.estimate(
+                        func admitGeneration(kvScheme: String? = nil) throws {
+                            guard lmInput.image == nil, let config,
+                                  let estimate = MLXModelMemoryEstimate.estimate(
                                 weights: 0, config: config,
                                 contextTokens: executionProfile.maxKVSize ?? Int(clamping: MemoryBytes.add(
                                     Int64(lmInput.text.tokens.size), Int64(max(0, safeMaxTokens))
@@ -3041,8 +3185,9 @@ final class CodingAssistantService: ObservableObject {
                                 kvBits: executionProfile.kvBits,
                                 prefillTokens: executionProfile.prefillStepSize,
                                 allocatorCache: Int64(lowMemoryPolicy.cacheLimitBytes ?? executionProfile.cacheLimitBytes),
-                                runtimeReserve: MemoryAdvisor.boundedKVRuntimeReserve
-                           ) {
+                                runtimeReserve: MemoryAdvisor.boundedKVRuntimeReserve,
+                                kvScheme: kvScheme
+                            ) else { return }
                             let needed = MemoryBytes.add(estimate.peak, generationReserve)
                             let memory = MemoryAdvisor.memorySnapshot
                             if needed > memory.available {
@@ -3052,13 +3197,42 @@ final class CodingAssistantService: ObservableObject {
                                 ])
                             }
                         }
-                        let cache = executionProfile.boundedCache(context.model.newCache(parameters: params))
-
+                        try admitGeneration()
+                        let cache = executionProfile.boundedCache(
+                            try context.model.newCache(parameters: params)
+                        )
+                        let cachePolicy = MLXAssistantKVCachePolicy.resolve(
+                            enabled: turboQuantEnabled,
+                            boundedCache: executionProfile.maxKVSize != nil,
+                            vision: useVisionChat || lmInput.image != nil,
+                            config: config
+                        )
+                        var configuredParameters = params
+                        // Check the factory's actual topology too. A dense model
+                        // name must never replace rotating or recurrent state.
+                        if cachePolicy.usesTurboQuant, !cache.isEmpty,
+                           cache.allSatisfy({ type(of: $0) == KVCacheSimple.self }) {
+                            do {
+                                try admitGeneration(kvScheme: cachePolicy.scheme)
+                                configuredParameters.kvBits = nil
+                                configuredParameters.kvScheme = cachePolicy.scheme
+                            } catch {
+                                // The experiment must not prevent a reply the
+                                // standard cache can safely generate. Recheck
+                                // live headroom before retaining that path.
+                                try admitGeneration()
+                                Diagnostics.shared.notice(
+                                    "assistant TurboQuant skipped: full-precision prefill exceeds available memory",
+                                    category: "assistant"
+                                )
+                            }
+                        }
+                        let generationParameters = configuredParameters
                         var tokenIndex = 0
                         for await generation in try MLXLMCommon.generate(
                             input: lmInput,
                             cache: cache,
-                            parameters: params,
+                            parameters: generationParameters,
                             context: context
                         ) {
                             if Task.isCancelled { break }
@@ -3197,7 +3371,7 @@ final class CodingAssistantService: ObservableObject {
             // the first Send performs specialization and then generation.
             if self.state != .ready
                 || !CoreAIInferenceService.shared.isLoaded(as: self.activeModel.id) {
-                await self.loadSelectedCoreAI()
+                await self.load(reselectFromSettings: false)
             }
             guard self.activeExecutionLocation == .localCoreAI,
                   self.state == .ready,
@@ -3793,6 +3967,129 @@ final class CodingAssistantService: ObservableObject {
 
     // MARK: - Stop
 
+    /// Selection alone never contacts the endpoint. Restored API selections
+    /// stay visibly unavailable if their provider was removed or consent changed.
+    @discardableResult
+    func selectAPIModel(_ selectionID: String, persistAsDefault: Bool = true,
+                        restoring: Bool = false) async -> Bool {
+        guard selectionID.hasPrefix("api:") else { return false }
+        if !restoring {
+            guard let target = APIProviderStore.shared.target(selectionID),
+                  target.provider.hasConsent, APIProviderStore.shared.canUse(target.provider) else {
+                ToastCenter.shared.error("API model unavailable", detail: APIProviderError.unavailable.localizedDescription)
+                return false
+            }
+        }
+        guard !loadCoordinator.isLoading, !isTransitioning else {
+            ToastCenter.shared.info("Model still loading", detail: "Wait for the local model load to finish before switching.")
+            return false
+        }
+        isTransitioning = true
+        defer { isTransitioning = false }
+        stopGeneration()
+        await unloadAndWaitForCleanup()
+        apiSelectionID = selectionID
+        activeExecutionLocation = .externalCloud
+        apiProviderGenerationState = .idle
+        refreshVisionChatCapability()
+        if persistAsDefault {
+            AppSettings.shared.hasPickedAssistantModel = true
+            AppSettings.shared.assistantModelID = selectionID
+        }
+        return true
+    }
+
+    private func generateWithAPIProvider(
+        messages: [ChatMessage], maxTokensOverride: Int?, jsonMode: Bool, resumeTruncatedReply: Bool,
+        onToken: @escaping @Sendable (String) -> Void,
+        onComplete: @escaping @Sendable (Double) -> Void,
+        onError: (@Sendable (String) -> Void)?
+    ) {
+        guard apiProviderGenerationState != .generating else {
+            onError?("The API provider is already generating."); onComplete(0); return
+        }
+        guard let target = selectedAPITarget, APIProviderStore.shared.canUse(target.provider) else {
+            onError?(APIProviderError.unavailable.localizedDescription); onComplete(0); return
+        }
+        guard target.provider.hasConsent else {
+            onError?(APIProviderError.consentRequired.localizedDescription); onComplete(0); return
+        }
+        let key: String
+        do { key = try APIProviderStore.shared.key(for: target.provider) }
+        catch { onError?(APIProviderClient.safeError(error)); onComplete(0); return }
+        let requestID = UUID()
+        activeAPIRequestID = requestID
+        activeAPIRequestFingerprint = target.provider.privacyFingerprint
+        apiProviderGenerationState = .generating
+        canResumeFromCache = false
+        lastGenerationHitTokenLimit = false
+        lastPromptTokens = 0
+        lastOutputTokens = 0
+        tokenRate = 0
+        let outputLimit = min(maxTokensOverride ?? effectiveOutputTokenCap, target.provider.maximumOutputTokens)
+        var effectiveMessages = messages
+        if resumeTruncatedReply {
+            effectiveMessages.append(ChatMessage(role: .user,
+                content: "Continue the previous incomplete answer from where it ended. Do not repeat earlier text."))
+        }
+        if jsonMode || AppSettings.shared.jsonModeEnabled {
+            let hint = AppSettings.shared.jsonSchemaHint
+            effectiveMessages.insert(ChatMessage(role: .system, content: hint.isEmpty
+                ? "Respond with valid JSON only, without markdown fences or commentary."
+                : "Respond with valid JSON matching this schema, without markdown fences or commentary:\n\(hint)"), at: 0)
+        }
+        let trimmed = Self.trimToInputBudget(effectiveMessages,
+            maxTokens: target.provider.inputBudget(for: target.model, outputTokens: outputLimit))
+        estimatedInputTokens = trimmed.reduce(0) { $0 + $1.contentForModel.count / 4 + 4 }
+        let wireMessages = trimmed.map { message -> APIChatMessage in
+            let role: APIChatMessage.Role = message.role == .system ? .system
+                : message.role == .assistant ? .assistant : .user
+            // Displayed reasoning is not a signed provider reasoning item and
+            // must not be replayed as such on a stateless request.
+            let text = role == .assistant
+                ? message.contentForModel.replacingOccurrences(of: "(?s)<think>.*?(</think>|$)", with: "", options: .regularExpression)
+                : message.contentForModel
+            let images = message.imageThumbnails.isEmpty
+                ? message.imageThumbnailData.map { [$0] } ?? [] : message.imageThumbnails.map(\.data)
+            return APIChatMessage(role: role, text: text, images: role == .user ? images : [])
+        }
+        let sessionID = apiConversationID
+        apiGenerateTask = Task { [weak self] in
+            guard let self else { onComplete(0); return }
+            let startedAt = Date()
+            NetworkActivityMonitor.shared.begin(label: "API chat")
+            defer { NetworkActivityMonitor.shared.end(label: "API chat") }
+            do {
+                let reply = try await APIProviderClient.shared.stream(provider: target.provider, model: target.model,
+                    key: key, messages: wireMessages, maximumOutputTokens: outputLimit, sessionID: sessionID,
+                    onText: onToken)
+                try Task.checkCancellation()
+                guard self.activeAPIRequestID == requestID else { return }
+                self.lastPromptTokens = reply.inputTokens
+                self.lastOutputTokens = reply.outputTokens
+                self.lastGenerationHitTokenLimit = reply.hitTokenLimit
+                self.tokenRate = Double(reply.outputTokens > 0 ? reply.outputTokens : reply.text.count / 4)
+                    / max(0.001, Date().timeIntervalSince(startedAt))
+                self.apiProviderGenerationState = .idle
+            } catch {
+                guard self.activeAPIRequestID == requestID else { return }
+                if Task.isCancelled || error is CancellationError || (error as? URLError)?.code == .cancelled {
+                    self.apiProviderGenerationState = .idle
+                } else {
+                    let detail = APIProviderClient.safeError(error)
+                    self.apiProviderGenerationState = .failed(detail)
+                    ToastCenter.shared.error("API request failed", detail: detail)
+                    onError?(detail)
+                }
+            }
+            guard self.activeAPIRequestID == requestID else { return }
+            self.activeAPIRequestID = nil
+            self.activeAPIRequestFingerprint = nil
+            self.apiGenerateTask = nil
+            onComplete(self.tokenRate)
+        }
+    }
+
     func stopGeneration() {
         stopEpoch &+= 1
         cancelBackendGeneration()
@@ -3819,6 +4116,7 @@ final class CodingAssistantService: ObservableObject {
     /// runtime first, and that must not drop the request waiting on it; the
     /// local API uses it after a stream finishes normally.
     func cancelBackendGeneration() {
+        apiGenerateTask?.cancel()
         if let activePCCRequestID {
             ApplePrivateCloud.cancel(activePCCRequestID)
         }
@@ -3845,6 +4143,7 @@ final class CodingAssistantService: ObservableObject {
         let inflight = generateTask
         let pccInflight = pccGenerateTask
         let coreAIInflight = coreAIGenerateTask
+        let apiInflight = apiGenerateTask
         stopGeneration()
         Diagnostics.shared.breadcrumb(
             "assistant inference cancel requested · slot=assistant · model=\(activeModel.id)",
@@ -3863,6 +4162,7 @@ final class CodingAssistantService: ObservableObject {
         if let coreAIInflight {
             _ = await coreAIInflight.value
         }
+        if let apiInflight { await apiInflight.value }
         Diagnostics.shared.breadcrumb(
             "assistant inference drained · slot=assistant · model=\(activeModel.id)",
             category: "lifecycle"
@@ -3878,6 +4178,7 @@ final class CodingAssistantService: ObservableObject {
         // `mlx::core::gpu::check_error` and SIGABRTed. Wait for the
         // in-flight task to actually end, THEN flush the buffer pool.
         activeLoadID = nil
+        loadCoordinator.cancel()
         state = .unloaded
         refreshVisionChatCapability()
         Task { @MainActor in
@@ -3888,11 +4189,27 @@ final class CodingAssistantService: ObservableObject {
     /// Async variant for callers that need deterministic memory
     /// reclamation before proceeding with another large model load.
     func unloadAndWaitForCleanup() async {
+        await unloadAndWaitForCleanup(preservingLoadID: nil)
+    }
+
+    /// A retry may reclaim a failed resident runtime from inside the load job.
+    /// External teardown instead cancels and joins that job before releasing
+    /// resources. Never make a load await a cleanup that is awaiting that load.
+    private func unloadAndWaitForCleanup(preservingLoadID: UUID?) async {
+        let inflightLoad: Task<Void, Never>?
+        if let preservingLoadID {
+            guard activeLoadID == preservingLoadID, !Task.isCancelled else { return }
+            inflightLoad = nil
+        } else {
+            activeLoadID = nil
+            inflightLoad = loadCoordinator.cancel()
+        }
         if let existing = cleanupTask {
             await existing.value
             return
         }
         let job = Task { @MainActor in
+            await inflightLoad?.value
             await self.performUnloadCleanup()
         }
         cleanupTask = job
@@ -3913,7 +4230,7 @@ final class CodingAssistantService: ObservableObject {
         let inflight = generateTask
         let pccInflight = pccGenerateTask
         let coreAIInflight = coreAIGenerateTask
-        activeLoadID = nil
+        let apiInflight = apiGenerateTask
         cancelBackendGeneration()
         if let inflight {
             _ = await inflight.value
@@ -3924,9 +4241,14 @@ final class CodingAssistantService: ObservableObject {
         if let coreAIInflight {
             _ = await coreAIInflight.value
         }
+        if let apiInflight { await apiInflight.value }
         generateTask = nil
         pccGenerateTask = nil
         coreAIGenerateTask = nil
+        apiGenerateTask = nil
+        activeAPIRequestID = nil
+        activeAPIRequestFingerprint = nil
+        apiProviderGenerationState = .idle
         await CoreAIInferenceService.shared.unload()
         if let engine = edge0Engine {
             await engine.unload()
@@ -3982,7 +4304,7 @@ final class CodingAssistantService: ObservableObject {
         // while that work is active used to let a stale multi-GB load continue
         // behind the newly selected model and made background cleanup wait on
         // it. Keep the current selection stable until the load completes.
-        if case .loading = state {
+        if loadCoordinator.isLoading {
             ToastCenter.shared.info(
                 "Model still loading",
                 detail: "Wait for the current load to finish before choosing another model."
@@ -4086,7 +4408,7 @@ final class CodingAssistantService: ObservableObject {
                 AppSettings.shared.assistantModelID = previousDefaultModelID
                 AppSettings.shared.hasPickedAssistantModel = previouslyPickedDefault
             }
-            guard previousModel.id != model.id else { return }
+            guard previousModel.id != model.id || previousExecutionLocation.isCloud else { return }
             activeModel = previousModel
             activeExecutionLocation = previousExecutionLocation
             state = .unloaded
@@ -4113,6 +4435,7 @@ final class CodingAssistantService: ObservableObject {
         }
 
         let original = activeModel
+        temporaryAnalysisAPISelectionID = activeExecutionLocation == .externalCloud ? apiSelectionID : nil
         await unloadAndWaitForCleanup()
         activeModel = model
         activeExecutionLocation = ModelExecutionLocation.of(
@@ -4121,9 +4444,9 @@ final class CodingAssistantService: ObservableObject {
         await load(allowStorageFallback: false, reselectFromSettings: false)
         guard case .ready = state else {
             activeModel = original
-            activeExecutionLocation = ModelExecutionLocation.of(
-                assistantModelID: original.id
-            )
+            activeExecutionLocation = ModelExecutionLocation.of(assistantModelID: temporaryAnalysisAPISelectionID ?? original.id)
+            temporaryAnalysisAPISelectionID = nil
+            refreshVisionChatCapability()
             return nil
         }
         return original
@@ -4135,10 +4458,10 @@ final class CodingAssistantService: ObservableObject {
     func finishTemporaryAnalysis(restoring model: AssistantModel) async {
         await unloadAndWaitForCleanup()
         activeModel = model
-        activeExecutionLocation = ModelExecutionLocation.of(
-            assistantModelID: model.id
-        )
+        activeExecutionLocation = ModelExecutionLocation.of(assistantModelID: temporaryAnalysisAPISelectionID ?? model.id)
+        temporaryAnalysisAPISelectionID = nil
         state = .unloaded
+        refreshVisionChatCapability()
     }
 
     /// Restore `model` as the active selection WITHOUT loading it.
@@ -4152,6 +4475,7 @@ final class CodingAssistantService: ObservableObject {
         activeExecutionLocation = ModelExecutionLocation.of(
             assistantModelID: model.id
         )
+        refreshVisionChatCapability()
     }
 
     // MARK: - LoRA Adapter Support (Feature #9)

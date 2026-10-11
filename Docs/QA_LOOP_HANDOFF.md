@@ -32,6 +32,21 @@ other tasks: compact `D0EDAD87-10C5-4047-9963-2352D4370383`, large
 inference, camera or audio evidence. Keep builds separate from keyboard-heavy
 UI checks; concurrent compilation has caused dropped simulator key events.
 
+### 2026-10-02: installed Core AI pack removal
+
+Catalog and imported Core AI packs expose **Delete model** in Models → On device
+→ pack details, using the existing native confirmation. Both the workbench and
+legacy pack manager call `CoreAIDownloadCenter.handleDeletion`. Removal waits for
+download replacement, Assistant/classifier operations and an existing runtime
+unload before deleting the pack; other installed packs remain available.
+
+The focused checks passed: 33 store/classifier tests, three model-library
+contracts, two UI confirmation/cancel/download-again flows, repository validation
+and the generic iOS Release compile gate. Evidence is in the ignored
+`build/coreai-removal-evidence` directory. No real downloaded pack was deleted
+for testing. UI fixtures exercise the production package; Core AI SDK inference
+still needs a physical iPhone.
+
 ### Round 2: session ownership and refinement
 
 See [ROUND2_IMPLEMENTATION.md](ROUND2_IMPLEMENTATION.md) for the implementation,

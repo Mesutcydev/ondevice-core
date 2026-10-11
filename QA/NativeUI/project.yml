@@ -24,11 +24,50 @@ targets:
         LSSupportsOpeningDocumentsInPlace: true
     sources:
       - path: ReviewApp.swift
+      - path: AgentChatReview.swift
+      - path: APIProviderReview.swift
+      - path: GitHubReview.swift
+      - path: ../../IOSLocalLLM/Models/GitHubWorkspace.swift
+      - path: ../../IOSLocalLLM/Services/GitHubClient.swift
+      - path: ../../IOSLocalLLM/Services/RepositorySecretScanner.swift
+      - path: ../../IOSLocalLLM/Services/GitHubDraftProtection.swift
+      - path: ../../IOSLocalLLM/Services/GitHubConnectionStore.swift
+      - path: ../../IOSLocalLLM/Services/GitHubWorkspaceService.swift
+      - path: ../../IOSLocalLLM/Services/AssistantToolCallParser.swift
+      - path: ../../IOSLocalLLM/Views/GitHubWorkspaceView.swift
+      - path: ../../IOSLocalLLM/Models/APIProviderConfiguration.swift
+      - path: ../../IOSLocalLLM/Services/APIProviderStore.swift
+      - path: ../../IOSLocalLLM/Services/APIProviderClient.swift
+      - path: ../../IOSLocalLLM/Services/NetworkActivityMonitor.swift
+      - path: ../../IOSLocalLLM/Views/APIProvidersView.swift
+      - path: ../../IOSLocalLLM/Views/Assistant/AssistantActivity.swift
+      - path: ../../IOSLocalLLM/Views/Assistant/AssistantToolPresentation.swift
+      - path: ../../IOSLocalLLM/Services/ParentalControlManager.swift
+      - path: ../../IOSLocalLLM/Models/AppStoreModelPolicy.swift
+      - path: ../../IOSLocalLLM/Models/AIContentPolicy.swift
+      - path: ../../IOSLocalLLM/Models/LegalDocuments.swift
+      - path: ../../IOSLocalLLM/Views/Legal/ContentConcernView.swift
+      - path: ../../IOSLocalLLM/Resources/AuditedModelRevisions.json
+      - path: ../../IOSLocalLLM/Views/ParentalControlsView.swift
+      - path: ../../IOSLocalLLM/Models/ShareInbox.swift
+      - path: ../../IOSLocalLLMShareExtension/ShareViewController.swift
       - path: HomeConcepts.swift
       - path: ../../IOSLocalLLM/Views/AppearanceSettingsContent.swift
+      - path: ../../IOSLocalLLM/Views/ExperimentalKVCacheSettingsRow.swift
+      - path: ../../IOSLocalLLM/Services/MLXAssistantKVCachePolicy.swift
       - path: ../../IOSLocalLLM/Views/LocalModelImportPicker.swift
       - path: ../../IOSLocalLLM/Assets.xcassets
       - path: HostStubs.swift
+      - path: ClassifierCatalogStubs.swift
+      - path: ClassifierFixture.swift
+      - path: Fixtures/laya-metadata.json
+      - path: ../../IOSLocalLLM/Services/CoreAIClassifierAdapter.swift
+      - path: ../../IOSLocalLLM/Services/CoreAIClassifierWorkbench.swift
+      - path: ../../IOSLocalLLM/Services/CoreAIInferenceError.swift
+      - path: ../../IOSLocalLLM/Services/ClassifierResultExport.swift
+      - path: ../../IOSLocalLLM/Views/CoreAIClassifierWorkbenchView.swift
+      - path: ../../IOSLocalLLM/Models/CoreAIZooCatalog.swift
+      - path: ../../IOSLocalLLM/Services/CoreAIModelLibrary.swift
       - path: ../../IOSLocalLLM/Views/Bridge/LocalAPIServerView.swift
       - path: ../../IOSLocalLLM/Views/HomeView.swift
       - path: ../../IOSLocalLLM/Views/ChatResponseActions.swift
@@ -41,6 +80,9 @@ targets:
       - path: ../../IOSLocalLLM/Models/PresentationRequestLifetime.swift
       - path: ../../IOSLocalLLM/Models/CaptureSessionDemand.swift
       - path: ../../IOSLocalLLM/Models/ChatMessage.swift
+      - path: ../../IOSLocalLLM/Models/AssistantOutputSanitizer.swift
+      - path: ../../IOSLocalLLM/Models/AssistantReplyPresentation.swift
+      - path: ../../IOSLocalLLM/Models/StudioTextBlocks.swift
       - path: ../../IOSLocalLLM/Models/TokenLogprob.swift
       - path: ../../IOSLocalLLM/Models/ApplePrivateCloudTypes.swift
       - path: ../../IOSLocalLLM/Services/EntitlementsProbe.swift

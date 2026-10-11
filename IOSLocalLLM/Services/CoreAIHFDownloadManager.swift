@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import CryptoKit
 
 // Download requests identify the current app and marketing version.
@@ -89,6 +90,15 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
     }
 
     func start() {
+        if let restriction = AppStoreModelPolicy.restriction(for: repoID) {
+            state = .failed(restriction)
+            return
+        }
+        if AppStoreModelPolicy.isPublicDistribution,
+           AppStoreModelPolicy.downloadRevision(for: repoID) != revision {
+            state = .failed(AppStoreModelPolicy.missingRevisionMessage)
+            return
+        }
         guard runTask == nil else { return }
         pauseRequested = false
         if state == .paused, stagingRoot != nil, !files.isEmpty {
@@ -154,6 +164,15 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
         currentFile = ""
         speedMBps = 0
         statusDetail = ""
+    }
+
+    func cancelAndWaitForCleanup() async {
+        let pending = runTask
+        pauseRequested = false
+        activeTransfer?.cancel()
+        pending?.cancel()
+        await pending?.value
+        cancel()
     }
 
     private func run() async {
@@ -292,6 +311,7 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
             if replacedActiveCoreAI {
                 await assistant.unloadAndWaitForCleanup()
             }
+            try Task.checkCancellation()
             let resources = stagingRoot.appendingPathComponent("resources", isDirectory: true)
             try CoreAIModelStore.shared.installDownloadedModel(
                 from: resources,
@@ -313,7 +333,7 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
             Diagnostics.shared.breadcrumb("Core AI pack installed · \(displayName)", category: "coreai")
             ToastCenter.shared.success(
                 "Installed \(displayName)",
-                detail: CoreAIZooCatalog.isTextGenerationPack(id: id)
+                detail: CoreAIModelStore.shared.installedModel(id: id)?.assistantModel != nil
                     ? "Select it from Assistant to use the Core AI runtime."
                     : "This pack is installed but is not a chat model."
             )
@@ -934,6 +954,14 @@ final class CoreAIDownloadCenter: ObservableObject {
     static let shared = CoreAIDownloadCenter()
 
     @Published private(set) var downloads: [CoreAIHFDownloadManager] = []
+    private var observations: [String: AnyCancellable] = [:]
+    private var removingIDs: Set<String> = []
+
+    private func observe(_ manager: CoreAIHFDownloadManager) {
+        observations[manager.id] = manager.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
+    }
 
     func existing(id: String) -> CoreAIHFDownloadManager? {
         downloads.first(where: { $0.id == id })
@@ -942,6 +970,7 @@ final class CoreAIDownloadCenter: ObservableObject {
     func manager(for model: CoreAIZooModel) -> CoreAIHFDownloadManager {
         if let existing = existing(id: model.id) { return existing }
         let created = CoreAIHFDownloadManager(model: model)
+        observe(created)
         downloads.insert(created, at: 0)
         objectWillChange.send()
         return created
@@ -960,13 +989,59 @@ final class CoreAIDownloadCenter: ObservableObject {
             pathPrefix: pathPrefix,
             displayName: displayName ?? repoID
         )
+        observe(created)
         downloads.insert(created, at: 0)
         objectWillChange.send()
         return created
     }
 
     func start(model: CoreAIZooModel) {
+        guard !removingIDs.contains(model.id) else { return }
         manager(for: model).start()
+    }
+
+    /// Both model-library details and the pack manager use this path. Never
+    /// unlink a pack while a download replacement or runtime still owns it.
+    func handleDeletion(id: String) {
+        let store = CoreAIModelStore.shared
+        guard let installed = store.installedModel(id: id) else {
+            ToastCenter.shared.error("Couldn’t remove Core AI pack", detail: "This pack is no longer installed.")
+            return
+        }
+        guard removingIDs.insert(installed.id).inserted else { return }
+        Task {
+            defer { removingIDs.remove(installed.id) }
+            await existing(id: installed.id)?.cancelAndWaitForCleanup()
+
+            let selectionID = installed.assistantSelectionID
+            let assistant = CodingAssistantService.shared
+            if assistant.activeExecutionLocation == .localCoreAI,
+               assistant.activeModel.id == selectionID {
+                await assistant.adoptSelectionWithoutLoading(AssistantModelCatalog.presets[0])
+            }
+            let workbench = CoreAIClassifierHost.workbench
+            if workbench.activeModel?.id == selectionID || (workbench.selectedModelID == selectionID && workbench.phase.busy) {
+                await workbench.unloadAndWaitForCleanup()
+            }
+            if workbench.selectedModelID == selectionID { workbench.selectedModelID = "" }
+            let runtime = CoreAIInferenceService.shared
+            if runtime.isUsingPack(selectionID) {
+                await runtime.unload()
+            }
+            do {
+                try store.removeModel(id: installed.id)
+                let settings = AppSettings.shared
+                if settings.assistantModelID == selectionID {
+                    settings.assistantModelID = AssistantModelCatalog.presets[0].id
+                    settings.hasPickedAssistantModel = false
+                }
+                downloads.removeAll { $0.id == installed.id }
+                observations.removeValue(forKey: installed.id)
+                ToastCenter.shared.success("Core AI pack removed", detail: installed.manifest.displayName)
+            } catch {
+                ToastCenter.shared.error("Couldn’t remove Core AI pack", detail: error.localizedDescription)
+            }
+        }
     }
 
     func removeFinished() {
@@ -975,6 +1050,8 @@ final class CoreAIDownloadCenter: ObservableObject {
             if case .idle = $0.state { return true }
             return false
         }
+        let retainedIDs = Set(downloads.map(\.id))
+        observations = observations.filter { retainedIDs.contains($0.key) }
         objectWillChange.send()
     }
 }

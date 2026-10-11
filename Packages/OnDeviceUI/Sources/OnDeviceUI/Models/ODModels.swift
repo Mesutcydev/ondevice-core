@@ -3,7 +3,7 @@ import Foundation
 /// Workspace identifiers retained for the host's camera/audio residency lifecycle.
 /// Navigation is now provided by the sidebar, not a tab bar.
 public enum ODTab: String, CaseIterable, Identifiable, Hashable {
-    case home, chat, lens, voice, models, imageStudio, device, apiServer
+    case home, chat, lens, voice, models, classifiers, imageStudio, device, apiServer
     public var id: String { rawValue }
     public var title: String { self == .apiServer ? "API server" : self == .home ? "Chats" : self == .imageStudio ? "Image studio" : rawValue.capitalized }
     public var symbol: String {
@@ -13,6 +13,7 @@ public enum ODTab: String, CaseIterable, Identifiable, Hashable {
         case .lens: return "camera"
         case .voice: return "waveform"
         case .models: return "cube"
+        case .classifiers: return "checklist"
         case .imageStudio: return "photo"
         case .device: return "iphone"
         case .apiServer: return "network"
@@ -21,11 +22,12 @@ public enum ODTab: String, CaseIterable, Identifiable, Hashable {
 }
 
 public enum ODModelKind: String, CaseIterable, Identifiable, Hashable {
-    case language, vision, voice, image, utility
+    case language, classifier, vision, voice, image, utility
     public var id: String { rawValue }
     public var title: String {
         switch self {
         case .language: return "Assistant"
+        case .classifier: return "Classifiers"
         case .vision: return "Lens"
         case .voice: return "Voice"
         case .image: return "Image"
@@ -35,6 +37,7 @@ public enum ODModelKind: String, CaseIterable, Identifiable, Hashable {
     public var symbol: String {
         switch self {
         case .language: return "brain"
+        case .classifier: return "checklist"
         case .vision: return "eye"
         case .voice: return "waveform"
         case .image: return "photo"
@@ -66,6 +69,7 @@ public struct ODModel: Identifiable, Equatable {
     public var isDefault: Bool
     public var estimatedMemoryBytes: Int64?
     public var downloadStatus: String?
+    public var downloadDetail: String?
     public var downloadProgress: Double?
     public var isDownloadPaused: Bool
     public var availableCommands: [ODModelCommand]?
@@ -75,7 +79,7 @@ public struct ODModel: Identifiable, Equatable {
                 isInstalled: Bool = true, isDefault: Bool = false,
                 isSelectable: Bool = true, unavailableReason: String? = nil,
                 availableCommands: [ODModelCommand]? = nil, isLibraryEntry: Bool = true,
-                downloadStatus: String? = nil, downloadProgress: Double? = nil, estimatedMemoryBytes: Int64? = nil,
+                downloadStatus: String? = nil, downloadDetail: String? = nil, downloadProgress: Double? = nil, estimatedMemoryBytes: Int64? = nil,
                 isDownloadPaused: Bool = false, summary: String? = nil, vendor: String? = nil,
                 badges: [String] = [], downloadSizeLabel: String? = nil) {
         self.id = id
@@ -95,6 +99,7 @@ public struct ODModel: Identifiable, Equatable {
         self.isLibraryEntry = isLibraryEntry
         self.availableCommands = availableCommands
         self.downloadStatus = downloadStatus
+        self.downloadDetail = downloadDetail
         self.downloadProgress = downloadProgress.flatMap {
             $0.isFinite ? min(1, max(0, $0)) : nil
         }

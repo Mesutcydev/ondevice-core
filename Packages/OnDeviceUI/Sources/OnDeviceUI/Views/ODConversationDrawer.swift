@@ -66,6 +66,7 @@ private struct ODSidebarDestinations: View {
             ("Voice", "waveform", .voice, "voice"),
             ("Image studio", "photo", .imageStudio, "imageStudio"),
             ("Models", "cube", .models, "models"),
+            ("Classifiers", "checklist", .classifiers, "classifiers"),
             ("Device", "iphone", .device, "device"),
         ]
         if store.capabilities.canOpenAPIServer { items.append(("API server", "network", .apiServer, "apiServer")) }

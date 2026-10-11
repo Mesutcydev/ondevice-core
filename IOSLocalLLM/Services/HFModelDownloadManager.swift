@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import CryptoKit
+import UIKit
 
 extension Notification.Name {
     static let hfModelDownloadCompleted = Notification.Name("hfModelDownloadCompleted")
@@ -39,6 +40,8 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
     /// Each entry is matched as a prefix (e.g. `"kitten_tts_nano.mlpackage/"`)
     /// OR exact equality (e.g. `"voices.npz"`).
     var fileAllowlist: [String]?
+    /// Enabled only by the curated, pinned 35B catalog entry.
+    var automaticallyRepackEdge035B = false
 
     // MARK: - Published state
 
@@ -49,6 +52,7 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
     @Published private(set) var currentFile: String = ""
     @Published private(set) var filesDone: Int = 0
     @Published private(set) var filesTotal: Int = 0
+    @Published private(set) var isPreparingModel = false
 
     /// Structured category for the most-recent failure. Cleared when
     /// a new run starts. Catalog UI branches on this to decide whether
@@ -89,6 +93,19 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
 
     private var downloadTask: Task<Void, Never>?
     private var pendingInterruption: Task<Void, Never>?
+    private var preparationObservers = Set<AnyCancellable>()
+    private var preparationRetry: Task<Void, Never>?
+    private var preparationWorker: Task<Void, Error>?
+    private var preparationPreferenceKey: String { pausePreferenceKey + "-preparation" }
+    private var preparationAutoResumeKey: String { pausePreferenceKey + "-preparation-auto-resume" }
+    private var preparesEdge035B: Bool {
+        automaticallyRepackEdge035B && repoID == Edge0ModelFamily.qwen35MoERepoID
+            && Edge0ModelFamily.qwen35MoERepackRevisions.contains(branch)
+    }
+    private struct PreparationPaused: Error, LocalizedError {
+        let message: String
+        var errorDescription: String? { message }
+    }
     private var pausePreferenceKey: String {
         "hf-download-paused-\(SHA256.hash(data: Data(destination.path.utf8)).map { String(format: "%02x", $0) }.joined())"
     }
@@ -103,7 +120,7 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
     ) {
         self.id          = repoID
         self.repoID      = repoID
-        self.branch      = branch
+        self.branch      = AppStoreModelPolicy.downloadRevision(for: repoID, fallback: branch) ?? branch
         self.destination = destination
         self.fileAllowlist = fileAllowlist
         self.state = UserDefaults.standard.bool(forKey: pausePreferenceKey) ? .paused : .idle
@@ -112,6 +129,14 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
     // MARK: - Public API
 
     func start() {
+        if let restriction = AppStoreModelPolicy.restriction(for: repoID) {
+            state = .failed(restriction)
+            return
+        }
+        guard AppStoreModelPolicy.downloadRevision(for: repoID, fallback: branch) != nil else {
+            state = .failed(AppStoreModelPolicy.missingRevisionMessage)
+            return
+        }
         guard !state.isActive else { return }
         UserDefaults.standard.removeObject(forKey: pausePreferenceKey)
         state = .enumerating
@@ -131,14 +156,17 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
 
     func pause() {
         guard state.isActive else { return }
-        downloadTask?.cancel()
+        let running = downloadTask
+        running?.cancel()
         downloadTask = nil
         state = .paused
         UserDefaults.standard.set(true, forKey: pausePreferenceKey)
+        UserDefaults.standard.removeObject(forKey: preparationAutoResumeKey)
         let priorInterruption = pendingInterruption
         pendingInterruption = Task {
             await priorInterruption?.value
             await BackgroundDownloadCoordinator.shared.pauseTasks(matching: destination.path)
+            await running?.value
         }
         DownloadLiveActivityManager.shared.pause(repoID: repoID)
     }
@@ -156,9 +184,12 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
     }
 
     func cancel() {
-        downloadTask?.cancel()
+        let running = downloadTask
+        running?.cancel()
         downloadTask = nil
         UserDefaults.standard.removeObject(forKey: pausePreferenceKey)
+        UserDefaults.standard.removeObject(forKey: preparationPreferenceKey)
+        UserDefaults.standard.removeObject(forKey: preparationAutoResumeKey)
         // Cancelling is a user-initiated ABANDON (the UI cancel buttons call
         // this). A multi-file fetch leaves its already-completed files in
         // `destination`; left behind, they sit forever as an .idle,
@@ -171,6 +202,7 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
         pendingInterruption = Task { @MainActor in
             await priorInterruption?.value
             await BackgroundDownloadCoordinator.shared.cancelTasks(matching: destination.path)
+            await running?.value
             self.removeTrackedFiles()
             self.reset()
         }
@@ -178,6 +210,9 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
     }
 
     func delete() throws {
+        guard !isPreparingModel || (!state.isActive && preparationWorker == nil) else {
+            throw PreparationPaused(message: "Pause model preparation before deleting it.")
+        }
         UserDefaults.standard.removeObject(forKey: pausePreferenceKey)
         cancelDownloadTasks()
         // Allowlisted downloads share their destination root with sibling
@@ -191,6 +226,7 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
             try FileManager.default.removeItem(at: destination)
         }
         reset()
+        clearPreparationPreferences()
     }
 
     /// Make the curated destination safe for a validated local import. Wait
@@ -206,6 +242,15 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
         await interruption?.value
         await BackgroundDownloadCoordinator.shared.cancelTasks(matching: destination.path)
         await running?.value
+        if repoID == Edge0ModelFamily.qwen35MoERepoID {
+            if FileManager.default.fileExists(atPath: destination.appendingPathComponent(Edge0_35BRepackedExperts.manifestName).path) {
+                _ = try Edge0_35BModelArtifacts.validateInstall(directory: destination)
+                try Edge0_35BRepacker.cleanCommittedOriginal(in: destination)
+            } else {
+                try Edge0_35BRepacker.discardStaging(in: destination)
+            }
+        }
+        clearPreparationPreferences()
         UserDefaults.standard.removeObject(forKey: pausePreferenceKey)
         if FileManager.default.fileExists(atPath: destination.path) {
             try FileManager.default.removeItem(at: destination)
@@ -222,6 +267,13 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
     /// tracked paths so sibling variants sharing the same destination root
     /// survive.
     func redownload() {
+        if isPreparingModel {
+            // Drain the writer before deleting or restarting. A queued start()
+            // waits for pendingInterruption, just as transfer resume does.
+            cancel()
+            start()
+            return
+        }
         UserDefaults.standard.removeObject(forKey: pausePreferenceKey)
         cancelDownloadTasks()
         removeTrackedFiles()
@@ -234,9 +286,47 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
         // refreshAllStates() fires on every foreground transition, and without
         // this guard a partially-completed download would flip to .ready as
         // soon as the user backgrounds and returns to the app.
-        if state.isActive { return }
+        if state.isActive || (isPreparingModel && preparationWorker != nil) { return }
 
         let fm = FileManager.default
+        // Repacked imports replace the original four download shards. Their
+        // readiness comes from the native release validator, not that allowlist.
+        // Keep the download-active guard above: partial transfers never become ready.
+        if repoID == Edge0ModelFamily.qwen35MoERepoID,
+           fm.fileExists(atPath: destination.appendingPathComponent(Edge0_35BRepackedExperts.manifestName).path) {
+            let valid = (try? Edge0_35BModelArtifacts.validateInstall(directory: destination)) != nil
+            state = valid ? .ready
+                : (UserDefaults.standard.bool(forKey: pausePreferenceKey) ? .paused : .idle)
+            if valid {
+                let names = Edge0_35BModelArtifacts.repackedRequiredFiles
+                totalBytes = names.reduce(0) { total, name in
+                    let size = try? fm.attributesOfItem(atPath: destination.appendingPathComponent(name).path)[.size] as? NSNumber
+                    return total + (size?.int64Value ?? 0)
+                }
+                downloadedBytes = totalBytes
+                filesTotal = names.count
+                filesDone = names.count
+                progress = 1
+                UserDefaults.standard.removeObject(forKey: pausePreferenceKey)
+                clearPreparationPreferences()
+                // Atomic exchange may have completed just before termination.
+                // Cleanup only the old directory identified by our commit receipt.
+                if Edge0_35BRepacker.hasPendingPreparation(in: destination)
+                    || fm.fileExists(atPath: destination.appendingPathComponent(Edge0_35BRepacker.receiptName).path) {
+                    try? Edge0_35BRepacker.cleanCommittedOriginal(in: destination)
+                }
+            }
+            return
+        }
+        if preparesEdge035B && (UserDefaults.standard.bool(forKey: preparationPreferenceKey)
+            || Edge0_35BRepacker.hasPendingPreparation(in: destination)) {
+            isPreparingModel = true
+            state = .paused
+            if currentFile.isEmpty { currentFile = "Resume to finish preparing this model." }
+            installPreparationObservers()
+            resumePreparationIfPossible()
+            return
+        }
         let expectedFiles = expectedSizesOnDisk()
         if fileAllowlist == nil && !expectedFiles.isEmpty {
             // A completed multi-file download records every known-size path
@@ -444,6 +534,13 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
         lastFailureKind = .none
 
         do {
+            // A resumed local preparation never re-enumerates or downloads
+            // the original shards (which disappear after a committed swap).
+            if preparesEdge035B,
+               (try? Edge0_35BModelArtifacts.validateInstall(directory: destination)) != nil {
+                try await finishDownloadedModel()
+                return
+            }
             // 1. List files from HF API (retried — the tree endpoint is
             //    rate-limited and 429s/5xxs under load like the LFS hosts).
             let allFiles = try await withRetries { try await self.fetchFileList() }
@@ -473,10 +570,9 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
             let pending = files.filter { !isComplete($0) }
 
             if pending.isEmpty {
-                state = .ready
                 filesDone = files.count
                 filesTotal = files.count
-                progress = 1.0
+                try await finishDownloadedModel()
                 return
             }
 
@@ -600,48 +696,134 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
                 return
             }
 
-            state = .ready
-            UserDefaults.standard.removeObject(forKey: pausePreferenceKey)
-            progress = 1.0
-            currentFile = ""
-            Diagnostics.shared.breadcrumb("Model download ready · \(repoID)", category: "hf-download")
-            DownloadLiveActivityManager.shared.finish(repoID: repoID)
-            ToastCenter.shared.success("Downloaded \(repoID)")
-            NotificationCenter.default.post(
-                name: .hfModelDownloadCompleted,
-                object: self,
-                userInfo: ["repoID": repoID]
-            )
+            try await finishDownloadedModel()
 
+        } catch let pause as PreparationPaused {
+            guard !Task.isCancelled else { return }
+            state = .paused
+            currentFile = pause.message
+            UserDefaults.standard.set(true, forKey: pausePreferenceKey)
+            UserDefaults.standard.set(true, forKey: preparationAutoResumeKey)
+            DownloadLiveActivityManager.shared.pause(repoID: repoID)
+            // Memory pressure has a time window rather than a "cleared"
+            // notification. Retry once after that window; foreground and
+            // thermal/runtime changes provide the other automatic resumes.
+            preparationRetry?.cancel()
+            preparationRetry = Task { [weak self] in
+                try? await Task.sleep(for: .seconds(15))
+                guard !Task.isCancelled else { return }
+                self?.resumePreparationIfPossible()
+            }
         } catch is CancellationError {
             // leave state as-is so resume is possible
         } catch let error where Self.isUserCancellation(error) {
-            // URLSession surfaces a user cancel as NSURLErrorCancelled, not
-            // CancellationError — treat it the same so a Cancel tap doesn't
-            // show a "Download failed" toast.
+            // URLSession cancellation is resumable too.
         } catch let authErr as HFAuthError {
-            // Auth-specific failure: tag the kind so the catalog UI
-            // can offer "Set Token" inline instead of a generic Retry.
-            // Skip the failure toast in this case — the inline CTA
-            // is a better surface than a transient toast for an
-            // actionable error.
             switch authErr {
             case .tokenRequired: lastFailureKind = .tokenRequired
             case .tokenRejected: lastFailureKind = .tokenRejected
             }
             state = .failed(authErr.errorDescription ?? "Authentication required")
-            DownloadLiveActivityManager.shared.fail(
-                repoID: repoID,
-                reason: authErr.errorDescription ?? "Authentication required"
-            )
+            DownloadLiveActivityManager.shared.fail(repoID: repoID, reason: authErr.errorDescription ?? "Authentication required")
         } catch {
+            guard !Task.isCancelled else { return }
+            UserDefaults.standard.removeObject(forKey: preparationAutoResumeKey)
             lastFailureKind = .generic
             state = .failed(error.localizedDescription)
-            DownloadLiveActivityManager.shared.fail(repoID: repoID,
-                                                     reason: error.localizedDescription)
-            ToastCenter.shared.error("Download failed: \(repoID)",
+            currentFile = error.localizedDescription
+            DownloadLiveActivityManager.shared.fail(repoID: repoID, reason: error.localizedDescription)
+            ToastCenter.shared.error(isPreparingModel ? "Model preparation paused" : "Download failed: \(repoID)",
                                       detail: error.localizedDescription)
         }
+    }
+
+    private func finishDownloadedModel() async throws {
+        if preparesEdge035B {
+            if (try Edge0_35BRepackedExperts.openIfPresent(in: destination)) == nil {
+                UserDefaults.standard.set(true, forKey: preparationPreferenceKey)
+                UserDefaults.standard.set(true, forKey: preparationAutoResumeKey)
+                isPreparingModel = true
+                state = .downloading
+                progress = 0
+                currentFile = "Preparing model"
+                installPreparationObservers()
+            }
+            let destination = destination
+            let sourceRevision = branch
+            let worker = Task.detached(priority: .utility) {
+                try await Edge0_35BRepacker.prepare(in: destination, sourceRevision: sourceRevision, checkpoint: {
+                    try Task.checkCancellation()
+                    try await self.checkPreparationPolicy()
+                }, report: { update in
+                    await MainActor.run {
+                        guard !Task.isCancelled, self.state.isActive else { return }
+                        self.progress = update.fraction
+                        self.currentFile = update.step
+                    }
+                })
+            }
+            preparationWorker = worker
+            defer { preparationWorker = nil }
+            try await withTaskCancellationHandler {
+                try await worker.value
+            } onCancel: { worker.cancel() }
+        }
+        try Task.checkCancellation()
+        clearPreparationPreferences()
+        state = .ready
+        UserDefaults.standard.removeObject(forKey: pausePreferenceKey)
+        progress = 1.0
+        currentFile = ""
+        Diagnostics.shared.breadcrumb("Model download ready · \(repoID)", category: "hf-download")
+        DownloadLiveActivityManager.shared.finish(repoID: repoID)
+        ToastCenter.shared.success("Downloaded \(repoID)")
+        NotificationCenter.default.post(name: .hfModelDownloadCompleted, object: self, userInfo: ["repoID": repoID])
+    }
+
+    private func checkPreparationPolicy() throws {
+        let assistant = CodingAssistantService.shared
+        let modelIsInUse: Bool
+        switch assistant.state {
+        case .loading, .ready, .generating:
+            modelIsInUse = assistant.activeModel.repoID == repoID
+        case .unloaded, .failed:
+            modelIsInUse = false
+        }
+        if let message = Edge0_35BRepacker.pauseMessage(
+            isForeground: UIApplication.shared.applicationState == .active,
+            thermal: DeviceSafetyMonitor.shared.effectiveThermalState,
+            hasMemoryPressure: DeviceSafetyMonitor.shared.stopReason == .memoryPressure,
+            modelIsLoaded: modelIsInUse) {
+            throw PreparationPaused(message: message)
+        }
+    }
+
+    private func installPreparationObservers() {
+        guard preparationObservers.isEmpty else { return }
+        NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in self?.resumePreparationIfPossible() }
+            .store(in: &preparationObservers)
+        DeviceSafetyMonitor.shared.$effectiveThermalState.dropFirst()
+            .sink { [weak self] _ in Task { @MainActor in self?.resumePreparationIfPossible() } }
+            .store(in: &preparationObservers)
+        CodingAssistantService.shared.$state.dropFirst()
+            .sink { [weak self] _ in Task { @MainActor in self?.resumePreparationIfPossible() } }
+            .store(in: &preparationObservers)
+    }
+
+    private func resumePreparationIfPossible() {
+        guard preparesEdge035B, !state.isActive,
+              UserDefaults.standard.bool(forKey: preparationAutoResumeKey),
+              (try? checkPreparationPolicy()) != nil else { return }
+        start()
+    }
+
+    private func clearPreparationPreferences() {
+        isPreparingModel = false
+        preparationRetry?.cancel()
+        preparationRetry = nil
+        UserDefaults.standard.removeObject(forKey: preparationPreferenceKey)
+        UserDefaults.standard.removeObject(forKey: preparationAutoResumeKey)
     }
 
     // MARK: - HF file-tree API
@@ -1209,6 +1391,16 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
 
     private func removeTrackedFiles() {
         let fm = FileManager.default
+        if repoID == Edge0ModelFamily.qwen35MoERepoID {
+            try? Edge0_35BRepacker.discardStaging(in: destination)
+            // The packed files replace the original allowlist, so delete the
+            // dedicated curated model directory, including all forty blocks.
+            if fm.fileExists(atPath: destination.appendingPathComponent(Edge0_35BRepackedExperts.manifestName).path) {
+                try? Edge0_35BRepacker.cleanCommittedOriginal(in: destination)
+                try? fm.removeItem(at: destination)
+                return
+            }
+        }
         if let allowlist = fileAllowlist {
             for rule in allowlist {
                 let url = destination.appendingPathComponent(rule)
@@ -1252,7 +1444,7 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
     }
 
     private func reset(keepState: Bool = false) {
-        if !keepState { state = .idle }
+        if !keepState { state = .idle; isPreparingModel = false }
         progress = 0
         downloadedBytes = 0
         totalBytes = 0

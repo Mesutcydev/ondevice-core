@@ -140,6 +140,7 @@ final class Edge0SpeedABRunner: ObservableObject {
         var modeFallback = ""
         var poolSlots = 0
         var poolBytes: UInt64 = 0
+        var expertStorage = "unavailable"
         var readsConfigured = "unavailable"
         var readsPeak = "unavailable"
         var readsActiveAtCompletion = "unavailable"
@@ -302,21 +303,17 @@ final class Edge0SpeedABRunner: ObservableObject {
         guard let preset = AssistantModelCatalog.presets.first(where: {
             $0.repoID == Edge0ModelFamily.qwen35MoERepoID
         }) else {
-            status = "No Edge0-35B preset in the catalog."
+            finish(.failed, reason: "No Edge0-35B preset in the catalog")
             return
         }
         if let reason = DeviceSafetyMonitor.shared.stopReason {
-            status = "Device safety stop: \(reason.title)."
+            finish(.blocked, reason: "Device safety stop: \(reason.title)")
             return
         }
 
         let store = AssistantModelSettingsStore.shared
         let savedThinking = store.settings(for: preset.repoID)
-        let scope = Edge0DiagnosticPreferences.Snapshot.capture()
-        // Cleanup on every exit (completion, cancellation, thrown error):
-        // restore exactly the values captured above.
         defer {
-            scope.restore()
             if let savedThinking {
                 store.save(
                     savedThinking,
@@ -328,6 +325,33 @@ final class Edge0SpeedABRunner: ObservableObject {
             }
         }
 
+        let outcome = await Edge0DiagnosticPreferences.withRestoration(
+            cleanup: {
+                // Cache size, read concurrency and pool accounting are
+                // frozen at load. Release the diagnostic engine before
+                // restoring preferences; normal chat reloads lazily.
+                // A failed switch can roll back to another model, which
+                // this diagnostic no longer owns.
+                if service.activeModel.id == preset.id {
+                    await service.unloadAndWaitForCleanup()
+                }
+            }
+        ) {
+            await self.performTrials(service: service, preset: preset, store: store)
+        }
+        // Publish a final result only after runtime cleanup and preference
+        // restoration. run() keeps isRunning true across the whole barrier.
+        finish(outcome.terminal, reason: outcome.reason)
+    }
+
+    private func performTrials(
+        service: CodingAssistantService,
+        preset: AssistantModel,
+        store: AssistantModelSettingsStore
+    ) async -> (terminal: Edge0DiagnosticTerminal, reason: String) {
+        if isCancelled {
+            return (.cancelled, "cancelled before loading")
+        }
         var settings = store.effectiveSettings(
             for: preset.repoID,
             supportsThinking: preset.supportsThinking,
@@ -378,12 +402,17 @@ final class Edge0SpeedABRunner: ObservableObject {
         if service.isModelLoaded {
             await service.unloadAndWaitForCleanup()
         }
+        if isCancelled {
+            return (.cancelled, "cancelled before loading")
+        }
         let loadStarted = ContinuousClock.now
         await service.switchTo(preset, persistAsDefault: false)
         loadedSeconds = loadStarted.duration(to: .now).seconds
-        guard service.isModelLoaded else {
-            status = "Edge0-35B did not load."
-            return
+        if isCancelled {
+            return (.cancelled, "cancelled during loading")
+        }
+        guard service.activeModel.id == preset.id, service.isModelLoaded else {
+            return (.failed, "Edge0-35B did not load")
         }
         var previousReadaheadArm: Bool? = kind == .readaheadAB ? false : nil
         var previousReadsArm: Int? = kind == .readsAB ? 4 : nil
@@ -414,8 +443,7 @@ final class Edge0SpeedABRunner: ObservableObject {
             // the device is already Serious/Critical.
             if ProcessInfo.processInfo.thermalState.rawValue
                 >= ProcessInfo.ThermalState.serious.rawValue {
-                finish(.blocked, reason: "thermal serious/critical")
-                return
+                return (.blocked, "thermal serious/critical")
             }
             _ = await measuredRun(
                 service: service,
@@ -424,8 +452,7 @@ final class Edge0SpeedABRunner: ObservableObject {
                 scored: false, maximumTokens: 8
             )
             if isCancelled {
-                finish(.cancelled, reason: "cancelled during warm-up")
-                return
+                return (.cancelled, "cancelled during warm-up")
             }
         }
         lastCompletedStep = "warm-ups complete"
@@ -438,8 +465,7 @@ final class Edge0SpeedABRunner: ObservableObject {
         for (index, mode) in order.enumerated() {
             trialIndex = index + 1
             if isCancelled {
-                finish(.cancelled, reason: "cancelled before trial \(index + 1)")
-                return
+                return (.cancelled, "cancelled before trial \(index + 1)")
             }
             phase = .recovery
             status = Edge0DiagnosticPlan.recoveryText(
@@ -453,8 +479,7 @@ final class Edge0SpeedABRunner: ObservableObject {
                 nextMode: mode, nextIndex: index + 1, planned: order.count
             )
             if isCancelled {
-                finish(.cancelled, reason: "cancelled during recovery")
-                return
+                return (.cancelled, "cancelled during recovery")
             }
             let boundary = await service.edge0ResourceSnapshot()
             let admission = Edge0DiagnosticPlan.admission(
@@ -512,6 +537,9 @@ final class Edge0SpeedABRunner: ObservableObject {
                 phase = .recovery
                 status = "Reloading Edge0-35B for \(armDescription) arm…"
                 await service.unloadAndWaitForCleanup()
+                if isCancelled {
+                    return (.cancelled, "cancelled during arm reload")
+                }
                 if let readaheadOverride {
                     Edge0EnginePreferences.edge0_35BReadaheadHints =
                         readaheadOverride
@@ -526,7 +554,10 @@ final class Edge0SpeedABRunner: ObservableObject {
                 let reloadStarted = ContinuousClock.now
                 await service.switchTo(preset, persistAsDefault: false)
                 let reloadSeconds = reloadStarted.duration(to: .now).seconds
-                guard service.isModelLoaded else {
+                if isCancelled {
+                    return (.cancelled, "cancelled during arm reload")
+                }
+                guard service.activeModel.id == preset.id, service.isModelLoaded else {
                     failedReason = "engine reload failed for the "
                         + "\(armDescription) arm"
                     status = "Stopped: \(failedReason ?? "reload failed")"
@@ -596,6 +627,9 @@ final class Edge0SpeedABRunner: ObservableObject {
             if let position = results.lastIndex(where: { $0.id == run.id }) {
                 results[position] = run
             }
+            if isCancelled {
+                return (.cancelled, "cancelled during trial \(index + 1)")
+            }
             if let error = run.error {
                 if run.timedOut { timedOut = true }
                 failedReason = error
@@ -622,7 +656,7 @@ final class Edge0SpeedABRunner: ObservableObject {
             failedReason: failedReason,
             timedOut: timedOut
         )
-        finish(outcome.terminal, reason: outcome.reason)
+        return outcome
     }
 
     private func finish(
@@ -630,8 +664,6 @@ final class Edge0SpeedABRunner: ObservableObject {
         reason: String
     ) {
         phase = .finished
-        // Restore the chat-path prompt cache (disabled for measurement).
-        Edge0EnginePreferences.edge0_35BSessionReuse = true
         self.terminal = terminal
         terminalReason = reason
         computeDecision()
@@ -865,6 +897,7 @@ final class Edge0SpeedABRunner: ObservableObject {
             result.modeFallback = metrics["mode.fallback"] ?? ""
             result.poolSlots = Int(metrics["pool.capacitySlots"] ?? "") ?? 0
             result.poolBytes = UInt64(metrics["pool.capacityBytes"] ?? "") ?? 0
+            result.expertStorage = metrics["runtime.expertStorage"] ?? "unavailable"
             result.readsConfigured = metrics["reads.configured"] ?? "unavailable"
             result.readsPeak = metrics["reads.peak"] ?? "unavailable"
             result.readsActiveAtCompletion =
@@ -2023,6 +2056,7 @@ final class Edge0SpeedABRunner: ObservableObject {
                 + " (pool lifetime total \(run.advisoryLoadsLifetime))"
                 + (run.modeFallback.isEmpty ? "" : " · fallback \(run.modeFallback)")
                 + " · pool \(run.poolSlots)/\(run.poolBytes) B"
+                + " · expert storage \(run.expertStorage)"
                 + " · state-KV allowance \(run.stateKVAllowanceBytes) B · pool allowance \(run.poolAllowanceBytes) B"
                 + " · hit prefill \(String(format: "%.0f%%", run.prefillHitRate * 100))%"
                 + "/decode \(String(format: "%.0f%%", run.decodeHitRate * 100))%"

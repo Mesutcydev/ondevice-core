@@ -72,7 +72,7 @@ struct LocalAPIServerView: View {
             .onChange(of: scenePhase) { _, phase in
                 if phase != .active { revealsKey = false }
             }
-            .sheet(isPresented: $showModels) { AssistantModelPickerView(downloadedOnly: true) }
+            .sheet(isPresented: $showModels) { AssistantModelPickerView(downloadedOnly: true, allowsAPIProviders: false) }
             .sheet(isPresented: $showPortEditor) {
                 LocalAPIPortSheet()
             }

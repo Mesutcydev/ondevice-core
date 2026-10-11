@@ -151,6 +151,11 @@ final class Edge0RuntimeBackend: RuntimeEngineBackend, RuntimeParityProbing {
         let directory = try Self.resolveModelDirectory(
             for: model, family: .qwen35MoE
         )
+        guard !Edge0_35BRepacker.hasPendingPreparation(in: directory) else {
+            throw RuntimeError.modelLoadBlocked(
+                reason: "Finish preparing this model in Models before loading it."
+            )
+        }
         await MLXGenerationGate.shared.clearCacheWhenIdle()
 
         // Pool overrides may only shrink the admission-approved allowance.
@@ -184,6 +189,7 @@ final class Edge0RuntimeBackend: RuntimeEngineBackend, RuntimeParityProbing {
                 + " · poolSlots=\(budget.expertPoolSlots) · poolBytes=\(budget.expertPoolBytes)"
                 + " · resident=\(budget.residentBytes)"
                 + " · reads=\(readConcurrency)"
+                + " · expertStorage=\(engine.expertStorageLayout)"
                 + " · accounting=\(Edge0EnginePreferences.edge0_35BPoolAccounting.rawValue)"
                 + " · stateKVAllowance=\(budget.stateKVBytes)"
                 + " · readahead=\(Edge0EnginePreferences.edge0_35BReadaheadHints)",
@@ -451,6 +457,7 @@ final class Edge0RuntimeBackend: RuntimeEngineBackend, RuntimeParityProbing {
         metrics["lora.modules"] = "\(engine.loraModuleCount)"
         metrics["eos.ids"] = engine.eosTokenIDs.map(String.init).joined(separator: ",")
         metrics["runtime.readConcurrency"] = "\(engine.configuredReadConcurrency)"
+        metrics["runtime.expertStorage"] = engine.expertStorageLayout
         // Phase 5M: the load-captured readahead state, available as soon as
         // the engine is loaded (before any generation ran). The requested
         // half is only meaningful per generation and is exported there.

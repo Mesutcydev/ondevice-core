@@ -132,6 +132,23 @@ final class AppBridge: ObservableObject {
 
     // MARK: - Share-extension inbound
 
+    /// Drain one share per app opening without replacing an in-flight payload.
+    /// Additional queued shares remain available for the next foreground visit.
+    func receiveQueuedShare() {
+        guard pendingSharedText == nil, pendingSharedImage == nil, pendingCode == nil,
+              let container = FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: Self.appGroupID
+              ) else { return }
+        do {
+            if let url = try ShareInbox.consumeNext(in: container) {
+                handleIncomingURL(url)
+            }
+        } catch {
+            ToastCenter.shared.error("Couldn't receive shared content",
+                                     detail: "Open OnDevice Max again to retry.")
+        }
+    }
+
     /// Handles `ondevice-max://share?...` URLs from the share extension.
     /// Supports four payload shapes:
     ///   • `file=<jpg>`     — staged image, routes to camera/lens tab

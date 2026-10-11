@@ -8,7 +8,8 @@ import SwiftUI
 // Entry point for the iOS share sheet. Accepts images, plain text, URLs, and
 // Safari web pages (NSExtensionJavaScriptPreprocessingResultsKey payload) from
 // any host app, stages the content into the App Group container, and opens
-// the main app via a custom URL scheme.
+// the main app's inbox. The user opens OnDevice Max to receive the content;
+// Share extensions cannot use UIApplication to force a containing-app launch.
 //
 // Hand-off URLs:
 //   ondevice-max://share?file=<jpg-name>          → image (lens tab)
@@ -68,7 +69,7 @@ final class ShareViewController: UIViewController {
                                                            ext: "jpg")
                         do {
                             let openURL = try imageOpenURL(for: stagedURL)
-                            await openMainApp(with: openURL)
+                            await saveForMainApp(with: openURL)
                         } catch {
                             try? FileManager.default.removeItem(at: stagedURL)
                             throw error
@@ -199,17 +200,13 @@ final class ShareViewController: UIViewController {
             return
         }
 
-        if trimmed.count <= Self.inlineTextLimit,
-           let encoded = trimmed.addingPercentEncoding(
-               withAllowedCharacters: .urlQueryAllowed),
-           let url = URL(string: "\(Self.urlScheme)://share?text=\(encoded)") {
-            await openMainApp(with: url)
-            return
-        }
-
-        // Too long — stage to a file and hand off the name. The main app
-        // reads it back from the App Group container.
         do {
+            if trimmed.count <= Self.inlineTextLimit {
+                let url = try handOffURL(queryName: "text", value: trimmed)
+                await saveForMainApp(with: url)
+                return
+            }
+            // Long text stays in the protected App Group staging directory.
             let data = Data(trimmed.utf8)
             let stagedURL = try writeToAppGroup(data,
                                                 subdir: "SharedText",
@@ -219,7 +216,7 @@ final class ShareViewController: UIViewController {
                     queryName: "textfile",
                     value: stagedURL.lastPathComponent
                 )
-                await openMainApp(with: openURL)
+                await saveForMainApp(with: openURL)
             } catch {
                 try? FileManager.default.removeItem(at: stagedURL)
                 throw error
@@ -230,15 +227,12 @@ final class ShareViewController: UIViewController {
     }
 
     private func handOffURL(_ url: URL) async {
-        let raw = url.absoluteString
-        guard let encoded = raw.addingPercentEncoding(
-            withAllowedCharacters: .urlQueryAllowed),
-            let openURL = URL(string: "\(Self.urlScheme)://share?url=\(encoded)")
-        else {
-            await dismiss(success: false, error: "URL too long")
-            return
+        do {
+            let openURL = try handOffURL(queryName: "url", value: url.absoluteString)
+            await saveForMainApp(with: openURL)
+        } catch {
+            await dismiss(success: false, error: "Couldn't save this link.")
         }
-        await openMainApp(with: openURL)
     }
 
     private func imageOpenURL(for stagedURL: URL) throws -> URL {
@@ -272,7 +266,7 @@ final class ShareViewController: UIViewController {
         try FileManager.default.createDirectory(at: stagingDir, withIntermediateDirectories: true)
         removeExpiredStagedFiles(in: stagingDir)
         let fileURL = stagingDir.appendingPathComponent("share-\(UUID().uuidString).\(ext)")
-        try data.write(to: fileURL, options: .atomic)
+        try data.write(to: fileURL, options: [.atomic, .completeFileProtectionUnlessOpen])
         return fileURL
     }
 
@@ -303,35 +297,41 @@ final class ShareViewController: UIViewController {
     }
 
     @MainActor
-    private func openMainApp(with url: URL) async {
-        // UIApplication isn't directly available to extensions; reach it via
-        // the responder chain. Two failure modes used to be swallowed by an
-        // unconditional `success: true`, closing the share sheet while nothing
-        // actually happened: (1) no UIApplication in the chain, and (2) the
-        // open being refused (OnDevice not installed / scheme unhandled).
-        // Surface both so the user isn't left staring at a no-op.
-        var responder: UIResponder? = self
-        var app: UIApplication?
-        while let r = responder {
-            if let found = r as? UIApplication { app = found; break }
-            responder = r.next
-        }
-        guard let app else {
-            await dismiss(success: false, error: "Couldn't reach the app to open OnDevice.")
+    private func saveForMainApp(with url: URL) async {
+        guard let container = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: Self.appGroupID
+        ) else {
+            await dismiss(success: false, error: "Couldn't access OnDevice Max's shared storage.")
             return
         }
-        let opened: Bool = await withCheckedContinuation { cont in
-            app.open(url, options: [:]) { success in cont.resume(returning: success) }
+        do {
+            try ShareInbox.enqueue(url, in: container)
+            await dismiss(success: true, error: nil)
+        } catch {
+            await dismiss(success: false, error: "Couldn't save this item to OnDevice Max.")
         }
-        await dismiss(success: opened,
-                      error: opened ? nil : "OnDevice couldn't be opened. Is it installed?")
     }
 
     @MainActor
     private func dismiss(success: Bool, error: String?) async {
-        if !success, let error {
-            print("[ShareExtension] \(error)")
+        let alert = Self.receiptAlert(success: success, error: error) { [weak self] in
+            self?.extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
         }
-        extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
+        present(alert, animated: true)
+    }
+
+    /// The review host uses this actual production receipt, including system
+    /// Dynamic Type and accessibility, without pretending to perform a share.
+    @MainActor
+    static func receiptAlert(success: Bool, error: String?, onDone: @escaping () -> Void) -> UIAlertController {
+        let alert = UIAlertController(
+            title: success ? "Saved to OnDevice Max" : "Couldn't share",
+            message: success ? "Open OnDevice Max to continue with your shared content." : error,
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "Done", style: .default) { _ in
+            onDone()
+        })
+        return alert
     }
 }

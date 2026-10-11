@@ -1,5 +1,10 @@
 # OnDevice Core AI Studio — Release Audit 1.0.0
 
+The current OnDevice Max beta audit is [the October 9, 2026 release audit](Docs/APP_STORE_RELEASE_AUDIT_2026-10-09.md):
+version **1.0 (83)** passed signed export verification and is **VALID / IN_BETA_TESTING**
+in TestFlight. It records the corrected build/cache findings and the remaining
+device-trust and public App Review conditions. The older sections below are historical.
+
 ## Build 14 Hierarchy and typography — 2026-09-18
 
 A hierarchy pass on top of Build 10's monochrome language. Nothing was

@@ -434,6 +434,21 @@ final class ToolRunnerTests: XCTestCase {
         let spoken = CodingAssistantService.composeSystemPrompt(.init(persona: "P", spoken: true, date: friday))
         XCTAssertTrue(spoken.contains("read aloud"))
         XCTAssertFalse(spoken.contains("fenced code blocks"))
+        for prompt in [compact, full, spoken] {
+            XCTAssertTrue(prompt.contains(AIContentPolicy.textInstructions))
+        }
+    }
+
+    func test_contentPolicyPreservesAPIHistoryAndIsIdempotentOnRetry() {
+        let history = [ChatMessage(role: .user, content: "Write a sorting function."),
+                       ChatMessage(role: .system, content: "Respond with JSON.")]
+        let protected = CodingAssistantService.applyingContentPolicy(to: history)
+        XCTAssertEqual(protected.first?.role, .system)
+        XCTAssertTrue(protected[0].content.contains("Respond with JSON."))
+        XCTAssertTrue(protected[0].content.contains(AIContentPolicy.textInstructions))
+        XCTAssertEqual(protected.filter { $0.role == .user }.map(\.content), [history[0].content])
+        let retried = CodingAssistantService.applyingContentPolicy(to: protected)
+        XCTAssertEqual(retried.map(\.content), protected.map(\.content))
     }
 
     func test_callsDraftedInsideReasoningAreIgnored() {

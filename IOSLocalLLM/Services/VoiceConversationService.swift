@@ -552,7 +552,7 @@ final class VoiceConversationService: ObservableObject {
 
     private func applyVoiceModelOverrideIfNeeded(force: Bool = false) async {
         guard let voiceID = voiceModelID else { return }
-        let current = assistant.activeModel.id
+        let current = assistant.activeSelectionID
         guard force || current != voiceID else { return }
         if savedChatModelID == nil {
             savedChatModelID = current
@@ -576,7 +576,11 @@ final class VoiceConversationService: ObservableObject {
     private func restoreChatModelIfNeeded() async {
         guard let saved = savedChatModelID else { return }
         savedChatModelID = nil
-        guard assistant.activeModel.id != saved else { return }
+        guard assistant.activeSelectionID != saved else { return }
+        if saved.hasPrefix("api:") {
+            await assistant.selectAPIModel(saved, persistAsDefault: false, restoring: true)
+            return
+        }
         // Restore the selection WITHOUT loading — switchTo here eagerly
         // reloaded the multi-GB chat model just because voice mode ended.
         // generate()'s lazy-load path loads it on the next chat send.

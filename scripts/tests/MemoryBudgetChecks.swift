@@ -13,6 +13,23 @@ struct MemoryBudgetChecks {
         check(exhausted.available == 0 && exhausted.ceiling == 6_000, "Zero kernel headroom must not invoke a fallback")
         let loaded = ProcessMemoryBudget.resolve(footprint: 2_000, kernelHeadroom: 4_000, fallbackCeiling: 9_000, platformCap: 8_500)
         check(loaded.available == 4_000 && loaded.ceiling == 6_000, "Already resident allocations must be charged once")
+        let allocator = MLXAllocationBudget.resolve(allocated: 1_800, memory: loaded, reserve: 500)
+        check(allocator.limit == 5_300 && allocator.additional == 3_500,
+              "A total MLX cap adds already-charged buffers back once")
+        let tightAllocator = MLXAllocationBudget.resolve(allocated: 1_800, memory: loaded, reserve: 5_000)
+        check(tightAllocator.limit == 1_800 && tightAllocator.additional == 0,
+              "Reserve cannot invent additional headroom")
+        let exhaustedAllocator = MLXAllocationBudget.resolve(allocated: 5_000, memory: exhausted, reserve: 0)
+        check(exhaustedAllocator.limit == 5_000 && exhaustedAllocator.additional == 0,
+              "Zero kernel headroom must not grant a fallback allocator limit")
+        let smallBudget = ProcessMemoryBudget.resolve(footprint: 100, kernelHeadroom: 200,
+                                                    fallbackCeiling: 9_000, platformCap: 8_500)
+        check(MLXAllocationBudget.resolve(allocated: 50, memory: smallBudget, reserve: 50).limit == 200,
+              "A small grant cannot be raised to an arbitrary one-gigabyte floor")
+        check(MLXAllocationBudget.resolve(allocated: -1, memory: loaded, reserve: -1).limit == 4_000,
+              "Malformed negative accounting cannot shrink the existing budget")
+        check(MLXAllocationBudget.resolve(allocated: .max, memory: loaded, reserve: 0).limit == .max,
+              "Allocator byte math must saturate instead of overflowing")
         let capped = ProcessMemoryBudget.resolve(footprint: 2_000, kernelHeadroom: 9_000, fallbackCeiling: 9_000, platformCap: 8_500)
         check(capped.available == 6_500, "Platform cap must bound live headroom")
         let overCap = ProcessMemoryBudget.resolve(footprint: 9_000, kernelHeadroom: 500, fallbackCeiling: 9_000, platformCap: 8_500)

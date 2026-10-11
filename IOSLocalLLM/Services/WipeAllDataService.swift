@@ -164,7 +164,7 @@ enum WipeAllDataService {
         //    extension wrote but the app may not have consumed — otherwise this
         //    user content survives a full wipe.
         if let group = fm.containerURL(forSecurityApplicationGroupIdentifier: AppBridge.appGroupID) {
-            for sub in ["SharedImages", "SharedText"] {
+            for sub in ["SharedImages", "SharedText", ShareInbox.directoryName] {
                 let url = group.appendingPathComponent(sub, isDirectory: true)
                 r.bytesFreed += dirSize(at: url)
                 try? fm.removeItem(at: url)
@@ -178,7 +178,23 @@ enum WipeAllDataService {
             .filter { KeychainStore.has(account: $0) }.count
         KeychainStore.deleteAll()
         r.keychainItemsCleared += webKeysBefore
+        let apiKeysBefore = APIProviderStore.shared.providers.filter { APIProviderStore.shared.hasKey(for: $0.id) }.count
+        do {
+            try APIProviderStore.shared.removeAll()
+            r.keychainItemsCleared += apiKeysBefore
+        } catch {
+            ToastCenter.shared.error("API keys could not be cleared", detail: "Try clearing app data again while the device is unlocked.")
+        }
         let bridgeClients = BridgePairingStore.shared.clients().count
+        do { try GitHubDraftProtection.deleteKey() }
+        catch { ToastCenter.shared.error("Repository encryption key could not be cleared", detail: "Try clearing app data again while the device is unlocked.") }
+        let hadGitHubConnection = GitHubConnectionStore.shared.account != nil
+        do {
+            try GitHubConnectionStore.shared.disconnect()
+            if hadGitHubConnection { r.keychainItemsCleared += 1 }
+        } catch {
+            ToastCenter.shared.error("GitHub token could not be cleared", detail: "Try clearing app data again while the device is unlocked.")
+        }
         BridgePairingStore.shared.deleteAll()
         r.keychainItemsCleared += bridgeClients
 

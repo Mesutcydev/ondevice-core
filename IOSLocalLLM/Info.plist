@@ -17,7 +17,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>1.0.1</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -31,10 +31,17 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>GitHubOAuthClientID</key>
+	<string>Ov23likbAwZPky4GT7B5</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_localllm._tcp</string>
@@ -42,7 +49,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>OnDevice Max uses the camera so Lens can read text and describe objects, documents, and scenes you choose to capture.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>OnDevice Max can expose your on-device language model to computers on your local network when you enable the Local API Server.</string>
+	<string>OnDevice Max uses your local network when you enable the Local API Server, pair a Mac, or choose a custom API provider on your network.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>OnDevice Max uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

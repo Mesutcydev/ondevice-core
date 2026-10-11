@@ -74,8 +74,9 @@ public actor WebSearchService {
         guard let key = KeychainStore.get(account: "brave.apiKey") else {
             throw WebToolError.providerAuthFailed
         }
-        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-        guard let url = URL(string: "https://api.search.brave.com/res/v1/web/search?q=\(encoded)&count=\(max)") else {
+        var components = URLComponents(string: "https://api.search.brave.com/res/v1/web/search")
+        components?.queryItems = [URLQueryItem(name: "q", value: query), URLQueryItem(name: "count", value: String(max))]
+        guard let url = components?.url else {
             throw WebToolError.providerEndpointMissing
         }
         var req = URLRequest(url: url)

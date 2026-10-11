@@ -1,5 +1,11 @@
 # AI and agent integration
 
+For agents inside the app's chat, optional [GitHub repository tools](GITHUB_TOOLS.md)
+are off by default and separate from the local API and paired Mac bridge. They
+use per-chat repo/branch scope, device-only Keychain credentials, protected drafts,
+and native review before publishing changes. Supported local and API chat models
+share the existing tool bridge; a provider never receives repository credentials.
+
 iOS Local LLM can act as a private local inference endpoint for development
 tools and AI agents. These interfaces are opt-in and remain separate from the
 app's normal on-device UI.
@@ -51,6 +57,9 @@ can be reused for multiple requests, including chunked streaming responses.
 | OpenAI | `GET /v1/aider/config` | Exports local Aider metadata and setup commands using current device limits |
 | OpenAI | `POST /v1/chat/completions` | Text/image chat, streaming, and supported tool calls |
 | OpenAI | `POST /v1/responses` | Text/image input and text output compatibility; no tool calling |
+| Classifiers | `GET /v1/classifiers` | Installed encoder classifiers, supported tasks and loaded state |
+| Classifiers | `POST /v1/classifiers/activate` | Explicitly activates an installed classifier through shared memory/thermal admission |
+| Classifiers | `POST /v1/classifications` | Choice probabilities, expected rubric score or yes probability; requested classifier must already be active |
 | Anthropic | `POST /v1/messages` | Text/image user messages and supported tool-use blocks |
 | Ollama | `GET /api/tags` | Lists available models |
 | Ollama | `GET /api/ps` | Lists the active model only while it is loaded |
@@ -85,6 +94,45 @@ curl "$OPENAI_BASE_URL/chat/completions" \
 The requested model must be installed and must match a model ID or repository
 ID known to the app. Memory and thermal safety gates may refuse or shorten
 work even when a request is otherwise valid.
+
+## Classifier functions
+
+These routes use the same bearer key and opt-in LAN server as chat. They never
+download weights or route to a remote provider. Activating a classifier releases
+the other heavy model; it refuses while voice, chat generation or image work
+is active. The native UI's classifier form and these functions use the same
+host adapter. Classifiers remain separate from `/v1/models` chat selections.
+
+```bash
+curl "http://IPHONE_IP:11434/v1/classifiers" \
+  -H "Authorization: Bearer YOUR_IOS_LOCAL_LLM_KEY"
+
+curl "http://IPHONE_IP:11434/v1/classifiers/activate" \
+  -H "Authorization: Bearer YOUR_IOS_LOCAL_LLM_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"coreai:zoo-laya-multilingual"}'
+
+curl "http://IPHONE_IP:11434/v1/classifications" \
+  -H "Authorization: Bearer YOUR_IOS_LOCAL_LLM_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"coreai:zoo-laya-multilingual","input":"The support was helpful.",
+       "instructions":"Classify the sentiment","type":"choice",
+       "options":[{"id":"positive","description":"Positive sentiment"},
+                  {"id":"negative","description":"Negative sentiment"}]}'
+```
+
+For `type: "score"`, replace `options` with an ordered `rubric` string array.
+The score is the expected zero-based level index. For `type: "boolean"`, use
+`falseCriterion` and `trueCriterion` strings instead of options/rubric.
+`calibrated: true` requests published calibration when the model supplies it.
+Unknown fields, mixed task fields, oversized input and invalid options are
+rejected. Responses contain `options` with per-option probabilities, the typed
+`choice`/`score`/`true_probability`, temperature, and (for Laya)
+`direct_answer_probability`. The latter is advisory and executes no tools.
+
+The server serializes remote work, cancels classifier requests on client
+disconnect or server stop, and applies a 180-second request deadline. Background
+cleanup drains submitted graph work and suppresses late results.
 
 ## Tool calling
 

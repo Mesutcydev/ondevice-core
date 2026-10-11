@@ -109,6 +109,12 @@ enum Edge0_35BModelArtifacts {
         "lora_edge0_35b.safetensors",
     ] + weightShardNames
 
+    /// Repacked imports carry only resident safetensors and per-layer expert
+    /// blocks. Original download inventory and revision stay unchanged.
+    static let repackedRequiredFiles = Array(requiredFiles.dropLast(weightShardNames.count))
+        + [Edge0_35BRepackedExperts.manifestName, Edge0_35BRepackedExperts.residentName]
+        + (0..<40).map(Edge0_35BRepackedExperts.layerName)
+
     /// Download allowlist for the curated entry. One entry per file so the
     /// downloader's size/preflight/checksum behavior operates on exactly the
     /// artifacts this runtime uses.
@@ -154,14 +160,16 @@ enum Edge0_35BModelArtifacts {
         directory: URL
     ) throws -> Edge0_35BInstallSummary {
         let fileManager = FileManager.default
+        let repacked = try Edge0_35BRepackedExperts.openIfPresent(in: directory)
 
         // 1. Presence and truncation of the pinned inventory.
-        for file in requiredFiles {
+        for file in repacked == nil ? requiredFiles : repackedRequiredFiles {
             let url = directory.appendingPathComponent(file)
             guard fileManager.fileExists(atPath: url.path) else {
                 throw Edge0_35BArtifactError.missingFile(file)
             }
-            if let expected = pinnedFileSizes[file] {
+            if let expected = pinnedFileSizes[file],
+               !(repacked != nil && file == "model.safetensors.index.json") {
                 let actual = (try? Edge0FileIO.fileSize(at: url)) ?? 0
                 if actual < expected {
                     throw Edge0_35BArtifactError.truncatedFile(
@@ -203,10 +211,19 @@ enum Edge0_35BModelArtifacts {
                 throw Edge0_35BArtifactError.shardOutsideModelDirectory(shard)
             }
         }
-        guard Set(shardNames) == Set(weightShardNames) else {
+        let expectedShards = repacked == nil ? weightShardNames
+            : [Edge0_35BRepackedExperts.residentName]
+        guard Set(shardNames) == Set(expectedShards) else {
             throw Edge0_35BArtifactError.invalidIndex(
-                "expected exactly \(weightShardNames.count) pinned shards, found \(Set(shardNames).count)"
+                "expected exactly \(expectedShards.count) release shards, found \(Set(shardNames).count)"
             )
+        }
+        if repacked != nil {
+            let index = try Edge0SafetensorsIndex.openSharded(in: directory)
+            guard !index.locations.keys.contains(where: { $0.contains(".mlp.switch_mlp.") }) else {
+                throw Edge0_35BArtifactError.invalidIndex("repacked index must contain resident tensors only")
+            }
+            try validateWeightGeometry(index: index, configuration: configuration, includesExperts: false)
         }
 
         // 4. LoRA header contract.
@@ -238,9 +255,12 @@ enum Edge0_35BModelArtifacts {
             from: Data(contentsOf: directory.appendingPathComponent("config.json"))
         )
         let index = try Edge0SafetensorsIndex.openSharded(in: directory)
-        try validateWeightGeometry(index: index, configuration: configuration)
+        let repacked = try Edge0_35BRepackedExperts.openIfPresent(in: directory)
+        try validateWeightGeometry(
+            index: index, configuration: configuration, includesExperts: repacked == nil
+        )
         applyWeightAccounting(
-            Edge0_35BModelArtifacts.weightAccounting(for: index),
+            Edge0_35BModelArtifacts.weightAccounting(for: index, repacked: repacked),
             to: &summary
         )
         return summary
@@ -248,7 +268,8 @@ enum Edge0_35BModelArtifacts {
 
     /// Tensor/payload accounting from an open index (metadata only).
     static func weightAccounting(
-        for index: Edge0SafetensorsIndex
+        for index: Edge0SafetensorsIndex,
+        repacked: Edge0_35BRepackedExperts? = nil
     ) -> (
         tensorCount: Int,
         residentTensorCount: Int,
@@ -269,8 +290,12 @@ enum Edge0_35BModelArtifacts {
                 residentBytes += location.byteCount
             }
         }
+        if let repacked {
+            expertTensors = repacked.layers * repacked.parts.count
+            expertBytes = UInt64(repacked.layers) * Edge0_35BRepackedExperts.layerBytes
+        }
         return (
-            index.tensorCount, residentTensors, residentBytes,
+            residentTensors + expertTensors, residentTensors, residentBytes,
             expertTensors, expertBytes
         )
     }
@@ -469,7 +494,8 @@ enum Edge0_35BModelArtifacts {
     /// 3-D routed-expert bundles.
     static func validateWeightGeometry(
         index: Edge0SafetensorsIndex,
-        configuration: Edge0_35BModelConfiguration
+        configuration: Edge0_35BModelConfiguration,
+        includesExperts: Bool = true
     ) throws {
         let hidden = configuration.hiddenSize
         let vocab = configuration.vocabSize
@@ -618,6 +644,7 @@ enum Edge0_35BModelArtifacts {
                 "\(prefix).mlp.shared_expert.down_proj.weight", dtype: .u32,
                 shape: [hidden, expertPacked4]
             )
+            if !includesExperts { continue }
             try require(
                 "\(prefix).mlp.switch_mlp.gate_proj.weight", dtype: .u32,
                 shape: [configuration.numExperts, expertIntermediate, packed4]

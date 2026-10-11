@@ -12,7 +12,7 @@ final class CoreAIZooCatalogTests: XCTestCase {
     private var catalog: [CoreAIZooModel] { CoreAIZooCatalog.iphoneLanguageModels }
 
     func testCatalogIsNotEmpty() {
-        XCTAssertGreaterThanOrEqual(catalog.count, 26)
+        XCTAssertGreaterThanOrEqual(catalog.count, 34)
     }
 
     func testIdentifiersAreUnique() {
@@ -188,8 +188,8 @@ final class CoreAIZooCatalogTests: XCTestCase {
         }
     }
 
-    func testUtilityAndVisionPacksAreNotAssistantChoices() {
-        for source in catalog where source.category == .utility || source.category == .vision {
+    func testUtilityVisionAndClassifierPacksAreNotAssistantChoices() {
+        for source in catalog where source.category == .utility || source.category == .vision || source.category == .classifier {
             XCTAssertNil(
                 CoreAIZooCatalog.assistantModel(forSelectionID: source.assistantSelectionID)
             )
@@ -202,7 +202,7 @@ final class CoreAIZooCatalogTests: XCTestCase {
     /// actually serve; an embedding/ASR pack would land in `.failed` and read
     /// as a broken download.
     func testUtilityPacksAreNotClassifiedAsTextGeneration() {
-        for model in catalog where model.category == .utility || model.category == .vision {
+        for model in catalog where model.category == .utility || model.category == .vision || model.category == .classifier {
             XCTAssertFalse(
                 CoreAIZooCatalog.isTextGenerationPack(id: model.id),
                 "\(model.id) must not auto-load into the text runtime"
@@ -238,6 +238,27 @@ final class CoreAIZooCatalogTests: XCTestCase {
     func testModelLookupByIDResolvesEveryEntry() {
         for model in catalog {
             XCTAssertEqual(CoreAIZooCatalog.model(id: model.id)?.hfRepo, model.hfRepo)
+        }
+    }
+
+    func testJuliaRemainsMacOnlyAndClassifiersNeverClaimChat() {
+        XCTAssertEqual(CoreAIZooCatalog.macOnlyClassifierModels.map(\.id), ["zoo-julia-1"])
+        XCTAssertFalse(catalog.contains { $0.id == "zoo-julia-1" })
+        XCTAssertEqual(CoreAIZooCatalog.model(id: "zoo-julia-1")?.category, .classifier)
+        for model in CoreAIZooCatalog.models(in: .classifier) + CoreAIZooCatalog.macOnlyClassifierModels {
+            XCTAssertFalse(model.supportsTools)
+            XCTAssertFalse(model.supportsThinking)
+            XCTAssertFalse(CoreAIZooCatalog.isTextGenerationPack(id: model.id))
+            XCTAssertNil(CoreAIZooCatalog.assistantModel(forSelectionID: model.assistantSelectionID))
+        }
+    }
+
+    func testAuditedContextsUseExportedLimits() {
+        XCTAssertEqual(CoreAIZooCatalog.model(id: "zoo-minicpm5-1b")?.contextWindow, 1_024)
+        for id in ["zoo-qwen35-0.8b", "zoo-lfm25-1.2b", "zoo-granite-4.0-h-1b",
+                   "zoo-qwen35-2b", "zoo-bitcpm-8b", "zoo-lfm25-2.6b", "zoo-nanbeige41-3b",
+                   "zoo-nemotron-3-nano-4b", "zoo-nanbeige42-3b"] {
+            XCTAssertEqual(CoreAIZooCatalog.model(id: id)?.contextWindow, 4_096, id)
         }
     }
 }

@@ -2,10 +2,10 @@
   "spdxVersion": "SPDX-2.3",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "name": "ios-local-llm-1.0.0-source",
-  "documentNamespace": "https://github.com/Mesutcydev/ios-local-llm/sbom/1.0.0/2026-09-23",
+  "name": "ios-local-llm-1.0.1-source",
+  "documentNamespace": "https://github.com/Mesutcydev/ios-local-llm/sbom/1.0.1/2026-10-10",
   "creationInfo": {
-    "created": "2026-09-23T00:00:00Z",
+    "created": "2026-10-10T00:00:00Z",
     "creators": [
       "Tool: manual-lockfile-inventory",
       "Organization: iOS Local LLM contributors"
@@ -19,7 +19,7 @@
     {
       "name": "ios-local-llm",
       "SPDXID": "SPDXRef-Package-ios-local-llm",
-      "versionInfo": "1.0.0",
+      "versionInfo": "1.0.1",
       "downloadLocation": "git+https://github.com/Mesutcydev/ios-local-llm.git",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT AND LicenseRef-Apple-Sample-Code AND LicenseRef-CMUdict",
@@ -209,8 +209,8 @@
     {
       "name": "mlx-swift",
       "SPDXID": "SPDXRef-Package-mlx-swift",
-      "versionInfo": "e40e0a57a6f7ad08dc3fd87ad598a7aa6407d230",
-      "downloadLocation": "git+https://github.com/PrismML-Eng/mlx-swift.git@e40e0a57a6f7ad08dc3fd87ad598a7aa6407d230",
+      "versionInfo": "2a673fa8324ca9900f37445db1f66f4400e4af15",
+      "downloadLocation": "git+https://github.com/PrismML-Eng/mlx-swift.git@2a673fa8324ca9900f37445db1f66f4400e4af15",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
@@ -219,8 +219,8 @@
     {
       "name": "mlx-swift-lm",
       "SPDXID": "SPDXRef-Package-mlx-swift-lm",
-      "versionInfo": "3.31.4",
-      "downloadLocation": "git+https://github.com/ml-explore/mlx-swift-lm.git@bd4b7434e6bdb588c7ef55706ff8904cb7fd4c57",
+      "versionInfo": "3.32.3",
+      "downloadLocation": "git+https://github.com/ml-explore/mlx-swift-lm.git@3b339ad6e3b3f44c8121ecff5131c7fd55e075e6",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",

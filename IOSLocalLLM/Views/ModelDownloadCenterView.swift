@@ -81,6 +81,9 @@ private struct ModelTransferRow: View {
     @State private var cancelConfirmationPresented = false
 
     private var status: String {
+        if downloader.isPreparingModel {
+            return downloader.state.isActive ? "Preparing model" : "Preparation paused"
+        }
         switch downloader.state {
         case .enumerating: return "Preparing download"
         case .downloading: return "Downloading"
@@ -134,7 +137,13 @@ private struct ModelTransferRow: View {
             } else {
                 ProgressView(value: safeProgress)
                     .tint(.primary)
-                    .accessibilityLabel("Download progress")
+                    .accessibilityLabel(downloader.isPreparingModel ? "Model preparation progress" : "Download progress")
+                if downloader.isPreparingModel, !downloader.currentFile.isEmpty {
+                    Text(downloader.currentFile)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             HStack(spacing: 12) {
                 Button(canRestart ? "Resume" : "Pause") {

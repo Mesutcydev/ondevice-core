@@ -19,7 +19,7 @@ packages:
   # tokenizer/Hub bridge that mlx-swift-lm 3.x externalized into the
   # DePasqualeOrg/swift-transformers-mlx fork. The OLD ml-explore/mlx-swift-examples
   # package does NOT provide these and must not be used here.
-  #   • mlx-swift-lm 3.31.4 → MLXLLM / MLXLMCommon / MLXVLM / MLXEmbedders (iOS 17)
+  #   • mlx-swift-lm 3.32.3 → MLXLLM / MLXLMCommon / MLXVLM / MLXEmbedders (iOS 17)
   #   • swift-transformers-mlx 0.2.0 → MLXLMTransformers (pulls swift-transformers
   #     1.3.x + swift-huggingface; depends on mlx-swift-lm 3.31.3+)
   #   • PrismML mlx-swift at the pinned revision below → upstream-compatible MLX plus the
@@ -31,10 +31,11 @@ packages:
   # Swift error trampoline turns that validation error into a fatal SIGTRAP.
   mlx-swift:
     url: https://github.com/PrismML-Eng/mlx-swift.git
-    revision: e40e0a57a6f7ad08dc3fd87ad598a7aa6407d230
+    # PrismML's upstream-0.32.3 merge retains the required Bonsai 1-bit kernels.
+    revision: 2a673fa8324ca9900f37445db1f66f4400e4af15
   mlx-swift-lm:
     url: https://github.com/ml-explore/mlx-swift-lm
-    from: "3.31.4"
+    exactVersion: "3.32.3"
   swift-transformers-mlx:
     url: https://github.com/DePasqualeOrg/swift-transformers-mlx
     from: "0.2.0"
@@ -51,6 +52,9 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5.10"
+    # Restored product owner's team. Release packaging can override this value
+    # with its explicit TEAM_ID argument; forks must select their own team.
+    DEVELOPMENT_TEAM: PUH4GMFV56
     DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
     CLANG_ENABLE_MODULES: YES
     # High-confidence C/C++/Objective-C diagnostics. These apply to the
@@ -141,6 +145,7 @@ targets:
       # permissive CMUdict license; see IOSLocalLLM/Resources/Voice/LICENSE.
       - path: IOSLocalLLM/Resources/Voice/cmudict.txt
       - path: IOSLocalLLM/Resources/VoiceModelCatalog.json
+      - path: IOSLocalLLM/Resources/AuditedModelRevisions.json
       # NOTE: SmolVLM2-500M weights (~1 GB) are *not* listed here. They
       # are copied into the .app by a postBuildScript below (see
       # "Copy SmolVLM bundled weights"). xcodegen 2.45 applies the
@@ -153,11 +158,13 @@ targets:
       path: IOSLocalLLM/Info.plist
       properties:
         CFBundleDisplayName: OnDevice Max
+        # Public OAuth identifier only; credentials are stored exclusively in Keychain.
+        GitHubOAuthClientID: "Ov23likbAwZPky4GT7B5"
         # Source of truth for both targets' marketing version. xcodegen
         # writes these into the generated Info.plist files on every run,
         # so hand-edits to those plists get reverted next regen — always
         # bump HERE first, then `xcodegen` to propagate.
-        CFBundleShortVersionString: "1.0.0"
+        CFBundleShortVersionString: "1.0.1"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         # Standard HTTPS only — answers the ASC export-compliance question
         # automatically so review submission doesn't stall on it.
@@ -165,7 +172,9 @@ targets:
         NSCameraUsageDescription: "OnDevice Max uses the camera so Lens can read text and describe objects, documents, and scenes you choose to capture."
         NSPhotoLibraryUsageDescription: "OnDevice Max uses photos you select for image understanding and conversations with compatible vision models."
         NSMicrophoneUsageDescription: "OnDevice Max uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control."
-        NSLocalNetworkUsageDescription: "OnDevice Max can expose your on-device language model to computers on your local network when you enable the Local API Server."
+        NSLocalNetworkUsageDescription: "OnDevice Max uses your local network when you enable the Local API Server, pair a Mac, or choose a custom API provider on your network."
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
         # A previously paired Mac bridge auto-starts and advertises this type;
         # iOS 14+ refuses undeclared Bonjour advertisements.
         NSBonjourServices:
@@ -199,7 +208,13 @@ targets:
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLM/IOSLocalLLM.entitlements
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "75"
+        CURRENT_PROJECT_VERSION: "4"
+        # Release uses public-distribution entitlements. PCC is optional and
+        # requires Apple's managed grant; the App Store script can select the
+        # PCC variant without overriding the share extension's entitlements.
+        ONDEVICE_DISTRIBUTION_ENTITLEMENTS: IOSLocalLLM/IOSLocalLLM-AppStore.entitlements
+        ONDEVICE_MODEL_POLICY: APP_STORE
+        ONDEVICE_RESEARCH_BUILD: NO
         # PCC symbols exist only in the iOS 27 SDK. Enable the implementation
         # and its capability automatically for iOS 27 device/simulator builds;
         # Xcode 26 and iOS 18–26 builds keep the existing local-only binary.
@@ -256,6 +271,13 @@ targets:
           # include dir makes the bridging header importable without
           # full module-map gymnastics.
           - "$(SRCROOT)/ThirdParty/whisper.cpp/include"
+      configs:
+        Release:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) $(ONDEVICE_MODEL_POLICY)"
+          "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.*]": "$(inherited) $(ONDEVICE_MODEL_POLICY) FM_PCC"
+          "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.*]": "$(inherited) $(ONDEVICE_MODEL_POLICY) FM_PCC"
+          CODE_SIGN_ENTITLEMENTS: "$(ONDEVICE_DISTRIBUTION_ENTITLEMENTS)"
+          "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos27.*]": "$(ONDEVICE_DISTRIBUTION_ENTITLEMENTS)"
     dependencies:
       - package: OnDeviceUI
         product: OnDeviceUI
@@ -346,6 +368,17 @@ targets:
         runOnlyWhenInstalling: false
         basedOnDependencyAnalysis: false
 
+      - name: Bundle App Store dependency notices before signing
+        script: |
+          set -e
+          if [ "${ONDEVICE_APPSTORE:-NO}" = "YES" ] || { [ "${CONFIGURATION}" = "Release" ] && [ "${ONDEVICE_RESEARCH_BUILD:-NO}" != "YES" ]; }; then
+            python3 "${SRCROOT}/scripts/collect_sideload_notices.py" \
+              "${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}" \
+              --checkouts-root "${ONDEVICE_PACKAGE_CHECKOUTS:-${BUILD_DIR%/Build/Products}/SourcePackages/checkouts}"
+          fi
+        runOnlyWhenInstalling: false
+        basedOnDependencyAnalysis: false
+
       - name: Copy bundled voice models (Silero VAD)
         script: |
           set -e
@@ -376,6 +409,12 @@ targets:
           DEST_DIR="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
           DEST_PACKAGE="${DEST_DIR}/fastvithd.mlpackage"
           DEST_COMPILED="${DEST_DIR}/fastvithd.mlmodelc"
+          # FastVLM weights are research-only. Public-distribution builds
+          # always remove stale artifacts and use other supported Lens models.
+          if [ "${ONDEVICE_APPSTORE:-NO}" = "YES" ] || { [ "${CONFIGURATION}" = "Release" ] && [ "${ONDEVICE_RESEARCH_BUILD:-NO}" != "YES" ]; }; then
+            rm -rf "$DEST_COMPILED" "$DEST_PACKAGE"
+            exit 0
+          fi
           if [ ! -d "$SRC" ]; then
             echo "warning: fastvithd.mlpackage not found at $SRC — FastVLM lens path will be unavailable on this build."
             exit 0
@@ -413,13 +452,16 @@ targets:
         excludes:
           - "Info.plist"
           - "*.entitlements"
+      - path: IOSLocalLLM/Models/ShareInbox.swift
+    resources:
+      - path: IOSLocalLLMShareExtension/PrivacyInfo.xcprivacy
     info:
       path: IOSLocalLLMShareExtension/Info.plist
       properties:
         CFBundleDisplayName: OnDevice Max
         # Must match the main target's version above — App Store rejects
         # extension targets with mismatched marketing versions.
-        CFBundleShortVersionString: "1.0.0"
+        CFBundleShortVersionString: "1.0.1"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         ITSAppUsesNonExemptEncryption: false
         NSExtension:
@@ -440,7 +482,8 @@ targets:
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "75"
+        CURRENT_PROJECT_VERSION: "4"
+        APPLICATION_EXTENSION_API_ONLY: YES
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_EMIT_LOC_STRINGS: YES
 

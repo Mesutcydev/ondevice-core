@@ -51,6 +51,10 @@ performance evidence; see [validation policy](Docs/VALIDATION.md).
 ## Highlights
 
 - On-device chat and code assistance with MLX models
+- Optional [GitHub repository tools](Docs/GITHUB_TOOLS.md), off by default, with
+  Keychain sign-in, per-chat repo selection, and review before publishing edits.
+- Optional [API providers](Docs/API_PROVIDERS.md) with Keychain credentials,
+  explicit privacy consent, live model catalogs, and custom endpoints
 - Native Edge0 8B and experimental 35B expert-streaming chat models, with
   bounded memory admission and user-initiated model downloads
 - Core AI model packs through the iOS 27 device runtime

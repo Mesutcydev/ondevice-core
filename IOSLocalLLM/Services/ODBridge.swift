@@ -124,8 +124,11 @@ final class ODBridge: ObservableObject {
     private func observeServices() {
         let publishers: [ObservableObjectPublisher] = [
             CodingAssistantService.shared.objectWillChange,
+            APIProviderStore.shared.objectWillChange,
             ModelDownloadCenter.shared.objectWillChange,
             CoreAIModelStore.shared.objectWillChange,
+            CoreAIInferenceService.shared.objectWillChange,
+            CoreAIDownloadCenter.shared.objectWillChange,
             ConversationStore.shared.objectWillChange,
             VoiceService.shared.objectWillChange,
             VoiceSettingsStore.shared.objectWillChange,
@@ -133,6 +136,7 @@ final class ODBridge: ObservableObject {
             VoiceAudioSessionManager.shared.objectWillChange,
             AppSettings.shared.objectWillChange,
             ImageGenerationService.shared.objectWillChange,
+            ParentalControlManager.shared.objectWillChange,
             PersonaStore.shared.objectWillChange,
         ]
         for publisher in publishers {
@@ -158,6 +162,8 @@ final class ODBridge: ObservableObject {
         let assistant = CodingAssistantService.shared
         let center = ModelDownloadCenter.shared
         let coreAIInstallations = CoreAIModelStore.shared.installations
+        let coreAIDownloads = CoreAIDownloadCenter.shared.downloads
+        let imageService = ImageGenerationService.shared
         let loc = LocalizationService.shared
 
         store.appearance = ODAppearancePreference(rawValue: AppSettings.shared.appearance)
@@ -166,14 +172,19 @@ final class ODBridge: ObservableObject {
         store.editionLabel = "MAX"
         store.executionLabel = assistant.activeExecutionLocation == .applePrivateCloud
             ? loc.t("Private Cloud")
-            : loc.t("On-device")
+            : assistant.activeExecutionLocation == .externalCloud ? loc.t("API provider") : loc.t("On-device")
 
         // ── Models ───────────────────────────────────────────────────────
         let modelsSig = center.models
-            .map { "\($0.id):\($0.state):\($0.progress):\($0.totalBytes):\($0.declaredCategories.contains(.assistant)):\($0.declaredCategories.contains(.vlm)):\($0.supportsCategory(.assistant)):\($0.supportsCategory(.vlm))" }
+            .map { "\($0.id):\($0.state):\($0.progress):\($0.currentFile):\($0.downloader?.isPreparingModel ?? false):\($0.totalBytes):\($0.declaredCategories.contains(.assistant)):\($0.declaredCategories.contains(.vlm)):\($0.supportsCategory(.assistant)):\($0.supportsCategory(.vlm))" }
             .joined(separator: "|") + "#" + coreAIInstallations
             .map { "\($0.assistantSelectionID):\($0.manifest.version):\($0.manifest.totalDownloadBytes)" }
-            .joined(separator: "|") + "#\(assistant.activeSelectionID)#\(AppSettings.shared.assistantModelID)#\(assistant.canGenerateSelectedTarget)"
+            .joined(separator: "|") + "#" + coreAIDownloads
+            .map { "\($0.id):\($0.state):\($0.progress)" }.joined(separator: "|")
+            + "#\(assistant.activeSelectionID)#\(AppSettings.shared.assistantModelID)#\(assistant.canGenerateSelectedTarget)"
+            + "#" + ImageGenerationService.catalog
+            .map { "\($0.id):\(imageService.isInstalled($0)):\(imageService.directDownloadProgress[$0.id] ?? -1):\(imageService.directDownloadErrors[$0.id] != nil)" }
+            .joined(separator: "|")
         if modelsSig != modelsSignature {
             modelsSignature = modelsSig
             store.models = center.models.map { model in
@@ -207,6 +218,9 @@ final class ODBridge: ObservableObject {
                         + (model.state == .paused ? [.download, .cancelDownload] : [])
                         + (!model.isReady && !model.state.isActive && model.state != .paused && model.downloader != nil ? [.download] : []),
                     downloadStatus: {
+                        if model.downloader?.isPreparingModel == true {
+                            return model.state.isActive ? "Preparing model" : "Preparation paused"
+                        }
                         switch model.state {
                         case .paused: return "Paused"
                         case .enumerating: return "Preparing download"
@@ -217,41 +231,62 @@ final class ODBridge: ObservableObject {
                         case .ready: return nil
                         }
                     }(),
+                    downloadDetail: model.downloader?.isPreparingModel == true ? model.currentFile : nil,
                     downloadProgress: model.state == .downloading || model.state == .paused
                         || interrupted
                         ? (model.progress.isFinite ? min(1, max(0, model.progress)) : nil)
                         : nil,
                     estimatedMemoryBytes: model.approxRAMBytes.flatMap { $0 > 0 ? $0 : nil },
-                    isDownloadPaused: model.state == .paused || interrupted,
+                    isDownloadPaused: model.state == .paused || interrupted
+                        || (model.downloader?.isPreparingModel == true && !model.state.isActive),
                     summary: model.longDescription ?? Self.modelSummary(for: model),
                     vendor: model.vendor.rawValue,
                     badges: Self.modelBadges(for: model),
                     downloadSizeLabel: model.sizeLabel
                 )
             }
-            store.models += coreAIInstallations.map { installed in
-                let catalog = CoreAIZooCatalog.model(forSelectionID: installed.assistantSelectionID)
-                let isChatModel = installed.assistantModel != nil
-                let kind: ODModelKind
-                switch catalog?.category {
-                case .vision: kind = .vision
-                case .utility: kind = .utility
-                case .officialRecipe, .chat: kind = .language
-                case nil: kind = isChatModel ? .language : (installed.manifest.capabilities.imageInput ? .vision : .utility)
-                }
+            store.models += CoreAIModelLibrary.catalog.map { pack in
+                CoreAIModelLibrary.entry(
+                    for: pack,
+                    isInstalled: coreAIInstallations.contains { $0.id == pack.id },
+                    isDefault: pack.assistantSelectionID == AppSettings.shared.assistantModelID,
+                    transfer: coreAIDownloads.first { $0.id == pack.id }.flatMap(Self.coreAITransfer)
+                )
+            }
+            // Imported packs have no curated catalog identity. Keep them visible
+            // and preserve the classification flag recorded by validation.
+            store.models += coreAIInstallations.filter {
+                CoreAIZooCatalog.model(forSelectionID: $0.assistantSelectionID) == nil
+            }.map { installed in
+                let isChat = installed.assistantModel != nil
+                let kind: ODModelKind = installed.manifest.capabilities.classification == true
+                    ? .classifier : (isChat ? .language : (installed.manifest.capabilities.imageInput ? .vision : .utility))
                 return ODModel(
-                    id: installed.assistantSelectionID,
-                    name: installed.manifest.displayName,
-                    metadata: "Core AI · installed on this device",
-                    byteCount: installed.manifest.totalDownloadBytes > 0 ? installed.manifest.totalDownloadBytes : nil,
-                    kind: kind,
-                    isDefault: isChatModel && installed.assistantSelectionID == AppSettings.shared.assistantModelID,
-                    isSelectable: isChatModel,
-                    availableCommands: [.details],
+                    id: installed.assistantSelectionID, name: installed.manifest.displayName,
+                    metadata: "Core AI · imported on this device", byteCount: installed.manifest.totalDownloadBytes,
+                    kind: kind, supportedKinds: isChat ? [.language] : (kind == .classifier ? [.classifier] : []), declaredKinds: [kind],
+                    isDefault: isChat && installed.assistantSelectionID == AppSettings.shared.assistantModelID,
+                    isSelectable: isChat || kind == .classifier, availableCommands: [.details, .delete],
                     estimatedMemoryBytes: installed.assistantModel?.approxRAMBytes,
-                    summary: catalog?.subtitle ?? "On-device Core AI pack",
-                    vendor: installed.manifest.modelFamily,
-                    badges: isChatModel ? ["Core AI"] : ["Core AI", kind.title]
+                    summary: kind == .classifier ? "Typed decisions · imported encoder" : "On-device Core AI pack",
+                    vendor: installed.manifest.modelFamily, badges: ["Core AI", kind.title]
+                )
+            }
+            // Image models download through ImageGenerationService, but they
+            // belong on the same Models page as every other model.
+            store.models += ImageGenerationService.catalog.map { model in
+                let installed = imageService.isInstalled(model)
+                let downloading = imageService.isDownloading(model)
+                let failed = imageService.directDownloadErrors[model.id] != nil
+                return ODModel(
+                    id: model.id, name: model.displayName, metadata: model.subtitle,
+                    kind: .image, isInstalled: installed,
+                    availableCommands: installed ? [.details, .delete] : (downloading ? [.details] : [.details, .download]),
+                    downloadStatus: downloading ? "Downloading" : (failed ? "Download failed" : nil),
+                    downloadDetail: imageService.directDownloadErrors[model.id],
+                    downloadProgress: downloading ? imageService.downloadProgress(for: model) : nil,
+                    estimatedMemoryBytes: model.approxRAMBytes,
+                    summary: model.subtitle, badges: ["Image"], downloadSizeLabel: model.sizeLabel
                 )
             }
         }
@@ -263,8 +298,9 @@ final class ODBridge: ObservableObject {
             $0.supportsCategory(.assistant) && LocalModelRegistry.assistantSelectionID(for: $0) == assistant.activeSelectionID
         }?.id ?? assistant.activeSelectionID
         if !store.models.contains(where: { $0.id == activePresentationID }) {
-            store.models.append(ODModel(id: activePresentationID, name: assistant.activeDisplayName,
-                metadata: assistant.activeExecutionLocation == .applePrivateCloud ? "Apple Private Cloud" : "Selected assistant",
+            store.models.append(ODModel(id: activePresentationID, name: assistant.activeModelName,
+                metadata: assistant.activeExecutionLocation == .applePrivateCloud ? "Apple Private Cloud"
+                    : assistant.activeExecutionLocation == .externalCloud ? "API · \(assistant.selectedAPITarget?.provider.endpointHost ?? "Unavailable")" : "Selected assistant",
                 kind: .language, isInstalled: assistant.canGenerateSelectedTarget,
                 isDefault: assistant.activeSelectionID == AppSettings.shared.assistantModelID,
                 availableCommands: [.configure], isLibraryEntry: false))
@@ -284,7 +320,7 @@ final class ODBridge: ObservableObject {
         if store.selectedPersonaID != personaStore.active.id {
             store.selectedPersonaID = personaStore.active.id
         }
-        store.loadedModelID = Self.isResident(assistant.state) ? activePresentationID : nil
+        store.loadedModelID = !assistant.activeExecutionLocation.isCloud && Self.isResident(assistant.state) ? activePresentationID : nil
         store.modelPhase = Self.phase(for: assistant)
 
         // ── Metrics — measured, never invented ───────────────────────────
@@ -403,7 +439,6 @@ final class ODBridge: ObservableObject {
             }
         }
 
-        let imageService = ImageGenerationService.shared
         store.imageResultURL = imageService.resultURL
         store.imageResultPrompt = imageService.resultPrompt
         store.selectedImageModelID = imageService.selectedModelID
@@ -417,7 +452,9 @@ final class ODBridge: ObservableObject {
 
         // ── Capabilities — real availability only ────────────────────────
         var caps = ODCapabilities()
+        store.imageGenerationRestriction = ParentalControlManager.shared.imageGenerationRestriction
         caps.canGenerateImages = routesInstalled && !imageService.isWorking
+            && !ParentalControlManager.shared.blocksImageGeneration
         caps.canCancelImageGeneration = imageService.isWorking && !imageService.isCancelling
         caps.canManageStorage = routesInstalled
         caps.canConfigureApp = routesInstalled
@@ -678,7 +715,22 @@ final class ODBridge: ObservableObject {
     }
 
     private func loadModel(_ id: String, in requestedKind: ODModelKind?) {
+        if let image = ImageGenerationService.model(forID: id) {
+            let service = ImageGenerationService.shared
+            if !service.isInstalled(image) { service.startDownload(image) }
+            service.select(id)
+            store.secondaryRoute = .imageStudio
+            return
+        }
         if let installed = CoreAIModelStore.shared.installedModel(id: id) {
+            if installed.manifest.capabilities.classification == true || CoreAIZooCatalog.model(forSelectionID: id)?.category == .classifier {
+                let controller = CoreAIClassifierHost.workbench
+                controller.selectedModelID = installed.assistantSelectionID
+                store.secondaryRoute = nil
+                store.selectedTab = .classifiers
+                controller.startActivation()
+                return
+            }
             guard requestedKind == nil || requestedKind == .language,
                   let selection = installed.assistantModel else {
                 routes.openCoreAIPacks()
@@ -738,8 +790,19 @@ final class ODBridge: ObservableObject {
                 model.sourceRepoID.isEmpty ? model.id : model.sourceRepoID
             )
             store.secondaryRoute = .imageStudio
-        case .utility:
+        case .utility, .classifier:
             routes.openCoreAIPacks()
+        }
+    }
+
+    private static func coreAITransfer(_ manager: CoreAIHFDownloadManager) -> CoreAIModelLibrary.Transfer? {
+        switch manager.state {
+        case .idle, .ready: return nil
+        case .enumerating: return .preparing
+        case .downloading: return .downloading(manager.progress)
+        case .paused: return .paused(manager.progress)
+        case .installing: return .installing
+        case .failed: return .failed
         }
     }
 
@@ -753,6 +816,10 @@ final class ODBridge: ObservableObject {
     }
 
     private static func phase(for assistant: CodingAssistantService) -> ODModelPhase {
+        if assistant.activeExecutionLocation == .externalCloud {
+            if case .failed(let message) = assistant.apiProviderGenerationState { return .failed(message: message) }
+            return assistant.canGenerateSelectedTarget || assistant.isGeneratingSelectedTarget ? .ready : .unloaded
+        }
         switch assistant.state {
         case .ready, .generating:
             return .ready

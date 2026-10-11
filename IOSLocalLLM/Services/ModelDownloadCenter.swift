@@ -258,6 +258,9 @@ final class ModelDownloadCenter: ObservableObject {
                 .throttle(for: .milliseconds(400), scheduler: RunLoop.main, latest: true)
                 .sink { [weak self] _ in self?.objectWillChange.send() }
                 .store(in: &downloaderBindings)
+            m.downloader?.$currentFile.removeDuplicates()
+                .sink { [weak self] _ in self?.objectWillChange.send() }
+                .store(in: &downloaderBindings)
         }
     }
 
@@ -334,6 +337,7 @@ final class ModelDownloadCenter: ObservableObject {
     }
 
     private func syncFastVLMEntryWithSettings() {
+        guard !AppStoreModelPolicy.isPublicDistribution else { return }
         let stored = AppSettings.shared.fastVLMRepoID
         guard !stored.isEmpty,
               fastvlmModel?.downloader?.repoID != stored else { return }
@@ -342,6 +346,7 @@ final class ModelDownloadCenter: ObservableObject {
     }
 
     private func recoverFastVLMAfterAuthFailure() {
+        guard !AppStoreModelPolicy.isPublicDistribution else { return }
         guard let downloader = fastvlmModel?.downloader,
               case .failed = downloader.state,
               downloader.lastFailureKind == .tokenRequired
@@ -503,6 +508,7 @@ final class ModelDownloadCenter: ObservableObject {
         downloader: HFModelDownloadManager,
         runtime: ModelRuntime? = nil
     ) {
+        guard AppStoreModelPolicy.restriction(for: repoID) == nil else { return }
         // Avoid duplicates — by repoID AND by on-disk destination. Two ids can
         // point at the same directory (e.g. a curated catalog VLM whose slash
         // form and a custom scan's underscore form both resolve to the same
@@ -571,6 +577,7 @@ final class ModelDownloadCenter: ObservableObject {
         var changed = false
 
         for record in records where record.validationState.isActivatable {
+            guard AppStoreModelPolicy.restriction(for: record.repoID) == nil else { continue }
             let existingIndex = updated.firstIndex {
                 $0.sourceRepoID.caseInsensitiveCompare(record.repoID) == .orderedSame
                     || $0.id.caseInsensitiveCompare(record.repoID) == .orderedSame
@@ -638,7 +645,7 @@ final class ModelDownloadCenter: ObservableObject {
         }
 
         if changed {
-            models = updated
+            models = updated.filter { AppStoreModelPolicy.restriction(for: $0.sourceRepoID) == nil }
         }
     }
 
@@ -720,6 +727,7 @@ final class ModelDownloadCenter: ObservableObject {
         // encoding is `author/name → author_name`, which is lossy whenever
         // either side already contains an underscore.
         let repoID = recoverRepoID(from: folderName, in: directory)
+        guard AppStoreModelPolicy.restriction(for: repoID) == nil else { return false }
 
         let downloader = HFModelDownloadManager(repoID: repoID, destination: directory)
         downloader.checkIfReady()
@@ -858,6 +866,7 @@ final class ModelDownloadCenter: ObservableObject {
                     if preset.runtime == .edge0MLX {
                         switch Edge0ModelFamily.resolve(repoID: preset.repoID) {
                         case .qwen35MoE:
+                            downloader.automaticallyRepackEdge035B = true
                             // Exact base + Recover-LoRA inventory. The
                             // prerouter artifact is optional and unused in
                             // this release, so it is not downloaded.
@@ -1181,6 +1190,10 @@ final class ModelDownloadCenter: ObservableObject {
                 fileAllowlist: ["ggml-base.bin"]
             )
         ))
+        models.removeAll { AppStoreModelPolicy.restriction(for: $0.sourceRepoID) != nil
+            || AppStoreModelPolicy.restriction(for: $0.id) != nil
+            || (AppStoreModelPolicy.isPublicDistribution && $0.downloader != nil
+                && AppStoreModelPolicy.downloadRevision(for: $0.sourceRepoID) == nil) }
     }
 
     // MARK: - Deletion

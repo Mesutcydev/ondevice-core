@@ -5,6 +5,7 @@ import OnDeviceUI
 struct NativeUIReviewApp: App {
     @StateObject private var fixture = ReviewFixture()
     @State private var hostTab: ODTab = .chat
+    @AppStorage(MLXAssistantKVCachePolicy.preferenceKey) private var turboQuantEnabled = false
     private var argsLargeType: Bool { ProcessInfo.processInfo.arguments.contains("-large-type") }
     var body: some Scene {
         WindowGroup {
@@ -13,6 +14,23 @@ struct NativeUIReviewApp: App {
                     OnDeviceWorkbench(store: fixture.store, chatContent: AnyView(HomeConceptReview(variant: fixture.homeVariant)))
                 } else if fixture.screen == "appearance" {
                     AppearanceReview(store: fixture.store)
+                } else if fixture.screen == "api-providers" {
+                    APIProviderSettingsReview()
+                        .preferredColorScheme(fixture.store.appearance.colorScheme)
+                        .environment(\.odAppearance, fixture.store.appearance)
+                } else if fixture.screen == "github-settings" {
+                    GitHubSettingsReview().preferredColorScheme(fixture.store.appearance.colorScheme)
+                } else if fixture.screen == "quantization-settings" {
+                    NavigationStack {
+                        List {
+                            Section("Advanced") {
+                                ExperimentalKVCacheSettingsRow(enabled: $turboQuantEnabled)
+                                    .listRowInsets(EdgeInsets())
+                            }
+                        }
+                        .navigationTitle("Models & AI")
+                    }
+                    .dynamicTypeSize(argsLargeType ? .accessibility5 : .large)
                 } else if fixture.screen == "onboarding" {
                     OnboardingOnePager(onFinish: {}).preferredColorScheme(fixture.dark ? .dark : .light)
                 } else if fixture.screen == "splash" {
@@ -21,16 +39,31 @@ struct NativeUIReviewApp: App {
                         .preferredColorScheme(fixture.dark ? .dark : .light)
                 } else if fixture.screen == "import-picker" {
                     ModelImportPickerReview()
+                } else if fixture.screen == "share-receipt" {
+                    ShareReceiptReview()
+                } else if fixture.screen == "parental-controls" {
+                    NavigationStack { ParentalControlsView(controls: ParentControlReview.controls) }
+                } else if fixture.screen == "image-parental-controls" {
+                    ImageGenerationView(parentalControls: ParentControlReview.controls)
+                        .environmentObject(fixture.store)
+                        .task {
+                            try? ParentControlReview.controls.configure(pin: "638192", confirmation: "638192")
+                        }
                 } else {
                     OnDeviceWorkbench(store: fixture.store,
                         cameraPreview: AnyView(LensReviewFixture().environmentObject(fixture.store)),
-                        chatContent: fixture.screen == "composer" || fixture.screen == "welcome" ? AnyView(ComposerContractView(welcome: fixture.screen == "welcome").dynamicTypeSize(argsLargeType ? .accessibility5 : .large)) : nil,
-                        imageContent: AnyView(ImageGenerationView(onOpenMenu: { fixture.store.conversationsPresented = true })),
+                        chatContent: fixture.screen == "github-chat" ? AnyView(GitHubChatReview()) : fixture.screen == "api-chat" ? AnyView(APIProviderChatReview()) : fixture.screen == "agent-chat" ? AnyView(AgentChatReview()) : fixture.screen == "composer" || fixture.screen == "welcome" ? AnyView(ComposerContractView(welcome: fixture.screen == "welcome").dynamicTypeSize(argsLargeType ? .accessibility5 : .large)) : nil,
+                        imageContent: AnyView(ImageGenerationView(onOpenMenu: { fixture.store.conversationsPresented = true },
+                            parentalControls: fixture.isStoreScreenshot ? ParentControlReview.controls : nil)),
                         deviceContent: AnyView(NativeDeviceView(onOpenMenu: { fixture.store.conversationsPresented = true })),
                         // A presented UIKit host does not inherit a preview-only
                         // Dynamic Type override; set it at this fixture boundary.
                         voiceContent: AnyView(ODVoiceSessionView().dynamicTypeSize(argsLargeType ? .accessibility3 : .large)),
-                        apiServerContent: AnyView(LocalAPIServerView(onOpenMenu: { fixture.store.conversationsPresented = true })))
+                        apiServerContent: AnyView(LocalAPIServerView(onOpenMenu: { fixture.store.conversationsPresented = true })),
+                        classifierContent: AnyView(CoreAIClassifierWorkbenchView(controller: fixture.classifier,
+                            models: [.init(id: "coreai:zoo-laya-multilingual", name: "Laya Multilingual", window: 512)],
+                            onOpenMenu: { fixture.store.conversationsPresented = true },
+                            onActivate: { fixture.classifier.startActivation() }, onRun: { fixture.classifier.startRun() })))
                 }
             }
             .modifier(WorkbenchSelectionObserver(
@@ -53,6 +86,36 @@ struct NativeUIReviewApp: App {
             .dynamicTypeSize(argsLargeType ? .accessibility3 : .large)
             .frame(width: fixture.probeWidth)
         }
+    }
+}
+
+@MainActor
+private enum ParentControlReview {
+    static let controls = ParentalControlManager(storage: Storage())
+    private final class Storage: ParentalControlStorage {
+        var data: Data?
+        func read() throws -> Data? { data }
+        func write(_ data: Data?) throws { self.data = data }
+    }
+}
+
+private struct ShareReceiptReview: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> ShareReceiptReviewController {
+        ShareReceiptReviewController()
+    }
+    func updateUIViewController(_ controller: ShareReceiptReviewController, context: Context) {}
+}
+
+private final class ShareReceiptReviewController: UIViewController {
+    private var shown = false
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        guard !shown else { return }
+        shown = true
+        let failed = ProcessInfo.processInfo.arguments.contains("-share-failed")
+        present(ShareViewController.receiptAlert(
+            success: !failed, error: "Couldn't save this item to OnDevice Max.", onDone: {}
+        ), animated: false)
     }
 }
 
@@ -87,16 +150,39 @@ private struct ModelImportPickerReview: View {
 
 final class ReviewFixture: ObservableObject {
     let store = ODStore.demo()
+    let classifier = ClassifierFixture.makeController()
     @Published var lastAction = "None"
     let screen: String
     let homeVariant: String
     let dark: Bool
     let compact: Bool
     let probeWidth: CGFloat?
+    let isStoreScreenshot: Bool
     init() {
-        let args = ProcessInfo.processInfo.arguments
+        var args = ProcessInfo.processInfo.arguments
+        // Screenshot presets select the production UI with sample content.
+        // This key exists only in a copied QA bundle, never in the shipping app.
+        let screenshotScene = Bundle.main.object(forInfoDictionaryKey: "AppStoreScreenshotScene") as? String
+        let screenshotScenes = ["home", "conversation", "sidebar", "models", "voice", "image"]
+        isStoreScreenshot = screenshotScene.map { screenshotScenes.contains($0) } ?? false
+        if isStoreScreenshot, let screenshotScene {
+            args += ["-screen", screenshotScene == "sidebar" ? "home" : screenshotScene]
+            if screenshotScene == "sidebar" { args.append("-drawer-open") }
+            if screenshotScene == "image" { args.append("-image-empty") }
+        }
+        // A build-only Info.plist override enables manual Argent review,
+        // whose app launcher intentionally has no arbitrary launch arguments.
+        if let preparation = Bundle.main.object(forInfoDictionaryKey: "RepackPreparationFixture") as? String {
+            args += ["-screen", "models", "-model-actions", preparation == "paused" ? "-preparation-paused" : "-model-preparing"]
+        }
+        if let pack = Bundle.main.object(forInfoDictionaryKey: "CoreAIRemovalFixture") as? String {
+            args += ["-screen", "models", "-coreai-installed", pack, "-action-probe"]
+        }
         func value(_ key: String) -> String? { guard let i = args.firstIndex(of: key), args.indices.contains(i + 1) else { return nil }; return args[i + 1] }
         screen = value("-screen") ?? "composer"
+        if screen == "quantization-settings", args.contains("-reset-turboquant-setting") {
+            UserDefaults.standard.removeObject(forKey: MLXAssistantKVCachePolicy.preferenceKey)
+        }
         homeVariant = value("-home-variant") ?? "focus"
         dark = args.contains("-dark")
         compact = args.contains("-compact")
@@ -158,6 +244,8 @@ final class ReviewFixture: ObservableObject {
         ODBridge.shared.store = store
         if screen == "voice" { store.selectedTab = .voice }
         if screen == "models" { store.selectedTab = .models }
+        if screen == "classifiers" { store.selectedTab = .classifiers }
+        if args.contains("-classifier-input") { classifier.input = "The service was very helpful." }
         if screen == "lens" { store.selectedTab = .lens }
         if args.contains("-drawer-open") { store.conversationsPresented = true }
         store.capabilities.canCapture = true
@@ -226,13 +314,26 @@ final class ReviewFixture: ObservableObject {
             store.models.append(.init(id: "review/catalog-model", name: "Review catalog model",
                 metadata: "UI test fixture", byteCount: 1_000_000_000, kind: .language,
                 isInstalled: false, availableCommands: [.details, .configure, .download, .pauseDownload, .cancelDownload],
-                downloadStatus: args.contains("-model-paused") ? "Paused"
+                downloadStatus: args.contains("-model-preparing") ? "Preparing model" : args.contains("-preparation-paused") ? "Preparation paused" : args.contains("-model-paused") ? "Paused"
                     : args.contains("-model-downloading") || args.contains("-model-invalid-progress") ? "Downloading" : nil,
-                downloadProgress: args.contains("-model-invalid-progress") ? .nan
+                downloadDetail: args.contains("-model-preparing") ? "Preparing model · 12 of 40"
+                    : args.contains("-preparation-paused") ? "Preparing this model needs about 20 GB more free space. Free storage, then resume. The original download has been kept." : nil,
+                downloadProgress: args.contains("-model-preparing") || args.contains("-preparation-paused") ? 0.3 : args.contains("-model-invalid-progress") ? .nan
                     : args.contains("-model-downloading") || args.contains("-model-paused") ? 0.4 : nil,
-                isDownloadPaused: args.contains("-model-paused"),
+                isDownloadPaused: args.contains("-model-paused") || args.contains("-preparation-paused"),
                 summary: "Fast for chat and code.", vendor: "qwen", badges: ["Recommended"],
                 downloadSizeLabel: "~1 GB"))
+        }
+        if args.contains("-classifier-catalog") {
+            store.models += CoreAIModelLibrary.catalog.filter { $0.category == .classifier }.map {
+                CoreAIModelLibrary.entry(for: $0,
+                    isInstalled: args.contains("-classifier-installed") && $0.id == "zoo-laya-multilingual")
+            }
+        }
+        if let packID = value("-coreai-installed"), let pack = CoreAIZooCatalog.model(id: packID) {
+            store.models = [CoreAIModelLibrary.entry(for: pack, isInstalled: true),
+                .init(id: "review/kept-model", name: "Another installed model", metadata: "Removal fixture",
+                      kind: .language, isInstalled: true, availableCommands: [.details, .delete])]
         }
         if args.contains("-model-dual-role") {
             store.capabilities.canLoadModels = true
@@ -261,10 +362,40 @@ final class ReviewFixture: ObservableObject {
                 availableCommands: [.details]
             ))
         }
+        if isStoreScreenshot {
+            // Catalogue rows come from the production catalogue. Only the
+            // installed/selected presentation state is illustrative.
+            let selectedID = "coreai:zoo-qwen3-0.6b-official-ios"
+            store.models = CoreAIModelLibrary.catalog
+                .filter { $0.category != .classifier && AppStoreModelPolicy.restriction(for: $0.hfRepo, publicDistribution: true) == nil }
+                .map { CoreAIModelLibrary.entry(for: $0, isInstalled: "coreai:\($0.id)" == selectedID) }
+            store.models.append(.init(id: AppStoreModelPolicy.publicVisionSelectionID,
+                name: "SmolVLM2 500M", metadata: "GGUF · Vision", kind: .vision,
+                isInstalled: true, availableCommands: [.details],
+                summary: "Compact on-device image understanding.", vendor: "huggingFace"))
+            store.selectedModelID = selectedID
+            store.loadedModelID = selectedID
+            store.modelPhase = .ready
+            store.metrics.modelStorageBytes = nil
+            store.editionLabel = "OnDevice Max"
+            store.voiceSessionNotice = nil
+            store.lensStatusMessage = nil
+        }
         store.onAction = { [weak self, weak store] action in
             guard let store else { return }
             self?.lastAction = String(describing: action)
             switch action {
+            case .modelAction(let id, .delete):
+                if args.contains("-coreai-installed"), let pack = CoreAIZooCatalog.model(forSelectionID: id),
+                   let index = store.models.firstIndex(where: { $0.id == id }) {
+                    store.models[index] = CoreAIModelLibrary.entry(for: pack)
+                }
+            case .loadModel(let id), .loadModelInWorkspace(let id, _):
+                if id == "coreai:zoo-laya-multilingual" {
+                    self?.classifier.selectedModelID = id
+                    store.selectedTab = .classifiers
+                    self?.classifier.startActivation()
+                }
             case .capture: store.lensHasSelectedImage = true
             case .retakeLens: store.lensHasSelectedImage = false; store.lensResultText = nil
             case .analyzeLens:
@@ -400,6 +531,7 @@ struct ComposerContractView: View {
                     notice: failureVisible ? AnyView(ChatReplyFailureNotice(
                         detail: "The model stayed busy; retry shortly", canRetry: true,
                         onRetry: { failureVisible = false; responding = true; status = "Retry accepted" })) : nil,
+                    modelControl: AnyView(modelControl.accessibilityIdentifier("chat.modelPicker")),
                     onVoice: voiceAction,
                     onAdd: { attachments.append(.init(id: "file-\(attachments.count + 1)", name: "notes.txt")) },
                     onRemove: { id in attachments.removeAll { $0.id == id } },
@@ -433,7 +565,7 @@ struct ComposerContractView: View {
                     }.accessibilityIdentifier("navigation.menu")
                 }
                 ToolbarItem(placement: .principal) {
-                    modelControl.accessibilityIdentifier("chat.modelPicker")
+                    Text(welcome ? "OnDevice" : "A focused workday").font(.headline)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("More options", systemImage: "ellipsis") { status = "Options opened" }

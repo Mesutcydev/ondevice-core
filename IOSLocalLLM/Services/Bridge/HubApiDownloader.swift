@@ -32,17 +32,25 @@ struct HubApiDownloader: Downloader {
         useLatest: Bool,
         progressHandler: @Sendable @escaping (Progress) -> Void
     ) async throws -> URL {
+        guard let sourceRevision = AppStoreModelPolicy.downloadRevision(for: id, fallback: revision ?? "main") else {
+            throw NSError(domain: "OnDeviceModelSource", code: 1, userInfo: [
+                NSLocalizedDescriptionKey: AppStoreModelPolicy.restriction(for: id)
+                    ?? AppStoreModelPolicy.missingRevisionMessage
+            ])
+        }
         // HFTokenStore is @MainActor; hop to the main actor to read the
         // active token, then build a HubApi carrying it (matches
         // ImageGenerationService.hub so auth behaviour stays consistent).
         let token = await MainActor.run {
             HFTokenStore.shared.isActive ? HFTokenStore.shared.currentToken() : nil
         }
-        return try await HubApi(hfToken: token).snapshot(
+        let directory = try await HubApi(hfToken: token).snapshot(
             from: Hub.Repo(id: id),
-            revision: revision ?? "main",
+            revision: sourceRevision,
             matching: patterns,
             progressHandler: progressHandler
         )
+        try ModelCheckpointCompatibility.validateMLXDirectory(directory)
+        return directory
     }
 }

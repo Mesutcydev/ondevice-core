@@ -24,6 +24,14 @@ enum Edge0ModelFamily: String, Sendable, CaseIterable {
         "cadc35c7059469fad8569a63ce6c851172bbca61"
     static let qwen35MoEPinnedRevision =
         "1ff9f4478890faec0368c5463b621d1036d5b518"
+    /// The audited public revision changes the model card only. Its shard,
+    /// adapter, index, config and tokenizer hashes match the original pin.
+    /// See Docs/audits/edge0-repack-revisions-2026-10-01.json.
+    static let qwen35MoEPublicRevision =
+        "3fe15cbf2bd5bbcdfd611035e1ac88971ff1cdab"
+    static let qwen35MoERepackRevisions: Set<String> = [
+        qwen35MoEPinnedRevision, qwen35MoEPublicRevision
+    ]
 
     var pinnedRevision: String {
         switch self {

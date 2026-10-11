@@ -60,7 +60,7 @@ struct SettingsView: View {
                     }
                 }
                 Section("APP") {
-                    ForEach([SettingsCategory.appearance, .system, .privacyLegal]) { category in
+                    ForEach([SettingsCategory.appearance, .parentalControls, .system, .privacyLegal]) { category in
                         Button {
                             selectedCategory = category
                         } label: {
@@ -89,6 +89,8 @@ struct SettingsView: View {
             .navigationDestination(item: $selectedCategory) { category in
                 if category == .userGuide {
                     UserGuideView()
+                } else if category == .parentalControls {
+                    ParentalControlsView()
                 } else {
                     categoryDestination(category)
                 }
@@ -146,6 +148,7 @@ struct SettingsView: View {
         case appearance
         case system
         case privacyLegal
+        case parentalControls
 
         var id: String { rawValue }
 
@@ -158,6 +161,7 @@ struct SettingsView: View {
             case .appearance:   return "Appearance"
             case .system:       return "System & Diagnostics"
             case .privacyLegal: return "Privacy & Legal"
+            case .parentalControls: return "Parental controls"
             }
         }
 
@@ -165,11 +169,13 @@ struct SettingsView: View {
             switch self {
             case .userGuide:    return "learn how to use OnDevice & local models"
             case .capture:      return "analysis mode, camera, detection"
-            case .modelsAI:     return "assistant, api keys, fastvlm pipeline"
+            case .modelsAI:     return AppStoreModelPolicy.isPublicDistribution
+                ? "assistant, API keys, model downloads" : "assistant, api keys, fastvlm pipeline"
             case .voice:        return "engine, voice, audio, behavior"
             case .appearance:   return "theme, language, interface"
             case .system:       return "status, thermal, developer tools"
             case .privacyLegal: return "data, reset, legal notices"
+            case .parentalControls: return "parent PIN, image generation restrictions"
             }
         }
 
@@ -182,6 +188,7 @@ struct SettingsView: View {
             case .appearance:   return "paintpalette"
             case .system:       return "gauge.with.dots.needle.bottom.50percent"
             case .privacyLegal: return "lock.shield"
+            case .parentalControls: return "person.badge.shield.checkmark"
             }
         }
     }
@@ -267,7 +274,7 @@ struct SettingsView: View {
                     modelsSection
                     assistantSection
                     apiSettingsSection
-                    fastvlmPipelineSection
+                    if !AppStoreModelPolicy.isPublicDistribution { fastvlmPipelineSection }
                 case .voice:
                     voiceSection
                 case .appearance:
@@ -279,6 +286,8 @@ struct SettingsView: View {
                 case .privacyLegal:
                     privacyResetSection
                     legalSection
+                case .parentalControls:
+                    EmptyView() // Dedicated Form destination above.
                 }
         }
         .listStyle(.plain)
@@ -410,6 +419,9 @@ struct SettingsView: View {
                 KRow(label: "MLX low-cache / GGUF paging", trailing: {
                     KToggle(isOn: $settings.largeModelLowMemoryEnabled)
                 })
+                Rectangle().fill(T.rule).frame(height: 1)
+                ExperimentalKVCacheSettingsRow(enabled: $settings.assistantTurboQuantEnabled)
+                Rectangle().fill(T.rule).frame(height: 1)
                 KRow(label: "Load timeout", trailing: {
                     HStack(spacing: 8) {
                         KMono(text: settings.modelLoadTimeoutSeconds == 0
@@ -455,7 +467,9 @@ struct SettingsView: View {
                                 KCapabilityPill(capability: marker, size: .compact)
                             }
                         }
-                        Text(AssistantModelCatalog.currentSelection().displayName)
+                        Text(APIProviderStore.shared.target(settings.assistantModelID).map { "\($0.model.name) · \($0.provider.name)" }
+                             ?? (settings.assistantModelID.hasPrefix("api:") ? "API model unavailable"
+                                 : AssistantModelCatalog.currentSelection().displayName))
                             .font(.subheadline).foregroundStyle(.primary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -702,6 +716,35 @@ struct SettingsView: View {
 
     private var apiSettingsSection: some View {
         SettingsPageSection(title: "API settings") {
+            NavigationLink {
+                APIProvidersView()
+            } label: {
+                Label {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("API providers").font(.subheadline)
+                        Text("Configure providers, API keys, and chat models")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                } icon: { Image(systemName: "network").foregroundStyle(T.accent) }
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .padding(14)
+            }
+            .accessibilityIdentifier("settings.apiProviders")
+            Rectangle().fill(T.rule).frame(height: 1)
+            NavigationLink {
+                GitHubSettingsView()
+            } label: {
+                Label {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("GitHub & tools").font(.subheadline)
+                        Text("Optional repository access · off by default")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                } icon: { Image(systemName: "arrow.triangle.branch").foregroundStyle(T.accent) }
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).padding(14)
+            }
+            .accessibilityIdentifier("settings.github")
+            Rectangle().fill(T.rule).frame(height: 1)
             // Token row — description + Set/Update button. The trailing
             // button label flips based on whether a token is already
             // saved, so the row carries that state without a separate
@@ -1362,7 +1405,7 @@ struct SettingsView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Deletes downloaded models, conversations, snippets, memories, saved API keys, Mac Bridge pairings, cache, and resets onboarding. Cannot be undone.")
+            Text("Deletes downloaded models, conversations, snippets, memories, saved API keys, GitHub credentials, Mac Bridge pairings, cache, and resets onboarding. Cannot be undone.")
         }
     }
 
@@ -1577,13 +1620,17 @@ struct SettingsView: View {
     private var aboutSection: some View {
         Group {
             LabeledContent("Version", value: appVersionLabel)
-            Text("OnDevice combines local models with optional web access, Apple Private Cloud Compute, and paired Mac tools. Each network feature is controlled separately.")
+            Text("OnDevice combines local models with optional API providers, web access, Apple Private Cloud Compute, and paired Mac tools. Each network feature is controlled separately.")
                 .font(.footnote).foregroundStyle(.secondary)
         }
     }
 
     @ViewBuilder
     private var assistantStatusBadge: some View {
+        if assistant.activeExecutionLocation == .externalCloud {
+            KStatusBadge(glyph: .remote, label: assistant.isGeneratingSelectedTarget ? "busy" : assistant.canGenerateSelectedTarget ? "API ready" : "configure",
+                         color: assistant.canGenerateSelectedTarget ? T.good : T.ink3)
+        } else {
         switch assistant.state {
         case .ready:      KStatusBadge(glyph: .ready, label: "ready", color: T.good)
         case .loading:    KStatusBadge(glyph: .streaming, label: "loading", color: T.warn)
@@ -1591,45 +1638,14 @@ struct SettingsView: View {
         case .unloaded:   KStatusBadge(glyph: .remote, label: "off", color: T.ink3)
         case .failed:     KStatusBadge(glyph: .remote, label: "error", color: T.bad)
         }
+        }
     }
 }
 
 /// Settings rows are intentionally composed inside one List row. The old
 /// `KSection` emitted each hand-drawn hairline as its own List row, which
 /// created empty 44-point bands and duplicate system separators on iPhone.
-private struct SettingsPageSection<Content: View>: View {
-    let title: String
-    @ViewBuilder let content: () -> Content
-    @Environment(\.koduTheme) private var T
-
-    var body: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 0) {
-                content()
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: ODLayout.settingsCardCorner, style: .continuous)
-                    .fill(T.surface)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: ODLayout.settingsCardCorner, style: .continuous)
-                    .strokeBorder(T.rule, lineWidth: 1)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: ODLayout.settingsCardCorner, style: .continuous))
-            .listRowInsets(EdgeInsets(top: 0, leading: ODLayout.settingsPageInset, bottom: 0, trailing: ODLayout.settingsPageInset))
-            .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
-        } header: {
-            Text(title.uppercased())
-                .font(T.sans(11, .semibold))
-                .tracking(1.1)
-                .foregroundColor(T.ink3)
-                .textCase(nil)
-                .padding(.horizontal, ODLayout.settingsPageInset)
-        }
-    }
-}
+private typealias SettingsPageSection<Content: View> = ODSettingsSection<Content>
 
 private struct SettingsPageDisclosureSection<Content: View>: View {
     let title: String

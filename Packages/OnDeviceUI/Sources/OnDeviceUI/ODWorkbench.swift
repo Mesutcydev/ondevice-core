@@ -12,6 +12,7 @@ public struct OnDeviceWorkbench: View {
     private let imageContent: AnyView?
     private let deviceContent: AnyView?
     private let apiServerContent: AnyView?
+    private let classifierContent: AnyView?
     private let voiceContent: AnyView?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -35,6 +36,7 @@ public struct OnDeviceWorkbench: View {
                 chatContent: AnyView? = nil, settingsContent: AnyView? = nil,
                 imageContent: AnyView? = nil, deviceContent: AnyView? = nil,
                 voiceContent: AnyView? = nil, apiServerContent: AnyView? = nil,
+                classifierContent: AnyView? = nil,
                 lensResultContent: ((Binding<Bool>) -> AnyView)? = nil) {
         self.store = store
         self.cameraPreview = cameraPreview
@@ -45,6 +47,7 @@ public struct OnDeviceWorkbench: View {
         self.deviceContent = deviceContent
         self.apiServerContent = apiServerContent
         self.voiceContent = voiceContent
+        self.classifierContent = classifierContent
     }
 
     public var body: some View {
@@ -178,6 +181,9 @@ public struct OnDeviceWorkbench: View {
             }
             retained(.voice) { ODVoiceLibraryView() }
             retained(.models) { ODModelsView() }
+            retained(.classifiers) {
+                if let classifierContent { classifierContent }
+            }
             retained(.imageStudio) {
                 if let imageContent { imageContent } else { ODImageStudioView() }
             }
@@ -196,7 +202,7 @@ public struct OnDeviceWorkbench: View {
         if visited.contains(destination) || store.selectedTab == destination {
             content()
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    if [.models, .device, .apiServer].contains(destination) {
+                    if [.models, .classifiers, .device, .apiServer].contains(destination) {
                         ODWorkspaceBottomBar { EmptyView() }
                     }
                 }

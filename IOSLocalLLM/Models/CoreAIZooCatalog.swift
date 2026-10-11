@@ -3,10 +3,10 @@ import Foundation
 /// A ready-to-download Core AI pack.
 ///
 /// Every entry below was verified against the Hugging Face tree API on
-/// 2026-09-23 (see `scripts/audit_coreai_repos.py`): the recorded subtree
+/// 2026-09-30 (see `Docs/COREAI_MODEL_AUDIT_2026-09-30.md`): the recorded subtree
 /// exists, contains at least one `.aimodel`, and ships the `metadata.json`
 /// the Core AI runtime contract requires. `approxDownloadBytes` is the summed
-/// LFS size of that subtree, not an estimate.
+/// file bytes of that subtree (including LFS artifacts), not an estimate.
 struct CoreAIZooModel: Identifiable, Hashable, Sendable {
     enum Category: String, CaseIterable, Identifiable, Sendable {
         /// Apple's own export recipes, unmodified, running on the stock runtime.
@@ -17,6 +17,8 @@ struct CoreAIZooModel: Identifiable, Hashable, Sendable {
         case vision
         /// Embedding / rerank / speech utilities.
         case utility
+        /// Typed choice / score / boolean decisions; never a chat decoder.
+        case classifier
 
         var id: String { rawValue }
 
@@ -26,6 +28,7 @@ struct CoreAIZooModel: Identifiable, Hashable, Sendable {
             case .chat:           return "CHAT MODELS"
             case .vision:         return "VISION-LANGUAGE"
             case .utility:        return "SPEECH & EMBEDDING"
+            case .classifier:     return "CLASSIFIERS"
             }
         }
 
@@ -39,6 +42,8 @@ struct CoreAIZooModel: Identifiable, Hashable, Sendable {
                 return "Image understanding. Needs the vision + decoder pair."
             case .utility:
                 return "Not chat models — embedding, rerank, and transcription."
+            case .classifier:
+                return "Typed decisions: option probabilities, scores, and yes/no answers."
             }
         }
     }
@@ -52,8 +57,11 @@ struct CoreAIZooModel: Identifiable, Hashable, Sendable {
     /// Every one of these repos ships several platform trees side by side, so
     /// omitting the prefix would pull tens of gigabytes.
     let pathPrefix: String?
-    /// Measured size of `pathPrefix` (summed LFS bytes), not an estimate.
+    /// Measured size of `pathPrefix` (summed file bytes), not an estimate.
     let approxDownloadBytes: Int64
+    /// Exported/platform pack limit. Assistant additionally applies its
+    /// conservative 1K iOS Core AI policy; this is not the source checkpoint's
+    /// advertised context or a claim of on-device validation at this length.
     let contextWindow: Int
     let supportsThinking: Bool
     let supportsTools: Bool
@@ -129,7 +137,10 @@ enum CoreAIZooCatalog {
     /// Deliberately excluded: Mac-only trees (`macos/`, dense 27B+/MoE ports),
     /// `ios-frontend` trees that carry no `.aimodel`, and any subtree missing
     /// `metadata.json`. Those install but cannot load here.
-    static let iphoneLanguageModels: [CoreAIZooModel] = [
+    static var iphoneLanguageModels: [CoreAIZooModel] {
+        researchLanguageModels.filter { AppStoreModelPolicy.restriction(for: $0.hfRepo) == nil }
+    }
+    private static let researchLanguageModels: [CoreAIZooModel] = [
 
         // MARK: Official recipes (Apple's export scripts, unmodified)
 
@@ -207,14 +218,28 @@ enum CoreAIZooCatalog {
             licenseNotice: "Apache-2.0 (Qwen). Community conversion by kevinqz."
         ),
         CoreAIZooModel(
+            id: "zoo-granite-4.0-h-350m",
+            displayName: "Granite 4.0-H 350M",
+            subtitle: "IBM · compact hybrid · fp16 iOS GPU",
+            hfRepo: "aether-models/granite-4.0-h-350m",
+            revision: "ea24ac837112b7b082e52cd51bc83b38467ae659",
+            pathPrefix: "ios-any-gpu",
+            approxDownloadBytes: 691_007_111,
+            contextWindow: 4_096,
+            supportsThinking: false,
+            supportsTools: true,
+            category: .chat,
+            licenseNotice: "Apache-2.0. Conversion by Aether; upstream license included on the Hub."
+        ),
+        CoreAIZooModel(
             id: "zoo-minicpm5-1b",
             displayName: "MiniCPM5 1B",
-            subtitle: "OpenBMB · hybrid think / no-think · 128K",
+            subtitle: "OpenBMB · hybrid reasoning · iPhone 1K cap",
             hfRepo: "mlboydaisuke/MiniCPM5-1B-CoreAI",
             revision: "f38d143ec50cb2e54d8388479b919e3b9283943b",
             pathPrefix: "int8",
             approxDownloadBytes: 1_158_613_345,
-            contextWindow: 8_192,
+            contextWindow: 1_024,
             supportsThinking: true,
             supportsTools: false,
             category: .chat,
@@ -228,7 +253,7 @@ enum CoreAIZooCatalog {
             revision: "b98ad07f1ae7c07fb3e5967091600177f48844c2",
             pathPrefix: "gpu-pipelined-b2/qwen3_5_0_8b_decode_int8hu_block32_sym",
             approxDownloadBytes: 1_337_858_025,
-            contextWindow: 8_192,
+            contextWindow: 4_096,
             supportsThinking: true,
             supportsTools: true,
             category: .chat,
@@ -284,11 +309,39 @@ enum CoreAIZooCatalog {
             revision: "3e3241cbcf368a663768dcc4e5785c4f0a02bae4",
             pathPrefix: "gpu-pipelined-b2/lfm2_5_1_2b_instruct_decode_int8hu_block32_sym",
             approxDownloadBytes: 1_701_927_366,
-            contextWindow: 8_192,
+            contextWindow: 4_096,
             supportsThinking: false,
             supportsTools: false,
             category: .chat,
             licenseNotice: "LFM Open License v1.0. Review terms on the Hub card."
+        ),
+        CoreAIZooModel(
+            id: "zoo-qwen3-1.7b-aether",
+            displayName: "Qwen3 1.7B · iOS GPU",
+            subtitle: "Hybrid reasoning · portable int8 GPU bundle",
+            hfRepo: "aether-models/qwen3-1.7b",
+            revision: "9424554369f1c4fd2f80af64847ba2d938e2c58a",
+            pathPrefix: "ios-any-gpu",
+            approxDownloadBytes: 1_738_451_082,
+            contextWindow: 4_096,
+            supportsThinking: true,
+            supportsTools: true,
+            category: .chat,
+            licenseNotice: "Apache-2.0. Conversion by Aether; upstream license included on the Hub."
+        ),
+        CoreAIZooModel(
+            id: "zoo-granite-4.0-1b",
+            displayName: "Granite 4.0 1B",
+            subtitle: "IBM · dense chat · int8 iOS GPU",
+            hfRepo: "aether-models/granite-4.0-1b",
+            revision: "2b5d83696b7455ee02a79596cd077a93a2e78ba9",
+            pathPrefix: "ios-any-gpu",
+            approxDownloadBytes: 1_743_936_100,
+            contextWindow: 4_096,
+            supportsThinking: false,
+            supportsTools: true,
+            category: .chat,
+            licenseNotice: "Apache-2.0. Conversion by Aether; upstream license included on the Hub."
         ),
         CoreAIZooModel(
             id: "zoo-granite-4.0-h-1b",
@@ -298,17 +351,26 @@ enum CoreAIZooCatalog {
             revision: "2349d8e26d749e4c503b0b5999c84057665b8524",
             pathPrefix: "gpu-pipelined-b2/granite_4_0_h_1b_decode_int8hu_block32_sym",
             approxDownloadBytes: 1_872_605_842,
-            contextWindow: 8_192,
+            contextWindow: 4_096,
             supportsThinking: false,
             supportsTools: true,
             category: .chat,
             licenseNotice: "Apache-2.0 (IBM Granite)."
         ),
-        // Gemma 4 E2B's published `*_tbl_*` bundle is intentionally not
-        // offered here. It requires a model-specific ~2.35 GB static-input
-        // provider in addition to the generic CoreAILanguageModel runtime;
-        // advertising it as a drop-in chat pack would make a successful
-        // download fail when selected.
+        CoreAIZooModel(
+            id: "zoo-eurollm-1.7b-instruct",
+            displayName: "EuroLLM 1.7B Instruct",
+            subtitle: "Multilingual chat · int8 iOS GPU",
+            hfRepo: "aether-models/eurollm-1.7b-instruct",
+            revision: "3ed1743a0b15f6d4950d523562aa42b114969fd8",
+            pathPrefix: "ios-any-gpu",
+            approxDownloadBytes: 1_931_164_337,
+            contextWindow: 4_096,
+            supportsThinking: false,
+            supportsTools: false,
+            category: .chat,
+            licenseNotice: "Apache-2.0. Conversion by Aether; upstream license included on the Hub."
+        ),
         CoreAIZooModel(
             id: "zoo-youtu-llm-2b",
             displayName: "Youtu LLM 2B",
@@ -321,7 +383,7 @@ enum CoreAIZooCatalog {
             supportsThinking: true,
             supportsTools: true,
             category: .chat,
-            licenseNotice: "Other (youtu-llm). Read the Hub license before shipping."
+            licenseNotice: "Tencent Youtu-LLM license; attribution required. Not intended for use in the European Union; review the upstream terms."
         ),
         CoreAIZooModel(
             id: "zoo-fastcontext-4b",
@@ -335,7 +397,7 @@ enum CoreAIZooCatalog {
             supportsThinking: false,
             supportsTools: false,
             category: .chat,
-            licenseNotice: "Check the Hub card for the source model's license."
+            licenseNotice: "MIT (Microsoft FastContext). Converted artifact; see the Hub LICENSE."
         ),
         CoreAIZooModel(
             id: "zoo-minicpm5-2b",
@@ -359,7 +421,7 @@ enum CoreAIZooCatalog {
             revision: "14e77014db5ae2f3de94825165f5ae58bededd7d",
             pathPrefix: "gpu-pipelined-b2/qwen3_5_2b_decode_int8hu_block32_sym",
             approxDownloadBytes: 3_046_585_891,
-            contextWindow: 8_192,
+            contextWindow: 4_096,
             supportsThinking: true,
             supportsTools: true,
             category: .chat,
@@ -373,11 +435,25 @@ enum CoreAIZooCatalog {
             revision: "21a907f5d2a6d77f27596d5c1562e92f1184ce82",
             pathPrefix: "gpu-pipelined/bitcpm_8b_decode_ternary_s1",
             approxDownloadBytes: 3_184_455_525,
-            contextWindow: 8_192,
+            contextWindow: 4_096,
             supportsThinking: false,
             supportsTools: false,
             category: .chat,
             licenseNotice: "Apache-2.0 (OpenBMB). Custom Metal kernel — expect variance."
+        ),
+        CoreAIZooModel(
+            id: "zoo-smollm3-3b",
+            displayName: "SmolLM3 3B",
+            subtitle: "Hugging Face · reasoning · h18p GPU bundle",
+            hfRepo: "aether-models/smollm3-3b",
+            revision: "2d9e78f3665bd28ae73f9f44b22917f0b86f3491",
+            pathPrefix: "ios-h18p-gpu",
+            approxDownloadBytes: 3_285_009_137,
+            contextWindow: 4_096,
+            supportsThinking: true,
+            supportsTools: true,
+            category: .chat,
+            licenseNotice: "Apache-2.0. Conversion by Aether; upstream license included on the Hub."
         ),
         CoreAIZooModel(
             id: "zoo-lfm25-2.6b",
@@ -387,11 +463,25 @@ enum CoreAIZooCatalog {
             revision: "0e43b1a408515f3937a20a5bfa0e25d8f24f9704",
             pathPrefix: "gpu-pipelined/lfm2_5_2_6b_decode_int8hu_block32_sym",
             approxDownloadBytes: 3_655_085_252,
-            contextWindow: 8_192,
+            contextWindow: 4_096,
             supportsThinking: true,
             supportsTools: false,
             category: .chat,
             licenseNotice: "LFM Open License v1.0. Large — check free storage first."
+        ),
+        CoreAIZooModel(
+            id: "zoo-qwen3-4b-instruct-2507",
+            displayName: "Qwen3 4B Instruct 2507",
+            subtitle: "Non-thinking instruct · h18p GPU bundle",
+            hfRepo: "aether-models/qwen3-4b-instruct-2507",
+            revision: "1bd7de3abec265601b6d2473e7b6557223e2dbc1",
+            pathPrefix: "ios-h18p-gpu",
+            approxDownloadBytes: 4_041_759_267,
+            contextWindow: 4_096,
+            supportsThinking: false,
+            supportsTools: true,
+            category: .chat,
+            licenseNotice: "Apache-2.0. Conversion by Aether; upstream license included on the Hub."
         ),
         CoreAIZooModel(
             id: "zoo-nanbeige41-3b",
@@ -401,7 +491,7 @@ enum CoreAIZooCatalog {
             revision: "e926b56e803a9198d4114cf28450d58f964dd6ff",
             pathPrefix: "gpu-pipelined-b2/nanbeige4_1_3b_decode_int8hu_block32_sym",
             approxDownloadBytes: 4_600_132_783,
-            contextWindow: 8_192,
+            contextWindow: 4_096,
             supportsThinking: true,
             supportsTools: true,
             category: .chat,
@@ -415,7 +505,7 @@ enum CoreAIZooCatalog {
             revision: "7f1bd3064909f36292510ad65532585d63f0eac2",
             pathPrefix: "ios-h18p/nemotron_3_nano_4b_decode_int8hu",
             approxDownloadBytes: 4_628_965_401,
-            contextWindow: 8_192,
+            contextWindow: 4_096,
             supportsThinking: true,
             supportsTools: true,
             category: .chat,
@@ -429,12 +519,13 @@ enum CoreAIZooCatalog {
             revision: "a55c2286a55d623ba18e0bd6489b260de4512a40",
             pathPrefix: "gpu-pipelined/nanbeige4_2_3b_decode_int8hu_block32_sym_s1",
             approxDownloadBytes: 4_930_824_809,
-            contextWindow: 8_192,
+            contextWindow: 4_096,
             supportsThinking: true,
             supportsTools: true,
             category: .chat,
             licenseNotice: "Apache-2.0 (Nanbeige)."
         ),
+
         // MARK: Vision-language
 
         CoreAIZooModel(
@@ -526,6 +617,43 @@ enum CoreAIZooCatalog {
             category: .utility,
             licenseNotice: "MIT (OpenAI Whisper). Transcription output only."
         ),
+
+        // MARK: Encoder classifiers (one forward pass; never auto-load as chat)
+
+        CoreAIZooModel(
+            id: "zoo-laya-multilingual",
+            displayName: "Laya Multilingual",
+            subtitle: "Typed decisions · fp16 · iOS h18p GPU",
+            hfRepo: "mlboydaisuke/Laya-Multilingual-CoreAI",
+            revision: "3fe58a5ed7857b41f5c7ba8c0f46ce420b42cf02",
+            pathPrefix: "ios-h18p/wfp16-s512",
+            approxDownloadBytes: 681_051_433,
+            contextWindow: 512,
+            supportsThinking: false,
+            supportsTools: false,
+            category: .classifier,
+            licenseNotice: "Apache-2.0 (Convai Innovations); MIT mmBERT base. GPU inference; Neural Engine parity failed upstream."
+        ),
+    ]
+
+    /// Julia has Mac validation only. Keep this exact pack addressable for
+    /// admitted host adapters. The library labels it Mac-only and disables
+    /// iPhone download rather than hiding the classifier entirely.
+    static let macOnlyClassifierModels: [CoreAIZooModel] = [
+        CoreAIZooModel(
+            id: "zoo-julia-1",
+            displayName: "Julia-1",
+            subtitle: "144M typed decisions · fp32 · Mac validation only",
+            hfRepo: "mlboydaisuke/Julia-1-CoreAI",
+            revision: "d1e943545c64e20e73a88ae1f890227c349e22ba",
+            pathPrefix: "macos/fp32-s1024",
+            approxDownloadBytes: 627_543_671,
+            contextWindow: 1_024,
+            supportsThinking: false,
+            supportsTools: false,
+            category: .classifier,
+            licenseNotice: "Apache-2.0 (Supersonic Labs); MIT mmBERT base. No iPhone validation is published."
+        ),
     ]
 
     /// Packs for one category, in catalog (smallest-first) order.
@@ -536,7 +664,7 @@ enum CoreAIZooCatalog {
     /// Catalog entry for a download-manager id, when the download came from the
     /// catalog rather than a free-text Hub search.
     static func model(id: String) -> CoreAIZooModel? {
-        iphoneLanguageModels.first { $0.id == id }
+        (iphoneLanguageModels + macOnlyClassifierModels).first { $0.id == id }
     }
 
     /// Resolves either a raw catalog id (stored in CoreAIModelStore's manifest)
@@ -564,6 +692,7 @@ enum CoreAIZooCatalog {
     /// Embedding, rerank, transcription, and vision packs are installable,
     /// but they are not chat models.
     static func isTextGenerationPack(id: String) -> Bool {
+        guard AppStoreModelPolicy.restriction(for: id) == nil else { return false }
         let rawID = id.hasPrefix("coreai:") ? String(id.dropFirst("coreai:".count)) : id
         if unsupportedTextGenerationPackIDs.contains(rawID) { return false }
         guard let model = model(forSelectionID: id) else {
