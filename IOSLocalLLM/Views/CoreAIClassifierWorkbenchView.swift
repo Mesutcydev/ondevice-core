@@ -12,6 +12,7 @@ struct CoreAIClassifierWorkbenchView: View {
     @State private var template: CoreAIClassifierWorkbench.Template = .custom
     @FocusState private var editing: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.odSidebarPinned) private var sidebarPinned
 
     var body: some View {
         NavigationStack {
@@ -79,9 +80,11 @@ struct CoreAIClassifierWorkbenchView: View {
             }
             .navigationTitle("Classifiers").navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(action: onOpenMenu) { Image(systemName: "line.3.horizontal") }
-                        .accessibilityLabel("Open app menu").accessibilityIdentifier("navigation.menu")
+                if !sidebarPinned {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(action: onOpenMenu) { Image(systemName: "line.3.horizontal") }
+                            .accessibilityLabel("Open app menu").accessibilityIdentifier("navigation.menu")
+                    }
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Button { editing = false } label: { Image(systemName: "keyboard.chevron.compact.down") }

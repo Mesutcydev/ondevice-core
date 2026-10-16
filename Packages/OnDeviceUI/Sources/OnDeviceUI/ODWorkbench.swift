@@ -16,6 +16,7 @@ public struct OnDeviceWorkbench: View {
     private let voiceContent: AnyView?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Environment(\.layoutDirection) private var layoutDirection
     @State private var visited: Set<ODTab> = []
     /// Animated mirror of `store.conversationsPresented`: every open/close runs
@@ -52,25 +53,31 @@ public struct OnDeviceWorkbench: View {
 
     public var body: some View {
         GeometryReader { geometry in
-            let width = dynamicTypeSize.isAccessibilitySize
+            // Space, not device: a regular-width window with room for a phone-width
+            // workspace (iPhone Duo inner display) keeps the sidebar beside it. The
+            // same views stay mounted, so drafts survive opening or closing the device.
+            let pinned = horizontalSizeClass == .regular
+                && geometry.size.width >= ODLayout.pinnedSidebarWidth + ODLayout.pinnedWorkspaceMinimumWidth
+            let width = pinned ? ODLayout.pinnedSidebarWidth
+                : dynamicTypeSize.isAccessibilitySize
                 ? min(480, max(0, geometry.size.width - 24))
                 : ODLayout.drawerWidth(availableWidth: geometry.size.width)
-            let offset = min(width, max(0, (drawerOpen ? width : 0) + drawerDrag))
+            let offset = pinned ? 0 : min(width, max(0, (drawerOpen ? width : 0) + drawerDrag))
             let progress = width > 0 ? offset / width : 0
             let direction: CGFloat = layoutDirection == .rightToLeft ? -1 : 1
             ZStack(alignment: .leading) {
-                if drawerMounted || drawerDrag > 0 {
+                if pinned || drawerMounted || drawerDrag > 0 {
                     ODConversationDrawer()
                         .frame(width: width)
                         .frame(maxHeight: .infinity)
                         // Parallax: the drawer eases in from a quarter of its width
                         // behind the moving workspace instead of sitting static.
-                        .offset(x: reduceMotion ? 0 : -(1 - progress) * width * 0.25 * direction)
-                        .opacity(reduceMotion ? (drawerOpen ? 1 : 0) : 0.35 + 0.65 * progress)
-                        .accessibilityHidden(!store.conversationsPresented)
-                        .allowsHitTesting(store.conversationsPresented)
+                        .offset(x: reduceMotion || pinned ? 0 : -(1 - progress) * width * 0.25 * direction)
+                        .opacity(pinned ? 1 : reduceMotion ? (drawerOpen ? 1 : 0) : 0.35 + 0.65 * progress)
+                        .accessibilityHidden(!pinned && !store.conversationsPresented)
+                        .allowsHitTesting(pinned || store.conversationsPresented)
                         .accessibilityAction(.escape) { store.conversationsPresented = false }
-                        .simultaneousGesture(drawerGesture(width: width, direction: direction))
+                        .simultaneousGesture(drawerGesture(width: width, direction: direction), isEnabled: !pinned)
                 }
                 primaryWorkspace
                     .background { ODPageBackground().ignoresSafeArea() }
@@ -90,29 +97,29 @@ public struct OnDeviceWorkbench: View {
                     }
                     // The workspace becomes a full-height card: continuous corners
                     // round in over the first part of the slide. The mask reaches
-                    // into the status-bar and home-indicator areas so the card's
-                    // corners sit at the screen edges, not the safe-area edges.
+                    // into every safe area so the card's corners sit at the screen
+                    // edges, and so it never clips a vertical system bar (iPhone Duo).
                     .mask {
                         RoundedRectangle(cornerRadius: Self.cardCorner * min(1, progress * 3), style: .continuous)
-                            .padding(.top, -geometry.safeAreaInsets.top)
-                            .padding(.bottom, -geometry.safeAreaInsets.bottom)
+                            .ignoresSafeArea(.container)
                     }
                     .overlay {
                         // Hairline edge only in OLED, where card and drawer are
                         // both black; elsewhere the card's own color separates it.
                         RoundedRectangle(cornerRadius: Self.cardCorner * min(1, progress * 3), style: .continuous)
                             .strokeBorder(store.appearance == .oled ? ODPalette.line : .clear, lineWidth: 1)
-                            .padding(.top, -geometry.safeAreaInsets.top)
-                            .padding(.bottom, -geometry.safeAreaInsets.bottom)
+                            .ignoresSafeArea(.container)
                             .opacity(progress)
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                     }
                     .shadow(color: .black.opacity(0.22 * progress), radius: 30, x: -8 * direction)
-                    .offset(x: reduceMotion ? (drawerOpen ? width * direction : 0) : offset * direction)
+                    .offset(x: reduceMotion && !pinned ? (drawerOpen ? width * direction : 0) : offset * direction)
+                    .overlay(alignment: .leading) { if pinned { HStack { Divider() }.ignoresSafeArea() } }
+                    .padding(.leading, pinned ? width : 0)
                     .zIndex(1)
                 // The menu-dismiss button remains accessible while the workspace beneath is hidden.
-                if !store.conversationsPresented {
+                if !store.conversationsPresented && !pinned {
                     Color.clear.frame(width: 20)
                         .contentShape(Rectangle())
                         .gesture(drawerGesture(width: width, direction: direction))
@@ -121,6 +128,11 @@ public struct OnDeviceWorkbench: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .environment(\.odSidebarPinned, pinned)
+            // A pinned sidebar is never an open drawer; an open one would hide the workspace.
+            .onChange(of: pinned && store.conversationsPresented, initial: true) { _, conflict in
+                if conflict { store.conversationsPresented = false }
+            }
         }
         // The drawer's backdrop sits behind the card, so its rounded corners
         // cut out to the drawer color instead of vanishing into the page color.

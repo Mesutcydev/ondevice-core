@@ -5,6 +5,7 @@ import UIKit
 @MainActor
 struct ODChatView: View {
     @EnvironmentObject private var store: ODStore
+    @Environment(\.odSidebarPinned) private var sidebarPinned
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var composerFocused: Bool
     @State private var followsLatestMessage = true
@@ -117,14 +118,16 @@ struct ODChatView: View {
             .navigationTitle(store.selectedConversation?.title ?? "OnDevice")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    ODAppMenuButton {
-                        composerFocused = false
-                        store.conversationsPresented = true
+                if !sidebarPinned {
+                    ToolbarItem(placement: .topBarLeading) {
+                        ODAppMenuButton {
+                            composerFocused = false
+                            store.conversationsPresented = true
+                        }
+                        .labelStyle(.iconOnly)
+                        .accessibilityLabel("Open conversations and app menu")
+                        .accessibilityIdentifier("navigation.menu")
                     }
-                    .labelStyle(.iconOnly)
-                    .accessibilityLabel("Open conversations and app menu")
-                    .accessibilityIdentifier("navigation.menu")
                 }
                 ToolbarItem(placement: .principal) {
                     modelSelector

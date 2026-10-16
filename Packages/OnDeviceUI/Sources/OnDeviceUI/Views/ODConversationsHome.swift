@@ -4,6 +4,7 @@ import SwiftUI
 @MainActor
 struct ODConversationsHome: View {
     @EnvironmentObject private var store: ODStore
+    @Environment(\.odSidebarPinned) private var sidebarPinned
     @State private var search = ""
     @FocusState private var searchFocused: Bool
 
@@ -25,9 +26,11 @@ struct ODConversationsHome: View {
                 ODWorkspaceBottomBar { EmptyView() }
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    ODAppMenuButton { searchFocused = false; store.conversationsPresented = true }
-                        .accessibilityIdentifier("navigation.menu")
+                if !sidebarPinned {
+                    ToolbarItem(placement: .topBarLeading) {
+                        ODAppMenuButton { searchFocused = false; store.conversationsPresented = true }
+                            .accessibilityIdentifier("navigation.menu")
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {

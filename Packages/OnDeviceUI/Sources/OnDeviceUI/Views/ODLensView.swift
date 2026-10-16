@@ -5,6 +5,7 @@ import SwiftUI
 @MainActor
 struct ODLensView: View {
     @EnvironmentObject private var store: ODStore
+    @Environment(\.odSidebarPinned) private var sidebarPinned
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.displayScale) private var displayScale
     @FocusState private var questionFocused: Bool
@@ -62,13 +63,15 @@ struct ODLensView: View {
             .navigationTitle("Lens")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    ODAppMenuButton {
-                        questionFocused = false
-                        store.conversationsPresented = true
+                if !sidebarPinned {
+                    ToolbarItem(placement: .topBarLeading) {
+                        ODAppMenuButton {
+                            questionFocused = false
+                            store.conversationsPresented = true
+                        }
+                        .labelStyle(.iconOnly)
+                        .accessibilityIdentifier("navigation.menu")
                     }
-                    .labelStyle(.iconOnly)
-                    .accessibilityIdentifier("navigation.menu")
                 }
                 if store.capabilities.canConfigureLens {
                     ToolbarItem(placement: .topBarTrailing) {

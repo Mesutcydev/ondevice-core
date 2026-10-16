@@ -13,6 +13,7 @@ import OnDeviceUI
 struct LocalAPIServerView: View {
     let onOpenMenu: () -> Void
     @EnvironmentObject private var store: ODStore
+    @Environment(\.odSidebarPinned) private var sidebarPinned
     @ObservedObject private var manager = LocalAPIManager.shared
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var assistant = CodingAssistantService.shared
@@ -62,8 +63,10 @@ struct LocalAPIServerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(store.selectedTab == .apiServer ? .visible : .hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    ODAppMenuButton(action: onOpenMenu).accessibilityIdentifier("navigation.menu")
+                if !sidebarPinned {
+                    ToolbarItem(placement: .topBarLeading) {
+                        ODAppMenuButton(action: onOpenMenu).accessibilityIdentifier("navigation.menu")
+                    }
                 }
             }
             .onAppear { manager.refreshAddresses() }

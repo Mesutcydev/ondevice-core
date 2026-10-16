@@ -3,6 +3,7 @@ import SwiftUI
 @MainActor
 struct ODVoiceLibraryView: View {
     @EnvironmentObject private var store: ODStore
+    @Environment(\.odSidebarPinned) private var sidebarPinned
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var searchText = ""
     @FocusState private var searchFocused: Bool
@@ -84,12 +85,14 @@ struct ODVoiceLibraryView: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    ODAppMenuButton {
-                        store.conversationsPresented = true
+                if !sidebarPinned {
+                    ToolbarItem(placement: .topBarLeading) {
+                        ODAppMenuButton {
+                            store.conversationsPresented = true
+                        }
+                        .labelStyle(.iconOnly)
+                        .accessibilityIdentifier("navigation.menu")
                     }
-                    .labelStyle(.iconOnly)
-                    .accessibilityIdentifier("navigation.menu")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu("Voice options", systemImage: "slider.horizontal.3") {

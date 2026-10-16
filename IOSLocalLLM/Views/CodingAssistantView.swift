@@ -56,6 +56,7 @@ struct CodingAssistantView: View {
     @ObservedObject private var loc = LocalizationService.shared
     @ObservedObject private var imageGen = ImageGenerationService.shared
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.odSidebarPinned) private var sidebarPinned
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var messages: [ChatMessage] = []
@@ -444,14 +445,16 @@ struct CodingAssistantView: View {
             .toolbarBackground(T.studio.paper, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    ODAppMenuButton {
-                        inputFocused = false
-                        ODBridge.shared.store.conversationsPresented = true
+                if !sidebarPinned {
+                    ToolbarItem(placement: .topBarLeading) {
+                        ODAppMenuButton {
+                            inputFocused = false
+                            ODBridge.shared.store.conversationsPresented = true
+                        }
+                        .labelStyle(.iconOnly)
+                        .accessibilityLabel("Open conversations and app menu")
+                        .accessibilityIdentifier("navigation.menu")
                     }
-                    .labelStyle(.iconOnly)
-                    .accessibilityLabel("Open conversations and app menu")
-                    .accessibilityIdentifier("navigation.menu")
                 }
                 ToolbarItem(placement: .principal) {
                     chatModelMenu

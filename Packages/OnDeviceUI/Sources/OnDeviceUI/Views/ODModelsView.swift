@@ -4,6 +4,7 @@ import SwiftUI
 @MainActor
 struct ODModelsView: View {
     @EnvironmentObject private var store: ODStore
+    @Environment(\.odSidebarPinned) private var sidebarPinned
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicType
     @State private var scope: ODModelScope = .installed
@@ -152,10 +153,12 @@ struct ODModelsView: View {
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Models")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    ODAppMenuButton { store.conversationsPresented = true }
-                        .labelStyle(.iconOnly)
-                    .accessibilityIdentifier("navigation.menu")
+                if !sidebarPinned {
+                    ToolbarItem(placement: .topBarLeading) {
+                        ODAppMenuButton { store.conversationsPresented = true }
+                            .labelStyle(.iconOnly)
+                        .accessibilityIdentifier("navigation.menu")
+                    }
                 }
             }
             .sheet(item: $detailModel, onDismiss: {

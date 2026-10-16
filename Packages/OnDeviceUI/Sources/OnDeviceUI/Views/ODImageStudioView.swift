@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 @MainActor
 struct ODImageStudioView: View {
     @EnvironmentObject private var store: ODStore
+    @Environment(\.odSidebarPinned) private var sidebarPinned
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var dynamicType
     @FocusState private var promptFocused: Bool
@@ -54,9 +55,11 @@ struct ODImageStudioView: View {
             .navigationTitle("Image studio")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    ODAppMenuButton { store.conversationsPresented = true }
-                        .accessibilityIdentifier("navigation.menu")
+                if !sidebarPinned {
+                    ToolbarItem(placement: .topBarLeading) {
+                        ODAppMenuButton { store.conversationsPresented = true }
+                            .accessibilityIdentifier("navigation.menu")
+                    }
                 }
                 if let resultURL = store.imageResultURL {
                     ToolbarItem(placement: .topBarTrailing) {

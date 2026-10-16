@@ -7,6 +7,7 @@ struct ImageGenerationView: View {
     @ObservedObject private var service = ImageGenerationService.shared
     @ObservedObject private var parentalControls: ParentalControlManager
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.odSidebarPinned) private var sidebarPinned
     @Environment(\.dynamicTypeSize) private var dynamicType
     @FocusState private var promptFocused: Bool
     @State private var prompt = ""
@@ -81,8 +82,10 @@ struct ImageGenerationView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if let onOpenMenu {
-                    ToolbarItem(placement: .topBarLeading) {
-                        ODAppMenuButton(action: onOpenMenu).accessibilityIdentifier("navigation.menu")
+                    if !sidebarPinned {
+                        ToolbarItem(placement: .topBarLeading) {
+                            ODAppMenuButton(action: onOpenMenu).accessibilityIdentifier("navigation.menu")
+                        }
                     }
                 } else {
                     ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }

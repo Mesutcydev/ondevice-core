@@ -8,6 +8,7 @@ struct NativeDeviceView: View {
     @ObservedObject private var center = ModelDownloadCenter.shared
     @ObservedObject private var assistant = CodingAssistantService.shared
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.odSidebarPinned) private var sidebarPinned
     @State private var destination: Destination?
     private enum Destination: String, Identifiable {
         case diagnostics, benchmark, quality, compare, knowledge
@@ -76,7 +77,9 @@ struct NativeDeviceView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if let onOpenMenu {
-                    ToolbarItem(placement: .topBarLeading) { ODAppMenuButton(action: onOpenMenu).accessibilityIdentifier("navigation.menu") }
+                    if !sidebarPinned {
+                        ToolbarItem(placement: .topBarLeading) { ODAppMenuButton(action: onOpenMenu).accessibilityIdentifier("navigation.menu") }
+                    }
                 } else {
                     ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
                 }

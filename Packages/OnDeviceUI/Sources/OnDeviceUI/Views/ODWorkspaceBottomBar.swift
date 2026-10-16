@@ -8,6 +8,15 @@ extension EnvironmentValues {
     }
 }
 
+private struct ODSidebarPinnedKey: EnvironmentKey { static let defaultValue = false }
+extension EnvironmentValues {
+    /// True when the sidebar stays beside the workspace, so menu buttons hide.
+    public var odSidebarPinned: Bool {
+        get { self[ODSidebarPinnedKey.self] }
+        set { self[ODSidebarPinnedKey.self] = newValue }
+    }
+}
+
 /// One bottom-space owner per workspace. The session always precedes that page's
 /// composer/action, so keyboard and scroll insets account for the combined height.
 public struct ODWorkspaceBottomBar<Content: View>: View {

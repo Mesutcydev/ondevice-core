@@ -79,6 +79,11 @@ public enum ODLayout {
     public static let userBubbleWidthFraction: CGFloat = 0.82
     public static let drawerWidthFraction: CGFloat = 0.775
     public static let drawerMaximumWidth = 90 * unit
+    /// Sidebar width when it stays beside the workspace (iPhone Duo inner display).
+    public static let pinnedSidebarWidth = 80 * unit
+    /// The phone layouts are designed for at most a Pro Max width; the sidebar only
+    /// pins when the workspace keeps at least this much.
+    public static let pinnedWorkspaceMinimumWidth = 110 * unit
     public static let readableMaximumWidth = 130 * unit
     public static let attachmentNameMaximumWidth = 40 * unit
 
