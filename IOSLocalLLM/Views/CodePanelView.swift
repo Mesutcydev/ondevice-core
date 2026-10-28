@@ -10,7 +10,7 @@ struct CodePanelView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                CodeBlock(language: language, code: code, expanded: true)
+                CodeBlock(language: language, code: code)
                     .padding()
             }
             .navigationTitle("\(language) Code")

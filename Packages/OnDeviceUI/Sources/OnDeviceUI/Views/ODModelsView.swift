@@ -60,10 +60,9 @@ struct ODModelsView: View {
                         .pickerStyle(.segmented).accessibilityIdentifier("models.scope")
                         ODCapabilityChips(kind: $kind)
                             .onChange(of: kind) { _, selected in
-                                // A new classifier has no installed row yet. Show
-                                // its catalog rather than landing on an empty page.
-                                if selected == .classifier && scope == .installed
-                                    && !store.models.contains(where: { $0.isInstalled && $0.declaredKinds.contains(.classifier) }) {
+                                // Show the catalog when a workspace has no installed model yet.
+                                if let selected, [.classifier, .image].contains(selected), scope == .installed
+                                    && !store.models.contains(where: { $0.isInstalled && $0.declaredKinds.contains(selected) }) {
                                     scope = .discover
                                 }
                             }
@@ -324,7 +323,7 @@ private struct ODCapabilityChips: View {
                 }
             }
         }
-        .scrollIndicators(.hidden)
+        .scrollIndicators(.visible)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text("Capability", bundle: .module))
         .accessibilityIdentifier("models.capability")

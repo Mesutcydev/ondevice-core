@@ -45,7 +45,7 @@ final class AIContentPolicyTests: XCTestCase {
     func testSupportDestinationContainsNoUserContentOrTrackingQuery() throws {
         let url = try XCTUnwrap(URL(string: LegalDocuments.supportURL))
         XCTAssertEqual(url.scheme, "https")
-        XCTAssertEqual(url.host, "ondevice.fun")
+        XCTAssertEqual(url.host, "mesut.uk")
         XCTAssertNil(url.query)
         XCTAssertNil(url.fragment)
     }

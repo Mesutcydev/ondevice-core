@@ -217,7 +217,6 @@
 		615B87F1AC373E339233ADA2 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 168CE7F02EB5FC91A0FAD4ED /* ShareViewController.swift */; };
 		61C78C84185078901444E269 /* LocalAPIServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0CBB5AA7D412D8D4C9990C5 /* LocalAPIServer.swift */; };
 		61D1F93792CC40F2773181CD /* Edge0_35BAttention.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA9F427CC8E6AFD85E8A6300 /* Edge0_35BAttention.swift */; };
-		620CDC45F3B2EA26EA275DC9 /* libPods-IOSLocalLLMTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5EC7211B81252B22967E9155 /* libPods-IOSLocalLLMTests.a */; };
 		629B9B5B9514E144CD8517A1 /* DownloadActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1EA4005B57BA9ABFA29B745 /* DownloadActivityWidget.swift */; };
 		641916618EA17C404981606B /* Edge0_35BConfigurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C735CE579F7F8B4C4249A52D /* Edge0_35BConfigurationTests.swift */; };
 		644E051EF84E017E1F0F9B1C /* CodingWorkspaceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D15EB1E5827BE3EECBBDFD /* CodingWorkspaceController.swift */; };
@@ -463,7 +462,6 @@
 		C7FD956304A35383134B675C /* Bonsai2PackedLayers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69AE2DFB4BCC8A7E5F22C42B /* Bonsai2PackedLayers.swift */; };
 		C8AD17A0A2139DD1AC4A3FE1 /* Image.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1F97492100A1D57C2D21B6E /* Image.swift */; };
 		C8BEDF090160EE9B3829E59A /* APIProviderConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6391C920623583642B9C7237 /* APIProviderConfiguration.swift */; };
-		C92A0FABE392EC9107FA2CB0 /* libPods-IOSLocalLLM.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7B2E26699F853D552440F536 /* libPods-IOSLocalLLM.a */; };
 		C9B2EBAA6809D4B6AF0A3B02 /* Edge0BenchmarkPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5756F2F0C62072E68BC9608D /* Edge0BenchmarkPlan.swift */; };
 		CA50FC88976028922580E865 /* ApplePrivateCloudRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93C359B29CC4C5620CA69776 /* ApplePrivateCloudRuntime.swift */; };
 		CCEA5E99B915EDCBBC6D8938 /* Edge0TensorStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 656BCB0024D57CD3ABBF1B04 /* Edge0TensorStoreTests.swift */; };
@@ -847,7 +845,6 @@
 		5C630329891A626CFEC41199 /* PresentationRequestLifetime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresentationRequestLifetime.swift; sourceTree = "<group>"; };
 		5D98C8C64DA1AC87FC4DE11F /* KnowledgeBaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeBaseService.swift; sourceTree = "<group>"; };
 		5DBD99D5286139512B830A67 /* IOSLocalLLM-AppStore-PCC.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "IOSLocalLLM-AppStore-PCC.entitlements"; sourceTree = "<group>"; };
-		5EC7211B81252B22967E9155 /* libPods-IOSLocalLLMTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-IOSLocalLLMTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5ECCE86F98152E9849BAD39A /* MiniCPMV47CatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MiniCPMV47CatalogTests.swift; sourceTree = "<group>"; };
 		5EE70ED49C20DF9EDEDACE39 /* CoreAIModelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAIModelStore.swift; sourceTree = "<group>"; };
 		5F407B5AEFC6C818BA36D2B6 /* VoiceService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceService.swift; sourceTree = "<group>"; };
@@ -907,7 +904,6 @@
 		72542E6336A93F9597E7BAA8 /* VoiceModelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceModelState.swift; sourceTree = "<group>"; };
 		72B88409EA660277589E5470 /* TextRegionDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextRegionDetector.swift; sourceTree = "<group>"; };
 		72D97FCF63C18A9F79842782 /* VoiceSettingsStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceSettingsStoreTests.swift; sourceTree = "<group>"; };
-		72FF54717FC50AF109BBD030 /* Pods-IOSLocalLLM.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLM.debug.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLM/Pods-IOSLocalLLM.debug.xcconfig"; sourceTree = "<group>"; };
 		730B8EF4E5026874E277DF07 /* LocalAIFoundationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalAIFoundationTests.swift; sourceTree = "<group>"; };
 		730D7A11E65C78E99BE574BD /* LocalModelImportPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalModelImportPicker.swift; sourceTree = "<group>"; };
 		745259B086DE0FC2C7269E9B /* AssistantAttachedImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantAttachedImage.swift; sourceTree = "<group>"; };
@@ -922,10 +918,8 @@
 		7918444CCCD0B83CFC170FB7 /* VoiceProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceProfile.swift; sourceTree = "<group>"; };
 		7AA766CA78AD54F6BCDC060A /* GGUFGenerationProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GGUFGenerationProfileTests.swift; sourceTree = "<group>"; };
 		7ABAD86339887FC1E762F88B /* RecoveryState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryState.swift; sourceTree = "<group>"; };
-		7B2E26699F853D552440F536 /* libPods-IOSLocalLLM.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-IOSLocalLLM.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7B3C4D555371FBB7D5A69D96 /* CoreAIZooCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAIZooCatalogTests.swift; sourceTree = "<group>"; };
 		7B4D06409D67085E7EBF7E91 /* AudioVisualClockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioVisualClockTests.swift; sourceTree = "<group>"; };
-		7BA56C6CE54D37596F37BCC8 /* Pods-IOSLocalLLMTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLMTests.debug.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLMTests/Pods-IOSLocalLLMTests.debug.xcconfig"; sourceTree = "<group>"; };
 		7F40A45133EB7FFA7E2AB2C9 /* ClassifierModelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassifierModelStore.swift; sourceTree = "<group>"; };
 		7F8EEFC05AFF31F79617DE5D /* BridgeQRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeQRScannerView.swift; sourceTree = "<group>"; };
 		7FBC6A4BE5FEA1FD86394C77 /* ModelMemoryBudget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelMemoryBudget.swift; sourceTree = "<group>"; };
@@ -962,7 +956,6 @@
 		8D5C6874896AC8433A139641 /* AssistantActivityCardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantActivityCardTests.swift; sourceTree = "<group>"; };
 		8E0A417132117F0A479DB8F3 /* IOSLocalLLM-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "IOSLocalLLM-Bridging-Header.h"; sourceTree = "<group>"; };
 		8F1E417FDFCBBE47822FB962 /* CodePanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodePanelView.swift; sourceTree = "<group>"; };
-		8F4C8A0447E2053416951922 /* Pods-IOSLocalLLMTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLMTests.release.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLMTests/Pods-IOSLocalLLMTests.release.xcconfig"; sourceTree = "<group>"; };
 		9055EBBB206C1761A01B4F3C /* Edge0MemoryBudget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0MemoryBudget.swift; sourceTree = "<group>"; };
 		90B5F2D93A20F437242E48CC /* MacroChain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacroChain.swift; sourceTree = "<group>"; };
 		90BEFD7AFA7422290AA1BAFD /* BridgePairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgePairingView.swift; sourceTree = "<group>"; };
@@ -1059,7 +1052,6 @@
 		BA9F427CC8E6AFD85E8A6300 /* Edge0_35BAttention.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0_35BAttention.swift; sourceTree = "<group>"; };
 		BAEC2F70455A518AF2E5768A /* FastVLM.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastVLM.swift; sourceTree = "<group>"; };
 		BBA79F08B7D4F881D2DC422D /* KnowledgeBaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KnowledgeBaseView.swift; sourceTree = "<group>"; };
-		BBF94776D38E74AD9C0F6F31 /* Pods-IOSLocalLLM.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IOSLocalLLM.release.xcconfig"; path = "Target Support Files/Pods-IOSLocalLLM/Pods-IOSLocalLLM.release.xcconfig"; sourceTree = "<group>"; };
 		BCC0FA7F11D30E1ACB46D7C9 /* CoreAIDownloadManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAIDownloadManagerTests.swift; sourceTree = "<group>"; };
 		BFAE23ED34B46ADF9A923C33 /* Edge0SamplerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0SamplerTests.swift; sourceTree = "<group>"; };
 		C00F784382D0F0F645E6127F /* LoRAAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoRAAdapter.swift; sourceTree = "<group>"; };
@@ -1213,14 +1205,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		10451CBDB2AF920775F78024 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				620CDC45F3B2EA26EA275DC9 /* libPods-IOSLocalLLMTests.a in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		629AD2FB8959FEDCB3C1E5A4 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -1239,7 +1223,6 @@
 				83843ABD3DD004B894C63FF1 /* llama.xcframework in Frameworks */,
 				4D037D21BE468CD6B7E6AA84 /* ODMiniCPM.xcframework in Frameworks */,
 				8DA64795870EC0CCC9C0EF25 /* whisper.xcframework in Frameworks */,
-				C92A0FABE392EC9107FA2CB0 /* libPods-IOSLocalLLM.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2066,10 +2049,6 @@
 			isa = PBXGroup;
 			children = (
 				9C3506032599DE4295F8AB52 /* Target Support Files */,
-				72FF54717FC50AF109BBD030 /* Pods-IOSLocalLLM.debug.xcconfig */,
-				BBF94776D38E74AD9C0F6F31 /* Pods-IOSLocalLLM.release.xcconfig */,
-				7BA56C6CE54D37596F37BCC8 /* Pods-IOSLocalLLMTests.debug.xcconfig */,
-				8F4C8A0447E2053416951922 /* Pods-IOSLocalLLMTests.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -2262,8 +2241,6 @@
 				8835BA2DA06BF0D1C8CBCA7D /* llama.xcframework */,
 				0B1D0B1E0D488D7DB9458EF7 /* ODMiniCPM.xcframework */,
 				377E5279070E90B8067B9DBB /* whisper.xcframework */,
-				7B2E26699F853D552440F536 /* libPods-IOSLocalLLM.a */,
-				5EC7211B81252B22967E9155 /* libPods-IOSLocalLLMTests.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -2312,6 +2289,8 @@
 			dependencies = (
 			);
 			name = IOSLocalLLMShareExtension;
+			packageProductDependencies = (
+			);
 			productName = IOSLocalLLMShareExtension;
 			productReference = 4BDDF91B2E930AF4ADD71F41 /* IOSLocalLLMShareExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -2320,7 +2299,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 762FD801DE0D4C6A8F0E9865 /* Build configuration list for PBXNativeTarget "IOSLocalLLM" */;
 			buildPhases = (
-				E5544E118438ED1ED4EB015C /* [CP] Check Pods Manifest.lock */,
 				E5C908198662D19E2C365EBD /* Verify experimental LFM3 runtime */,
 				DC853E72460DDAF9F1B39CA4 /* Sources */,
 				145A80CE46E556901E0F69CE /* Copy third-party notices */,
@@ -2369,6 +2347,8 @@
 				F942E40A45CECC563472D479 /* PBXTargetDependency */,
 			);
 			name = IOSLocalLLMUITests;
+			packageProductDependencies = (
+			);
 			productName = IOSLocalLLMUITests;
 			productReference = CF05E27D92D7F8D713DF4EAA /* IOSLocalLLMUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
@@ -2377,9 +2357,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 5060C10D4CCBBABF7ADC2411 /* Build configuration list for PBXNativeTarget "IOSLocalLLMTests" */;
 			buildPhases = (
-				EBA7D92F98FDE825DC736823 /* [CP] Check Pods Manifest.lock */,
 				32850F5B1257C425821FE16A /* Sources */,
-				10451CBDB2AF920775F78024 /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -2387,6 +2365,8 @@
 				165A1693282A46C5E12C1DF1 /* PBXTargetDependency */,
 			);
 			name = IOSLocalLLMTests;
+			packageProductDependencies = (
+			);
 			productName = IOSLocalLLMTests;
 			productReference = 61706906847272769017AB38 /* IOSLocalLLMTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
@@ -2403,6 +2383,8 @@
 			dependencies = (
 			);
 			name = DownloadActivityExtension;
+			packageProductDependencies = (
+			);
 			productName = DownloadActivityExtension;
 			productReference = E61E165EB81989741DDA1EE3 /* DownloadActivityExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -2458,9 +2440,9 @@
 				6DFB6F6D65C5439AC4DCF07E /* XCRemoteSwiftPackageReference "mlx-swift" */,
 				42628FE4E6F613D9D39984BA /* XCRemoteSwiftPackageReference "mlx-swift-lm" */,
 				40652F8D3A6CF0508735F96F /* XCRemoteSwiftPackageReference "swift-transformers-mlx" */,
-				BE42FD1C01B97955C7B5DEAC /* XCLocalSwiftPackageReference "OnDeviceUI" */,
-				4D7534909C91B3BE547EFB90 /* XCLocalSwiftPackageReference "VoiceAgentOrb" */,
-				C240C1BAE70050E1E660A345 /* XCLocalSwiftPackageReference "coreai-models" */,
+				BE42FD1C01B97955C7B5DEAC /* XCLocalSwiftPackageReference "Packages/OnDeviceUI" */,
+				4D7534909C91B3BE547EFB90 /* XCLocalSwiftPackageReference "Packages/VoiceAgentOrb" */,
+				C240C1BAE70050E1E660A345 /* XCLocalSwiftPackageReference "Packages/coreai-models" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 87AEF827D80BBE8B402E62FA /* Products */;
@@ -2608,28 +2590,6 @@
 			shellPath = /bin/sh;
 			shellScript = "set -e\nSRC=\"${SRCROOT}/IOSLocalLLM/Resources/BundledVoiceModels\"\nDEST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/BundledVoiceModels\"\nif [ ! -d \"$SRC\" ]; then\n  echo \"warning: BundledVoiceModels source not found at $SRC — Voice mode will require a runtime download from Models → Catalog.\"\n  exit 0\nfi\nmkdir -p \"$DEST\"\n# Only Silero (the ~0.9 MB listening VAD) ships in the app now.\n# KittenTTS (~62 MB) and Kokoro (~312 MB) were UNBUNDLED to shrink\n# the IPA — they download on demand via ModelDownloadCenter when the\n# user picks a neural voice. Apple System Voice remains the\n# zero-download default, so voice works out of the box without them.\n# Remove any stale copies a previous (fully-bundled) build left in\n# DEST so incremental archives don't keep shipping them.\nrm -rf \"$DEST/KittenTTS\" \"$DEST/Kokoro\"\nrsync -a --delete \"$SRC/Silero/\" \"$DEST/Silero/\"\necho \"Copied bundled Silero VAD to $DEST/Silero\"\n";
 		};
-		E5544E118438ED1ED4EB015C /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-IOSLocalLLM-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
 		E5C908198662D19E2C365EBD /* Verify experimental LFM3 runtime */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -2648,28 +2608,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "set -e\nif [ \"${ONDEVICE_LFM3_SWIFT_FLAG}\" = \"LFM3_EXPERIMENTAL\" ]; then\n  test \"${ONDEVICE_LLAMA_FRAMEWORK_DIR}\" = \"${SRCROOT}/build/LFM3Native\"\n  test \"${ONDEVICE_LLAMA_SOURCE}\" = \"${SRCROOT}/build/LFM3Native/cache/llama.cpp-19cce6919992fdffd92e0ac152caaf1e2b8f254e\"\n  python3 \"${SRCROOT}/scripts/bootstrap_lfm3_runtime.py\" --check\nfi\n";
-		};
-		EBA7D92F98FDE825DC736823 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-IOSLocalLLMTests-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -3314,7 +3252,7 @@
 		};
 		48711BE620166EF3D4FC3BC1 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = BBF94776D38E74AD9C0F6F31 /* Pods-IOSLocalLLM.release.xcconfig */;
+			baseConfigurationReference = 10539C2A1C39D2F348B2A0D0 /* Pods-IOSLocalLLM.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
@@ -3323,7 +3261,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "IOSLocalLLM/IOSLocalLLM-Catalyst.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 80;
+				CURRENT_PROJECT_VERSION = 84;
 				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
 				ENABLE_TESTABILITY = YES;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -3371,7 +3309,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 80;
+				CURRENT_PROJECT_VERSION = 84;
 				INFOPLIST_FILE = DownloadActivityExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -3395,7 +3333,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 80;
+				CURRENT_PROJECT_VERSION = 84;
 				INFOPLIST_FILE = DownloadActivityExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -3416,7 +3354,7 @@
 		};
 		770E30C66F1C5B2749490786 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 72FF54717FC50AF109BBD030 /* Pods-IOSLocalLLM.debug.xcconfig */;
+			baseConfigurationReference = 329978C5485C49A48E0EAA2D /* Pods-IOSLocalLLM.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
@@ -3425,7 +3363,7 @@
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = "IOSLocalLLM/IOSLocalLLM-Catalyst.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 80;
+				CURRENT_PROJECT_VERSION = 84;
 				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
 				ENABLE_TESTABILITY = YES;
 				FRAMEWORK_SEARCH_PATHS = (
@@ -3527,7 +3465,7 @@
 					"$(SDKROOT)/System/iOSSupport/usr/lib",
 					"$(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/maccatalyst",
 				);
-				MARKETING_VERSION = 2.1.1;
+				MARKETING_VERSION = 2.1.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				ONDEVICE_LFM3_SWIFT_FLAG = "";
@@ -3549,7 +3487,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 80;
+				CURRENT_PROJECT_VERSION = 84;
 				INFOPLIST_FILE = IOSLocalLLMShareExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -3569,7 +3507,7 @@
 		};
 		A7180B022B55CFFFE1A22217 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8F4C8A0447E2053416951922 /* Pods-IOSLocalLLMTests.release.xcconfig */;
+			baseConfigurationReference = 0C8B3454FCE287566F497408 /* Pods-IOSLocalLLMTests.release.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -3605,7 +3543,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 80;
+				CURRENT_PROJECT_VERSION = 84;
 				INFOPLIST_FILE = IOSLocalLLMShareExtension/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -3625,7 +3563,7 @@
 		};
 		EFF37119F99098EDB2C96A7F /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7BA56C6CE54D37596F37BCC8 /* Pods-IOSLocalLLMTests.debug.xcconfig */;
+			baseConfigurationReference = 8AB6C604E8CE0D1D43BD8850 /* Pods-IOSLocalLLMTests.debug.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
@@ -3720,7 +3658,7 @@
 					"$(SDKROOT)/System/iOSSupport/usr/lib",
 					"$(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/maccatalyst",
 				);
-				MARKETING_VERSION = 2.1.1;
+				MARKETING_VERSION = 2.1.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONDEVICE_LFM3_SWIFT_FLAG = "";
@@ -3796,15 +3734,15 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		4D7534909C91B3BE547EFB90 /* XCLocalSwiftPackageReference "VoiceAgentOrb" */ = {
+		4D7534909C91B3BE547EFB90 /* XCLocalSwiftPackageReference "Packages/VoiceAgentOrb" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/VoiceAgentOrb;
 		};
-		BE42FD1C01B97955C7B5DEAC /* XCLocalSwiftPackageReference "OnDeviceUI" */ = {
+		BE42FD1C01B97955C7B5DEAC /* XCLocalSwiftPackageReference "Packages/OnDeviceUI" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/OnDeviceUI;
 		};
-		C240C1BAE70050E1E660A345 /* XCLocalSwiftPackageReference "coreai-models" */ = {
+		C240C1BAE70050E1E660A345 /* XCLocalSwiftPackageReference "Packages/coreai-models" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "Packages/coreai-models";
 		};

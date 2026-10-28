@@ -5,6 +5,7 @@ import OnDeviceUI
 struct AssistantStructuredAnswer: View {
     let content: String
     var showsThinking = false
+    var allowsHTMLPreview = false
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(Array(StudioTextBlocks.parse(content).enumerated()), id: \.offset) { _, block in
@@ -12,7 +13,7 @@ struct AssistantStructuredAnswer: View {
                 case .text(let text): AssistantProseView(content: text)
                 case .code(let language, let code):
                     if language.lowercased() == "diff" { DiffView(diffText: code) }
-                    else { CodeBlock(language: language, code: code) }
+                    else { CodeBlock(language: language, code: code, allowsHTMLPreview: allowsHTMLPreview) }
                 case .math(let latex): MathBlock(latex: latex)
                 case .thinking(let text, let open):
                     if showsThinking { ODReasoningBlock(content: text, isOpen: open) }

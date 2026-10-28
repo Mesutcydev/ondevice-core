@@ -70,7 +70,7 @@ struct NativeUIReviewApp: App {
                         cameraPreview: AnyView(LensReviewFixture().environmentObject(fixture.store)),
                         chatContent: fixture.screen == "github-chat" ? AnyView(GitHubChatReview()) : fixture.screen == "api-chat" ? AnyView(APIProviderChatReview()) : fixture.screen == "agent-chat" ? AnyView(AgentChatReview()) : fixture.screen == "composer" || fixture.screen == "welcome" ? AnyView(ComposerContractView(welcome: fixture.screen == "welcome").dynamicTypeSize(argsLargeType ? .accessibility5 : .large)) : nil,
                         imageContent: AnyView(ImageGenerationView(onOpenMenu: { fixture.store.conversationsPresented = true },
-                            parentalControls: fixture.isStoreScreenshot ? ParentControlReview.controls : nil)),
+                            parentalControls: ParentControlReview.controls)),
                         deviceContent: AnyView(NativeDeviceView(onOpenMenu: { fixture.store.conversationsPresented = true })),
                         // A presented UIKit host does not inherit a preview-only
                         // Dynamic Type override; set it at this fixture boundary.
@@ -88,6 +88,12 @@ struct NativeUIReviewApp: App {
                 onTabSelection: { hostTab = $0 },
                 onCameraModeSelection: { _ in }
             ))
+            .sheet(isPresented: $fixture.downloadsPresented) {
+                ODModelDownloadsView(store: fixture.store) {
+                    fixture.downloadsPresented = false
+                    fixture.store.selectedTab = .models
+                }
+            }
             .overlay(alignment: .topTrailing) {
                 if ProcessInfo.processInfo.arguments.contains("-host-selection-probe") {
                     Text(hostTab.rawValue)
@@ -172,6 +178,7 @@ final class ReviewFixture: ObservableObject {
     let store = ODStore.demo()
     let classifier = ClassifierFixture.makeController()
     @Published var lastAction = "None"
+    @Published var downloadsPresented = false
     let screen: String
     let homeVariant: String
     let dark: Bool
@@ -429,6 +436,10 @@ final class ReviewFixture: ObservableObject {
         if args.contains("-classifier-catalog") {
             store.models += ClassifierCatalog.models.map { ClassifierModelLibrary.entry(for: $0) }
         }
+        if args.contains("-coreai-transfer-fixture"), let pack = CoreAIZooCatalog.model(id: "zoo-qwen3-0.6b-official-ios") {
+            store.models.append(CoreAIModelLibrary.entry(for: pack, transfer: .downloading(0.3)))
+        }
+        if args.contains("-image-catalog") { ODBridge.shared.refresh() }
         if let packID = value("-coreai-installed"), let pack = CoreAIZooCatalog.model(id: packID) {
             store.models = [CoreAIModelLibrary.entry(for: pack, isInstalled: true),
                 .init(id: "review/kept-model", name: "Another installed model", metadata: "Removal fixture",
@@ -484,6 +495,12 @@ final class ReviewFixture: ObservableObject {
             guard let store else { return }
             self?.lastAction = String(describing: action)
             switch action {
+            case .showModelDownloads:
+                self?.downloadsPresented = true
+            case .modelAction(let id, .download):
+                if let image = ImageGenerationService.catalog.first(where: { $0.id == id }) {
+                    ImageGenerationService.shared.startDownload(image)
+                }
             case .modelAction(let id, .cancelDownload):
                 if let scope = self?.interruptedDownloadScope,
                    let index = store.models.firstIndex(where: { $0.id == id }) {

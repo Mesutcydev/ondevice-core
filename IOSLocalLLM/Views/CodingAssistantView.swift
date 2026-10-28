@@ -5246,7 +5246,7 @@ struct AssistantMarkdownView: View, Equatable {
             seconds: reasoningDuration.map { max(0, Int($0.rounded())) },
             startedAt: reasoningStartedAt ?? waitingStartedAt
         ) {
-            AssistantStructuredAnswer(content: presentation.answer)
+            AssistantStructuredAnswer(content: presentation.answer, allowsHTMLPreview: !isStreaming)
             if isStreaming && (!presentation.answer.isEmpty || (!presentation.isReasoningOpen && !presentation.isWaiting)) {
                 StreamingCaret()
                     .accessibilityLabel("Generating response")

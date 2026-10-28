@@ -47,6 +47,25 @@ struct PresentationContractsTests {
         #expect(model(1.2).downloadProgress == 1)
     }
 
+    @Test func imageCatalogEntryTracksTransferAndRecovery() {
+        func image(installed: Bool = false, progress: Double? = nil, error: String? = nil) -> ODModel {
+            ODImageModelLibrary.entry(id: "review/image", name: "Image model", subtitle: "Fixture",
+                sizeLabel: "~4 GB", estimatedMemoryBytes: 2_000, isInstalled: installed,
+                downloadProgress: progress, downloadError: error)
+        }
+        let available = image()
+        #expect(available.kind == .image && !available.isInstalled && available.isLibraryEntry)
+        #expect(available.supportedKinds == [.image] && available.availableCommands == [.details, .download])
+        let active = image(progress: 0.42)
+        #expect(active.id == available.id && active.downloadStatus == "Downloading" && active.downloadProgress == 0.42)
+        #expect(active.availableCommands == [.details])
+        let failed = image(error: "Connection lost")
+        #expect(failed.downloadStatus == "Download failed" && failed.downloadDetail == "Connection lost")
+        #expect(failed.availableCommands?.contains(.download) == true)
+        let installed = image(installed: true)
+        #expect(installed.isInstalled && installed.downloadStatus == nil && installed.availableCommands == [.details, .delete])
+    }
+
     @Test func installedAndSelectedDoesNotMeanLoaded() throws {
         let store = ODStore(appearanceDefaults: nil)
         store.models = [ODModel(id: "a", name: "A", metadata: "", kind: .language, isInstalled: true)]

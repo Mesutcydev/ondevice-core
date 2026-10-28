@@ -14,6 +14,7 @@ struct ImageGenerationView: View {
     @State private var negativePrompt = ""
     @State private var steps: Double = 0
     @State private var showsModels = false
+    @State private var modelScope: ImageModelScope = .discover
     @State private var showsOptions = false
     @State private var showsContentConcern = false
     @State private var confirmsImageDeletion = false
@@ -246,7 +247,33 @@ struct ImageGenerationView: View {
     private var modelPicker: some View {
         NavigationStack {
             List {
-                ForEach(ImageGenerationService.catalog) { model in
+                Picker("Image models", selection: $modelScope) {
+                    Text("On device").tag(ImageModelScope.installed)
+                        .accessibilityIdentifier("image.models.scope.installed")
+                    Text("Discover").tag(ImageModelScope.discover)
+                        .accessibilityIdentifier("image.models.scope.discover")
+                }
+                .pickerStyle(.segmented)
+                .accessibilityIdentifier("image.models.scope")
+
+                let models = ImageGenerationService.catalog.filter {
+                    service.isInstalled($0) == (modelScope == .installed)
+                }
+                if models.isEmpty {
+                    ContentUnavailableView {
+                        Label {
+                            if modelScope == .installed { Text("No downloaded models") }
+                            else { Text("Nothing new to download") }
+                        } icon: { Image(systemName: "cube") }
+                    } actions: {
+                        if modelScope == .installed {
+                            Button("Find a model") { modelScope = .discover }
+                        } else {
+                            Button("On device") { modelScope = .installed }
+                        }
+                    }
+                }
+                ForEach(models) { model in
                     Section {
                         Button {
                             service.select(model.id)
@@ -262,12 +289,16 @@ struct ImageGenerationView: View {
                                 if model.id == service.selectedModelID { Image(systemName: "checkmark").foregroundStyle(ODPalette.text) }
                             }
                         }
+                        .accessibilityIdentifier("image.models.select.\(model.id)")
                         if service.isInstalled(model) {
                             Button("Delete model", role: .destructive) { deletingModel = model }
                         } else if service.isDownloading(model) {
                             ProgressView(value: service.downloadProgress(for: model))
+                                .accessibilityLabel("Model download progress")
+                                .accessibilityIdentifier("image.models.progress.\(model.id)")
                         } else {
                             Button("Download model", systemImage: "arrow.down.circle") { service.startDownload(model) }
+                                .accessibilityIdentifier("image.models.download.\(model.id)")
                         }
                         if let error = service.directDownloadErrors[model.id] {
                             Text(error).font(.footnote).foregroundStyle(.secondary)
@@ -277,6 +308,9 @@ struct ImageGenerationView: View {
             }
             .listStyle(.insetGrouped)
             .odNavigationTitle("Image models")
+            .onAppear {
+                modelScope = ImageGenerationService.catalog.contains(where: service.isInstalled) ? .installed : .discover
+            }
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showsModels = false } } }
             .confirmationDialog("Delete image model?", isPresented: Binding(get: { deletingModel != nil }, set: { if !$0 { deletingModel = nil } })) {
                 Button("Delete", role: .destructive) {
@@ -285,6 +319,10 @@ struct ImageGenerationView: View {
                 }
             }
         }
+    }
+
+    private enum ImageModelScope {
+        case installed, discover
     }
 
     private var options: some View {

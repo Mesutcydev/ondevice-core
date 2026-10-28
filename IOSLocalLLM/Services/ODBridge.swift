@@ -193,7 +193,7 @@ final class ODBridge: ObservableObject {
             + "#" + ClassifierModelStore.shared.installedIDs.sorted().joined(separator: "|")
             + "#\(assistant.activeSelectionID)#\(AppSettings.shared.assistantModelID)#\(assistant.canGenerateSelectedTarget)"
             + "#" + ImageGenerationService.catalog
-            .map { "\($0.id):\(imageService.isInstalled($0)):\(imageService.directDownloadProgress[$0.id] ?? -1):\(imageService.directDownloadErrors[$0.id] != nil)" }
+            .map { "\($0.id):\(imageService.isInstalled($0)):\(imageService.directDownloadProgress[$0.id] ?? -1):\(imageService.directDownloadErrors[$0.id] ?? "")" }
             .joined(separator: "|")
         if modelsSig != modelsSignature {
             modelsSignature = modelsSig
@@ -244,7 +244,10 @@ final class ODBridge: ObservableObject {
                         case .ready: return nil
                         }
                     }(),
-                    downloadDetail: model.downloader?.isPreparingModel == true ? model.currentFile : nil,
+                    downloadDetail: {
+                        if case .failed(let message) = model.state { return message }
+                        return model.downloader?.isPreparingModel == true ? model.currentFile : nil
+                    }(),
                     downloadProgress: model.state == .downloading || model.state == .paused
                         || interrupted
                         ? (model.progress.isFinite ? min(1, max(0, model.progress)) : nil)
@@ -259,17 +262,23 @@ final class ODBridge: ObservableObject {
                 )
             }
             store.models += CoreAIModelLibrary.catalog.map { pack in
-                CoreAIModelLibrary.entry(
+                let download = coreAIDownloads.first { $0.id == pack.id }
+                var entry = CoreAIModelLibrary.entry(
                     for: pack,
                     isInstalled: coreAIInstallations.contains { $0.id == pack.id },
                     isDefault: pack.assistantSelectionID == AppSettings.shared.assistantModelID,
-                    transfer: coreAIDownloads.first { $0.id == pack.id }.flatMap(Self.coreAITransfer)
+                    transfer: download.flatMap(Self.coreAITransfer)
                 )
+                if let download, case .failed(let message) = download.state { entry.downloadDetail = message }
+                return entry
             }
             store.models += ClassifierCatalog.models.map { pack in
-                ClassifierModelLibrary.entry(for: pack,
+                let download = coreAIDownloads.first { $0.id == pack.selectionID }
+                var entry = ClassifierModelLibrary.entry(for: pack,
                     installed: ClassifierModelStore.shared.installedIDs.contains(pack.selectionID),
-                    transfer: coreAIDownloads.first { $0.id == pack.selectionID }.flatMap(Self.coreAITransfer))
+                    transfer: download.flatMap(Self.coreAITransfer))
+                if let download, case .failed(let message) = download.state { entry.downloadDetail = message }
+                return entry
             }
             // Imported packs have no curated catalog identity. Keep them visible
             // and preserve the classification flag recorded by validation.
@@ -293,18 +302,11 @@ final class ODBridge: ObservableObject {
             // Image models download through ImageGenerationService, but they
             // belong on the same Models page as every other model.
             store.models += ImageGenerationService.catalog.map { model in
-                let installed = imageService.isInstalled(model)
-                let downloading = imageService.isDownloading(model)
-                let failed = imageService.directDownloadErrors[model.id] != nil
-                return ODModel(
-                    id: model.id, name: model.displayName, metadata: model.subtitle,
-                    kind: .image, isInstalled: installed,
-                    availableCommands: installed ? [.details, .delete] : (downloading ? [.details] : [.details, .download]),
-                    downloadStatus: downloading ? "Downloading" : (failed ? "Download failed" : nil),
-                    downloadDetail: imageService.directDownloadErrors[model.id],
-                    downloadProgress: downloading ? imageService.downloadProgress(for: model) : nil,
-                    estimatedMemoryBytes: model.approxRAMBytes,
-                    summary: model.subtitle, badges: ["Image"], downloadSizeLabel: model.sizeLabel
+                ODImageModelLibrary.entry(
+                    id: model.id, name: model.displayName, subtitle: model.subtitle, sizeLabel: model.sizeLabel,
+                    estimatedMemoryBytes: model.approxRAMBytes, isInstalled: imageService.isInstalled(model),
+                    downloadProgress: imageService.directDownloadProgress[model.id],
+                    downloadError: imageService.directDownloadErrors[model.id]
                 )
             }
         }

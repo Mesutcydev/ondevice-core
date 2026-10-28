@@ -293,4 +293,14 @@ final class CodingWorkspaceTests: XCTestCase {
         XCTAssertTrue(html.contains("form-action 'none'"))
         XCTAssertFalse(html.contains("script-src https:"))
     }
+
+    func testPreviewContentRulesAreValidAndBlockRemoteTransports() throws {
+        let data = try XCTUnwrap(CodingPreviewContentRules.json.data(using: .utf8))
+        let rules = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [[String: Any]])
+        let filters = rules.compactMap { rule in
+            (rule["trigger"] as? [String: Any])?["url-filter"] as? String
+        }
+        XCTAssertEqual(Set(filters), ["^https?://", "^wss?://"])
+        XCTAssertTrue(rules.allSatisfy { ($0["action"] as? [String: Any])?["type"] as? String == "block" })
+    }
 }

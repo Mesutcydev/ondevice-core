@@ -1,15 +1,13 @@
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// A bounded preview and an expanded reader use exactly the same source and controls.
 struct CodeBlock: View {
     let language: String
     let code: String
-    var expanded = false
     var displayMath = false
+    var allowsHTMLPreview = false
     @Environment(\.koduTheme) private var T
-    @Environment(\.dynamicTypeSize) private var typeSize
-    @State private var showingReader = false
+    @State private var previewArtifact: GeneratedHTMLArtifact?
     @State private var exporting = false
     @State private var exportDocument = AssistantSourceDocument(text: "")
     @State private var exportName = "code.txt"
@@ -19,8 +17,9 @@ struct CodeBlock: View {
     @State private var copyRevision = 0
 
     private var lines: [String] { code.components(separatedBy: "\n") }
-    private var previewLineLimit: Int { typeSize.isAccessibilitySize ? 8 : 24 }
-    private var needsExpansion: Bool { lines.count > previewLineLimit }
+    private var canPreview: Bool {
+        allowsHTMLPreview && !displayMath && GeneratedHTMLArtifact.supports(language: language, code: code)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -30,6 +29,18 @@ struct CodeBlock: View {
                     .lineLimit(1)
                     .foregroundStyle(T.studio.codeInk.opacity(0.8))
                 Spacer(minLength: 4)
+                if canPreview {
+                    Button {
+                        previewArtifact = GeneratedHTMLArtifact(html: code)
+                    } label: {
+                        Image(systemName: "play.rectangle")
+                            .font(.system(size: 17, weight: .medium))
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("Preview HTML")
+                    .accessibilityIdentifier("response.code.preview")
+                }
                 Button {
                     UIPasteboard.general.string = code
                     copied = true
@@ -72,16 +83,14 @@ struct CodeBlock: View {
                     .frame(maxWidth: .infinity)
             } else {
                 ScrollView(.horizontal, showsIndicators: true) {
-                    SourceLines(lines: expanded ? lines : Array(lines.prefix(previewLineLimit)), language: language)
+                    SourceLines(lines: lines, language: language)
                         .padding(16)
                 }
                 .environment(\.layoutDirection, .leftToRight)
                 .accessibilityIdentifier("response.code.content")
-                SourceFooter(allowsExpansion: !expanded, needsExpansion: needsExpansion) {
-                    showingReader = true
-                }
-                .foregroundStyle(T.studio.codeInk)
-                .padding(.horizontal, 12)
+                SourceFooter()
+                    .foregroundStyle(T.studio.codeInk)
+                    .padding(.horizontal, 12)
             }
         }
         .background(T.studio.codeBg, in: RoundedRectangle(cornerRadius: StudioRadius.panel))
@@ -90,8 +99,8 @@ struct CodeBlock: View {
             guard copied else { return }
             do { try await Task.sleep(for: .seconds(1.5)); copied = false } catch {}
         }
-        .sheet(isPresented: $showingReader) {
-            SourceReader(language: language, code: code)
+        .sheet(item: $previewArtifact) { artifact in
+            GeneratedHTMLPreview(artifact: artifact)
         }
         .fileExporter(isPresented: $exporting, document: exportDocument, contentType: exportType, defaultFilename: exportName) { result in
             if case .failure = result { exportFailed = true }
@@ -103,46 +112,12 @@ struct CodeBlock: View {
 }
 
 private struct SourceFooter: View {
-    let allowsExpansion: Bool
-    let needsExpansion: Bool
-    let expand: () -> Void
-    @Environment(\.dynamicTypeSize) private var typeSize
     var body: some View {
-        let layout = typeSize.isAccessibilitySize
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-            : AnyLayout(HStackLayout(spacing: 8))
-        layout {
-            Label("Scroll sideways for long lines", systemImage: "arrow.left.and.right")
-                .font(.caption2)
-                .opacity(0.7)
-                .fixedSize(horizontal: false, vertical: true)
-            if !typeSize.isAccessibilitySize { Spacer(minLength: 8) }
-            if allowsExpansion {
-                Button(action: expand) {
-                    Label(LocalizedStringKey(needsExpansion ? "Show all code" : "Expand code"), systemImage: "arrow.up.left.and.arrow.down.right")
-                        .font(.caption.weight(.medium))
-                        .frame(minHeight: 44)
-                }
-                .accessibilityIdentifier("response.code.expand")
-            }
-        }
-        .padding(.vertical, typeSize.isAccessibilitySize ? 8 : 0)
-    }
-}
-
-private struct SourceReader: View {
-    let language: String
-    let code: String
-    @Environment(\.dismiss) private var dismiss
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                CodeBlock(language: language, code: code, expanded: true).padding(12)
-            }
-            .navigationTitle("Code")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-        }
+        Label("Scroll sideways for long lines", systemImage: "arrow.left.and.right")
+            .font(.caption2)
+            .opacity(0.7)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.vertical, 8)
     }
 }
 

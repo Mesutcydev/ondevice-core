@@ -1023,10 +1023,16 @@ final class NativeUIFlows: XCTestCase {
         XCTAssertTrue(app.buttons["models.downloads"].exists)
         capture("redesign-models-dark")
         // Capabilities are one-tap chips now, not a menu.
-        app.buttons["models.capability.image"].tap()
+        let imageChip = app.buttons["models.capability.image"]
+        XCTAssertTrue(imageChip.waitForExistence(timeout: 3))
+        for _ in 0..<3 where !imageChip.isHittable { app.scrollViews["models.capability"].firstMatch.swipeLeft() }
+        imageChip.tap()
         XCTAssertTrue(app.staticTexts["No matching models"].waitForExistence(timeout: 3))
         XCTAssertFalse(model.exists)
+        // No image model is installed, so the filter lands on Discover instead.
+        XCTAssertTrue(app.buttons["models.scope.discover"].isSelected)
         app.buttons["Clear filters"].tap()
+        app.buttons["models.scope.installed"].tap()
         XCTAssertTrue(model.waitForExistence(timeout: 3))
         app.buttons["models.storage"].tap()
         XCTAssertTrue(app.staticTexts["fixture.action"].label.contains("manageStorage"))

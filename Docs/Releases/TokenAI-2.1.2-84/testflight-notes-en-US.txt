@@ -1,0 +1,7 @@
+• Preview HTML replies inline: tap Preview on an HTML code block to run it in a sandboxed viewer that blocks network access. Switch between Preview and Source, reload, or stop it at any time.
+• Image models now split into On device and Discover in the image model picker, so models that are available to download are no longer hidden behind the installed list.
+• Downloads now lists every transfer in one place — language models, Core AI packs, classifiers and image models — with progress and the pause, resume, cancel or retry actions each model supports.
+• Model library: choosing the Image filter opens the catalog when no image model is installed yet, and the capability row now shows when more filters are off screen.
+• Failed model downloads keep their error message visible so the failure is readable before you retry.
+
+Please test image model discovery and downloads, the combined Downloads screen, and HTML previews from assistant replies.

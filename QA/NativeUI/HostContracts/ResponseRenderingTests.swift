@@ -30,4 +30,18 @@ struct ResponseRenderingTests {
         let source = "\tİstanbul 東京\r\n" + String(repeating: "line\n", count: 200) + "  "
         #expect(Data(AssistantSourceDocument(text: source).text.utf8) == Data(source.utf8))
     }
+
+    @Test func htmlArtifactsAreExplicitBoundedAndIsolated() {
+        #expect(GeneratedHTMLArtifact.supports(language: " HTML ", code: "<p>Ready</p>"))
+        #expect(GeneratedHTMLArtifact.supports(language: "htm", code: "<p>Ready</p>"))
+        #expect(!GeneratedHTMLArtifact.supports(language: "javascript", code: "alert('no')"))
+        #expect(!GeneratedHTMLArtifact.supports(language: "html", code: "  \n"))
+        #expect(!GeneratedHTMLArtifact.supports(language: "html", code: String(repeating: "x", count: CodingWorkspaceLimits.fileBytes + 1)))
+
+        let first = GeneratedHTMLArtifact(html: "<p>First</p>")
+        let second = GeneratedHTMLArtifact(html: "<p>Second</p>")
+        #expect(first.originHost != second.originHost)
+        #expect(first.file.path == "index.html")
+        #expect(first.file.text == first.html)
+    }
 }

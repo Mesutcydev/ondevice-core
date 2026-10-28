@@ -5,6 +5,7 @@ import OnDeviceUI
 struct CodingWorkspacePreview: View {
     let files: [CodingWorkspaceFile]
     let activePath: String
+    var originHost = "preview"
     @State private var viewport = 0
     @State private var console: [String] = []
     @State private var showConsole = false
@@ -36,7 +37,11 @@ struct CodingWorkspacePreview: View {
                     GeometryReader { geometry in
                         let width = viewport == 1 ? 390.0 : viewport == 2 ? 768.0 : geometry.size.width
                         ScrollView(.horizontal) {
-                            CodingPreviewWeb(files: files, activePath: activePath) { message in
+                            CodingPreviewWeb(
+                                contents: Dictionary(files.map { ($0.path, $0.text) }, uniquingKeysWith: { first, _ in first }),
+                                activePath: activePath,
+                                originHost: originHost
+                            ) { message in
                                 console.append(message); if console.count > 50 { console.removeFirst(console.count - 50) }
                             }
                             .frame(width: width, height: geometry.size.height)
@@ -75,17 +80,140 @@ struct CodingWorkspacePreview: View {
     }
 }
 
+struct GeneratedHTMLArtifact: Identifiable, Equatable, Sendable {
+    let id: UUID
+    let html: String
+
+    init(id: UUID = UUID(), html: String) {
+        self.id = id
+        self.html = html
+    }
+
+    var originHost: String { id.uuidString.lowercased() }
+    var file: CodingWorkspaceFile {
+        CodingWorkspaceFile(path: "index.html", base: nil, text: html, commit: "")
+    }
+
+    static func supports(language: String, code: String) -> Bool {
+        let language = language.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return ["html", "htm"].contains(language)
+            && !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && code.utf8.count <= CodingWorkspaceLimits.fileBytes
+    }
+}
+
+struct GeneratedHTMLPreview: View {
+    let artifact: GeneratedHTMLArtifact
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.koduTheme) private var theme
+    @State private var mode = 0
+    @State private var isRunning = true
+    @State private var reloadRevision = 0
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                Picker("Preview mode", selection: $mode) {
+                    Text("Preview").tag(0)
+                    Text("Source").tag(1)
+                }
+                .pickerStyle(.segmented)
+                .padding(ODLayout.pageInset)
+                .accessibilityIdentifier("response.preview.mode")
+                Divider()
+                if mode == 0 {
+                    if isRunning {
+                        CodingWorkspacePreview(files: [artifact.file], activePath: "index.html", originHost: artifact.originHost)
+                            .id(reloadRevision)
+                    } else {
+                        ContentUnavailableView("Preview stopped", systemImage: "pause.circle",
+                                               description: Text("Resume or reload to run this generated HTML again."))
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                } else {
+                    ScrollView {
+                        CodeBlock(language: "html", code: artifact.html)
+                            .padding(ODLayout.pageInset)
+                    }
+                }
+            }
+            .background(theme.bg)
+            .navigationTitle("HTML preview")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Done") { dismiss() }
+                }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    if mode == 0 {
+                        Button {
+                            isRunning.toggle()
+                        } label: {
+                            Image(systemName: isRunning ? "stop" : "play")
+                                .frame(minWidth: ODLayout.minimumHit, minHeight: ODLayout.minimumHit)
+                        }
+                        .accessibilityLabel(isRunning ? "Stop preview" : "Resume preview")
+                        .accessibilityIdentifier("response.preview.running")
+                        Button {
+                            reloadRevision += 1
+                            isRunning = true
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                                .frame(minWidth: ODLayout.minimumHit, minHeight: ODLayout.minimumHit)
+                        }
+                        .accessibilityLabel("Reload preview")
+                        .accessibilityIdentifier("response.preview.reload")
+                    }
+                }
+            }
+        }
+    }
+}
+
+enum CodingPreviewContentRules {
+    static let identifier = "ondevice.local-preview.network.v1"
+    static let json = """
+    [
+      {"trigger":{"url-filter":"^https?://"},"action":{"type":"block"}},
+      {"trigger":{"url-filter":"^wss?://"},"action":{"type":"block"}}
+    ]
+    """
+
+    static func install(in controller: WKUserContentController, completion: @escaping (Bool) -> Void) {
+        guard let store = WKContentRuleListStore.default() else {
+            completion(false)
+            return
+        }
+        store.lookUpContentRuleList(forIdentifier: identifier) { list, _ in
+            if let list {
+                controller.add(list)
+                completion(true)
+                return
+            }
+            store.compileContentRuleList(forIdentifier: identifier, encodedContentRuleList: json) { list, _ in
+                guard let list else {
+                    completion(false)
+                    return
+                }
+                controller.add(list)
+                completion(true)
+            }
+        }
+    }
+}
+
 private struct CodingPreviewWeb: UIViewRepresentable {
-    let files: [CodingWorkspaceFile]
+    let contents: [String: String]
     let activePath: String
+    let originHost: String
     let onConsole: (String) -> Void
 
-    func makeCoordinator() -> Coordinator { Coordinator(onConsole: onConsole) }
+    func makeCoordinator() -> Coordinator { Coordinator(originHost: originHost, onConsole: onConsole) }
     func makeUIView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
-        let handler = CodingPreviewScheme(files: files)
+        let handler = CodingPreviewScheme(contents: contents, originHost: originHost)
         configuration.setURLSchemeHandler(handler, forURLScheme: "ondevice-code")
         configuration.userContentController.add(context.coordinator, name: "codeConsole")
         let script = """
@@ -103,28 +231,51 @@ private struct CodingPreviewWeb: UIViewRepresentable {
         view.navigationDelegate = context.coordinator
         view.isOpaque = false; view.backgroundColor = UIColor(ODPalette.background)
         context.coordinator.scheme = handler
+        context.coordinator.webView = view
+        CodingPreviewContentRules.install(in: configuration.userContentController) { [weak coordinator = context.coordinator] installed in
+            guard let coordinator else { return }
+            coordinator.protectionReady = installed
+            if installed {
+                coordinator.loadIfReady()
+            } else {
+                coordinator.onConsole(String(localized: "Preview protection could not start. Close and reopen the preview."))
+            }
+        }
         return view
     }
     func updateUIView(_ view: WKWebView, context: Context) {
-        let contents = Dictionary(files.map { ($0.path, $0.text) }, uniquingKeysWith: { first, _ in first })
         guard context.coordinator.contents != contents || context.coordinator.activePath != activePath else { return }
         context.coordinator.contents = contents; context.coordinator.activePath = activePath
         context.coordinator.messageCount = 0
         context.coordinator.scheme?.replace(contents)
-        var components = URLComponents(); components.scheme = "ondevice-code"; components.host = "preview"; components.path = "/" + activePath
-        if let url = components.url { view.load(URLRequest(url: url)) }
+        context.coordinator.needsLoad = true
+        context.coordinator.loadIfReady()
     }
     static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
         uiView.stopLoading(); uiView.navigationDelegate = nil
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: "codeConsole")
+        coordinator.webView = nil
     }
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
+        let originHost: String
         let onConsole: (String) -> Void
+        weak var webView: WKWebView?
         var scheme: CodingPreviewScheme?
         var contents: [String: String] = [:]
         var activePath = ""
         var messageCount = 0
-        init(onConsole: @escaping (String) -> Void) { self.onConsole = onConsole }
+        var needsLoad = false
+        var protectionReady = false
+        init(originHost: String, onConsole: @escaping (String) -> Void) {
+            self.originHost = originHost
+            self.onConsole = onConsole
+        }
+        func loadIfReady() {
+            guard protectionReady, needsLoad, let webView else { return }
+            needsLoad = false
+            var components = URLComponents(); components.scheme = "ondevice-code"; components.host = originHost; components.path = "/" + activePath
+            if let url = components.url { webView.load(URLRequest(url: url)) }
+        }
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             guard messageCount <= 200 else { return }
             messageCount += 1
@@ -134,11 +285,17 @@ private struct CodingPreviewWeb: UIViewRepresentable {
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                      decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             let url = navigationAction.request.url
-            let local = url?.scheme == "ondevice-code" && url?.host == "preview"
-            decisionHandler(local && navigationAction.targetFrame != nil ? .allow : .cancel)
+            let local = url?.scheme == "ondevice-code" && url?.host == originHost
+            let mainFrame = navigationAction.targetFrame?.isMainFrame == true
+            let pathExtension = (url?.path as NSString?)?.pathExtension.lowercased()
+            let allowedDocument = !mainFrame || ["html", "htm"].contains(pathExtension ?? "")
+            decisionHandler(local && navigationAction.targetFrame != nil && allowedDocument ? .allow : .cancel)
         }
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             onConsole(String(localized: "Preview could not load a local resource."))
+        }
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            onConsole(String(localized: "Preview stopped after a rendering failure. Reload or reopen it to try again."))
         }
     }
 }
@@ -146,13 +303,15 @@ private struct CodingPreviewWeb: UIViewRepresentable {
 /// Only an in-memory project origin is readable. No device files, credentials or network.
 nonisolated final class CodingPreviewScheme: NSObject, WKURLSchemeHandler, @unchecked Sendable {
     private let lock = NSLock()
+    private let originHost: String
     private var contents: [String: String]
-    init(files: [CodingWorkspaceFile]) {
-        contents = Dictionary(files.map { ($0.path, $0.text) }, uniquingKeysWith: { first, _ in first })
+    init(contents: [String: String], originHost: String) {
+        self.contents = contents
+        self.originHost = originHost
     }
     func replace(_ files: [String: String]) { lock.withLock { contents = files } }
     func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
-        guard let url = urlSchemeTask.request.url, url.host == "preview",
+        guard let url = urlSchemeTask.request.url, url.host == originHost,
               let path = try? GitHubValidation.path(String(url.path.dropFirst())),
               let text = lock.withLock({ contents[path] }) else {
             urlSchemeTask.didFailWithError(URLError(.fileDoesNotExist)); return
@@ -161,12 +320,20 @@ nonisolated final class CodingPreviewScheme: NSObject, WKURLSchemeHandler, @unch
         let html = ["html", "htm"].contains(ext)
         let mime = html ? "text/html" : ext == "css" ? "text/css" : ["js", "mjs"].contains(ext) ? "text/javascript" : ext == "svg" ? "image/svg+xml" : "text/plain"
         let data = Data((html ? Self.protectedHTML(text) : text).utf8)
-        urlSchemeTask.didReceive(URLResponse(url: url, mimeType: mime, expectedContentLength: data.count, textEncodingName: "utf-8"))
+        let headers = [
+            "Content-Type": "\(mime); charset=utf-8",
+            "Content-Security-Policy": Self.policy,
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff"
+        ]
+        let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: headers)
+            ?? URLResponse(url: url, mimeType: mime, expectedContentLength: data.count, textEncodingName: "utf-8")
+        urlSchemeTask.didReceive(response)
         urlSchemeTask.didReceive(data); urlSchemeTask.didFinish()
     }
     func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) { }
+    static let policy = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' ondevice-code:; style-src 'unsafe-inline' ondevice-code:; img-src ondevice-code: data: blob:; font-src ondevice-code: data:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'"
     static func protectedHTML(_ text: String) -> String {
-        let policy = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' ondevice-code:; style-src 'unsafe-inline' ondevice-code:; img-src ondevice-code: data: blob:; font-src ondevice-code: data:; connect-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'"
         let metadata = "<meta http-equiv=\"Content-Security-Policy\" content=\"\(policy)\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
         // Establish the policy before any user markup, including malformed HTML.
         return "<!doctype html><html><head>\(metadata)</head>\(text)</html>"

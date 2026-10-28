@@ -31,7 +31,10 @@ final class ImageGenerationService: ObservableObject {
     }
     enum State { case idle, failed(String), generating }
     static let shared = ImageGenerationService()
-    static let catalog = Bundle.main.object(forInfoDictionaryKey: "AppStoreScreenshotScene") != nil
+    static let catalog = ProcessInfo.processInfo.arguments.contains("-image-catalog")
+        ? [Model(id: "review/image-one", displayName: "Review image model", subtitle: "First fixture", sizeLabel: "~4 GB"),
+           Model(id: "review/image-two", displayName: "Second image model", subtitle: "Second fixture", sizeLabel: "~5 GB")]
+        : Bundle.main.object(forInfoDictionaryKey: "AppStoreScreenshotScene") != nil
         ? [Model(id: "stable-diffusion-v1-5/stable-diffusion-v1-5", displayName: "Stable Diffusion 1.5", subtitle: "512², classic, versatile", sizeLabel: "~4.3 GB")]
         : [Model(id: "fixture", displayName: "Local image model", subtitle: "Review fixture", sizeLabel: "Sample data")]
     @Published var image: UIImage? = UIImage(named: "studio-example")
@@ -40,15 +43,26 @@ final class ImageGenerationService: ObservableObject {
     let isCancelling = false
     @Published var state: State = .idle
     @Published var selectedModelID = ImageGenerationService.catalog[0].id
-    var selectedModel: Model { Self.catalog[0] }
+    var selectedModel: Model { Self.catalog.first { $0.id == selectedModelID } ?? Self.catalog[0] }
     var isWorking: Bool { if case .generating = state { return true }; return false }
     var statusMessage = "Review fixture"
-    var directDownloadErrors: [String: String] = [:]
+    @Published var directDownloadProgress: [String: Double] = [:]
+    @Published var directDownloadErrors: [String: String] = [:]
     func select(_ id: String) { selectedModelID = id }
-    func isInstalled(_ model: Model) -> Bool { !ProcessInfo.processInfo.arguments.contains("-image-no-model") }
-    func isDownloading(_ model: Model) -> Bool { ProcessInfo.processInfo.arguments.contains("-image-downloading") }
-    func downloadProgress(for model: Model) -> Double { 0.42 }
-    func startDownload(_ model: Model) {}
+    func isInstalled(_ model: Model) -> Bool {
+        if ProcessInfo.processInfo.arguments.contains("-image-no-model") { return false }
+        if ProcessInfo.processInfo.arguments.contains("-image-mixed") { return model.id == "review/image-one" }
+        return true
+    }
+    func isDownloading(_ model: Model) -> Bool {
+        directDownloadProgress[model.id] != nil || ProcessInfo.processInfo.arguments.contains("-image-downloading")
+    }
+    func downloadProgress(for model: Model) -> Double { directDownloadProgress[model.id] ?? 0.42 }
+    func startDownload(_ model: Model) {
+        directDownloadErrors[model.id] = nil
+        directDownloadProgress[model.id] = 0.42
+        ODBridge.shared.refresh()
+    }
     func deleteModel(_ model: Model) {}
     func generate(prompt: String, negativePrompt: String, steps: Int?) {
         if let restriction = AIContentPolicy.imageRequestRestriction(prompt) {
@@ -66,7 +80,17 @@ final class ImageGenerationService: ObservableObject {
 final class ODBridge: ObservableObject {
     static let shared = ODBridge()
     var store = ODStore.demo()
-    func refresh() {}
+    func refresh() {
+        guard ProcessInfo.processInfo.arguments.contains("-image-catalog") else { return }
+        let service = ImageGenerationService.shared
+        let ids = Set(ImageGenerationService.catalog.map(\.id))
+        store.models.removeAll { ids.contains($0.id) }
+        store.models += ImageGenerationService.catalog.map { model in
+            ODImageModelLibrary.entry(id: model.id, name: model.displayName, subtitle: model.subtitle,
+                sizeLabel: model.sizeLabel, estimatedMemoryBytes: nil, isInstalled: service.isInstalled(model),
+                downloadProgress: service.directDownloadProgress[model.id], downloadError: service.directDownloadErrors[model.id])
+        }
+    }
 }
 final class ModelDownloadCenter: ObservableObject {
     static let shared = ModelDownloadCenter()
