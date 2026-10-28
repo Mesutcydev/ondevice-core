@@ -24,7 +24,7 @@ struct GitHubSettingsView: View {
                 .padding(ODLayout.settingsPageInset)
             }
             ODSettingsSection(title: "GitHub connection",
-                              footer: "Credentials stay in device-only Keychain. OnDeviceMax never includes them in model requests, logs, or exports.") {
+                              footer: "Credentials stay in device-only Keychain. TokenAI never includes them in model requests, logs, or exports.") {
                 if let account = connection.account {
                     GitHubRow(title: account.login, subtitle: "Connected to GitHub", symbol: "person.crop.circle")
                         .padding(ODLayout.settingsPageInset).accessibilityIdentifier("github.account")
@@ -81,7 +81,7 @@ private struct GitHubSignInView: View {
                         Text("Sign-in requests repository access. The agent can use only the repo you select in chat, and publishing changes requires your review.")
                             .font(.subheadline).foregroundStyle(ODPalette.secondary)
                         if GitHubSignInSession.usesSiteAgentRegistration {
-                            Text("GitHub's authorization page names SiteAgent, the sign-in registration shared by these apps. OnDeviceMax stores its own token separately.")
+                            Text("GitHub's authorization page names SiteAgent, the sign-in registration shared by these apps. TokenAI stores its own token separately.")
                                 .font(.footnote).foregroundStyle(ODPalette.secondary)
                         }
                         if let code = session.userCode, let url = session.verificationURL {
@@ -389,6 +389,10 @@ struct GitHubReviewView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var error: String?
     @State private var finished = false
+    @State private var includedPaths: Set<String>?
+
+    private var selectedPaths: Set<String> { includedPaths ?? plan.includedPaths ?? Set(plan.draft.changes.map(\.path)) }
+    private var isCommit: Bool { if case .commit = plan.action { return true }; return false }
 
     var body: some View {
         NavigationStack {
@@ -401,9 +405,20 @@ struct GitHubReviewView: View {
                 if !plan.draft.changes.isEmpty {
                     Section("\(plan.draft.changes.count) \(plan.draft.changes.count == 1 ? "file" : "files")") {
                         ForEach(plan.draft.changes) { change in
-                            NavigationLink { GitHubFileReview(change: change) } label: {
-                                GitHubRow(title: change.path, subtitle: change.kind, symbol: "doc.text")
-                            }.accessibilityIdentifier("github.review.file.\(change.path)")
+                            HStack {
+                                if isCommit {
+                                    Toggle("Include \(change.path)", isOn: Binding(get: { selectedPaths.contains(change.path) }, set: { include in
+                                        var paths = selectedPaths
+                                        if include { paths.insert(change.path) } else { paths.remove(change.path) }
+                                        includedPaths = paths
+                                    })).labelsHidden().toggleStyle(.checkboxForReview)
+                                        .accessibilityLabel("Include \(change.path)")
+                                        .accessibilityIdentifier("github.review.include.\(change.path)")
+                                }
+                                NavigationLink { GitHubFileReview(change: change) } label: {
+                                    GitHubRow(title: change.path, subtitle: change.kind, symbol: "doc.text")
+                                }.accessibilityIdentifier("github.review.file.\(change.path)")
+                            }
                         }
                     }
                 }
@@ -413,12 +428,14 @@ struct GitHubReviewView: View {
                     else {
                         Button(plan.action.title) {
                             Task {
-                                let result = await workspace.approve(plan)
+                                var approved = plan
+                                if isCommit { approved.includedPaths = selectedPaths }
+                                let result = await workspace.approve(approved)
                                 if result.hasPrefix("Error:") { error = result; return }
                                 guard !Task.isCancelled else { return }
                                 finished = true; onFinished(result, true); dismiss()
                             }
-                        }.disabled(!workspace.isAvailable || workspace.draft != plan.draft)
+                        }.disabled(!workspace.isAvailable || workspace.draft != plan.draft || (isCommit && selectedPaths.isEmpty))
                             .accessibilityIdentifier("github.review.approve")
                     }
                 } footer: { Text("This publishes the exact action shown above to GitHub. Branch changes invalidate the review. Protected branches and token permissions still apply.") }
@@ -466,7 +483,12 @@ private struct GitHubFileReview: View {
     let change: GitHubFileChange
     @State private var showsOriginal = false
     var body: some View {
-        ScrollView {
+        Group {
+            if let after = change.updatedText, change.original == nil || change.originalText != nil {
+                CodingFileDiffView(before: change.originalText ?? "", after: after)
+            } else if change.updated == nil, let before = change.originalText {
+                CodingFileDiffView(before: before, after: "")
+            } else { ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Picker("File version", selection: $showsOriginal) {
                     Text("Before").tag(true); Text("After").tag(false)
@@ -481,9 +503,24 @@ private struct GitHubFileReview: View {
                         .font(.caption.monospaced()).textSelection(.enabled)
                 } else { Text(showsOriginal ? "New file" : "File will be deleted").foregroundStyle(ODPalette.secondary) }
             }.padding(ODLayout.pageInset)
+            } }
         }.navigationTitle(change.path).navigationBarTitleDisplayMode(.inline)
             .background { ODPageBackground().ignoresSafeArea() }
     }
+}
+
+private struct GitHubReviewCheckbox: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Button { configuration.isOn.toggle() } label: {
+            Image(systemName: configuration.isOn ? "checkmark.circle.fill" : "circle")
+                .font(.title3).foregroundStyle(configuration.isOn ? ODPalette.text : ODPalette.secondary)
+                .frame(width: 44, height: 44)
+        }.buttonStyle(.plain).accessibilityLabel("Include file")
+            .accessibilityValue(configuration.isOn ? "Included" : "Excluded")
+    }
+}
+private extension ToggleStyle where Self == GitHubReviewCheckbox {
+    static var checkboxForReview: GitHubReviewCheckbox { .init() }
 }
 
 private struct GitHubRow: View {

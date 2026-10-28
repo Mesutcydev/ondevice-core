@@ -71,7 +71,7 @@ enum WipeAllDataService {
         }
 
         let support = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        for sub in ["KnowledgeBase", "Registry"] {
+        for sub in ["KnowledgeBase", "Registry", CodingWorkspaceVault.directoryName, "ClassifierModels"] {
             let url = support.appendingPathComponent(sub, isDirectory: true)
             if fm.fileExists(atPath: url.path) {
                 r.bytesFreed += dirSize(at: url)
@@ -79,24 +79,33 @@ enum WipeAllDataService {
             }
         }
         KnowledgeBaseService.shared.wipeFromDisk()
+        try? fm.removeItem(at: fm.temporaryDirectory.appendingPathComponent("CodingExports", isDirectory: true))
+        // Generated images are user content even though they live in Caches.
+        let generatedImages = caches.appendingPathComponent("OnDeviceGeneratedImages", isDirectory: true)
+        r.bytesFreed += dirSize(at: generatedImages)
+        try? fm.removeItem(at: generatedImages)
+        CoreAIClassifierHost.workbench.clearSavedTasks()
+        ClassifierModelStore.shared.refresh()
         InstalledModelRegistry.shared.wipe()
         PersonaStore.shared.resetForWipe()
 
         // 3. Conversations (ConversationStore writes JSON to Documents)
         let conv = docs.appendingPathComponent("conversations.json")
-        if fm.fileExists(atPath: conv.path) {
-            // Count items first
-            if let data = try? Data(contentsOf: conv),
-               let arr = try? JSONSerialization.jsonObject(with: data) as? [Any] {
-                r.conversationsDeleted = arr.count
-            }
-            try? fm.removeItem(at: conv)
+        if let data = try? Data(contentsOf: conv),
+           let arr = try? JSONSerialization.jsonObject(with: data) as? [Any] {
+            r.conversationsDeleted = arr.count
         }
-        // Clear the in-memory store too (and cancel its pending debounced
-        // save). Otherwise a later flush() on scene-phase background would
-        // rewrite conversations.json AND re-index the just-wiped chats back
-        // into Spotlight from memory, silently undoing steps 3 and 6.
+        // Clear the in-memory store first (and retire its pending and
+        // in-flight saves). Otherwise a save finishing after the delete, or a
+        // later flush() on scene-phase background, would rewrite
+        // conversations.json AND re-index the wiped chats into Spotlight.
         ConversationStore.shared.clearAllForWipe()
+        try? fm.removeItem(at: conv)
+        // Copies set aside because they couldn't be read are chats too.
+        for name in (try? fm.contentsOfDirectory(atPath: docs.path)) ?? []
+        where name.hasPrefix(ConversationStore.unreadableCopyPrefix) {
+            try? fm.removeItem(at: docs.appendingPathComponent(name))
+        }
         // The open chat keeps its transcript in view state; without this it is
         // re-saved on the next background transition and survives the wipe.
         NotificationCenter.default.post(name: .onDeviceDataWiped, object: nil)
@@ -146,7 +155,6 @@ enum WipeAllDataService {
             "CoreAI.installedVersion",
             "cameraVisualModelID",
             "sttProvider",
-            "iCloudSyncEnabled",
             "userPersonas.v1",
             "activePersonaID",
             "knowledgeBase.enabled",

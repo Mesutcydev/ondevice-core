@@ -1,0 +1,299 @@
+{
+  "data" : [ {
+    "type" : "appStoreVersionLocalizations",
+    "id" : "0ab6b9e6-7f4d-4eb5-8a3c-ad3b1a530262",
+    "attributes" : {
+      "description" : "OnDevice Max brings a local AI workspace to your iPhone. Download compatible models, choose the right one for your task, and keep your conversations organized in one place.\n\nCHAT AND CREATE\nAsk questions, draft writing, review code and explore ideas. Start a new conversation or return to a saved chat, with search and pinned conversations to help you find your work.\n\nVOICE AND VISION\nChoose a voice for spoken conversations. Use compatible vision models to work with photos and camera captures in Lens.\n\nYOUR MODEL LIBRARY\nBrowse available models, download compatible packs, import supported model files and manage the storage they use. Model availability depends on your iPhone and the model's requirements.\n\nIMAGE STUDIO\nCreate images using supported local image models. Image models are downloaded separately. Optional parental controls let a parent restrict image generation with a PIN.\n\nLOCAL API\nEnable the authenticated Local API Server to connect compatible tools on your trusted local network.\n\nLOCAL BY DEFAULT\nNo OnDevice account is required. Conversations are stored on your device and compatible models run locally. Optional web tools send requests to the provider you configure. Optional iCloud conversation sync uses your private CloudKit database.\n\nRequires iOS 27 or later. Model files are downloaded separately and may require several gigabytes of storage. Available features, model compatibility and generation speed depend on your iPhone's memory, storage and thermal conditions. AI results can be inaccurate; review them before relying on them.",
+      "locale" : "en-US",
+      "keywords" : "offline,assistant,llm,chatbot,voice,vision,images,writing,coding,models,private,local,ai",
+      "marketingUrl" : "https://ondevice.fun/",
+      "promotionalText" : "Make room for local AI. Chat, write, explore images and use voice on your iPhone, with downloadable models and optional network features.",
+      "supportUrl" : "https://ondevice.fun/support/",
+      "whatsNew" : null
+    },
+    "relationships" : {
+      "appScreenshotSets" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/0ab6b9e6-7f4d-4eb5-8a3c-ad3b1a530262/relationships/appScreenshotSets",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/0ab6b9e6-7f4d-4eb5-8a3c-ad3b1a530262/appScreenshotSets"
+        }
+      },
+      "appPreviewSets" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/0ab6b9e6-7f4d-4eb5-8a3c-ad3b1a530262/relationships/appPreviewSets",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/0ab6b9e6-7f4d-4eb5-8a3c-ad3b1a530262/appPreviewSets"
+        }
+      },
+      "searchKeywords" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/0ab6b9e6-7f4d-4eb5-8a3c-ad3b1a530262/relationships/searchKeywords",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/0ab6b9e6-7f4d-4eb5-8a3c-ad3b1a530262/searchKeywords"
+        }
+      },
+      "placements" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/0ab6b9e6-7f4d-4eb5-8a3c-ad3b1a530262/relationships/placements",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/0ab6b9e6-7f4d-4eb5-8a3c-ad3b1a530262/placements"
+        }
+      }
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/0ab6b9e6-7f4d-4eb5-8a3c-ad3b1a530262"
+    }
+  }, {
+    "type" : "appStoreVersionLocalizations",
+    "id" : "3eb9b1b4-58f3-4569-b6c3-86ef094f5999",
+    "attributes" : {
+      "description" : "OnDevice Max lleva un espacio de trabajo de IA local a tu iPhone. Descarga modelos compatibles, elige el adecuado para cada tarea y organiza tus conversaciones en un solo lugar.\n\nCONVERSA Y CREA\nHaz preguntas, redacta textos, revisa código y explora ideas. Inicia una conversación o retoma un chat guardado. La búsqueda y las conversaciones fijadas te ayudan a encontrar tu trabajo.\n\nVOZ Y VISIÓN\nElige una voz para las conversaciones habladas. Usa modelos de visión compatibles para trabajar con fotos y capturas de cámara en Lens.\n\nTU BIBLIOTECA DE MODELOS\nExplora los modelos disponibles, descarga paquetes compatibles, importa archivos de modelos admitidos y gestiona el espacio que ocupan. La disponibilidad depende de tu iPhone y de los requisitos de cada modelo.\n\nESTUDIO DE IMÁGENES\nCrea imágenes con modelos locales de imagen compatibles. Los modelos de imagen se descargan por separado. Los controles parentales opcionales permiten restringir la generación de imágenes con un PIN.\n\nAPI LOCAL\nActiva el servidor de API local con autenticación para conectar herramientas compatibles en tu red local de confianza.\n\nLOCAL POR DEFECTO\nNo necesitas una cuenta de OnDevice. Las conversaciones se guardan en tu dispositivo y los modelos compatibles se ejecutan localmente. Las herramientas web opcionales envían solicitudes al proveedor que configures. La sincronización opcional de conversaciones con iCloud utiliza tu base de datos privada de CloudKit.\n\nRequiere iOS 27 o posterior. Los archivos de los modelos se descargan por separado y pueden necesitar varios gigabytes de almacenamiento. Las funciones disponibles, la compatibilidad de los modelos y la velocidad de generación dependen de la memoria, el almacenamiento y las condiciones térmicas de tu iPhone. Los resultados de la IA pueden ser incorrectos; revísalos antes de basarte en ellos.",
+      "locale" : "es-ES",
+      "keywords" : "offline,asistente,llm,chatbot,voz,visión,imágenes,escritura,código,modelos,privado,local",
+      "marketingUrl" : "https://ondevice.fun/",
+      "promotionalText" : "Haz sitio a la IA local. Chatea, escribe, explora imágenes y usa la voz en tu iPhone, con modelos descargables y funciones de red opcionales.",
+      "supportUrl" : "https://ondevice.fun/support/",
+      "whatsNew" : null
+    },
+    "relationships" : {
+      "appScreenshotSets" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3eb9b1b4-58f3-4569-b6c3-86ef094f5999/relationships/appScreenshotSets",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3eb9b1b4-58f3-4569-b6c3-86ef094f5999/appScreenshotSets"
+        }
+      },
+      "appPreviewSets" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3eb9b1b4-58f3-4569-b6c3-86ef094f5999/relationships/appPreviewSets",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3eb9b1b4-58f3-4569-b6c3-86ef094f5999/appPreviewSets"
+        }
+      },
+      "searchKeywords" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3eb9b1b4-58f3-4569-b6c3-86ef094f5999/relationships/searchKeywords",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3eb9b1b4-58f3-4569-b6c3-86ef094f5999/searchKeywords"
+        }
+      },
+      "placements" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3eb9b1b4-58f3-4569-b6c3-86ef094f5999/relationships/placements",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3eb9b1b4-58f3-4569-b6c3-86ef094f5999/placements"
+        }
+      }
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3eb9b1b4-58f3-4569-b6c3-86ef094f5999"
+    }
+  }, {
+    "type" : "appStoreVersionLocalizations",
+    "id" : "41611432-cd2a-4f06-ade3-82b3094a2366",
+    "attributes" : {
+      "description" : "OnDevice Max, iPhone'unuza yerel bir yapay zekâ çalışma alanı getirir. Uyumlu modelleri indirin, işinize uygun olanı seçin ve konuşmalarınızı tek bir yerde düzenleyin.\n\nSOHBET EDİN VE ÜRETİN\nSorular sorun, yazı taslakları oluşturun, kod inceleyin ve fikirleri keşfedin. Yeni bir konuşma başlatın veya kayıtlı bir sohbete dönün. Arama ve sabitlenmiş konuşmalar, çalışmalarınızı bulmanızı kolaylaştırır.\n\nSES VE GÖRÜNTÜ\nSesli konuşmalar için bir ses seçin. Lens'te fotoğraflar ve kamera çekimleriyle çalışmak için uyumlu görsel anlama modellerini kullanın.\n\nMODEL KİTAPLIĞINIZ\nMevcut modellere göz atın, uyumlu paketleri indirin, desteklenen model dosyalarını içe aktarın ve kullandıkları depolama alanını yönetin. Modellerin kullanılabilirliği iPhone'unuza ve modelin gereksinimlerine bağlıdır.\n\nGÖRSEL STÜDYOSU\nDesteklenen yerel görüntü modelleriyle görseller oluşturun. Görüntü modelleri ayrıca indirilir. İsteğe bağlı ebeveyn denetimleri, ebeveynlerin görsel oluşturmayı bir PIN ile kısıtlamasına olanak tanır.\n\nYEREL API\nGüvenilir yerel ağınızdaki uyumlu araçları bağlamak için kimlik doğrulamalı Yerel API Sunucusu'nu etkinleştirin.\n\nVARSAYILAN OLARAK YEREL\nOnDevice hesabı gerekmez. Konuşmalar cihazınızda saklanır ve uyumlu modeller yerel olarak çalışır. İsteğe bağlı web araçları, yapılandırdığınız sağlayıcıya istek gönderir. İsteğe bağlı iCloud konuşma eşzamanlaması, özel CloudKit veritabanınızı kullanır.\n\niOS 27 veya üzeri gerekir. Model dosyaları ayrıca indirilir ve birkaç gigabayt depolama alanı gerektirebilir. Kullanılabilir özellikler, model uyumluluğu ve üretim hızı; iPhone'unuzun belleğine, depolama alanına ve sıcaklık koşullarına bağlıdır. Yapay zekâ sonuçları hatalı olabilir; bunlara güvenmeden önce sonuçları gözden geçirin.",
+      "locale" : "tr",
+      "keywords" : "çevrimdışı,asistan,llm,sohbet,ses,görsel,yazma,kodlama,model,özel,yerel,yapayzeka",
+      "marketingUrl" : "https://ondevice.fun/",
+      "promotionalText" : "Yerel yapay zekâya yer açın. İndirilebilir modeller ve isteğe bağlı ağ özellikleriyle iPhone'unuzda sohbet edin, yazın, görselleri keşfedin ve sesi kullanın.",
+      "supportUrl" : "https://ondevice.fun/support/",
+      "whatsNew" : null
+    },
+    "relationships" : {
+      "appScreenshotSets" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/41611432-cd2a-4f06-ade3-82b3094a2366/relationships/appScreenshotSets",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/41611432-cd2a-4f06-ade3-82b3094a2366/appScreenshotSets"
+        }
+      },
+      "appPreviewSets" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/41611432-cd2a-4f06-ade3-82b3094a2366/relationships/appPreviewSets",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/41611432-cd2a-4f06-ade3-82b3094a2366/appPreviewSets"
+        }
+      },
+      "searchKeywords" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/41611432-cd2a-4f06-ade3-82b3094a2366/relationships/searchKeywords",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/41611432-cd2a-4f06-ade3-82b3094a2366/searchKeywords"
+        }
+      },
+      "placements" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/41611432-cd2a-4f06-ade3-82b3094a2366/relationships/placements",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/41611432-cd2a-4f06-ade3-82b3094a2366/placements"
+        }
+      }
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/41611432-cd2a-4f06-ade3-82b3094a2366"
+    }
+  }, {
+    "type" : "appStoreVersionLocalizations",
+    "id" : "d7b3c60f-76c2-4b8f-8f26-446743b3b8d3",
+    "attributes" : {
+      "description" : "OnDevice Max bringt einen lokalen KI-Arbeitsbereich auf dein iPhone. Lade kompatible Modelle herunter, wähle das passende für deine Aufgabe und organisiere deine Unterhaltungen an einem Ort.\n\nCHATTEN UND GESTALTEN\nStelle Fragen, entwirf Texte, prüfe Code und entwickle Ideen. Beginne eine neue Unterhaltung oder öffne einen gespeicherten Chat. Mit der Suche und angehefteten Unterhaltungen findest du deine Arbeit schnell wieder.\n\nSPRACHE UND BILDER\nWähle eine Stimme für gesprochene Unterhaltungen. Mit kompatiblen Bildverständnismodellen kannst du in Lens mit Fotos und Kameraaufnahmen arbeiten.\n\nDEINE MODELLBIBLIOTHEK\nEntdecke verfügbare Modelle, lade kompatible Pakete herunter, importiere unterstützte Modelldateien und verwalte ihren Speicherplatz. Welche Modelle verfügbar sind, hängt von deinem iPhone und den Anforderungen des jeweiligen Modells ab.\n\nBILDSTUDIO\nErstelle Bilder mit unterstützten lokalen Bildmodellen. Bildmodelle werden separat heruntergeladen. Mit der optionalen Kindersicherung können Eltern die Bilderstellung durch eine PIN einschränken.\n\nLOKALE API\nAktiviere den authentifizierten lokalen API-Server, um kompatible Werkzeuge in deinem vertrauenswürdigen lokalen Netzwerk zu verbinden.\n\nSTANDARDMÄSSIG LOKAL\nDu brauchst kein OnDevice-Konto. Unterhaltungen werden auf deinem Gerät gespeichert und kompatible Modelle laufen lokal. Optionale Web-Werkzeuge senden Anfragen an den von dir eingerichteten Anbieter. Die optionale iCloud-Synchronisierung von Unterhaltungen nutzt deine private CloudKit-Datenbank.\n\nErfordert iOS 27 oder neuer. Modelldateien werden separat heruntergeladen und können mehrere Gigabyte Speicherplatz benötigen. Verfügbare Funktionen, Modellkompatibilität und Generierungsgeschwindigkeit hängen vom Arbeitsspeicher, Speicherplatz und Temperaturzustand deines iPhone ab. KI-Ergebnisse können fehlerhaft sein. Prüfe sie, bevor du dich darauf verlässt.",
+      "locale" : "de-DE",
+      "keywords" : "offline,assistent,llm,chatbot,stimme,bilder,schreiben,programmieren,modelle,privat,lokal",
+      "marketingUrl" : "https://ondevice.fun/",
+      "promotionalText" : "Platz für lokale KI: Chatte, schreibe, erkunde Bilder und nutze Sprache auf deinem iPhone – mit herunterladbaren Modellen und optionalen Netzwerkfunktionen.",
+      "supportUrl" : "https://ondevice.fun/support/",
+      "whatsNew" : null
+    },
+    "relationships" : {
+      "appScreenshotSets" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/d7b3c60f-76c2-4b8f-8f26-446743b3b8d3/relationships/appScreenshotSets",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/d7b3c60f-76c2-4b8f-8f26-446743b3b8d3/appScreenshotSets"
+        }
+      },
+      "appPreviewSets" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/d7b3c60f-76c2-4b8f-8f26-446743b3b8d3/relationships/appPreviewSets",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/d7b3c60f-76c2-4b8f-8f26-446743b3b8d3/appPreviewSets"
+        }
+      },
+      "searchKeywords" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/d7b3c60f-76c2-4b8f-8f26-446743b3b8d3/relationships/searchKeywords",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/d7b3c60f-76c2-4b8f-8f26-446743b3b8d3/searchKeywords"
+        }
+      },
+      "placements" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/d7b3c60f-76c2-4b8f-8f26-446743b3b8d3/relationships/placements",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/d7b3c60f-76c2-4b8f-8f26-446743b3b8d3/placements"
+        }
+      }
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/d7b3c60f-76c2-4b8f-8f26-446743b3b8d3"
+    }
+  }, {
+    "type" : "appStoreVersionLocalizations",
+    "id" : "1cc0abb1-3e98-45b1-9bc3-df3b59552f78",
+    "attributes" : {
+      "description" : "OnDevice Maxは、iPhoneで使えるローカルAIのワークスペースです。対応モデルをダウンロードし、目的に合ったモデルを選んで、会話をひとつの場所に整理できます。\n\nチャットで考え、つくる\n質問、文章の下書き、コードのレビュー、アイデアの検討に。新しい会話を始めたり、保存したチャットを再開したりできます。検索や会話のピン留めで、必要な内容を見つけやすくなります。\n\n音声と画像認識\n音声での会話に使う声を選べます。対応する画像認識モデルを使えば、Lensで写真やカメラで撮影した画像を扱えます。\n\nモデルライブラリ\n利用可能なモデルを探し、対応パックのダウンロード、対応モデルファイルの読み込み、使用ストレージの管理ができます。利用できるモデルは、iPhoneの仕様と各モデルの要件によって異なります。\n\n画像スタジオ\n対応するローカル画像モデルで画像を生成できます。画像モデルは別途ダウンロードが必要です。任意のペアレンタルコントロールで、保護者がPINによって画像生成を制限できます。\n\nローカルAPI\n認証付きのローカルAPIサーバーを有効にすると、信頼できるローカルネットワーク上で対応ツールを接続できます。\n\n標準でローカル処理\nOnDeviceアカウントは不要です。会話はデバイスに保存され、対応モデルはローカルで動作します。任意のWebツールは、設定したプロバイダにリクエストを送信します。任意のiCloud会話同期では、自分専用のCloudKitプライベートデータベースを使用します。\n\niOS 27以降が必要です。モデルファイルは別途ダウンロードが必要で、数GBのストレージを使用する場合があります。利用できる機能、モデルの互換性、生成速度は、iPhoneのメモリ、ストレージ、温度条件によって異なります。AIの結果には誤りが含まれる場合があります。利用する際は内容を確認してください。",
+      "locale" : "ja",
+      "keywords" : "オフライン,アシスタント,チャット,モデル,ローカル,llm",
+      "marketingUrl" : "https://ondevice.fun/",
+      "promotionalText" : "iPhoneにローカルAIを。ダウンロード可能なモデルで、チャット、文章作成、画像の活用、音声でのやり取りをひとつに。任意のネットワーク機能も利用できます。",
+      "supportUrl" : "https://ondevice.fun/support/",
+      "whatsNew" : null
+    },
+    "relationships" : {
+      "appScreenshotSets" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/1cc0abb1-3e98-45b1-9bc3-df3b59552f78/relationships/appScreenshotSets",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/1cc0abb1-3e98-45b1-9bc3-df3b59552f78/appScreenshotSets"
+        }
+      },
+      "appPreviewSets" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/1cc0abb1-3e98-45b1-9bc3-df3b59552f78/relationships/appPreviewSets",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/1cc0abb1-3e98-45b1-9bc3-df3b59552f78/appPreviewSets"
+        }
+      },
+      "searchKeywords" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/1cc0abb1-3e98-45b1-9bc3-df3b59552f78/relationships/searchKeywords",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/1cc0abb1-3e98-45b1-9bc3-df3b59552f78/searchKeywords"
+        }
+      },
+      "placements" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/1cc0abb1-3e98-45b1-9bc3-df3b59552f78/relationships/placements",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/1cc0abb1-3e98-45b1-9bc3-df3b59552f78/placements"
+        }
+      }
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/1cc0abb1-3e98-45b1-9bc3-df3b59552f78"
+    }
+  }, {
+    "type" : "appStoreVersionLocalizations",
+    "id" : "2d1236ed-7924-4458-bfb6-d10dd2ed1483",
+    "attributes" : {
+      "description" : "يوفّر OnDevice Max مساحة عمل للذكاء الاصطناعي المحلي على iPhone. نزّل النماذج المتوافقة، واختر النموذج المناسب لمهمتك، ونظّم محادثاتك في مكان واحد.\n\nدردش وابتكر\nاطرح الأسئلة، واكتب المسودات، وراجع التعليمات البرمجية، واستكشف الأفكار. ابدأ محادثة جديدة أو عُد إلى دردشة محفوظة، مع البحث والمحادثات المثبّتة للوصول إلى عملك بسهولة.\n\nالصوت والرؤية\nاختر صوتًا للمحادثات المنطوقة. استخدم نماذج الرؤية المتوافقة للعمل مع الصور ولقطات الكاميرا في Lens.\n\nمكتبة نماذجك\nتصفّح النماذج المتاحة، ونزّل الحزم المتوافقة، واستورد ملفات النماذج المدعومة، وأدِر مساحة التخزين التي تستخدمها. يعتمد توفّر النماذج على جهاز iPhone ومتطلبات كل نموذج.\n\nاستوديو الصور\nأنشئ صورًا باستخدام نماذج الصور المحلية المدعومة. تُنزّل نماذج الصور بشكل منفصل. تتيح أدوات الرقابة الأبوية الاختيارية للوالدين تقييد إنشاء الصور برمز PIN.\n\nواجهة API محلية\nفعّل خادم API المحلي المحمي بالمصادقة لربط الأدوات المتوافقة عبر شبكتك المحلية الموثوقة.\n\nمحلي بشكل افتراضي\nلا يلزم إنشاء حساب OnDevice. تُحفظ المحادثات على جهازك وتعمل النماذج المتوافقة محليًا. ترسل أدوات الويب الاختيارية الطلبات إلى المزوّد الذي تضبطه. وتستخدم مزامنة المحادثات الاختيارية عبر iCloud قاعدة بيانات CloudKit الخاصة بك.\n\nيتطلب iOS 27 أو أحدث. تُنزّل ملفات النماذج بشكل منفصل وقد تتطلب عدة غيغابايتات من مساحة التخزين. تعتمد الميزات المتاحة وتوافق النماذج وسرعة التوليد على ذاكرة iPhone ومساحة تخزينه وظروفه الحرارية. قد تكون نتائج الذكاء الاصطناعي غير دقيقة؛ راجعها قبل الاعتماد عليها.",
+      "locale" : "ar-SA",
+      "keywords" : "دردشة,مساعد,صوت,صور,نماذج,محلي,كتابة,llm",
+      "marketingUrl" : "https://ondevice.fun/",
+      "promotionalText" : "أفسح المجال للذكاء الاصطناعي المحلي. دردش واكتب واستكشف الصور واستخدم الصوت على iPhone، مع نماذج قابلة للتنزيل وميزات شبكة اختيارية.",
+      "supportUrl" : "https://ondevice.fun/support/",
+      "whatsNew" : null
+    },
+    "relationships" : {
+      "appScreenshotSets" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/2d1236ed-7924-4458-bfb6-d10dd2ed1483/relationships/appScreenshotSets",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/2d1236ed-7924-4458-bfb6-d10dd2ed1483/appScreenshotSets"
+        }
+      },
+      "appPreviewSets" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/2d1236ed-7924-4458-bfb6-d10dd2ed1483/relationships/appPreviewSets",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/2d1236ed-7924-4458-bfb6-d10dd2ed1483/appPreviewSets"
+        }
+      },
+      "searchKeywords" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/2d1236ed-7924-4458-bfb6-d10dd2ed1483/relationships/searchKeywords",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/2d1236ed-7924-4458-bfb6-d10dd2ed1483/searchKeywords"
+        }
+      },
+      "placements" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/2d1236ed-7924-4458-bfb6-d10dd2ed1483/relationships/placements",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/2d1236ed-7924-4458-bfb6-d10dd2ed1483/placements"
+        }
+      }
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/2d1236ed-7924-4458-bfb6-d10dd2ed1483"
+    }
+  }, {
+    "type" : "appStoreVersionLocalizations",
+    "id" : "3b4041fc-d777-44d3-bc3d-28cf232bc880",
+    "attributes" : {
+      "description" : "OnDevice Max आपके iPhone पर लोकल AI का कार्यक्षेत्र लाता है। संगत मॉडल डाउनलोड करें, अपने काम के लिए सही मॉडल चुनें और अपनी बातचीत एक ही जगह व्यवस्थित रखें।\n\nचैट करें और रचें\nसवाल पूछें, लेखन के मसौदे तैयार करें, कोड की समीक्षा करें और नए विचार खोजें। नई बातचीत शुरू करें या सहेजी गई चैट पर लौटें। खोज और पिन की गई बातचीत से अपना काम आसानी से ढूँढें।\n\nआवाज़ और दृश्य\nबोलकर बातचीत करने के लिए एक आवाज़ चुनें। Lens में फ़ोटो और कैमरे से ली गई तस्वीरों के साथ काम करने के लिए संगत विज़न मॉडल इस्तेमाल करें।\n\nआपकी मॉडल लाइब्रेरी\nउपलब्ध मॉडल देखें, संगत पैक डाउनलोड करें, समर्थित मॉडल फ़ाइलें इंपोर्ट करें और उनके स्टोरेज का प्रबंधन करें। मॉडल की उपलब्धता आपके iPhone और मॉडल की ज़रूरतों पर निर्भर करती है।\n\nइमेज स्टूडियो\nसमर्थित लोकल इमेज मॉडल से तस्वीरें बनाएँ। इमेज मॉडल अलग से डाउनलोड किए जाते हैं। वैकल्पिक अभिभावकीय नियंत्रण से माता-पिता PIN लगाकर तस्वीरें बनाने पर रोक लगा सकते हैं।\n\nलोकल API\nअपने भरोसेमंद लोकल नेटवर्क पर संगत टूल जोड़ने के लिए प्रमाणीकरण वाला लोकल API सर्वर चालू करें।\n\nडिफ़ॉल्ट रूप से लोकल\nOnDevice खाते की ज़रूरत नहीं है। बातचीत आपके डिवाइस पर सहेजी जाती है और संगत मॉडल लोकल रूप से चलते हैं। वैकल्पिक वेब टूल आपके कॉन्फ़िगर किए गए प्रदाता को अनुरोध भेजते हैं। वैकल्पिक iCloud बातचीत सिंक आपके निजी CloudKit डेटाबेस का उपयोग करता है।\n\niOS 27 या उसके बाद का संस्करण ज़रूरी है। मॉडल फ़ाइलें अलग से डाउनलोड की जाती हैं और इनके लिए कई गीगाबाइट स्टोरेज की ज़रूरत हो सकती है। उपलब्ध सुविधाएँ, मॉडल की संगतता और जनरेशन की गति आपके iPhone की मेमोरी, स्टोरेज और तापमान की स्थिति पर निर्भर करती हैं। AI के नतीजे गलत हो सकते हैं; उन पर भरोसा करने से पहले उनकी समीक्षा करें।",
+      "locale" : "hi",
+      "keywords" : "चैट,सहायक,आवाज़,चित्र,लेखन,मॉडल,llm,offline",
+      "marketingUrl" : "https://ondevice.fun/",
+      "promotionalText" : "अपने iPhone पर लोकल AI अपनाएँ। डाउनलोड किए जा सकने वाले मॉडल और वैकल्पिक नेटवर्क सुविधाओं के साथ चैट करें, लिखें, तस्वीरों पर काम करें और आवाज़ का उपयोग करें।",
+      "supportUrl" : "https://ondevice.fun/support/",
+      "whatsNew" : null
+    },
+    "relationships" : {
+      "appScreenshotSets" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3b4041fc-d777-44d3-bc3d-28cf232bc880/relationships/appScreenshotSets",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3b4041fc-d777-44d3-bc3d-28cf232bc880/appScreenshotSets"
+        }
+      },
+      "appPreviewSets" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3b4041fc-d777-44d3-bc3d-28cf232bc880/relationships/appPreviewSets",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3b4041fc-d777-44d3-bc3d-28cf232bc880/appPreviewSets"
+        }
+      },
+      "searchKeywords" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3b4041fc-d777-44d3-bc3d-28cf232bc880/relationships/searchKeywords",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3b4041fc-d777-44d3-bc3d-28cf232bc880/searchKeywords"
+        }
+      },
+      "placements" : {
+        "links" : {
+          "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3b4041fc-d777-44d3-bc3d-28cf232bc880/relationships/placements",
+          "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3b4041fc-d777-44d3-bc3d-28cf232bc880/placements"
+        }
+      }
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersionLocalizations/3b4041fc-d777-44d3-bc3d-28cf232bc880"
+    }
+  } ],
+  "links" : {
+    "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersions/9c6688e5-8a6f-4072-ad0c-b7ae9c84cebd/appStoreVersionLocalizations"
+  },
+  "meta" : {
+    "paging" : {
+      "total" : 7,
+      "limit" : 50
+    }
+  }
+}

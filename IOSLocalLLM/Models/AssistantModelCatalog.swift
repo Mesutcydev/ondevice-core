@@ -58,9 +58,8 @@ struct AssistantModel: Identifiable, Hashable, Codable {
 
     // MARK: - Derived conveniences
 
-    /// True when the model accepts image input (multimodal). Assistant-tab
-    /// presets are text-only today; VLMs live in the VLM catalog. Kept here
-    /// so capability checks read off one field regardless of model origin.
+    /// The model accepts image input. Assistant enables direct image analysis
+    /// only when the corresponding multimodal runtime is actually resident.
     var supportsVision: Bool { capabilities.contains(.vision) }
 
     /// True when the model emits a reasoning trace (Qwen3 /think,
@@ -101,7 +100,7 @@ struct AssistantModel: Identifiable, Hashable, Codable {
 enum AssistantModelCatalog {
 
     /// Built-in text models. Order = priority; the existing Qwen preset stays
-    /// first so new installations keep OnDeviceMax's established default.
+    /// first so new installations keep TokenAI's established default.
     ///
     /// Curation rule: every preset must be a **text** model whose runtime
     /// is wired through CodingAssistantService. Multimodal models (Qwen3-VL,
@@ -112,9 +111,10 @@ enum AssistantModelCatalog {
     /// (Qwen3, Qwen2.5, Llama 3.x) so a refresh can't silently 404 or
     /// hit an unsupported-arch load failure.
     static var presets: [AssistantModel] {
+        let available = sourcePresets.filter { LFM3Catalog.isEnabled || $0.repoID != LFM3Catalog.text.repoID }
         guard AppStoreModelPolicy.isPublicDistribution,
-              !AppStoreModelPolicy.auditedRevisions.isEmpty else { return sourcePresets }
-        return sourcePresets.filter { AppStoreModelPolicy.downloadRevision(for: $0.repoID) != nil }
+              !AppStoreModelPolicy.auditedRevisions.isEmpty else { return available }
+        return available.filter { AppStoreModelPolicy.downloadRevision(for: $0.repoID) != nil }
     }
 
     private static let sourcePresets: [AssistantModel] = [
@@ -134,6 +134,22 @@ enum AssistantModelCatalog {
             contextWindowTokens: 32768,
             capabilities: [.recommended, .best, .newRelease],
             supportsTools: true
+        ),
+        // The QAD checkpoint is a single GGUF with an embedded tokenizer.
+        // The 4K window is the app's bounded runtime allocation, not the
+        // model's much larger advertised maximum.
+        AssistantModel(
+            id: "lfm3-1.7b-qad",
+            repoID: LFM3Catalog.text.repoID,
+            displayName: "LFM3 1.7B",
+            subtitle: "QAD 4-bit · 1.05 GB · Liquid AI",
+            approxRAMBytes: 2_000_000_000,
+            tags: ["chat", "fast"],
+            contextWindowTokens: 4_096,
+            downloadSizeBytes: LFM3Catalog.text.downloadBytes,
+            capabilities: [.newRelease, .thinking],
+            supportsTools: true,
+            runtime: .llamaCpp
         ),
         // ── Edge0-8B A1B (native runtime) ─────────────────────────────────
         // Hybrid MoE (18 KDA + 6 MLA layers, layer 0 dense MLP) executed by
@@ -314,6 +330,19 @@ enum AssistantModelCatalog {
         // mlx-swift dependency points at that compatible fork. Bonsai 27B is
         // based on Qwen3.5's hybrid-attention architecture, which is available
         // in mlx-swift-lm 3.31.4. Smaller variants remain Qwen3 text models.
+        AssistantModel(
+            id: "bonsai-2-9b-ternary",
+            repoID: "prism-ml/Ternary-Bonsai-2-9B-mlx-2bit",
+            displayName: "Ternary Bonsai 2 9B",
+            subtitle: "2-bit · 3.5 GB · text + images · high-memory iOS + Mac",
+            approxRAMBytes: 5_000_000_000,
+            tags: ["reason", "thinking", "code"],
+            contextWindowTokens: 2048,
+            downloadSizeBytes: 3_475_000_000,
+            platformCompatibility: .highMemoryMobileAndMac,
+            capabilities: [.newRelease, .vision, .thinking, .multilingual],
+            supportsTools: false
+        ),
         AssistantModel(
             id: "bonsai-27b-1bit",
             repoID: "prism-ml/Bonsai-27B-mlx-1bit",
@@ -556,6 +585,10 @@ enum AssistantModelCatalog {
     /// with its own model while leaving the user's default untouched.
     @MainActor
     static func selection(forStoredID stored: String) -> AssistantModel? {
+        // An experimental selection may still be persisted when the user
+        // returns to a normal build. Let currentSelection choose the existing
+        // default instead of attempting to load an unsupported architecture.
+        if LFM3Catalog.unavailableReason(for: stored) != nil { return nil }
         if let preset = presets.first(where: { $0.id == stored }) { return preset }
         if let coreAI = CoreAIZooCatalog.assistantModel(forSelectionID: stored) {
             return coreAI

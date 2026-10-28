@@ -2,7 +2,7 @@ import SwiftUI
 
 private struct ODWorkspaceVisibleKey: EnvironmentKey { static let defaultValue = true }
 extension EnvironmentValues {
-    var odWorkspaceVisible: Bool {
+    public var odWorkspaceVisible: Bool {
         get { self[ODWorkspaceVisibleKey.self] }
         set { self[ODWorkspaceVisibleKey.self] = newValue }
     }
@@ -71,9 +71,9 @@ public struct ODVoiceSessionAccessory: View {
                     HStack(spacing: 12) {
                         Image(systemName: "waveform").accessibilityHidden(true)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("\(store.selectedVoice?.name ?? "Voice") · \(store.voicePhase.title)")
+                            Text("\(store.selectedVoice?.name ?? "Voice") · \(store.voicePhase.title)", bundle: .module)
                                 .font(.subheadline.weight(.semibold))
-                            Text("\(micState) · \(store.speakerEnabled ? "Audio on" : "Audio muted")")
+                            Text("\(micState) · \(store.speakerEnabled ? "Audio on" : "Audio muted")", bundle: .module)
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         .fixedSize(horizontal: false, vertical: true)
@@ -82,13 +82,13 @@ public struct ODVoiceSessionAccessory: View {
                     .frame(minHeight: 44).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Return to voice conversation")
-                .accessibilityValue("\(store.selectedVoice?.name ?? "Voice"), \(store.voicePhase.title), \(micState), \(store.speakerEnabled ? "Audio on" : "Audio muted")")
+                .accessibilityLabel(Text("Return to voice conversation", bundle: .module))
+                .accessibilityValue(Text("\(store.selectedVoice?.name ?? "Voice"), \(store.voicePhase.title), \(micState), \(store.speakerEnabled ? "Audio on" : "Audio muted")", bundle: .module))
                 .accessibilityIdentifier("session.return")
-                Button("End", role: .destructive) { store.send(.endVoiceSession) }
+                Button(ODLocalizedString("End"), role: .destructive) { store.send(.endVoiceSession) }
                     .frame(minWidth: 44, minHeight: 44)
                     .buttonStyle(.plain)
-                    .accessibilityLabel("End voice conversation")
+                    .accessibilityLabel(Text("End voice conversation", bundle: .module))
                     .accessibilityIdentifier("session.end")
             }
             .fixedSize(horizontal: false, vertical: true)

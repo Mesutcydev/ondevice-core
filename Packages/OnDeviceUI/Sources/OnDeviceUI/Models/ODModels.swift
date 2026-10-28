@@ -1,15 +1,28 @@
 import Foundation
 
+public enum ODLensAnalysisStage: String, Sendable {
+    case loadingModel, readingImage, preparingAnswer, writingAnswer
+    var title: LocalizedStringResource {
+        switch self {
+        case .loadingModel: return .init("Preparing model", bundle: #bundle)
+        case .readingImage: return .init("Reading image", bundle: #bundle)
+        case .preparingAnswer: return .init("Preparing answer", bundle: #bundle)
+        case .writingAnswer: return .init("Writing answer", bundle: #bundle)
+        }
+    }
+}
+
 /// Workspace identifiers retained for the host's camera/audio residency lifecycle.
 /// Navigation is now provided by the sidebar, not a tab bar.
 public enum ODTab: String, CaseIterable, Identifiable, Hashable {
-    case home, chat, lens, voice, models, classifiers, imageStudio, device, apiServer
+    case home, chat, code, lens, voice, models, classifiers, imageStudio, device, apiServer
     public var id: String { rawValue }
     public var title: String { self == .apiServer ? "API server" : self == .home ? "Chats" : self == .imageStudio ? "Image studio" : rawValue.capitalized }
     public var symbol: String {
         switch self {
         case .home: return "bubble.left.and.bubble.right"
         case .chat: return "bubble.left"
+        case .code: return "chevron.left.forwardslash.chevron.right"
         case .lens: return "camera"
         case .voice: return "waveform"
         case .models: return "cube"
@@ -291,6 +304,7 @@ public struct ODCapabilities {
     public var canPinConversations = false
     public var canOpenMacBridge = false
     public var canOpenAPIServer = false
+    public var canOpenCodeWorkspace = false
     public var canManageStorage = false
     public var canConfigureApp = false
     public var canLoadModels = false

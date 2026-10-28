@@ -10,7 +10,9 @@ struct StudioPolicyChecks {
         precondition(StudioTextBlocks.parse("before $$x$$ after") == [.text("before "), .math("x"), .text(" after")])
         precondition(StudioTextBlocks.parse("<think>reason</think>answer") == [.thinking("reason", false), .text("answer")])
         precondition(StudioTextBlocks.parse("<think>reason") == [.thinking("reason", true)])
-        precondition(StudioTextBlocks.parse("```swift") == [.text("```swift")])
+        // An opening fence mounts its card before the first body token.
+        precondition(StudioTextBlocks.parse("```swift") == [.code("swift", "")])
+        precondition(StudioTextBlocks.parse("Wrap it in ``` fences.") == [.text("Wrap it in "), .text("``` fences.")])
         precondition(StudioTextBlocks.parse("Türkçe 👨‍👩‍👧‍👦") == [.text("Türkçe 👨‍👩‍👧‍👦")])
         var gate = StudioImportGate()
         let ticket = gate.generation
@@ -26,6 +28,6 @@ struct StudioPolicyChecks {
         precondition(segments.allSatisfy { Range($0.range, in: transcript) != nil })
         precondition(StudioTranscriptSegment.activeID(in: segments, utf16Offset: segments[1].range.location) == segments[1].id)
         precondition(StudioTranscriptSegment.make("").isEmpty)
-        print("17 Studio policy checks passed")
+        print("18 Studio policy checks passed")
     }
 }

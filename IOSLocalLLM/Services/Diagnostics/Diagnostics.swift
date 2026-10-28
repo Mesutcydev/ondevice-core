@@ -57,7 +57,7 @@ final class Diagnostics: @unchecked Sendable {
 
     static let shared = Diagnostics()
 
-    private let subsystem = "com.mesutcydev.ondevicemax.IOSLocalLLM"
+    private let subsystem = "com.token.TokenAI.IOSLocalLLM"
     private let lock = NSLock()
     private var ring: [DiagEntry] = []
     private let ringCap = 600
@@ -67,7 +67,7 @@ final class Diagnostics: @unchecked Sendable {
     var minimumLevel: DiagLevel = .info
 
     private var loggers: [String: Logger] = [:]
-    private let diskQueue = DispatchQueue(label: "com.mesutcydev.ondevicemax.diagnostics.disk", qos: .utility)
+    private let diskQueue = DispatchQueue(label: "com.token.TokenAI.diagnostics.disk", qos: .utility)
     private let maxFileBytes = 512 * 1024
 
     static let timestampFormatter: ISO8601DateFormatter = {

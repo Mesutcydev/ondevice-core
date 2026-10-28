@@ -45,8 +45,8 @@ struct ODChatView: View {
                                     }
                                     if store.isResponding {
                                         HStack(spacing: ODLayout.elementGap) {
-                                            ProgressView().accessibilityHidden(true)
-                                            Text("Responding").font(.footnote).foregroundStyle(.secondary)
+                                            ODBrandMark(height: 10, motion: .live)
+                                            Text("Responding", bundle: .module).font(.footnote).foregroundStyle(.secondary)
                                         }
                                         .accessibilityElement(children: .combine)
                                     }
@@ -69,13 +69,13 @@ struct ODChatView: View {
                                 followsLatestMessage = true
                                 proxy.scrollTo("conversation-bottom", anchor: .bottom)
                             } label: {
-                                Label("Latest", systemImage: "arrow.down")
+                                Label(ODLocalizedString("Latest"), systemImage: "arrow.down")
                             }
                             .labelStyle(.iconOnly)
                             .buttonStyle(.glass)
                             .buttonBorderShape(.circle)
                             .controlSize(.large)
-                            .accessibilityLabel("Return to the latest message")
+                            .accessibilityLabel(Text("Return to the latest message", bundle: .module))
                             .padding(ODLayout.labelGap)
                         }
                     }
@@ -101,7 +101,7 @@ struct ODChatView: View {
             }
             .background { ODPageBackground().ignoresSafeArea() }
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                ODWorkspaceBottomBar {
+                ODWorkspaceBottomBar(backgroundColor: .clear) {
                     VStack(spacing: 0) {
                         composer
                         if composerFocused {
@@ -115,7 +115,7 @@ struct ODChatView: View {
                     }
                 }
             }
-            .navigationTitle(store.selectedConversation?.title ?? "OnDevice")
+            .navigationTitle(store.selectedConversation?.title ?? "Token AI")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if !sidebarPinned {
@@ -125,7 +125,7 @@ struct ODChatView: View {
                             store.conversationsPresented = true
                         }
                         .labelStyle(.iconOnly)
-                        .accessibilityLabel("Open conversations and app menu")
+                        .accessibilityLabel(Text("Open conversations and app menu", bundle: .module))
                         .accessibilityIdentifier("navigation.menu")
                     }
                 }
@@ -133,7 +133,7 @@ struct ODChatView: View {
                     modelSelector
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("New conversation", systemImage: "square.and.pencil") {
+                    Button(ODLocalizedString("New conversation"), systemImage: "square.and.pencil") {
                         followsLatestMessage = true
                         store.send(.newConversation)
                     }
@@ -161,16 +161,17 @@ struct ODChatView: View {
         }
     }
 
-    private var emptyHelper: String {
+    private var emptyHelper: LocalizedStringResource {
         let names = store.draftAttachments.map(\.name).filter { !$0.isEmpty }
-        if names.count > 1 { return "Ask about the attached files." }
-        if let name = names.first { return "Ask about \(name)." }
-        return "Write a message, or attach a file."
+        if names.count > 1 { return ODLocalizedString("Ask about the attached files.") }
+        if let name = names.first { return ODLocalizedString("Ask about \(name).") }
+        return ODLocalizedString("Write a message, or attach a file.")
     }
 
     private var emptyWorkspace: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("New chat").font(.title2.weight(.medium))
+            ODBrandMark(height: 22, motion: .drawOn).foregroundStyle(ODPalette.text).padding(.bottom, 10)
+            Text("New chat", bundle: .module).font(.title2.weight(.medium))
             Text(emptyHelper)
                 .font(.body).foregroundStyle(.secondary)
             Spacer(minLength: 0)
@@ -190,7 +191,7 @@ struct ODChatView: View {
             notice: AnyView(VStack(alignment: .leading, spacing: ODLayout.elementGap) {
                 stateNotice
                 if let reason = draftAvailabilityReason {
-                    Text(reason).font(.footnote).foregroundStyle(.secondary)
+                    Text(odKey: reason).font(.footnote).foregroundStyle(.secondary)
                 }
             }),
             onVoice: {
@@ -237,14 +238,14 @@ struct ODChatView: View {
 
     private var modelSelector: some View {
         Menu {
-            Button("Choose an assistant model", systemImage: "cube") {
+            Button(ODLocalizedString("Choose an assistant model"), systemImage: "cube") {
                 composerFocused = false
                 store.selectedTab = .models
             }
             if let model = store.selectedModel {
-                Button("Model details", systemImage: "info.circle") { detailModel = model }
+                Button(ODLocalizedString("Model details"), systemImage: "info.circle") { detailModel = model }
                 if !store.isReady && !phase.isPreparing && model.isInstalled && model.kind == .language {
-                    Button("Load \(model.name)", systemImage: "arrow.up.circle") { store.send(.loadModel(model.id)) }
+                    Button(ODLocalizedString("Load \(model.name)"), systemImage: "arrow.up.circle") { store.send(.loadModel(model.id)) }
                         .disabled(!store.canPerformActions || !store.capabilities.canLoadModels || store.isResponding)
                 }
             }
@@ -257,43 +258,45 @@ struct ODChatView: View {
                         Label(persona.name, systemImage: persona.symbol).tag(persona.id)
                     }
                 } label: {
-                    Label("Persona", systemImage: "person.crop.circle")
+                    Label(ODLocalizedString("Persona"), systemImage: "person.crop.circle")
                 }
                 .pickerStyle(.menu)
                 .disabled(!store.canPerformActions)
                 .accessibilityIdentifier("chat.personaPicker")
             }
-            Button("Device status", systemImage: "iphone") {
+            Button(ODLocalizedString("Device status"), systemImage: "iphone") {
                 composerFocused = false
                 store.secondaryRoute = .device
             }
         } label: {
             ODModelMenuLabel(displayName: store.selectedModel?.name ?? "",
-                             preservesName: store.selectedModelID?.hasPrefix("api:") == true)
+                             preservesName: store.selectedModelID?.hasPrefix("api:") == true,
+                             status: store.isResponding ? .working
+                                 : store.selectedModelID != nil && store.loadedModelID == store.selectedModelID ? .ready : .idle)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Model")
-        .accessibilityValue(store.selectedModel?.name ?? "None selected")
-        .accessibilityHint("Choose or load an assistant model, pick a persona, or inspect details")
+        .accessibilityLabel(Text("Model", bundle: .module))
+        .accessibilityValue(Text(odKey: store.selectedModel?.name ?? "None selected"))
+        .accessibilityHint(Text("Choose or load an assistant model, pick a persona, or inspect details", bundle: .module))
         .accessibilityIdentifier("chat.modelPicker")
     }
 
     @ViewBuilder private var stateNotice: some View {
         switch phase {
         case .preparing(let step):
-            HStack(alignment: .top, spacing: ODLayout.elementGap) {
-                ProgressView().accessibilityHidden(true)
-                Text(step.isEmpty ? "Preparing \(store.selectedModel?.name ?? "model")…" : step)
+            HStack(alignment: .firstTextBaseline, spacing: ODLayout.elementGap) {
+                ODBrandMark(height: 9, motion: .live).alignmentGuide(.firstTextBaseline) { $0[.bottom] }
+                Text(step.isEmpty ? ODLocalizedString("Preparing \(store.selectedModel?.name ?? "model")…") : ODLocalizedString(key: step))
                     .font(.footnote).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
         case .failed(let message):
             VStack(alignment: .leading, spacing: ODLayout.unit) {
-                Label(message, systemImage: "exclamationmark.circle")
+                Label(ODLocalizedString(key: message), systemImage: "exclamationmark.circle")
                     .font(.footnote).foregroundStyle(.secondary)
                 if let model = store.selectedModel, model.isInstalled {
-                    Button("Try loading again") { store.send(.loadModel(model.id)) }
+                    Button(ODLocalizedString("Try loading again")) { store.send(.loadModel(model.id)) }
                         .font(.footnote).frame(minHeight: ODLayout.minimumHit)
                         .disabled(!store.canPerformActions || !store.capabilities.canLoadModels || store.isResponding)
                 }
@@ -355,8 +358,8 @@ private struct ODTranscriptMessage: View {
             }
         }
         .contextMenu {
-            Button("Copy", systemImage: "doc.on.doc") { UIPasteboard.general.string = message.text }
+            Button(ODLocalizedString("Copy"), systemImage: "doc.on.doc") { UIPasteboard.general.string = message.text }
         }
-        .accessibilityLabel(message.role == .user ? "You: \(message.text)" : "OnDevice: \(message.text)")
+        .accessibilityLabel(Text(message.role == .user ? ODLocalizedString("You: \(message.text)") : ODLocalizedString("Token AI: \(message.text)")))
     }
 }

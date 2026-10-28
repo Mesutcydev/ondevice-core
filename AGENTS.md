@@ -96,8 +96,8 @@ a connected iPhone (CoreAI is not in the Simulator SDK):
 
 ```bash
 xcodebuild test \
-  -workspace OnDeviceMax.xcworkspace \
-  -scheme OnDeviceMax \
+  -workspace TokenAI.xcworkspace \
+  -scheme TokenAI \
   -destination 'platform=iOS,name=YOUR_IPHONE'
 ```
 
@@ -116,7 +116,7 @@ available for both the app and share extension, run:
 ```
 
 Treat this script as the source of truth for the Xcode 27 Release archive,
-profile-less IPA structure, nested code signing, PCC/app-group/iCloud
+profile-less IPA structure, nested code signing, PCC/app-group
 entitlements, and final verification. The result requires installer-side
 re-signing. See `Docs/RELEASE_VERIFICATION.md` for the full two-track release
 scheme. Never commit the generated IPA, archive, profiles, or credentials.

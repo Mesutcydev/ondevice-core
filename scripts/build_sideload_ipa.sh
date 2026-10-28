@@ -14,10 +14,10 @@ export DEVELOPER_DIR="$XCODE/Contents/Developer"
 OUT_DIR="${1:-$HOME/Desktop}"
 VERSION="$(awk -F'"' '/CFBundleShortVersionString:/ { print $2; exit }' project.yml)"
 BUILD="$(awk -F'"' '/CURRENT_PROJECT_VERSION:/ { print $2; exit }' project.yml)"
-ARCHIVE="$ROOT/build/OnDeviceMax-$VERSION-$BUILD.xcarchive"
-IPA="$OUT_DIR/OnDeviceMax-sideload-entitled-$VERSION-$BUILD.ipa"
-LATEST="$OUT_DIR/OnDeviceMax-sideload-entitled-latest.ipa"
-APP="$ARCHIVE/Products/Applications/OnDeviceMax.app"
+ARCHIVE="$ROOT/build/TokenAI-$VERSION-$BUILD.xcarchive"
+IPA="$OUT_DIR/TokenAI-sideload-entitled-$VERSION-$BUILD.ipa"
+LATEST="$OUT_DIR/TokenAI-sideload-entitled-latest.ipa"
+APP="$ARCHIVE/Products/Applications/TokenAI.app"
 MAIN_ENTITLEMENTS="$ROOT/IOSLocalLLM/IOSLocalLLM-PCC.entitlements"
 EXT_ENTITLEMENTS="$ROOT/IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements"
 
@@ -41,8 +41,8 @@ echo "=== 3/8  Archive the full workbench unsigned"
 rm -rf "$ARCHIVE"
 mkdir -p build "$OUT_DIR"
 xcodebuild archive \
-  -workspace OnDeviceMax.xcworkspace \
-  -scheme OnDeviceMax \
+  -workspace TokenAI.xcworkspace \
+  -scheme TokenAI \
   -configuration Release \
   -destination 'generic/platform=iOS' \
   -archivePath "$ARCHIVE" \
@@ -51,7 +51,7 @@ xcodebuild archive \
   ONDEVICE_MODEL_POLICY=RESEARCH_MODE ONDEVICE_RESEARCH_BUILD=YES \
   > build/sideload-archive.log 2>&1 \
   || { tail -80 build/sideload-archive.log; die "archive failed"; }
-[[ -d "$APP" ]] || die "archive contains no OnDeviceMax.app"
+[[ -d "$APP" ]] || die "archive contains no TokenAI.app"
 
 echo "=== 4/8  Reject unsafe FoundationModels imports"
 ./scripts/verify_foundationmodels_symbols.sh "$APP" >/dev/null \
@@ -59,9 +59,9 @@ echo "=== 4/8  Reject unsafe FoundationModels imports"
 
 echo "=== 5/8  Verify archive identity and required resources"
 PLIST="$APP/Info.plist"
-[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")" == "com.mesutcydev.ondevicemax" ]] \
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")" == "com.token.TokenAI" ]] \
   || die "wrong bundle id"
-[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$PLIST")" == "OnDevice Max" ]] \
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$PLIST")" == "Token AI" ]] \
   || die "wrong display name"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")" == "$VERSION" ]] \
   || die "wrong version"
@@ -70,10 +70,10 @@ PLIST="$APP/Info.plist"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST")" == "27.0" ]] \
   || die "wrong minimum OS"
 [[ -f "$APP/PrivacyInfo.xcprivacy" ]] || die "privacy manifest missing"
-[[ -d "$APP/PlugIns/OnDeviceMaxShare.appex" ]] || die "share extension missing"
+[[ -d "$APP/PlugIns/TokenAIShare.appex" ]] || die "share extension missing"
 [[ -d "$APP/Frameworks/llama.framework" ]] || die "llama framework missing"
 [[ -d "$APP/Frameworks/whisper.framework" ]] || die "whisper framework missing"
-otool -L "$APP/OnDeviceMax" | grep -q 'CoreAI.framework' || die "CoreAI framework is not linked"
+otool -L "$APP/TokenAI" | grep -q 'CoreAI.framework' || die "CoreAI framework is not linked"
 
 python3 scripts/collect_sideload_notices.py "$APP" build/sideload-archive.log
 
@@ -84,14 +84,14 @@ rm -f "$IPA" "$LATEST"
 cp "$IPA" "$LATEST"
 
 echo "=== 7/8  Verify final Payload, signatures, flags and entitlements"
-VERIFY="$(mktemp -d "${TMPDIR:-/tmp}/ondevice-max-ipa.XXXXXX")"
+VERIFY="$(mktemp -d "${TMPDIR:-/tmp}/tokenai-ipa.XXXXXX")"
 trap 'rm -rf "$VERIFY"' EXIT
 unzip -tq "$IPA" >/dev/null || die "IPA zip integrity failed"
 unzip -q "$IPA" -d "$VERIFY"
 ROOT_ENTRIES="$(find "$VERIFY" -mindepth 1 -maxdepth 1 -print | wc -l | tr -d ' ')"
 [[ "$ROOT_ENTRIES" == "1" && -d "$VERIFY/Payload" ]] || die "IPA root must contain only Payload/"
-SIGNED_APP="$VERIFY/Payload/OnDeviceMax.app"
-SIGNED_EXT="$SIGNED_APP/PlugIns/OnDeviceMaxShare.appex"
+SIGNED_APP="$VERIFY/Payload/TokenAI.app"
+SIGNED_EXT="$SIGNED_APP/PlugIns/TokenAIShare.appex"
 codesign --verify --deep --strict "$SIGNED_APP" || die "final app signature invalid"
 [[ -f "$SIGNED_APP/PrivacyInfo.xcprivacy" ]] || die "final privacy manifest missing"
 for key in UIFileSharingEnabled LSSupportsOpeningDocumentsInPlace; do
@@ -105,15 +105,16 @@ for key in \
   com.apple.developer.kernel.extended-virtual-addressing \
   com.apple.developer.kernel.increased-debugging-memory-limit \
   com.apple.developer.private-cloud-compute \
-  com.apple.security.application-groups \
-  com.apple.developer.icloud-container-identifiers; do
+  com.apple.security.application-groups; do
   /usr/libexec/PlistBuddy -c "Print :$key" "$ACTUAL" >/dev/null 2>&1 \
     || die "entitlement missing from final binary: $key"
 done
+/usr/libexec/PlistBuddy -c "Print :com.apple.developer.icloud-services" "$ACTUAL" >/dev/null 2>&1 \
+  && die "iCloud entitlement must not ship: the app has no iCloud feature"
 EXT_ACTUAL="$VERIFY/extension-entitlements.plist"
 codesign -d --entitlements :- "$SIGNED_EXT" > "$EXT_ACTUAL" 2>/dev/null
 /usr/libexec/PlistBuddy -c 'Print :com.apple.security.application-groups:0' "$EXT_ACTUAL" \
-  | grep -q '^group.com.mesutcydev.ondevicemax.shared$' \
+  | grep -q '^group.com.token.TokenAI$' \
   || die "share extension app-group entitlement mismatch"
 
 echo "=== 8/8  Artifact"

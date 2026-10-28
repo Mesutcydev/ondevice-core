@@ -8,13 +8,13 @@ import SwiftUI
 // Entry point for the iOS share sheet. Accepts images, plain text, URLs, and
 // Safari web pages (NSExtensionJavaScriptPreprocessingResultsKey payload) from
 // any host app, stages the content into the App Group container, and opens
-// the main app's inbox. The user opens OnDevice Max to receive the content;
+// the main app's inbox. The user opens Token AI to receive the content;
 // Share extensions cannot use UIApplication to force a containing-app launch.
 //
 // Hand-off URLs:
-//   ondevice-max://share?file=<jpg-name>          → image (lens tab)
-//   ondevice-max://share?text=<percent-encoded>   → text snippet (assistant tab)
-//   ondevice-max://share?url=<percent-encoded>    → URL (assistant tab)
+//   tokenai://share?file=<jpg-name>          → image (lens tab)
+//   tokenai://share?text=<percent-encoded>   → text snippet (assistant tab)
+//   tokenai://share?url=<percent-encoded>    → URL (assistant tab)
 //
 // Long text shares (>1500 chars) go through the file-staging path instead of
 // the URL — iOS truncates open URLs around 2KB and Safari/Mail share
@@ -23,8 +23,8 @@ import SwiftUI
 final class ShareViewController: UIViewController {
 
     // App Group identifier — must match the main app's entitlements.
-    private static let appGroupID = "group.com.mesutcydev.ondevicemax.shared"
-    private static let urlScheme  = "ondevice-max"
+    private static let appGroupID = "group.com.token.TokenAI"
+    private static let urlScheme  = "tokenai"
 
     /// Threshold above which we stash text in a file and hand the
     /// filename to the main app instead of inlining via URL query.
@@ -301,14 +301,14 @@ final class ShareViewController: UIViewController {
         guard let container = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: Self.appGroupID
         ) else {
-            await dismiss(success: false, error: "Couldn't access OnDevice Max's shared storage.")
+            await dismiss(success: false, error: "Couldn't access Token AI's shared storage.")
             return
         }
         do {
             try ShareInbox.enqueue(url, in: container)
             await dismiss(success: true, error: nil)
         } catch {
-            await dismiss(success: false, error: "Couldn't save this item to OnDevice Max.")
+            await dismiss(success: false, error: "Couldn't save this item to Token AI.")
         }
     }
 
@@ -325,11 +325,11 @@ final class ShareViewController: UIViewController {
     @MainActor
     static func receiptAlert(success: Bool, error: String?, onDone: @escaping () -> Void) -> UIAlertController {
         let alert = UIAlertController(
-            title: success ? "Saved to OnDevice Max" : "Couldn't share",
-            message: success ? "Open OnDevice Max to continue with your shared content." : error,
+            title: success ? String(localized: "Saved to Token AI") : String(localized: "Couldn't share"),
+            message: success ? String(localized: "Open Token AI to continue with your shared content.") : error,
             preferredStyle: .alert
         )
-        alert.addAction(UIAlertAction(title: "Done", style: .default) { _ in
+        alert.addAction(UIAlertAction(title: String(localized: "Done"), style: .default) { _ in
             onDone()
         })
         return alert

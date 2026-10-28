@@ -27,7 +27,7 @@ struct HomeConceptReview: View {
                 .accessibilityIdentifier("home.concept")
             }
             .background { ODPageBackground().ignoresSafeArea() }
-            .navigationTitle("OnDevice").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Token AI").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("App menu", systemImage: "line.3.horizontal") { store.conversationsPresented = true }.labelStyle(.iconOnly)

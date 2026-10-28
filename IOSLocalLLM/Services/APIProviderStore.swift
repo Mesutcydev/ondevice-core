@@ -10,7 +10,7 @@ nonisolated protocol APIProviderCredentialStorage: Sendable {
 }
 
 nonisolated struct APIProviderKeychain: APIProviderCredentialStorage {
-    private let service = "com.mesutcydev.ondevicemax.chatproviders"
+    private let service = "com.token.TokenAI.chatproviders"
     private func query(_ id: UUID? = nil) -> [String: Any] {
         var result: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
                                    kSecAttrService as String: service]

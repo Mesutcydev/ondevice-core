@@ -83,7 +83,7 @@ struct FileAttachmentPicker: UIViewControllerRepresentable {
                                 errors.append("\(url.lastPathComponent): image is unreadable")
                                 continue
                             }
-                            images.append(PickedPhoto(image: image, ocrText: visibleText))
+                            images.append(PickedPhoto(image: image, attachmentData: preview, ocrText: visibleText))
                             continue
                         }
                         let att = try await FileAttachmentService.read(url)

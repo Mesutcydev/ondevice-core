@@ -14,7 +14,6 @@
 untrusted model/download source ──HTTPS──> app sandbox
 untrusted LAN client ──HTTP + bearer token──> opt-in Local API
 paired Mac client ──authenticated protocol──> explicit tool-risk policy
-app sandbox ──optional CloudKit──> user's private iCloud database
 app ──optional web search──> configured third-party provider
 ```
 

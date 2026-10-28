@@ -1,0 +1,44 @@
+{
+  "data" : {
+    "type" : "ageRatingDeclarations",
+    "id" : "22c0ae3f-9858-4a67-9cf4-4fb327c8122a",
+    "attributes" : {
+      "advertising" : false,
+      "alcoholTobaccoOrDrugUseOrReferences" : "NONE",
+      "contests" : "NONE",
+      "gambling" : false,
+      "gamblingSimulated" : "NONE",
+      "gunsOrOtherWeapons" : "NONE",
+      "healthOrWellnessTopics" : false,
+      "kidsAgeBand" : null,
+      "lootBox" : false,
+      "medicalOrTreatmentInformation" : "NONE",
+      "messagingAndChat" : false,
+      "parentalControls" : true,
+      "profanityOrCrudeHumor" : "NONE",
+      "ageAssurance" : false,
+      "sexualContentGraphicAndNudity" : "NONE",
+      "sexualContentOrNudity" : "NONE",
+      "socialMedia" : false,
+      "socialMediaAgeRestricted" : false,
+      "horrorOrFearThemes" : "NONE",
+      "matureOrSuggestiveThemes" : "NONE",
+      "unrestrictedWebAccess" : false,
+      "userGeneratedContent" : false,
+      "violenceCartoonOrFantasy" : "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic" : "NONE",
+      "violenceRealistic" : "NONE",
+      "ageRatingOverride" : "SIXTEEN_PLUS",
+      "ageRatingOverrideV2" : "SIXTEEN_PLUS",
+      "koreaAgeRatingOverride" : "NONE",
+      "gracRatingClassificationNumber" : null,
+      "developerAgeRatingInfoUrl" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/ageRatingDeclarations/22c0ae3f-9858-4a67-9cf4-4fb327c8122a"
+    }
+  },
+  "links" : {
+    "self" : "https://api.appstoreconnect.apple.com/v1/appInfos/22c0ae3f-9858-4a67-9cf4-4fb327c8122a/ageRatingDeclaration"
+  }
+}

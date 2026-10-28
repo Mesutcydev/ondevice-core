@@ -62,9 +62,13 @@ final class DownloadableModel: ObservableObject, Identifiable {
 
     /// One download can advertise several roles while retaining a single
     /// primary category for catalog grouping and storage accounting.
-    var declaredCategories: Set<Category> {
+    nonisolated var declaredCategories: Set<Category> {
         var roles: Set<Category> = [category]
         guard category == .assistant || category == .vlm else { return roles }
+        if MiniCPMV47Catalog.downloadableModels.contains(where: { $0.repoID == sourceRepoID })
+            || sourceRepoID.caseInsensitiveCompare(LFM3Catalog.vision.repoID) == .orderedSame {
+            roles.formUnion([.assistant, .vlm])
+        }
         if capabilities.contains(.vision)
             || downloader.map({ LocalModelRegistry.hasDeclaredVisionComponent(in: $0.destination) }) == true {
             roles.insert(.vlm)
@@ -83,9 +87,17 @@ final class DownloadableModel: ObservableObject, Identifiable {
 
     /// Executable roles are checked independently. A pack can remain visible
     /// under both roles even if this build lacks one or both loaders.
-    var supportedCategories: Set<Category> {
+    nonisolated var supportedCategories: Set<Category> {
         var roles = declaredCategories
+        if LFM3Catalog.unavailableReason(for: sourceRepoID) != nil {
+            roles.subtract([.assistant, .vlm])
+        }
         if let destination = downloader?.destination {
+            if !LFM3Catalog.isEnabled, runtime == .llamaCpp,
+               let model = LocalModelFileValidator.ggufLLM(in: destination),
+               LFM3Catalog.unavailableReason(for: model.lastPathComponent) != nil {
+                roles.subtract([.assistant, .vlm])
+            }
             if LocalModelRegistry.unsupportedTextRuntimeReason(in: destination) != nil {
                 roles.remove(.assistant)
             }
@@ -96,7 +108,9 @@ final class DownloadableModel: ObservableObject, Identifiable {
         return roles
     }
 
-    func supportsCategory(_ requested: Category) -> Bool {
+    /// Reads only immutable identity and on-disk metadata, so catalog
+    /// descriptors can ask outside the main actor.
+    nonisolated func supportsCategory(_ requested: Category) -> Bool {
         supportedCategories.contains(requested)
     }
 
@@ -184,6 +198,11 @@ final class DownloadableModel: ObservableObject, Identifiable {
     }
 
     func start() {
+        if MiniCPMV47Catalog.is35B(sourceRepoID),
+           MemoryAdvisor.deviceTotalRAM < MiniCPMV47Catalog.minimum35BPhysicalMemory {
+            ToastCenter.shared.error("Model needs more memory", detail: "MiniCPM 35B requires a device with at least 12 GB RAM. Choose the 1B model on this device.")
+            return
+        }
         if let compatibility = platformCompatibility,
            !compatibility.supportsCurrentPlatform {
             ToastCenter.shared.error(
@@ -578,6 +597,7 @@ final class ModelDownloadCenter: ObservableObject {
 
         for record in records where record.validationState.isActivatable {
             guard AppStoreModelPolicy.restriction(for: record.repoID) == nil else { continue }
+            if MiniCPMV47Catalog.is35B(record.repoID), !MiniCPMV47Artifacts.isPrepared(in: record.localURL) { continue }
             let existingIndex = updated.firstIndex {
                 $0.sourceRepoID.caseInsensitiveCompare(record.repoID) == .orderedSame
                     || $0.id.caseInsensitiveCompare(record.repoID) == .orderedSame
@@ -729,7 +749,8 @@ final class ModelDownloadCenter: ObservableObject {
         let repoID = recoverRepoID(from: folderName, in: directory)
         guard AppStoreModelPolicy.restriction(for: repoID) == nil else { return false }
 
-        let downloader = HFModelDownloadManager(repoID: repoID, destination: directory)
+        let downloader = HFModelDownloadManager(repoID: repoID, destination: directory,
+            branch: repoID == MiniCPMV47Catalog.thirtyFiveBRepoID ? MiniCPMV47Catalog.thirtyFiveBRevision : "main")
         downloader.checkIfReady()
         let isReady = downloader.state == .ready
         guard isReady || downloader.hasResumableDownloadReceipt else { return false }
@@ -857,9 +878,13 @@ final class ModelDownloadCenter: ObservableObject {
                     let downloader = HFModelDownloadManager(
                         repoID: preset.repoID,
                         destination: dest,
-                        branch: Edge0ModelFamily.resolve(repoID: preset.repoID)?
-                            .pinnedRevision ?? "main"
+                        branch: preset.repoID == LFM3Catalog.text.repoID
+                            ? LFM3Catalog.text.revision
+                            : (Edge0ModelFamily.resolve(repoID: preset.repoID)?.pinnedRevision ?? "main")
                     )
+                    if preset.repoID == LFM3Catalog.text.repoID {
+                        downloader.fileAllowlist = LFM3Catalog.text.fileAllowlist
+                    }
                     // One packed checkpoint + tokenizer/config. The repo may
                     // carry extra artifacts; a complete runnable model is
                     // exactly this set, verified by Edge0ModelArtifacts.
@@ -894,6 +919,9 @@ final class ModelDownloadCenter: ObservableObject {
                 }(),
                 repoID: preset.repoID,
                 capabilities: preset.capabilities,
+                longDescription: preset.repoID == LFM3Catalog.text.repoID
+                    ? "Liquid AI's compact local text model. LFM Open License v1.0 applies, including a commercial revenue threshold."
+                    : nil,
                 runtime: preset.runtime,
                 approxRAMBytes: preset.approxRAMBytes,
                 contextWindowTokens: preset.contextWindowTokens,
@@ -955,6 +983,8 @@ final class ModelDownloadCenter: ObservableObject {
             /// Execution backend is part of the curated compatibility contract;
             /// do not infer it from a repository naming convention.
             var runtime: ModelRuntime = .mlx
+            var revision: String = "main"
+            var platformCompatibility: ModelPlatformCompatibility? = nil
         }
         var curatedVLMs: [CuratedVLM] = [
             // Qwen3-VL family — Qwen3VL.swift in mlx-swift-examples.
@@ -1017,6 +1047,19 @@ final class ModelDownloadCenter: ObservableObject {
                 runtime: .llamaCpp
             ),
         ]
+        if LFM3Catalog.isEnabled {
+            curatedVLMs.append(CuratedVLM(
+                repoID: LFM3Catalog.vision.repoID,
+                displayName: "LFM3 VL 2B (QAD 4-bit)",
+                sizeLabel: "~1.25 GB",
+                approxRAMBytes: 2_500_000_000,
+                capabilities: [.newRelease, .thinking],
+                longDescription: "Liquid AI's image and text model. Downloads the 4-bit model and its matching vision projector. LFM Open License v1.0 applies, including a commercial revenue threshold.",
+                fileAllowlist: LFM3Catalog.vision.fileAllowlist,
+                runtime: .llamaCpp,
+                revision: LFM3Catalog.vision.revision
+            ))
+        }
         // Gemma 4 12B (4-bit) — Google's unified encoder-free multimodal
         // model. Loads via the `gemma4` type registered in mlx-swift-lm 3.x
         // (text+vision; audio parsed but not yet processed). ~7 GB on disk,
@@ -1033,6 +1076,20 @@ final class ModelDownloadCenter: ObservableObject {
                     capabilities: [.best, .newRelease],
                     longDescription: "Google's unified, encoder-free multimodal Gemma 4. Vision + text in a single backbone; strong document and scene understanding. Large — best on Max-tier devices with ≥16 GB unified memory."
                 )
+            )
+        }
+        curatedVLMs += MiniCPMV47Catalog.downloadableModels.map { model in
+            CuratedVLM(
+                repoID: model.repoID,
+                displayName: model.displayName,
+                sizeLabel: "~\(model.downloadBytes.formattedBytes)",
+                approxRAMBytes: model.approxRAMBytes,
+                capabilities: [.newRelease],
+                longDescription: model.description,
+                fileAllowlist: model.fileAllowlist,
+                runtime: .llamaCpp,
+                revision: model.revision,
+                platformCompatibility: MiniCPMV47Catalog.is35B(model.repoID) ? .highMemoryMobileAndMac : nil
             )
         }
         for vlm in curatedVLMs {
@@ -1054,13 +1111,15 @@ final class ModelDownloadCenter: ObservableObject {
                 downloader: HFModelDownloadManager(
                     repoID: vlm.repoID,
                     destination: dest,
+                    branch: vlm.revision,
                     fileAllowlist: vlm.fileAllowlist
                 ),
                 repoID: vlm.repoID,
                 capabilities: caps,
                 longDescription: vlm.longDescription,
                 runtime: vlm.runtime,
-                approxRAMBytes: vlm.approxRAMBytes
+                approxRAMBytes: vlm.approxRAMBytes,
+                platformCompatibility: vlm.platformCompatibility
             ))
         }
 

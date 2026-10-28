@@ -64,6 +64,28 @@ final class AgentChatFlows: XCTestCase {
         XCTAssertTrue(app.staticTexts["Checking the project structure and existing navigation before proposing a focused update."].exists)
     }
 
+    @MainActor func testAttachedImageKeepsItsFrameThroughStreamingPhases() {
+        let app = launch(["-dark", "-agent-waiting", "-agent-image"])
+        let image = app.buttons["chat.attached-image.fixture-0"]
+        XCTAssertTrue(image.waitForExistence(timeout: 5))
+        let initialFrame = image.frame
+        // SwiftUI's accessibility frame can include surrounding layout on
+        // this simulator runtime; it must remain usable and stable.
+        XCTAssertGreaterThanOrEqual(initialFrame.width, 44)
+        XCTAssertGreaterThanOrEqual(initialFrame.height, 44)
+        app.buttons["chat.fixture.advance"].tap()
+        XCTAssertTrue(image.exists)
+        XCTAssertEqual(image.frame.minY, initialFrame.minY, accuracy: 2)
+        XCTAssertEqual(image.frame.size, initialFrame.size)
+        app.buttons["chat.fixture.advance"].tap()
+        XCTAssertTrue(image.exists)
+        XCTAssertEqual(image.frame.minY, initialFrame.minY, accuracy: 2)
+        XCTAssertEqual(image.frame.size, initialFrame.size)
+        image.tap()
+        XCTAssertTrue(app.staticTexts["chat.fixture.imageSelected"].waitForExistence(timeout: 5))
+        capture("agent-chat-image-streaming")
+    }
+
     @MainActor func testLiveDisclosureStaysExpandedAcrossAnswerAndCompletion() {
         let app = launch(["-dark"])
         let reasoning = app.buttons["chat.reasoning"]
@@ -78,7 +100,7 @@ final class AgentChatFlows: XCTestCase {
     }
 
     @MainActor func testModelPillAndKeyboardRemainReachableAtLargeType() {
-        let app = launch(["-agent-completed", "-large-type"])
+        let app = launch(["-agent-completed", "-large-type", "-dark"])
         let model = app.buttons["chat.modelPicker"]
         XCTAssertTrue(model.isHittable)
         model.tap()
@@ -111,6 +133,49 @@ final class AgentChatFlows: XCTestCase {
         XCTAssertTrue((notice.value as? String)?.contains("Qwen3 4B") == true)
         XCTAssertTrue(app.buttons["chat.composer.add"].isHittable)
         capture("agent-chat-compaction-compact-light")
+    }
+
+    @MainActor func testExpandedToolLogRetainsChoiceAfterDetailsAndShowsFailure() {
+        let app = launch(["-agent-completed"])
+        let summary = app.buttons["chat.tools.summary"]
+        XCTAssertTrue(summary.label.contains("Used 3 tools"))
+        XCTAssertTrue(summary.label.contains("1 failed"))
+        summary.tap()
+        XCTAssertEqual(summary.value as? String, "Expanded")
+        app.buttons["chat.tool.00000000-0000-0000-0000-000000000102"].tap()
+        XCTAssertEqual(app.staticTexts["chat.tool.details"].label, "Error: could not evaluate expression")
+        app.buttons["chat.tool.copy"].tap()
+        XCTAssertEqual(app.buttons["chat.tool.copy"].label, "Copied")
+        app.buttons["Done"].tap()
+        XCTAssertEqual(summary.value as? String, "Expanded")
+        capture("agent-chat-tools-expanded")
+        summary.tap()
+        XCTAssertEqual(summary.value as? String, "Collapsed")
+        XCTAssertTrue(app.buttons["chat.tool.00000000-0000-0000-0000-000000000101"].exists)
+    }
+
+    @MainActor func testConversationSheetPreservesDraftAndPinAtCompactWidth() {
+        let app = launch(["-agent-completed", "-width", "320"])
+        let field = app.descendants(matching: .any).matching(identifier: "chat.composer.text").firstMatch
+        field.tap()
+        field.typeText("Keep my draft")
+        let entered = NSPredicate { _, _ in field.value as? String == "Keep my draft" }
+        expectation(for: entered, evaluatedWith: nil)
+        waitForExpectations(timeout: 5)
+        app.buttons["keyboard.dismiss"].tap()
+        app.buttons["chat.session.open"].tap()
+        XCTAssertTrue(app.staticTexts["chat.session.title"].waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(app.staticTexts["chat.session.title"].frame.minY, app.frame.height * 0.35)
+        XCTAssertTrue(app.buttons["chat.session.model"].label.contains("Qwen3 4B"))
+        app.buttons["chat.session.pin"].tap()
+        XCTAssertEqual(app.buttons["chat.session.pin"].label, "Unpin")
+        capture("agent-chat-session-compact")
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.staticTexts["chat.session.title"].waitForNonExistence(timeout: 5))
+        XCTAssertEqual(field.value as? String, "Keep my draft")
+        app.buttons["chat.session.open"].tap()
+        XCTAssertEqual(app.buttons["chat.session.pin"].label, "Unpin")
+        app.buttons["Done"].tap()
     }
 
     @MainActor private func assertCompactionAlignment(_ app: XCUIApplication) {

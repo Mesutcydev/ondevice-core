@@ -33,7 +33,7 @@ final class LocalModelImportService: ObservableObject {
     }
 
     /// Model folders and GGUF files the user placed in On My iPhone ›
-    /// OnDeviceMax (or that arrived in its Inbox). Importing these needs no
+    /// TokenAI (or that arrived in its Inbox). Importing these needs no
     /// document picker, so it keeps working on re-signed sideload installs
     /// where Files silently refuses open-in-place folder access.
     static func documentsCandidates() -> [URL] {
@@ -215,7 +215,7 @@ final class LocalModelImportService: ObservableObject {
             }.value } catch let error as CocoaError where error.code == .fileReadNoPermission {
                 throw NSError(domain: "LocalImport", code: -4, userInfo: [
                     NSLocalizedDescriptionKey:
-                        "Files didn't give OnDevice Max access to “\(cleaned)”, which is common on sideloaded installs. Copy it to On My iPhone › OnDevice Max in Files, then pick it from the Import model list."
+                        "Files didn't give Token AI access to “\(cleaned)”, which is common on sideloaded installs. Copy it to On My iPhone › Token AI in Files, then pick it from the Import model list."
                 ])
             }
         }

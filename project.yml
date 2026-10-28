@@ -1,10 +1,12 @@
-name: OnDeviceMax
+name: TokenAI
 options:
-  bundleIdPrefix: com.mesutcydev.ondevicemax
+  bundleIdPrefix: com.token
   deploymentTarget:
     # This is the iOS-27 Core AI edition. The untouched CodeLens reference
     # remains iOS 18+; this copy keeps its MLX/llama stack and adds Core AI.
     iOS: "27.0"
+  developmentLanguage: en
+  knownRegions: [en, hi, de, es, ar, tr, ja, fr, pt, it, el, ro, ru, zh-Hans, ko]
   xcodeVersion: "27.0"
   createIntermediateGroups: true
   groupSortPosition: top
@@ -52,6 +54,7 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5.10"
+    MARKETING_VERSION: "2.1.1"
     # Restored product owner's team. Release packaging can override this value
     # with its explicit TEAM_ID argument; forks must select their own team.
     DEVELOPMENT_TEAM: PUH4GMFV56
@@ -88,6 +91,11 @@ settings:
     # Disabling sandboxing per-build-script in xcodegen isn't supported,
     # so disable it project-wide.
     ENABLE_USER_SCRIPT_SANDBOXING: NO
+    # The default stays on the validated shared runtime. LFM3 experiments can
+    # explicitly select a separate framework without replacing that artifact.
+    ONDEVICE_LLAMA_FRAMEWORK_DIR: "$(SRCROOT)/build/ClassifierNative"
+    ONDEVICE_LLAMA_SOURCE: "$(SRCROOT)/build/ClassifierNative/cache/llama.cpp-c83f3058b6f876f2f7e6ccbada858b2446860c85"
+    ONDEVICE_LFM3_SWIFT_FLAG: ""
   configs:
     Release:
       SWIFT_OPTIMIZATION_LEVEL: "-O"
@@ -130,6 +138,9 @@ targets:
           # source scan would otherwise try to swift-compile every
           # .mil / .bin / weight blob and fail.
           - "Resources/BundledVoiceModels/**"
+      - path: Shared/DownloadActivityAttributes.swift
+      - path: Packages/OnDeviceUI/Sources/OnDeviceUI/Resources/Localizable.xcstrings
+        buildPhase: resources
     resources:
       # Model-specific tokenizers and processor files are intentionally not
       # redistributed. The downloaded model must provide its own metadata.
@@ -157,32 +168,33 @@ targets:
     info:
       path: IOSLocalLLM/Info.plist
       properties:
-        CFBundleDisplayName: OnDevice Max
+        CFBundleDisplayName: "Token AI"
+        CFBundleLocalizations: [en, hi, de, es, ar, tr, ja, fr, pt, it, el, ro, ru, zh-Hans, ko]
         # Public OAuth identifier only; credentials are stored exclusively in Keychain.
         GitHubOAuthClientID: "Ov23likbAwZPky4GT7B5"
         # Source of truth for both targets' marketing version. xcodegen
         # writes these into the generated Info.plist files on every run,
         # so hand-edits to those plists get reverted next regen — always
         # bump HERE first, then `xcodegen` to propagate.
-        CFBundleShortVersionString: "1.0.1"
+        CFBundleShortVersionString: "2.1.1"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         # Standard HTTPS only — answers the ASC export-compliance question
         # automatically so review submission doesn't stall on it.
         ITSAppUsesNonExemptEncryption: false
-        NSCameraUsageDescription: "OnDevice Max uses the camera so Lens can read text and describe objects, documents, and scenes you choose to capture."
-        NSPhotoLibraryUsageDescription: "OnDevice Max uses photos you select for image understanding and conversations with compatible vision models."
-        NSMicrophoneUsageDescription: "OnDevice Max uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control."
-        NSLocalNetworkUsageDescription: "OnDevice Max uses your local network when you enable the Local API Server, pair a Mac, or choose a custom API provider on your network."
+        NSCameraUsageDescription: "Token AI uses the camera so Lens can read text and describe objects, documents, and scenes you choose to capture."
+        NSPhotoLibraryUsageDescription: "Token AI uses photos you select for image understanding and conversations with compatible vision models."
+        NSMicrophoneUsageDescription: "Token AI uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control."
+        NSLocalNetworkUsageDescription: "Token AI uses your local network when you enable the Local API Server, pair a Mac, or choose a custom API provider on your network."
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         # A previously paired Mac bridge auto-starts and advertises this type;
         # iOS 14+ refuses undeclared Bonjour advertisements.
         NSBonjourServices:
           - _localllm._tcp
-        NSSpeechRecognitionUsageDescription: "OnDevice Max uses speech recognition to turn your speech into text for voice conversations and dictation."
+        NSSpeechRecognitionUsageDescription: "Token AI uses speech recognition to turn your speech into text for voice conversations and dictation."
         # The share sheet's "Save Image" action (Image studio results) runs in
         # this process; without this key iOS terminates the app on that tap.
-        NSPhotoLibraryAddUsageDescription: "OnDevice Max saves images you create to your photo library when you choose Save Image."
+        NSPhotoLibraryAddUsageDescription: "Token AI saves images you create to your photo library when you choose Save Image."
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         UILaunchScreen:
@@ -191,35 +203,36 @@ targets:
           UIApplicationSupportsMultipleScenes: false
         NSSupportsLiveActivities: true
         # Make downloaded/imported models under Documents/HFModels visible at
-        # Files → On My iPhone → OnDevice. Per-model export remains
+        # Files → On My iPhone → Token AI. Per-model export remains
         # available from the Models tab for copying to any Files provider.
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         CFBundleURLTypes:
-          - CFBundleURLName: com.mesutcydev.ondevicemax.scheme
+          - CFBundleURLName: com.token.TokenAI.scheme
             CFBundleURLSchemes:
-              - ondevice-max
+              - tokenai
     settings:
       base:
-        PRODUCT_NAME: OnDeviceMax
+        PRODUCT_NAME: TokenAI
         PRODUCT_MODULE_NAME: IOSLocalLLM
-        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicemax
+        PRODUCT_BUNDLE_IDENTIFIER: com.token.TokenAI
         INFOPLIST_FILE: IOSLocalLLM/Info.plist
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLM/IOSLocalLLM.entitlements
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "4"
+        CURRENT_PROJECT_VERSION: "80"
         # Release uses public-distribution entitlements. PCC is optional and
         # requires Apple's managed grant; the App Store script can select the
         # PCC variant without overriding the share extension's entitlements.
         ONDEVICE_DISTRIBUTION_ENTITLEMENTS: IOSLocalLLM/IOSLocalLLM-AppStore.entitlements
         ONDEVICE_MODEL_POLICY: APP_STORE
         ONDEVICE_RESEARCH_BUILD: NO
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) $(ONDEVICE_LFM3_SWIFT_FLAG)"
         # PCC symbols exist only in the iOS 27 SDK. Enable the implementation
         # and its capability automatically for iOS 27 device/simulator builds;
         # Xcode 26 and iOS 18–26 builds keep the existing local-only binary.
-        "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.*]": "$(inherited) FM_PCC"
-        "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.*]": "$(inherited) FM_PCC"
+        "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.*]": "$(inherited) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG)"
+        "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.*]": "$(inherited) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG)"
         "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos27.*]": IOSLocalLLM/IOSLocalLLM-PCC.entitlements
         # iOS stays iPhone-only (family 1) so the iPhone app is unchanged.
         # Mac Catalyst is built against the macosx SDK and *requires* the
@@ -243,7 +256,7 @@ targets:
         # mic/network) on the macOS SDK; the iOS entitlements are untouched.
         "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": IOSLocalLLM/IOSLocalLLM-Catalyst.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        # Default icon is the silver "eye" mark (AppIcon); the previous
+        # Keep the existing OnDeviceMax icon as the Token AI default (AppIcon). The previous
         # pink mark ships as AppIconClassic so users can switch back in
         # Settings → Appearance. INCLUDE_ALL_APPICON_ASSETS is required for
         # alternate icons to be compiled into the bundle.
@@ -264,18 +277,18 @@ targets:
         # all come from the single llama.xcframework below.
         HEADER_SEARCH_PATHS:
           - "$(inherited)"
-          - "$(SRCROOT)/ThirdParty/llama.cpp/tools/mtmd"
-          - "$(SRCROOT)/ThirdParty/llama.cpp/include"
-          - "$(SRCROOT)/ThirdParty/llama.cpp/ggml/include"
+          - "$(ONDEVICE_LLAMA_SOURCE)/tools/mtmd"
+          - "$(ONDEVICE_LLAMA_SOURCE)/include"
+          - "$(ONDEVICE_LLAMA_SOURCE)/ggml/include"
           # whisper.h lives inside the framework, but adding the source
           # include dir makes the bridging header importable without
           # full module-map gymnastics.
           - "$(SRCROOT)/ThirdParty/whisper.cpp/include"
       configs:
         Release:
-          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) $(ONDEVICE_MODEL_POLICY)"
-          "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.*]": "$(inherited) $(ONDEVICE_MODEL_POLICY) FM_PCC"
-          "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.*]": "$(inherited) $(ONDEVICE_MODEL_POLICY) FM_PCC"
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) $(ONDEVICE_MODEL_POLICY) $(ONDEVICE_LFM3_SWIFT_FLAG)"
+          "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.*]": "$(inherited) $(ONDEVICE_MODEL_POLICY) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG)"
+          "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.*]": "$(inherited) $(ONDEVICE_MODEL_POLICY) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG)"
           CODE_SIGN_ENTITLEMENTS: "$(ONDEVICE_DISTRIBUTION_ENTITLEMENTS)"
           "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos27.*]": "$(ONDEVICE_DISTRIBUTION_ENTITLEMENTS)"
     dependencies:
@@ -310,10 +323,13 @@ targets:
       - package: coreai-models
         product: CoreAILM
       # llama.cpp prebuilt xcframework — built by
-      # scripts/build_native_frameworks.sh. Provides
+      # scripts/bootstrap_classifier_runtime.py. Provides
       # libllama + libggml with Metal backend.
-      - framework: ThirdParty/llama.cpp/build-apple/llama.xcframework
+      - framework: "$(ONDEVICE_LLAMA_FRAMEWORK_DIR)/llama.xcframework"
         embed: true
+      - framework: build/MiniCPMNative/ODMiniCPM.xcframework
+        embed: true
+        codeSign: true
       # whisper.cpp prebuilt xcframework — built by
       # scripts/build_native_frameworks.sh. Provides libwhisper with the Metal backend
       # for on-device speech-to-text without SFSpeechRecognizer's
@@ -327,6 +343,9 @@ targets:
         # `ios` build-file filter so the extension is embedded for iOS only and
         # skipped on the Mac build. (Mac has its own system share mechanisms.)
         platformFilter: iOS
+      - target: DownloadActivityExtension
+        embed: true
+        platformFilter: iOS
     # Copy the pre-bundled SmolVLM2-500M weights into the .app before
     # codesigning runs. We can't use the regular `resources:` entry
     # because xcodegen 2.45 propagates `sources.excludes` patterns to
@@ -335,6 +354,17 @@ targets:
     # input). postCompileScripts runs after the Sources phase but
     # before Copy Resources / codesign, so the weights end up signed
     # like any other bundled asset.
+    preBuildScripts:
+      - name: Verify experimental LFM3 runtime
+        script: |
+          set -e
+          if [ "${ONDEVICE_LFM3_SWIFT_FLAG}" = "LFM3_EXPERIMENTAL" ]; then
+            test "${ONDEVICE_LLAMA_FRAMEWORK_DIR}" = "${SRCROOT}/build/LFM3Native"
+            test "${ONDEVICE_LLAMA_SOURCE}" = "${SRCROOT}/build/LFM3Native/cache/llama.cpp-19cce6919992fdffd92e0ac152caaf1e2b8f254e"
+            python3 "${SRCROOT}/scripts/bootstrap_lfm3_runtime.py" --check
+          fi
+        basedOnDependencyAnalysis: false
+
     postCompileScripts:
       - name: Copy third-party notices
         script: |
@@ -453,15 +483,17 @@ targets:
           - "Info.plist"
           - "*.entitlements"
       - path: IOSLocalLLM/Models/ShareInbox.swift
+      - path: Packages/OnDeviceUI/Sources/OnDeviceUI/Resources/Localizable.xcstrings
+        buildPhase: resources
     resources:
       - path: IOSLocalLLMShareExtension/PrivacyInfo.xcprivacy
     info:
       path: IOSLocalLLMShareExtension/Info.plist
       properties:
-        CFBundleDisplayName: OnDevice Max
+        CFBundleDisplayName: Token AI
         # Must match the main target's version above — App Store rejects
         # extension targets with mismatched marketing versions.
-        CFBundleShortVersionString: "1.0.1"
+        CFBundleShortVersionString: "2.1.1"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         ITSAppUsesNonExemptEncryption: false
         NSExtension:
@@ -475,15 +507,51 @@ targets:
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
     settings:
       base:
-        PRODUCT_NAME: OnDeviceMaxShare
+        PRODUCT_NAME: TokenAIShare
         PRODUCT_MODULE_NAME: IOSLocalLLMShareExtension
-        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicemax.share
+        PRODUCT_BUNDLE_IDENTIFIER: com.token.TokenAI.Share
         INFOPLIST_FILE: IOSLocalLLMShareExtension/Info.plist
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "4"
+        CURRENT_PROJECT_VERSION: "80"
         APPLICATION_EXTENSION_API_ONLY: YES
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_EMIT_LOC_STRINGS: YES
+
+  DownloadActivityExtension:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "27.0"
+    sources:
+      - path: DownloadActivityExtension
+        excludes: [Info.plist]
+      - path: Shared/DownloadActivityAttributes.swift
+      - path: Shared/DownloadActivityContent.swift
+      - path: Packages/OnDeviceUI/Sources/OnDeviceUI/Resources/Localizable.xcstrings
+        buildPhase: resources
+    resources:
+      - path: DownloadActivityExtension/PrivacyInfo.xcprivacy
+    info:
+      path: DownloadActivityExtension/Info.plist
+      properties:
+        CFBundleDisplayName: Token AI Downloads
+        CFBundleShortVersionString: "2.1.1"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        ITSAppUsesNonExemptEncryption: false
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_NAME: TokenAIDownloads
+        PRODUCT_MODULE_NAME: DownloadActivityExtension
+        PRODUCT_BUNDLE_IDENTIFIER: com.token.TokenAI.Downloads
+        INFOPLIST_FILE: DownloadActivityExtension/Info.plist
+        CODE_SIGN_STYLE: Automatic
+        VERSIONING_SYSTEM: apple-generic
+        CURRENT_PROJECT_VERSION: "80"
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_EMIT_LOC_STRINGS: YES
 
@@ -500,13 +568,13 @@ targets:
       - target: IOSLocalLLM
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicemax.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.token.TokenAITests
         INFOPLIST_FILE: ""   # auto-generate
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1"
         "TARGETED_DEVICE_FAMILY[sdk=macosx*]": "2,6"
         GENERATE_INFOPLIST_FILE: YES
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/OnDeviceMax.app/OnDeviceMax"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/TokenAI.app/TokenAI"
         BUNDLE_LOADER: "$(TEST_HOST)"
         SWIFT_EMIT_LOC_STRINGS: NO
         # Clear the bridging header — tests only test Swift code.
@@ -516,9 +584,9 @@ targets:
         # dependency scanning (llama.h, mtmd.h, etc.).
         HEADER_SEARCH_PATHS:
           - "$(inherited)"
-          - "$(SRCROOT)/ThirdParty/llama.cpp/tools/mtmd"
-          - "$(SRCROOT)/ThirdParty/llama.cpp/include"
-          - "$(SRCROOT)/ThirdParty/llama.cpp/ggml/include"
+          - "$(ONDEVICE_LLAMA_SOURCE)/tools/mtmd"
+          - "$(ONDEVICE_LLAMA_SOURCE)/include"
+          - "$(ONDEVICE_LLAMA_SOURCE)/ggml/include"
           - "$(SRCROOT)/ThirdParty/whisper.cpp/include"
 
   IOSLocalLLMUITests:
@@ -531,14 +599,14 @@ targets:
       - target: IOSLocalLLM
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicemax.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.token.TokenAIUITests
         CODE_SIGN_STYLE: Automatic
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_EMIT_LOC_STRINGS: NO
 
 schemes:
-  OnDeviceMax:
+  TokenAI:
     build:
       targets:
         IOSLocalLLM: all

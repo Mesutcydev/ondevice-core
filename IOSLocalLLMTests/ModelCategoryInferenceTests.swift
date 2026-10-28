@@ -295,6 +295,9 @@ final class ModelCategoryInferenceTests: XCTestCase {
         XCTAssertTrue(model.supportsCategory(.vlm))
         // Vision-primary on disk, but "Use" and Chat treat it as Assistant.
         XCTAssertEqual(ODBridge.kind(for: model), .language)
+        XCTAssertTrue(DualRoleModelPolicy.isTextAndVision(repoID: model.sourceRepoID, directory: dir))
+        XCTAssertTrue(LocalModelRegistry.descriptor(for: model, forcedRole: .assistant)
+            .capabilities.contains(.vision))
     }
 
     @MainActor
@@ -308,6 +311,7 @@ final class ModelCategoryInferenceTests: XCTestCase {
         try Data([1]).write(to: dir.appendingPathComponent("lora_edge0_35b.safetensors"))
         // Same model type as a unified Qwen 3.5 MoE pack, but never Lens.
         XCTAssertFalse(LocalModelRegistry.isUnifiedTextVisionPack(in: dir))
+        XCTAssertFalse(DualRoleModelPolicy.isTextAndVision(repoID: "Edge0/Edge0-35B-A3B-preview", directory: dir))
         let model = DownloadableModel(
             id: "edge0-35b-a3b-preview",
             displayName: "Edge0-35B A3B Preview",
@@ -529,9 +533,9 @@ final class ModelCategoryInferenceTests: XCTestCase {
 
     func test_bonsaiCatalog_containsAllPublishedMLXVariants() {
         let bonsai = AssistantModelCatalog.presets.filter { $0.repoID.lowercased().contains("bonsai") }
-        XCTAssertEqual(bonsai.count, 8)
+        XCTAssertEqual(bonsai.count, 9)
         XCTAssertEqual(Set(bonsai.map(\.id)), [
-            "bonsai-27b-1bit", "bonsai-27b-ternary",
+            "bonsai-2-9b-ternary", "bonsai-27b-1bit", "bonsai-27b-ternary",
             "bonsai-8b-1bit", "bonsai-8b-ternary",
             "bonsai-4b-1bit", "bonsai-4b-ternary",
             "bonsai-1.7b-1bit", "bonsai-1.7b-ternary",
@@ -879,13 +883,16 @@ final class ModelCategoryInferenceTests: XCTestCase {
         )
     }
 
-    func test_bonsai27_isTheOnlyDualTextAndVisionBonsaiFamily() throws {
+    func test_verifiedBonsaiPacksExposeBothTextAndVision() throws {
         let binary27 = try XCTUnwrap(AssistantModelCatalog.model(forID: "bonsai-27b-1bit"))
         let ternary27 = try XCTUnwrap(AssistantModelCatalog.model(forID: "bonsai-27b-ternary"))
         let smaller = AssistantModelCatalog.presets.filter {
-            $0.id.hasPrefix("bonsai-") && !$0.id.hasPrefix("bonsai-27b")
+            $0.id.hasPrefix("bonsai-") && !$0.id.hasPrefix("bonsai-27b") && $0.id != "bonsai-2-9b-ternary"
         }
 
+        let bonsai2 = try XCTUnwrap(AssistantModelCatalog.model(forID: "bonsai-2-9b-ternary"))
+        XCTAssertTrue(bonsai2.capabilities.contains(.vision))
+        XCTAssertTrue(DualRoleModelPolicy.isTextAndVision(repoID: bonsai2.repoID))
         XCTAssertTrue(binary27.capabilities.contains(.vision))
         XCTAssertTrue(ternary27.capabilities.contains(.vision))
         XCTAssertTrue(DualRoleModelPolicy.isTextAndVision(repoID: binary27.repoID))
@@ -910,7 +917,7 @@ final class ModelCategoryInferenceTests: XCTestCase {
         let binary27 = try XCTUnwrap(AssistantModelCatalog.model(forID: "bonsai-27b-1bit"))
         let ternary27 = try XCTUnwrap(AssistantModelCatalog.model(forID: "bonsai-27b-ternary"))
         let smaller = AssistantModelCatalog.presets.filter {
-            $0.id.hasPrefix("bonsai-") && !$0.id.hasPrefix("bonsai-27b")
+            $0.id.hasPrefix("bonsai-") && !$0.id.hasPrefix("bonsai-27b") && $0.id != "bonsai-2-9b-ternary"
         }
 
         XCTAssertEqual(binary27.platformCompatibility, .highMemoryMobileAndMac)

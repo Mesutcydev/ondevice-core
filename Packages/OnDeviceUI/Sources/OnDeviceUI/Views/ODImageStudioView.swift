@@ -28,7 +28,7 @@ struct ODImageStudioView: View {
                                 .font(.body)
                                 .fixedSize(horizontal: false, vertical: true)
                                 .accessibilityIdentifier("image.parental-restriction")
-                            Button("Open Settings") { store.send(.openSettings) }
+                            Button(ODLocalizedString("Open Settings")) { store.send(.openSettings) }
                         }
                         if let resultURL = store.imageResultURL {
                             ODGeneratedResultView(url: resultURL)
@@ -39,7 +39,7 @@ struct ODImageStudioView: View {
                                     .fixedSize(horizontal: false, vertical: true)
                             }
                             if store.imagePhase.isGenerating {
-                                Text("Previous result").font(.caption).foregroundStyle(.secondary)
+                                Text("Previous result", bundle: .module).font(.caption).foregroundStyle(.secondary)
                             }
                         } else {
                             ODImagePromptSuggestions(prompt: $store.imagePrompt) { promptFocused = true }
@@ -52,7 +52,7 @@ struct ODImageStudioView: View {
                 .scrollDismissesKeyboard(.interactively)
             .background { ODPageBackground().ignoresSafeArea() }
             .safeAreaInset(edge: .bottom, spacing: 0) { ODWorkspaceBottomBar { creationDock } }
-            .navigationTitle("Image studio")
+            .odNavigationTitle("Image studio")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if !sidebarPinned {
@@ -64,7 +64,7 @@ struct ODImageStudioView: View {
                 if let resultURL = store.imageResultURL {
                     ToolbarItem(placement: .topBarTrailing) {
                         ShareLink(item: resultURL) {
-                            Label("Share image", systemImage: "square.and.arrow.up")
+                            Label(ODLocalizedString("Share image"), systemImage: "square.and.arrow.up")
                         }
                     }
                 }
@@ -82,7 +82,7 @@ struct ODImageStudioView: View {
                 .frame(minHeight: ODLayout.minimumHit, alignment: .topLeading)
                 .focused($promptFocused)
                 .disabled(store.imagePhase.isGenerating)
-                .accessibilityLabel("Image prompt")
+                .accessibilityLabel(Text("Image prompt", bundle: .module))
             if dynamicType.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: ODLayout.elementGap) {
                     modelChoice
@@ -97,7 +97,7 @@ struct ODImageStudioView: View {
             }
             generationStatus
             if store.selectedImageModel == nil && !store.imagePhase.isGenerating {
-                Text("Select an image model to create.")
+                Text("Select an image model to create.", bundle: .module)
                     .font(.caption).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
             }
@@ -116,7 +116,7 @@ struct ODImageStudioView: View {
         } label: {
             HStack(spacing: ODLayout.elementGap) {
                 Image(systemName: "cube")
-                Text(store.selectedImageModel?.name ?? "Choose model")
+                Text(odKey: store.selectedImageModel?.name ?? "Choose model")
                     .lineLimit(dynamicType.isAccessibilitySize ? nil : 1)
                 Image(systemName: "chevron.down").font(.caption2)
             }
@@ -126,25 +126,25 @@ struct ODImageStudioView: View {
         .buttonBorderShape(.capsule)
         .controlSize(.large)
         .disabled(store.imagePhase.isGenerating)
-        .accessibilityLabel("Image model: \(store.selectedImageModel?.name ?? "None selected")")
-        .accessibilityHint("Choose an installed image model")
+        .accessibilityLabel(Text("Image model: \(store.selectedImageModel?.name ?? "None selected")", bundle: .module))
+        .accessibilityHint(Text("Choose an installed image model", bundle: .module))
     }
 
     @ViewBuilder private var createControl: some View {
         if store.imagePhase.isGenerating {
             if store.capabilities.canCancelImageGeneration {
-                Button("Cancel") { store.send(.cancelImageGeneration) }
+                Button(ODLocalizedString("Cancel")) { store.send(.cancelImageGeneration) }
                     .buttonStyle(.glass)
                     .buttonBorderShape(.capsule)
                     .controlSize(.large)
                     .disabled(!store.canPerformActions)
             }
         } else if store.selectedImageModel == nil {
-            Button("Choose model") { modelPickerPresented = true }
+            Button(ODLocalizedString("Choose model")) { modelPickerPresented = true }
                 .buttonStyle(.glassProminent).odInkProminent()
                 .controlSize(.large)
         } else {
-            Button("Create", action: generate)
+            Button(ODLocalizedString("Create"), action: generate)
                 .buttonStyle(.glassProminent)
                 .buttonBorderShape(.capsule)
                 .controlSize(.large)
@@ -157,19 +157,19 @@ struct ODImageStudioView: View {
         switch store.imagePhase {
         case .generating(let step):
             HStack(spacing: ODLayout.elementGap) {
-                ProgressView().accessibilityHidden(true)
-                Text(step.isEmpty ? "Generating…" : step)
+                ODBrandMark(height: 9, motion: .live)
+                Text(odKey: step.isEmpty ? "Generating…" : step)
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .accessibilityElement(children: .combine)
         case .failed(let message):
-            Label(message, systemImage: "exclamationmark.circle")
+            Label(ODLocalizedString(key: message), systemImage: "exclamationmark.circle")
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         case .idle:
             if store.selectedImageModel != nil && (!store.canPerformActions || !store.capabilities.canGenerateImages) {
-                Text("Image generation is unavailable.")
+                Text("Image generation is unavailable.", bundle: .module)
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -181,14 +181,14 @@ struct ODImageStudioView: View {
             List {
                 if store.imageModels.isEmpty {
                     Section {
-                        Text("No image models installed").font(.headline)
-                        Text("Add an image model from your catalog to use it here.")
+                        Text("No image models installed", bundle: .module).font(.headline)
+                        Text("Add an image model from your catalog to use it here.", bundle: .module)
                             .font(.subheadline).foregroundStyle(.secondary)
-                        Button("Browse image models", systemImage: "cube") { store.send(.openImageModelPicker) }
+                        Button(ODLocalizedString("Browse image models"), systemImage: "cube") { store.send(.openImageModelPicker) }
                             .disabled(!store.canPerformActions)
                     }
                 } else {
-                    Section("Installed") {
+                    Section(ODLocalizedString("Installed")) {
                         ForEach(store.imageModels) { model in
                             Button {
                                 store.selectedImageModelID = model.id
@@ -217,11 +217,11 @@ struct ODImageStudioView: View {
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background { ODPageBackground().ignoresSafeArea() }
-            .navigationTitle("Image models")
+            .odNavigationTitle("Image models")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { modelPickerPresented = false }
+                    Button(ODLocalizedString("Done")) { modelPickerPresented = false }
                 }
             }
         }
@@ -248,7 +248,7 @@ private struct ODGeneratedResultView: View {
                     case .empty:
                         ProgressView().frame(maxWidth: .infinity, minHeight: 45 * ODLayout.unit)
                     case .success(let image):
-                        image.resizable().scaledToFit().accessibilityLabel("Generated image")
+                        image.resizable().scaledToFit().accessibilityLabel(Text("Generated image", bundle: .module))
                     case .failure:
                         unavailable
                     @unknown default:
@@ -262,7 +262,7 @@ private struct ODGeneratedResultView: View {
     }
 
     private var unavailable: some View {
-        Label("This image could not be opened.", systemImage: "exclamationmark.circle")
+        Label(ODLocalizedString("This image could not be opened."), systemImage: "exclamationmark.circle")
             .font(.subheadline).foregroundStyle(ODPalette.secondary)
             .frame(maxWidth: .infinity, minHeight: 45 * ODLayout.unit)
     }
@@ -280,12 +280,12 @@ private struct ODLocalGeneratedImage: View {
         Group {
             if let image {
                 Image(uiImage: image).resizable().scaledToFit()
-                    .accessibilityLabel("Generated image")
+                    .accessibilityLabel(Text("Generated image", bundle: .module))
             } else if isLoading {
                 ProgressView().frame(maxWidth: .infinity, minHeight: 45 * ODLayout.unit)
-                    .accessibilityLabel("Loading generated image")
+                    .accessibilityLabel(Text("Loading generated image", bundle: .module))
             } else {
-                Label("This image could not be opened.", systemImage: "exclamationmark.circle")
+                Label(ODLocalizedString("This image could not be opened."), systemImage: "exclamationmark.circle")
                     .font(.subheadline).foregroundStyle(ODPalette.secondary)
                     .frame(maxWidth: .infinity, minHeight: 45 * ODLayout.unit)
             }
@@ -338,7 +338,7 @@ public struct ODImagePromptSuggestions: View {
     }
     public var body: some View {
         VStack(alignment: .leading, spacing: ODLayout.labelGap) {
-            Text("Create an image with a local model. Try one of these prompts, then edit it before creating.")
+            Text("Create an image with a local model. Try one of these prompts, then edit it before creating.", bundle: .module)
                 .font(.subheadline).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             ScrollView(.horizontal) {
                 HStack(spacing: ODLayout.elementGap) {
@@ -348,7 +348,7 @@ public struct ODImagePromptSuggestions: View {
                                 pendingExample = example
                             } else { prompt = example; onSelect() }
                         } label: {
-                            Text(labels[index])
+                            Text(odKey: labels[index])
                                 .font(.subheadline)
                                 .padding(.horizontal, ODLayout.labelGap)
                                 .frame(minHeight: 36)
@@ -357,7 +357,7 @@ public struct ODImagePromptSuggestions: View {
                         .buttonStyle(.plain)
                         .foregroundStyle(ODPalette.text)
                         .background(ODPalette.text.opacity(0.06), in: Capsule())
-                        .accessibilityHint("Inserts editable text without creating an image")
+                        .accessibilityHint(Text("Inserts editable text without creating an image", bundle: .module))
                     }
                 }
                 .padding(.vertical, ODLayout.unit)
@@ -366,12 +366,12 @@ public struct ODImagePromptSuggestions: View {
             .contentMargins(.horizontal, 0, for: .scrollContent)
         }
         .padding(.vertical, ODLayout.elementGap)
-        .alert("Replace your image prompt?", isPresented: Binding(get: { pendingExample != nil }, set: { if !$0 { pendingExample = nil } })) {
-            Button("Replace prompt") {
+        .alert(ODLocalizedString("Replace your image prompt?"), isPresented: Binding(get: { pendingExample != nil }, set: { if !$0 { pendingExample = nil } })) {
+            Button(ODLocalizedString("Replace prompt")) {
                 if let example = pendingExample { prompt = example; onSelect() }
                 pendingExample = nil
             }
-            Button("Keep draft", role: .cancel) { pendingExample = nil }
+            Button(ODLocalizedString("Keep draft"), role: .cancel) { pendingExample = nil }
         }
     }
 }

@@ -236,9 +236,12 @@ struct AnalysisPanelView: View {
                 Text(qa.question).font(.body).padding(.horizontal, 16).padding(.vertical, 12)
                     .background(ODPalette.input, in: RoundedRectangle(cornerRadius: 20))
             }
-            Text(qa.answer.isEmpty && qa.isStreaming ? "Thinking…" : qa.answer)
-                .font(.body).frame(maxWidth: .infinity, alignment: .leading)
-                .modifier(StreamSafeTextSelection(streaming: qa.isStreaming))
+            if qa.answer.isEmpty && qa.isStreaming {
+                Text("Thinking…").font(.body)
+            } else {
+                AssistantStructuredAnswer(content: qa.answer, showsThinking: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 
@@ -282,36 +285,13 @@ struct AnalysisPanelView: View {
                 } else if result.extractedCode.isEmpty {
                     KMono(text: "no code extracted.", size: 12, color: T.ink3).padding()
                 } else {
-                    ZStack(alignment: .topTrailing) {
-                        VStack(alignment: .leading, spacing: 0) {
-                            SyntaxHighlightedText(
-                                code: result.extractedCode,
-                                language: detectLanguage(result.extractedCode)
-                            )
-                            if result.isStreaming {
-                                StreamingCaret()
-                                    .padding(.top, 2)
-                            }
-                        }
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1)
-                        )
-
-                        if !result.isStreaming {
-                            Button { showCodeEditor = true } label: {
-                                Image(systemName: "pencil").accessibilityLabel("Edit code")
-                                    .font(.system(size: 11))
-                                    .padding(6)
-                                    .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.surface2))
-                                    .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.rule, lineWidth: 1))
-                                    .foregroundColor(T.ink2)
-                            }
-                            .padding(8)
+                    VStack(alignment: .leading, spacing: 8) {
+                        CodeBlock(language: detectLanguage(result.extractedCode), code: result.extractedCode)
+                        if result.isStreaming {
+                            StreamingCaret()
+                        } else {
+                            Button("Edit code", systemImage: "pencil") { showCodeEditor = true }
+                                .frame(minHeight: 44)
                         }
                     }
                 }
@@ -471,73 +451,8 @@ struct ShareSheet: UIViewControllerRepresentable {
 
 struct MarkdownTextView: View {
     let markdown: String
-    @Environment(\.koduTheme) private var T
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in block }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private var blocks: [AnyView] {
-        StudioTextBlocks.parse(markdown).flatMap { block -> [AnyView] in
-            switch block {
-            case .code(let language, let code):
-                return [AnyView(CodeBlock(language: language, code: code))]
-            case .thinking(let text, let open):
-                return [AnyView(ThinkingBlock(content: text, isOpen: open))]
-            case .math(let source):
-                return [AnyView(MathBlock(latex: source))]
-            case .text(let text):
-                return text.components(separatedBy: "\n").map { AnyView(renderLine($0)) }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func renderLine(_ line: String) -> some View {
-        if line.hasPrefix("# ") {
-            Text(String(line.dropFirst(2)))
-                .font(T.sans(20, .semibold))
-                .tracking(-0.5)
-                .foregroundColor(T.ink)
-                .padding(.top, 8)
-        } else if line.hasPrefix("## ") {
-            Text(String(line.dropFirst(3)))
-                .font(T.sans(16, .semibold))
-                .foregroundColor(T.ink)
-                .padding(.top, 6)
-        } else if line.hasPrefix("### ") {
-            Text(String(line.dropFirst(4)))
-                .font(T.sans(13, .semibold))
-                .foregroundColor(T.ink)
-        } else if line.hasPrefix("**") && line.hasSuffix("**") && line.count > 4 {
-            Text(String(line.dropFirst(2).dropLast(2)))
-                .font(T.sans(13, .semibold))
-                .foregroundColor(T.ink)
-        } else if line.hasPrefix("- ") {
-            HStack(alignment: .top, spacing: 6) {
-                Text("·").foregroundColor(T.ink3)
-                Text(String(line.dropFirst(2)))
-                    .font(T.sans(13))
-                    .foregroundColor(T.ink2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        } else if line.hasPrefix("> ") {
-            Text(String(line.dropFirst(2)))
-                .font(T.mono(11))
-                .foregroundColor(T.ink2)
-                .padding(.leading, 10)
-                .overlay(Rectangle().fill(T.warn.opacity(0.6)).frame(width: 2), alignment: .leading)
-        } else if line.isEmpty {
-            Spacer().frame(height: 4)
-        } else {
-            Text(line)
-                .font(T.sans(13))
-                .foregroundColor(T.ink2)
-                .lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
-        }
+        AssistantStructuredAnswer(content: markdown, showsThinking: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }

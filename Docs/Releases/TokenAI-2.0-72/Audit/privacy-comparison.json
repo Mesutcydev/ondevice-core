@@ -1,0 +1,14 @@
+{
+  "sourceApp": "6818199563",
+  "targetApp": "6774354746",
+  "observedVia": "Signed-in App Store Connect App Privacy UI",
+  "sourcePublished": "Three linked data types: Search History (Other Purposes and App Functionality), User ID (App Functionality), Other Data Types (App Functionality).",
+  "targetPublished": "Search History: Other Purposes and App Functionality, linked; User ID: App Functionality, linked; Other Data Types: App Functionality, linked. None used for tracking.",
+  "match": true,
+  "proposal": "proposed-privacy-source-match.json",
+  "applied": true,
+  "reason": "App Privacy publication is app-wide and changes the existing live listing, so stage the concrete change for owner review.",
+  "ownerApproved": true,
+  "verifiedVia": "Signed-in ASC App Privacy UI; all three setup sections completed, current Published status and no incomplete-data warning.",
+  "verifiedAtUTC": "2026-10-24T17:17:22.918533+00:00"
+}

@@ -11,15 +11,18 @@ import UniformTypeIdentifiers
 
 enum SpotlightIndexer {
 
-    static let domain = "com.mesutcydev.ondevicemax.conversation"
+    static let domain = "com.token.TokenAI.conversation"
 
     /// Rebuild the whole index from the current conversation list. Cheap —
     /// runs on a background queue inside CoreSpotlight.
-    static func reindexAll(_ conversations: [StoredConversation]) {
+    /// `isCurrent` is rechecked after the asynchronous delete, so a snapshot
+    /// a wipe has retired can't put deleted chats back into Spotlight.
+    static func reindexAll(_ conversations: [StoredConversation],
+                           isCurrent: @escaping @Sendable () -> Bool = { true }) {
         let index = CSSearchableIndex.default()
         let items = conversations.map(searchableItem(for:))
         index.deleteSearchableItems(withDomainIdentifiers: [domain]) { _ in
-            guard !items.isEmpty else { return }
+            guard !items.isEmpty, isCurrent() else { return }
             index.indexSearchableItems(items) { _ in }
         }
     }
@@ -39,7 +42,7 @@ enum SpotlightIndexer {
         attr.title = c.title
         let firstUser = c.messages.first(where: { $0.role == "user" })?.content ?? ""
         attr.contentDescription = String(firstUser.prefix(200))
-        attr.keywords = ["chat", "OnDevice", "ai", "conversation", "assistant"]
+        attr.keywords = ["chat", "Token AI", "ai", "conversation", "assistant"]
         attr.contentModificationDate = c.updatedAt
         return CSSearchableItem(
             uniqueIdentifier: c.id.uuidString,

@@ -64,22 +64,22 @@ public struct ODVoiceSessionView: View {
                     .padding(.vertical, ODLayout.pageInset)
             }
             .background { ODPageBackground().ignoresSafeArea() }
-            .navigationTitle("Voice conversation")
+            .odNavigationTitle("Voice conversation")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if let options { ToolbarItem(placement: .topBarTrailing) { options } }
                 if store.voiceSessionActive && store.capabilities.canMinimizeVoiceSession {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button("Minimize voice conversation", systemImage: "chevron.down") {
+                        Button(ODLocalizedString("Minimize voice conversation"), systemImage: "chevron.down") {
                             store.voiceSessionPresented = false
                 onClose?()
                         }
                         .labelStyle(.iconOnly)
-                        .accessibilityHint("The conversation stays active. Return from Voice in the app menu.")
+                        .accessibilityHint(Text("The conversation stays active. Return from Voice in the app menu.", bundle: .module))
                     }
                 } else if !store.voiceSessionActive {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button("Close voice conversation", systemImage: "xmark") {
+                        Button(ODLocalizedString("Close voice conversation"), systemImage: "xmark") {
                             store.voiceSessionPresented = false
                 onClose?()
                         }
@@ -102,7 +102,7 @@ public struct ODVoiceSessionView: View {
 
     private var identity: some View {
         VStack(spacing: ODLayout.elementGap) {
-            Text(store.selectedVoice?.name ?? "Voice")
+            Text(odKey: store.selectedVoice?.name ?? "Voice")
                 .font(.largeTitle.weight(.semibold))
                 .foregroundStyle(ODPalette.text)
                 .multilineTextAlignment(.center)
@@ -119,7 +119,7 @@ public struct ODVoiceSessionView: View {
                 if let routePicker { routePicker }
             }.padding(.top, ODLayout.unit)
             if let notice = store.voiceSessionNotice, !notice.isEmpty {
-                Text(notice)
+                Text(odKey: notice)
                     .font(.footnote)
                     .foregroundStyle(ODPalette.secondary)
                     .multilineTextAlignment(.center)
@@ -137,7 +137,7 @@ public struct ODVoiceSessionView: View {
             Button {
                 store.send(.selectAudioRoute)
             } label: {
-                Label("Output: \(store.audioRouteName)", systemImage: "speaker.wave.2")
+                Label(ODLocalizedString("Output: \(store.audioRouteName)"), systemImage: "speaker.wave.2")
                     .font(.subheadline)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -146,15 +146,15 @@ public struct ODVoiceSessionView: View {
             .controlSize(.large)
             .frame(minHeight: ODLayout.minimumHit)
             .disabled(!store.canPerformActions)
-            .accessibilityLabel("Audio output, \(store.audioRouteName)")
-            .accessibilityHint("Change where conversation audio plays")
+            .accessibilityLabel(Text("Audio output, \(store.audioRouteName)", bundle: .module))
+            .accessibilityHint(Text("Change where conversation audio plays", bundle: .module))
         } else {
-            Label("Output: \(store.audioRouteName)", systemImage: "speaker.wave.2")
+            Label(ODLocalizedString("Output: \(store.audioRouteName)"), systemImage: "speaker.wave.2")
                 .font(.subheadline)
                 .foregroundStyle(ODPalette.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(minHeight: ODLayout.minimumHit)
-                .accessibilityLabel("Audio output, \(store.audioRouteName)")
+                .accessibilityLabel(Text("Audio output, \(store.audioRouteName)", bundle: .module))
         }
     }
 
@@ -165,10 +165,10 @@ public struct ODVoiceSessionView: View {
                 else { ODVoiceActivityMark(isActive: store.voicePhase.isActive && store.voiceSessionActive) }
             }.frame(height: 13 * ODLayout.unit)
             VStack(spacing: ODLayout.elementGap) {
-                Text(statusTitle)
+                Text(odKey: statusTitle)
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(ODPalette.text)
-                Text(statusSubtitle)
+                Text(odKey: statusSubtitle)
                     .font(.body)
                     .foregroundStyle(ODPalette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -184,13 +184,13 @@ public struct ODVoiceSessionView: View {
     /// or inferred recording state is generated by this presentation layer.
     private var transcript: some View {
         VStack(alignment: .leading, spacing: 5 * ODLayout.unit) {
-            Text("Conversation")
+            Text("Conversation", bundle: .module)
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(ODPalette.secondary)
                 .accessibilityAddTraits(.isHeader)
             ForEach(store.voiceTranscript) { message in
                 VStack(alignment: .leading, spacing: ODLayout.elementGap) {
-                    Text(message.role == .user ? "You" : "OnDevice")
+                    Text(odKey: message.role == .user ? "You" : "Token AI")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(ODPalette.secondary)
                     Text(message.text)
@@ -296,10 +296,10 @@ private struct ODVoiceCircleControl: View {
                 .buttonBorderShape(.circle)
                 .controlSize(.large)
                 .frame(minWidth: 16 * ODLayout.unit, minHeight: 16 * ODLayout.unit)
-                .accessibilityLabel(actionLabel)
-                .accessibilityValue(stateValue)
-                .accessibilityHint(hint)
-            Text(title)
+                .accessibilityLabel(Text(odKey: actionLabel))
+                .accessibilityValue(Text(odKey: stateValue))
+                .accessibilityHint(Text(odKey: hint))
+            Text(odKey: title)
                 .font(.caption.weight(.medium))
                 .foregroundStyle(ODPalette.text)
                 .multilineTextAlignment(.center)

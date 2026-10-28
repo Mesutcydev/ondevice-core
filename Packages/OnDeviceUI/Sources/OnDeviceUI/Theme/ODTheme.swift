@@ -46,6 +46,14 @@ public enum ODLayout {
     /// Retained for source compatibility with early sidebar integrations.
     public static let sidebarConversationInset = conversationRowInset
 
+    // Drawer geometry: a 4-pt grid, shared row edges and content rails.
+    public static let sidebarInset = 4 * unit
+    public static let sidebarContentInset = 3 * unit
+    public static let sidebarIconColumn = 8 * unit
+    public static let sidebarRowHeight = 13 * unit
+    public static let sidebarRowGap = unit
+    public static let sidebarSectionGap = 4 * unit
+
     // Two-row composer in the common chat-app shape: text on an even 20-pt
     // inset level with the leading icon, a constant gap above a row of 44-pt
     // targets, and a 36-pt send circle concentric with the corner

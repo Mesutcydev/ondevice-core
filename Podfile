@@ -1,6 +1,6 @@
 platform :ios, '27.0'
 
-project 'OnDeviceMax.xcodeproj'
+project 'TokenAI.xcodeproj'
 
 target 'IOSLocalLLM' do
   # Native ONNX inference for the official KittenTTS 0.8 artifacts.

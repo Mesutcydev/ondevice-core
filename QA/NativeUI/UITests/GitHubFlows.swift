@@ -48,6 +48,7 @@ final class GitHubFlows: XCTestCase {
         XCTAssertTrue(file.waitForExistence(timeout: 5))
         capture("github-review-draft")
         file.tap()
+        app.buttons["After"].tap()
         let content = app.staticTexts["github.review.content"]
         XCTAssertTrue(content.waitForExistence(timeout: 5))
         XCTAssertTrue(content.label.contains("After review."))

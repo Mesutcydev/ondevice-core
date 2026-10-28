@@ -16,7 +16,7 @@ protocol ParentalControlStorage {
 final class ParentalControlKeychain: ParentalControlStorage {
     private var query: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: "com.mesutcydev.ondevicemax.parental-controls",
+         kSecAttrService as String: "com.token.TokenAI.parental-controls",
          kSecAttrAccount as String: "parent-pin-v1"]
     }
 

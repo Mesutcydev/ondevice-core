@@ -25,11 +25,18 @@ These expressions belong in the host’s SwiftUI view. `store` and `existingCapt
 
 Assign `store.onAction` to the host adapter. Default capability flags are false. Enable each after its real operation is wired, and update published properties on the main actor. Use asynchronous tasks for service work; acknowledge accepted operations promptly so another tap cannot start a duplicate request.
 
+Inject a host-owned `codingContent` and enable `canOpenCodeWorkspace` to show
+Code in the sidebar. Share the same repository service with `chatContent`;
+the shell mounts chat when Code is first visited so its conversation persistence
+remains active. The host maps `.code` to a non-inference lifecycle destination
+and supplies `ODWorkspaceBottomBar` for its code composer and shared voice accessory.
+
 ## State and action map
 
 | Area | Host-supplied state | Main intents |
 | --- | --- | --- |
 | Chat | `messages`, `composerText`, `isResponding`, current/recent conversation IDs | `.sendMessage`, `.stopGeneration`, `.newConversation`, `.openConversation` |
+| Code | Host `codingContent`, `canOpenCodeWorkspace` | Host-owned repository, editor and review actions |
 | Attachments | `draftAttachments` and capability flags | `.addAttachment`, `.removeAttachment`, `.sendMessageWithAttachments` |
 | Models | `models`, `selectedModelID`, `loadedModelID`, `modelPhase` | `.loadModel`, `.modelAction`, discovery/picker intents |
 | Device | Actual `ODDeviceMetrics` | `.manageStorage` and the app’s existing diagnostics routes |
@@ -40,9 +47,28 @@ Assign `store.onAction` to the host adapter. Default capability flags are false.
 
 The current root follows the later user-supplied sidebar reference: a conversation home with a leading sidebar, native `NavigationStack` workspaces and sheets. There is no bottom tab bar. `ODTab` remains a compatibility destination enum and its publisher still drives the host lifecycle. Visited workspaces remain mounted to preserve drafts and attachments. Additional routes should respect the currently presented sheet/cover instead of attempting simultaneous unrelated presentations.
 
+Host views can read the public `odWorkspaceVisible` environment value to pause
+retained animations when another workspace, drawer, sheet route or full voice
+session is visible. The classifier host owns its `ODWorkspaceBottomBar`, which
+combines its pinned Classify action and the minimized voice accessory. The shell
+supplies the automatic accessory inset only to Models, Device and API server.
+
 ## Chat, drafts and attachments
 
 The supplied `ODMessage` presentation is plain text with role and ID. It supports selectable text, Copy and basic active-transcript following. Preserve or reconnect the host’s richer Markdown/code/media renderer, durable history and per-conversation reading-position restoration. The handoff does not replace those services.
+
+`ODToolActivityGroup` adds a summary and expandable log around the existing
+compact tool pills. Pass a host-owned disclosure binding keyed by the group's
+first durable message ID. `ODToolActivitySummary` reconciles repeated attempt
+IDs without inflating counts; failure and cancellation remain distinct. Output
+details use a bounded preview with explicit expansion and full-output Copy.
+
+`ODConversationDetails` presents supported conversation actions through a host
+callback. Keep presentation-changing actions pending until the sheet dismisses;
+pinning can update the existing store in place. `ODModelMenuLabel` accepts an
+optional conversation title while retaining its existing model-picker role.
+See [the adaptation record](../../../Docs/OPENCODE_SESSION_ADAPTATION_2026-10-22.md)
+for production wiring and capability boundaries.
 
 The composer is one rounded content surface with attachment metadata, a writing area and a footer. The model selector occupies the centered navigation item; its menu still exposes model details and supported loading actions. The footer has the plain attachment action, a separate capability-gated microphone and the always-visible Send/Stop action. Empty or unavailable drafts disable Send instead of swapping it for Voice. Relevant preparation, error and unavailable-send explanations appear only when needed.
 
@@ -81,3 +107,32 @@ The example app has its own preview bundle identity and fixture data. Integrate 
 ## Composer voice shortcut
 
 The supplied composer microphone is an **Open Voice** shortcut: it selects the Voice workspace when `canStartVoice` is true and is disabled while a chat response is active. It does not transcribe into the draft. Keep the accessibility label aligned with that behavior. If the production app already supports composer dictation, integrate its real dictation action and lifecycle deliberately instead of treating this shortcut as an audio recorder.
+
+
+## Localization
+
+`Resources/Localizable.xcstrings` is shared by the package and host targets.
+The production app, share extension, download activity, and NativeUI review host
+compile that same source catalog into their own bundles. Package Text and control
+resources explicitly use the package bundle. Keep model names, user messages,
+file names, and protocol values verbatim.
+
+`ODAppLanguage` supplies the persisted `uiLanguage` choices, including Hindi
+(`hi`), German (`de`), Spanish (`es`), Arabic (`ar`), Turkish (`tr`), and Japanese
+(`ja`). `ODLanguagePicker` preserves native language names. The workbench updates
+locale and layout direction without replacing retained workspaces. Use
+`odNavigationTitle` for app-owned navigation labels so UIKit refreshes the title
+when the locale changes live.
+
+Add all six translations for new catalog keys and preserve every format argument.
+Run `python3 scripts/validate_localizations.py` from the repository root. The
+package localization tests cover language resolution and bundle lookup; the
+NativeUI `LocalizationFlows` check all six sidebars and an Arabic language switch
+with a saved draft and an already visited home workspace.
+
+For release verification, also run `python3 scripts/validate_localizations.py
+--app-bundle /absolute/path/to/OnDeviceMax.app` (one command). This compares every
+compiled translation in the app, package bundle, and both extensions with the
+source catalog and checks the six permission-message localizations. Register
+external catalog paths under the targets' `sources` with `buildPhase: resources`
+in XcodeGen so they are included in the generated build phases.

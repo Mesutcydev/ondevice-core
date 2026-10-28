@@ -21,6 +21,234 @@ import Network
 final class BackgroundDownloadCoordinator: NSObject {
 
     static let shared = BackgroundDownloadCoordinator()
+    static let sessionIdentifier = "com.token.TokenAI.background-downloads"
+
+    private let journal: BackgroundDownloadJournal
+    private var suppliedConfiguration: URLSessionConfiguration?
+    private(set) var jobs: [String: BackgroundDownloadJob]
+    private var cancelledJobs: [String: BackgroundDownloadJob] = [:]
+    private var queuedTasks: [String: URLSessionDownloadTask] = [:]
+    private var completedTransfers: [String: Result<URL, Error>] = [:]
+    private var receivedBytes: [String: Int64] = [:]
+    private var responseSizes: [String: Int64] = [:]
+    private var progressObservers: [String: (BackgroundDownloadProgress) -> Void] = [:]
+
+    private override init() {
+        let home = URL(fileURLWithPath: NSHomeDirectory())
+        journal = BackgroundDownloadJournal(
+            url: home.appendingPathComponent("Library/Application Support/BackgroundDownloads/queue.json"), home: home)
+        jobs = journal.load()
+        super.init()
+    }
+
+    init(journal: BackgroundDownloadJournal, configuration: URLSessionConfiguration) {
+        self.journal = journal
+        self.jobs = journal.load()
+        self.suppliedConfiguration = configuration
+        super.init()
+    }
+
+    struct BackgroundDownloadProgress {
+        let fraction: Double
+        let downloadedBytes: Int64
+        let totalBytes: Int64
+        let filesDone: Int
+        let filesTotal: Int
+        let currentFile: String
+    }
+
+    /// Commit the complete batch before handing every pending file to iOS.
+    /// Consumers still validate files and install models through their existing
+    /// managers; the OS queue doesn't depend on those Swift tasks staying alive.
+    func enqueue(_ job: BackgroundDownloadJob,
+                 progress: @escaping (BackgroundDownloadProgress) -> Void) async throws {
+        try job.validate(home: journal.home)
+        try Task.checkCancellation()
+        let existingTasks: [URLSessionTask] = await withCheckedContinuation { continuation in
+            session.getAllTasks { continuation.resume(returning: $0) }
+        }
+        try Task.checkCancellation()
+        var recorded = job
+        for index in recorded.files.indices {
+            let file = recorded.files[index]
+            recorded.files[index].completed = BackgroundDownloadJob.fileIsComplete(file, at: recorded.destination(for: file, home: journal.home))
+        }
+        recorded.state = recorded.files.allSatisfy(\.completed) ? .verifying : .transferring
+        jobs[job.id] = recorded
+        do { try journal.save(jobs) } catch { jobs.removeValue(forKey: job.id); throw error }
+        FileManager.excludeFromBackup(journal.url.deletingLastPathComponent())
+        progressObservers[job.id] = progress
+        _ = DownloadLiveActivityManager.shared.start(repoID: job.id, displayName: job.owner.displayName)
+        for file in recorded.files where !file.completed {
+            let destination = recorded.destination(for: file, home: journal.home)
+            let key = transferKey(path: destination.path, jobID: job.id)
+            if let task = existingTasks.first(where: {
+                $0.state != .canceling && $0.state != .completed
+                    && taskDestination($0)?.standardizedFileURL == destination.standardizedFileURL
+                    && $0.originalRequest?.url == file.source
+                    && (BackgroundDownloadTaskReference(description: $0.taskDescription)?.jobID == job.id
+                        || BackgroundDownloadTaskReference(description: $0.taskDescription) == nil)
+            }) as? URLSessionDownloadTask {
+                queuedTasks[key] = task
+                if pendingByTaskID[task.taskIdentifier] == nil {
+                    pendingByTaskID[task.taskIdentifier] = Pending(destination: destination,
+                        expectedSize: file.expectedBytes, progress: { _, _ in }, continuation: nil)
+                }
+                task.taskDescription = BackgroundDownloadTaskReference(jobID: job.id, relativePath: file.relativePath).description
+                task.resume()
+            } else if queuedTasks[key] == nil {
+                completedTransfers.removeValue(forKey: key)
+                let task = try makeTask(from: file.source, to: destination, expectedSize: file.expectedBytes)
+                task.taskDescription = BackgroundDownloadTaskReference(jobID: job.id, relativePath: file.relativePath).description
+                queuedTasks[key] = task
+                task.resume()
+            }
+        }
+        publishProgress(jobID: job.id)
+    }
+
+    func markPaused(matching root: String, fileAllowlist: [String]? = nil) {
+        let scope = HFDownloadScope(destination: URL(fileURLWithPath: root), fileAllowlist: fileAllowlist)
+        for id in matchingJobs(scope) { jobs[id]?.state = .paused; progressObservers.removeValue(forKey: id) }
+        persistJournal()
+    }
+
+    /// Remove durable ownership before cancelling writers, so a relaunch or
+    /// late completion cannot reconstruct a download the user abandoned.
+    func abandon(matching root: String, fileAllowlist: [String]? = nil) {
+        let scope = HFDownloadScope(destination: URL(fileURLWithPath: root), fileAllowlist: fileAllowlist)
+        for id in matchingJobs(scope) {
+            cancelledJobs[id] = jobs.removeValue(forKey: id); progressObservers.removeValue(forKey: id)
+            DownloadLiveActivityManager.shared.cancel(repoID: id)
+        }
+        for (id, pending) in pendingByTaskID where scope.contains(path: pending.destination.path) {
+            let task = queuedTasks.values.first { $0.taskIdentifier == id }
+            if task.map({ taskMatches($0, scope: scope) }) ?? true { abandonedTaskIDs.insert(id) }
+        }
+        for key in Array(completedTransfers.keys) {
+            let path = String(key.split(separator: "\n", omittingEmptySubsequences: false).last ?? "")
+            if scope.contains(path: path) { completedTransfers.removeValue(forKey: key) }
+        }
+        persistJournal()
+    }
+
+    func finish(jobID: String) {
+        jobs.removeValue(forKey: jobID); progressObservers.removeValue(forKey: jobID)
+        persistJournal()
+        DownloadLiveActivityManager.shared.finish(repoID: jobID)
+    }
+
+    func fail(jobID: String) {
+        jobs[jobID]?.state = .failed; progressObservers.removeValue(forKey: jobID)
+        persistJournal()
+        DownloadLiveActivityManager.shared.fail(repoID: jobID, reason: "Open Downloads to retry")
+    }
+
+    func restoreSession() async {
+        reattach()
+        let tasks: [URLSessionTask] = await withCheckedContinuation { continuation in
+            session.getAllTasks { continuation.resume(returning: $0) }
+        }
+        for id in Array(jobs.keys) {
+            guard var job = jobs[id] else { continue }
+            for index in job.files.indices {
+                job.files[index].completed = BackgroundDownloadJob.fileIsComplete(job.files[index], at: job.destination(for: job.files[index], home: journal.home))
+            }
+            if job.state == .transferring {
+                if job.files.allSatisfy(\.completed) { job.state = .verifying }
+                else if !tasks.contains(where: { BackgroundDownloadTaskReference(description: $0.taskDescription)?.jobID == id }) {
+                    // Force quitting / OS cancellation requires a visible Retry.
+                    job.state = .failed
+                }
+            }
+            jobs[id] = job
+            publishProgress(jobID: id)
+        }
+        persistJournal()
+    }
+
+    private func matches(_ job: BackgroundDownloadJob, scope: HFDownloadScope) -> Bool {
+        if job.root(in: journal.home).standardizedFileURL == scope.destination.standardizedFileURL,
+           let rules = scope.fileAllowlist {
+            return job.owner.fileAllowlist?.sorted() == rules.sorted()
+        }
+        return job.files.contains { scope.contains(path: job.destination(for: $0, home: journal.home).path) }
+    }
+
+    private func matchingJobs(_ scope: HFDownloadScope) -> [String] {
+        jobs.values.filter { matches($0, scope: scope) }.map(\.id)
+    }
+
+    private func taskMatches(_ task: URLSessionTask, scope: HFDownloadScope) -> Bool {
+        if let reference = BackgroundDownloadTaskReference(description: task.taskDescription),
+           let job = jobs[reference.jobID] ?? cancelledJobs[reference.jobID] { return matches(job, scope: scope) }
+        return taskDestination(task).map { scope.contains(path: $0.path) } == true
+    }
+
+    private func transferKey(path: String, jobID: String?) -> String { (jobID ?? "") + "\n" + path }
+
+
+    private func persistJournal() {
+        do { try journal.save(jobs) }
+        catch { Diagnostics.shared.error("Could not save background download state", category: "hf-download") }
+    }
+
+    private func taskDestination(_ task: URLSessionTask) -> URL? {
+        if let pending = pendingByTaskID[task.taskIdentifier] { return pending.destination }
+        if let reference = BackgroundDownloadTaskReference(description: task.taskDescription),
+           let job = jobs[reference.jobID] ?? cancelledJobs[reference.jobID], let file = job.files.first(where: { $0.relativePath == reference.relativePath }) {
+            return job.destination(for: file, home: journal.home)
+        }
+        // Legacy tasks used an absolute path, before the durable batch journal.
+        guard let path = task.taskDescription, path.hasPrefix(journal.home.path + "/") else { return nil }
+        return URL(fileURLWithPath: path)
+    }
+
+    private func publishProgress(jobID: String, currentFile: String = "") {
+        guard let job = jobs[jobID] else { return }
+        var done = 0, downloaded: Int64 = 0, total: Int64 = 0
+        for file in job.files {
+            let key = job.destination(for: file, home: journal.home).path
+            let expected = max(file.expectedBytes, responseSizes[key] ?? 0)
+            total += expected
+            if file.completed { done += 1; downloaded += expected }
+            else { downloaded += min(max(0, receivedBytes[key] ?? 0), expected > 0 ? expected : Int64.max) }
+        }
+        let fraction = min(0.99, total > 0 ? Double(downloaded) / Double(total) : Double(done) / Double(job.files.count))
+        progressObservers[jobID]?(.init(fraction: fraction, downloadedBytes: downloaded, totalBytes: total,
+                                      filesDone: done, filesTotal: job.files.count, currentFile: currentFile))
+        switch job.state {
+        case .transferring, .verifying:
+            DownloadLiveActivityManager.shared.update(repoID: jobID, progress: fraction,
+                downloadedBytes: downloaded, totalBytes: total,
+                currentFile: job.state == .verifying ? "Open app to finish" : currentFile,
+                filesDone: done, filesTotal: job.files.count,
+                phase: job.state == .verifying ? .verifying : .downloading)
+        case .paused: DownloadLiveActivityManager.shared.pause(repoID: jobID)
+        case .failed: DownloadLiveActivityManager.shared.fail(repoID: jobID, reason: "Open Downloads to retry")
+        }
+    }
+
+    private func completeTransfer(taskID: Int, reference: BackgroundDownloadTaskReference?,
+                                  pending: Pending?, result: Result<URL, Error>) {
+        let key = pending.map { transferKey(path: $0.destination.path, jobID: reference?.jobID) }
+        if let key { queuedTasks.removeValue(forKey: key) }
+        if let reference, var job = jobs[reference.jobID],
+           let index = job.files.firstIndex(where: { $0.relativePath == reference.relativePath }) {
+            switch result {
+            case .success:
+                job.files[index].completed = true
+                if job.state == .transferring && job.files.allSatisfy(\.completed) { job.state = .verifying }
+            case .failure(let error):
+                let ns = error as NSError
+                if progressObservers[job.id] == nil && !(error is CancellationError) && ns.code != NSURLErrorCancelled { job.state = .failed }
+            }
+            jobs[job.id] = job; persistJournal(); publishProgress(jobID: job.id, currentFile: reference.relativePath)
+        }
+        if let continuation = pending?.continuation { continuation.resume(with: result) }
+        else if let key { completedTransfers[key] = result }
+    }
+
 
     // Public completion handler hook used by AppDelegate when iOS wakes us up
     // to deliver finished events. ContentView/App can wire this if needed.
@@ -29,11 +257,10 @@ final class BackgroundDownloadCoordinator: NSObject {
     // MARK: - URLSession
 
     private lazy var session: URLSession = {
-        let cfg = URLSessionConfiguration.background(
-            withIdentifier: "com.mesutcydev.ondevicemax.background-downloads"
-        )
+        let cfg = suppliedConfiguration ?? URLSessionConfiguration.background(withIdentifier: Self.sessionIdentifier)
         cfg.isDiscretionary = false
         cfg.sessionSendsLaunchEvents = true
+        cfg.httpMaximumConnectionsPerHost = 2
         // "Wi-Fi only downloads" setting (Settings → Models). The config is
         // frozen at session creation, so download() ALSO enforces it
         // per-task at enqueue time — this just covers tasks the system
@@ -47,7 +274,7 @@ final class BackgroundDownloadCoordinator: NSObject {
         // the main queue that blocks UI and can trigger the iOS watchdog at
         // 100%. Keep callbacks serial, but perform file finalization off-main.
         let delegateQueue = OperationQueue()
-        delegateQueue.name = "com.mesutcydev.ondevicemax.download-finalization"
+        delegateQueue.name = "com.token.TokenAI.download-finalization"
         delegateQueue.maxConcurrentOperationCount = 1
         delegateQueue.qualityOfService = .utility
         return URLSession(configuration: cfg, delegate: self, delegateQueue: delegateQueue)
@@ -57,7 +284,7 @@ final class BackgroundDownloadCoordinator: NSObject {
     /// whether we're on an expensive (cellular / hotspot) link.
     private let pathMonitor: NWPathMonitor = {
         let monitor = NWPathMonitor()
-        monitor.start(queue: DispatchQueue(label: "com.mesutcydev.ondevicemax.download-path-monitor"))
+        monitor.start(queue: DispatchQueue(label: "com.token.TokenAI.download-path-monitor"))
         return monitor
     }()
 
@@ -72,10 +299,11 @@ final class BackgroundDownloadCoordinator: NSObject {
     private struct Pending {
         let destination: URL
         let expectedSize: Int64
-        let progress: (Int64, Int64) -> Void
-        let continuation: CheckedContinuation<URL, Error>
+        var progress: (Int64, Int64) -> Void
+        var continuation: CheckedContinuation<URL, Error>?
     }
     private var pendingByTaskID: [Int: Pending] = [:]
+    private var abandonedTaskIDs: Set<Int> = []
 
     // MARK: - Public API
 
@@ -85,66 +313,61 @@ final class BackgroundDownloadCoordinator: NSObject {
         from url: URL,
         to destination: URL,
         expectedSize: Int64,
+        jobID: String? = nil,
         progress: @escaping (Int64, Int64) -> Void
     ) async throws -> URL {
-        return try await withCheckedThrowingContinuation { continuation in
-            var request = URLRequest(url: url)
-            request.timeoutInterval = 60
-            // Attach HF token for huggingface.co downloads only — the
-            // coordinator is generic but the token must not leak to
-            // unrelated hosts (e.g. if the bundle ever fetches a
-            // CoreML model from a non-HF mirror). Host check is
-            // exact-suffix to also cover cdn-lfs.huggingface.co et al.
-            if let host = url.host?.lowercased(),
-               host == "huggingface.co" || host.hasSuffix(".huggingface.co") {
-                HFTokenStore.authorize(&request)
+        try Task.checkCancellation()
+        let key = transferKey(path: destination.path, jobID: jobID)
+        if let result = completedTransfers.removeValue(forKey: key) { return try result.get() }
+        let task: URLSessionDownloadTask
+        if let queued = queuedTasks[key], queued.state != .canceling, queued.state != .completed {
+            task = queued
+        } else {
+            task = try makeTask(from: url, to: destination, expectedSize: expectedSize)
+            queuedTasks[key] = task
+            if let job = jobID.flatMap({ jobs[$0] }) ?? jobs.values.first(where: { job in job.files.contains { job.destination(for: $0, home: self.journal.home) == destination } }),
+               let file = job.files.first(where: { job.destination(for: $0, home: self.journal.home) == destination }) {
+                task.taskDescription = BackgroundDownloadTaskReference(jobID: job.id, relativePath: file.relativePath).description
+                jobs[job.id]?.state = .transferring
             }
-
-            // Enforce "Wi-Fi only downloads" per task too — the session
-            // config can't change after creation, so a setting flipped
-            // mid-session would otherwise be ignored.
-            if AppSettings.shared.wifiOnlyDownloads {
-                request.allowsCellularAccess = false
-                request.allowsExpensiveNetworkAccess = false
-                if self.pathMonitor.currentPath.isExpensive {
-                    continuation.resume(throwing: NSError(
-                        domain: "HFDownload", code: -5,
-                        userInfo: [NSLocalizedDescriptionKey:
-                            "Wi-Fi only downloads is on and this connection is cellular. Connect to Wi-Fi or turn the setting off in Settings → Models."]
-                    ))
-                    return
-                }
-            }
-
-            // Resume an interrupted transfer when URLSession handed us
-            // resume data for this URL — otherwise a dropped multi-GB file
-            // restarted from byte 0. EXCEPTION: an authorized request can't be
-            // resumed. URLSession resume data does NOT re-encode request
-            // headers, so a resumed gated-HF download would drop the
-            // `Authorization: Bearer` token attached above and 401 mid-resume.
-            // When an auth header is present we discard the resume data and
-            // rebuild from the fresh authorized request; restarting beats a
-            // guaranteed auth failure. Public/non-HF downloads keep resume.
-            let hasAuthHeader = request.value(forHTTPHeaderField: "Authorization") != nil
-            let task: URLSessionDownloadTask
-            if !hasAuthHeader, let resumeData = Self.consumeResumeData(for: url) {
-                task = self.session.downloadTask(withResumeData: resumeData)
-            } else {
-                if hasAuthHeader { Self.clearResumeData(for: url) }
-                task = self.session.downloadTask(with: request)
-            }
-            // The destination rides on the task itself so it survives an app
-            // relaunch — pendingByTaskID is in-memory only, and without this
-            // a download finishing after relaunch was deleted as untracked.
-            task.taskDescription = destination.path
-            self.pendingByTaskID[task.taskIdentifier] = Pending(
-                destination: destination,
-                expectedSize: expectedSize,
-                progress: progress,
-                continuation: continuation
-            )
-            task.resume()
         }
+        return try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            return try await withCheckedThrowingContinuation { continuation in
+                pendingByTaskID[task.taskIdentifier] = Pending(destination: destination, expectedSize: expectedSize,
+                                                              progress: progress, continuation: continuation)
+                task.resume()
+            }
+        } onCancel: {
+            task.cancel()
+        }
+    }
+
+    private func makeTask(from url: URL, to destination: URL, expectedSize: Int64) throws -> URLSessionDownloadTask {
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 60
+        if let host = url.host?.lowercased(), host == "huggingface.co" || host.hasSuffix(".huggingface.co") {
+            HFTokenStore.authorize(&request)
+        }
+        if AppSettings.shared.wifiOnlyDownloads {
+            request.allowsCellularAccess = false; request.allowsExpensiveNetworkAccess = false
+            if pathMonitor.currentPath.isExpensive {
+                throw NSError(domain: "HFDownload", code: -5, userInfo: [NSLocalizedDescriptionKey:
+                    "Wi-Fi only downloads is on. Connect to Wi-Fi or turn the setting off in Settings → Models."])
+            }
+        }
+        let task: URLSessionDownloadTask
+        if request.value(forHTTPHeaderField: "Authorization") == nil, let data = Self.consumeResumeData(for: url) {
+            task = session.downloadTask(withResumeData: data)
+        } else {
+            Self.clearResumeData(for: url)
+            task = session.downloadTask(with: request)
+        }
+        task.taskDescription = destination.path
+        pendingByTaskID[task.taskIdentifier] = Pending(destination: destination, expectedSize: expectedSize,
+                                                    progress: { _, _ in }, continuation: nil)
+        task.countOfBytesClientExpectsToReceive = expectedSize > 0 ? expectedSize : NSURLSessionTransferSizeUnknown
+        return task
     }
 
     // MARK: - Resume data persistence
@@ -225,27 +448,43 @@ final class BackgroundDownloadCoordinator: NSObject {
 
     /// Cancels in-flight tasks whose pending destination path begins with the
     /// given root. Used to abort one repo's downloads without stomping others.
-    func cancelTasks(matching destinationPrefix: String) async {
-        let matchingIDs = pendingByTaskID
-            .filter { $0.value.destination.path.hasPrefix(destinationPrefix) }
-            .map(\.key)
-
-        await withCheckedContinuation { continuation in
-            session.getAllTasks { tasks in
-                for task in tasks where matchingIDs.contains(task.taskIdentifier) {
-                    task.cancel()
+    func cancelTasks(matching destinationPrefix: String, fileAllowlist: [String]? = nil) async {
+        abandon(matching: destinationPrefix, fileAllowlist: fileAllowlist)
+        let scope = HFDownloadScope(destination: URL(fileURLWithPath: destinationPrefix), fileAllowlist: fileAllowlist)
+        let tasks: [URLSessionTask] = await withCheckedContinuation { continuation in
+            session.getAllTasks { continuation.resume(returning: $0) }
+        }
+        for task in tasks {
+            guard taskMatches(task, scope: scope) else { continue }
+            abandonedTaskIDs.insert(task.taskIdentifier)
+            Self.clearResumeData(for: task.originalRequest?.url ?? task.currentRequest?.url)
+            if let download = task as? URLSessionDownloadTask {
+                await withCheckedContinuation { continuation in
+                    download.cancel(byProducingResumeData: { _ in continuation.resume() })
                 }
-                continuation.resume()
+            } else {
+                task.cancel()
             }
+        }
+        // A restored task has no Swift continuation to await. Drain a file
+        // finalization already on the serial delegate queue before deleting
+        // its directory; later callbacks observe abandonedTaskIDs instead.
+        await withCheckedContinuation { continuation in
+            session.delegateQueue.addBarrierBlock { continuation.resume() }
         }
     }
 
     /// Stop matching transfers while retaining URLSession resume data. The
     /// callback is awaited before a new transfer can consume its sidecar.
-    func pauseTasks(matching destinationPrefix: String) async {
-        let matchingIDs = Set(pendingByTaskID
-            .filter { $0.value.destination.path.hasPrefix(destinationPrefix) }
-            .map(\.key))
+    func pauseTasks(matching destinationPrefix: String, fileAllowlist: [String]? = nil) async {
+        let scope = HFDownloadScope(destination: URL(fileURLWithPath: destinationPrefix), fileAllowlist: fileAllowlist)
+        markPaused(matching: destinationPrefix, fileAllowlist: fileAllowlist)
+        let allTasks: [URLSessionTask] = await withCheckedContinuation { continuation in
+            session.getAllTasks { continuation.resume(returning: $0) }
+        }
+        let matchingIDs = Set(allTasks.compactMap { task -> Int? in
+            return taskMatches(task, scope: scope) ? task.taskIdentifier : nil
+        })
 
         await withCheckedContinuation { continuation in
             session.getAllTasks { tasks in
@@ -275,6 +514,7 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
                                 downloadTask: URLSessionDownloadTask,
                                 didFinishDownloadingTo location: URL) {
         let taskID = downloadTask.taskIdentifier
+        let reference = BackgroundDownloadTaskReference(description: downloadTask.taskDescription)
         let fm = FileManager.default
 
         // CRITICAL: URLSession deletes `location` the moment this delegate
@@ -287,16 +527,26 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
         // Only the tiny pending-map operation crosses to MainActor. The file
         // move/copy below stays on the dedicated delegate queue.
         let pending: Pending?
+        let abandoned: Bool
         if Thread.isMainThread {
-            pending = MainActor.assumeIsolated {
-                self.pendingByTaskID.removeValue(forKey: taskID)
+            (pending, abandoned) = MainActor.assumeIsolated {
+                (self.pendingByTaskID.removeValue(forKey: taskID), self.abandonedTaskIDs.contains(taskID) || (reference.map { self.jobs[$0.jobID] == nil } ?? false))
             }
         } else {
-            pending = DispatchQueue.main.sync {
+            (pending, abandoned) = DispatchQueue.main.sync {
                 MainActor.assumeIsolated {
-                    self.pendingByTaskID.removeValue(forKey: taskID)
+                    (self.pendingByTaskID.removeValue(forKey: taskID), self.abandonedTaskIDs.contains(taskID) || (reference.map { self.jobs[$0.jobID] == nil } ?? false))
                 }
             }
+        }
+        let finish: (Result<URL, Error>) -> Void = { result in
+            Task { @MainActor in self.completeTransfer(taskID: taskID, reference: reference, pending: pending, result: result) }
+        }
+        if abandoned {
+            try? fm.removeItem(at: location)
+            Self.clearResumeData(for: downloadTask.originalRequest?.url ?? downloadTask.currentRequest?.url)
+            finish(.failure(CancellationError()))
+            return
         }
         // After an app relaunch the in-memory Pending map is gone, but the
         // destination was stored on the task itself (taskDescription) at
@@ -305,7 +555,14 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
         let destination: URL
         if let p = pending {
             destination = p.destination
-        } else if let path = downloadTask.taskDescription, !path.isEmpty {
+        } else if let reference,
+                  let recovered = DispatchQueue.main.sync(execute: {
+                      MainActor.assumeIsolated { self.jobs[reference.jobID].flatMap { job in
+                          job.files.first(where: { $0.relativePath == reference.relativePath }).map { job.destination(for: $0, home: self.journal.home) }
+                      } }
+                  }) {
+            destination = recovered
+        } else if let path = downloadTask.taskDescription, path.hasPrefix(NSHomeDirectory() + "/") {
             destination = URL(fileURLWithPath: path)
         } else {
             try? fm.removeItem(at: location)
@@ -330,10 +587,7 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
             if let retryAfter = response.value(forHTTPHeaderField: "Retry-After") {
                 userInfo["Retry-After"] = retryAfter
             }
-            pending?.continuation.resume(
-                throwing: NSError(domain: "HFDownload", code: statusCode,
-                                  userInfo: userInfo)
-            )
+            finish(.failure(NSError(domain: "HFDownload", code: statusCode, userInfo: userInfo)))
             return
         }
 
@@ -373,7 +627,7 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
             Diagnostics.shared.breadcrumb("Downloaded file finalized", category: "hf-download")
             Self.clearResumeData(for: downloadTask.originalRequest?.url
                                        ?? downloadTask.currentRequest?.url)
-            pending?.continuation.resume(returning: destination)
+            finish(.success(destination))
         } catch {
             // One repair attempt before giving up: an older install (or a
             // bundled-model copy) can leave the destination chain read-only
@@ -389,7 +643,7 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
                 FileManager.excludeFromBackup(destination)
                 Self.clearResumeData(for: downloadTask.originalRequest?.url
                                            ?? downloadTask.currentRequest?.url)
-                pending?.continuation.resume(returning: destination)
+                finish(.success(destination))
                 return
             } catch {
                 // Fall through to the wrapped failure below.
@@ -403,7 +657,7 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
                 NSLocalizedDescriptionKey:
                     "Couldn't save the downloaded file into \(folder) (\(error.localizedDescription)). Restart the app and retry; if it persists, check free device storage."
             ])
-            pending?.continuation.resume(throwing: wrapped)
+            finish(.failure(wrapped))
         }
     }
 
@@ -413,18 +667,44 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
                                 totalBytesWritten: Int64,
                                 totalBytesExpectedToWrite: Int64) {
         let taskID = downloadTask.taskIdentifier
+        let reference = BackgroundDownloadTaskReference(description: downloadTask.taskDescription)
         Task { @MainActor [weak self] in
-            guard let self,
-                  let p = self.pendingByTaskID[taskID] else { return }
-            let expected = totalBytesExpectedToWrite > 0
-                ? totalBytesExpectedToWrite : p.expectedSize
-            p.progress(totalBytesWritten, expected)
+            guard let self, !abandonedTaskIDs.contains(taskID) else { return }
+            let pending = pendingByTaskID[taskID]
+            pending?.progress(totalBytesWritten, totalBytesExpectedToWrite > 0 ? totalBytesExpectedToWrite : pending?.expectedSize ?? 0)
+            if let reference, let job = jobs[reference.jobID],
+               let file = job.files.first(where: { $0.relativePath == reference.relativePath }) {
+                let key = job.destination(for: file, home: journal.home).path
+                receivedBytes[key] = totalBytesWritten
+                responseSizes[key] = max(0, totalBytesExpectedToWrite)
+                publishProgress(jobID: job.id, currentFile: file.relativePath)
+            }
         }
     }
 
     nonisolated func urlSession(_ session: URLSession,
                                 task: URLSessionTask,
                                 didCompleteWithError error: Error?) {
+        let taskID = task.taskIdentifier
+        let reference = BackgroundDownloadTaskReference(description: task.taskDescription)
+        let completion: (Pending?, Bool)
+        if Thread.isMainThread {
+            completion = MainActor.assumeIsolated {
+                (self.pendingByTaskID.removeValue(forKey: taskID), self.abandonedTaskIDs.remove(taskID) != nil || (reference.map { self.jobs[$0.jobID] == nil } ?? false))
+            }
+        } else {
+            completion = DispatchQueue.main.sync {
+                MainActor.assumeIsolated {
+                    (self.pendingByTaskID.removeValue(forKey: taskID), self.abandonedTaskIDs.remove(taskID) != nil || (reference.map { self.jobs[$0.jobID] == nil } ?? false))
+                }
+            }
+        }
+        if completion.1 {
+            Self.clearResumeData(for: task.originalRequest?.url ?? task.currentRequest?.url)
+            Task { @MainActor in self.completeTransfer(taskID: taskID, reference: reference,
+                pending: completion.0, result: .failure(CancellationError())) }
+            return
+        }
         guard let error else { return }   // success path handled in didFinishDownloadingTo
         // Persist URLSession's resume data so the next attempt for this URL
         // continues where the transfer broke instead of restarting at byte 0.
@@ -433,13 +713,8 @@ extension BackgroundDownloadCoordinator: URLSessionDownloadDelegate {
             Self.storeResumeData(resumeData,
                                  for: task.originalRequest?.url ?? task.currentRequest?.url)
         }
-        let taskID = task.taskIdentifier
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            if let p = self.pendingByTaskID.removeValue(forKey: taskID) {
-                p.continuation.resume(throwing: error)
-            }
-        }
+        Task { @MainActor in self.completeTransfer(taskID: taskID, reference: reference,
+            pending: completion.0, result: .failure(error)) }
     }
 
     // Called when all background events have been delivered after a re-launch.

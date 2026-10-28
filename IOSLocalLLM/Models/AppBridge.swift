@@ -11,7 +11,7 @@ final class AppBridge: ObservableObject {
     static let shared = AppBridge()
 
     /// App Group identifier — must match the share extension.
-    static let appGroupID = "group.com.mesutcydev.ondevicemax.shared"
+    static let appGroupID = "group.com.token.TokenAI"
 
     // Set by AnalysisPanelView; consumed once by CodingAssistantView
     @Published var pendingCode: PendingCode? = nil
@@ -29,6 +29,8 @@ final class AppBridge: ObservableObject {
     enum ModelsSection: String {
         case assistant, lens, voice, image
     }
+
+    @Published var requestedDownloads = false
 
     @Published var requestedModelsSection: ModelsSection? = nil
 
@@ -57,9 +59,10 @@ final class AppBridge: ObservableObject {
         let body: String
         /// When true the assistant view sends the prefilled prompt
         /// automatically instead of waiting for the user to tap send. Set by
-        /// the "Ask OnDevice" App Intent so a Siri/Shortcuts request actually
+        /// the "Ask Token AI" App Intent so a Siri/Shortcuts request actually
         /// produces an answer rather than just opening the composer.
         var autoSend: Bool = false
+        var appendToDraft: Bool = false
     }
 
     /// Set by the "New Chat" App Intent; CodingAssistantView clears the
@@ -85,10 +88,10 @@ final class AppBridge: ObservableObject {
 
     /// Prefill the assistant composer with `prompt`; when `autoSend` is true
     /// the view fires it immediately once the app is foreground.
-    func askAssistant(_ prompt: String, autoSend: Bool) {
+    func askAssistant(_ prompt: String, autoSend: Bool, appendToDraft: Bool = false) {
         let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { requestTab(.assistant); return }
-        pendingSharedText = SharedTextPayload(kind: .text, body: trimmed, autoSend: autoSend)
+        pendingSharedText = SharedTextPayload(kind: .text, body: trimmed, autoSend: autoSend, appendToDraft: appendToDraft)
         requestTab(.assistant)
     }
 
@@ -145,11 +148,11 @@ final class AppBridge: ObservableObject {
             }
         } catch {
             ToastCenter.shared.error("Couldn't receive shared content",
-                                     detail: "Open OnDevice Max again to retry.")
+                                     detail: "Open Token AI again to retry.")
         }
     }
 
-    /// Handles `ondevice-max://share?...` URLs from the share extension.
+    /// Handles `tokenai://share?...` URLs from the share extension.
     /// Supports four payload shapes:
     ///   • `file=<jpg>`     — staged image, routes to camera/lens tab
     ///   • `textfile=<txt>` — long text staged to a file, routes to assistant
@@ -158,7 +161,12 @@ final class AppBridge: ObservableObject {
     /// The text/URL paths land in `pendingSharedText` and switch to the
     /// assistant tab so CodingAssistantView can prefill the composer.
     func handleIncomingURL(_ url: URL) {
-        guard url.scheme == "ondevice-max", url.host == "share" else { return }
+        guard url.scheme == "tokenai" else { return }
+        if url.host == "downloads" {
+            requestTab(.models); requestedDownloads = true
+            return
+        }
+        guard url.host == "share" else { return }
         guard let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let items = comps.queryItems
         else { return }
@@ -185,7 +193,7 @@ final class AppBridge: ObservableObject {
         }
     }
 
-    /// `ondevice-max://share?file=…` is a PUBLIC custom URL scheme — any app or web
+    /// `tokenai://share?file=…` is a PUBLIC custom URL scheme — any app or web
     /// page can invoke it. The filename must be a single safe path component so
     /// a value like "../../Documents/conversations.json" can't escape the
     /// staging dir and give an out-of-app caller arbitrary read/delete in our

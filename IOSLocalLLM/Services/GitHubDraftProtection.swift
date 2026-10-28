@@ -10,7 +10,7 @@ nonisolated enum GitHubDraftProtection {
     static let keyInfo = CodingUserInfoKey(rawValue: "ondevice.github.draft.key")!
     private static var query: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: "com.mesutcydev.ondevicemax.github.drafts",
+         kSecAttrService as String: "com.token.TokenAI.github.drafts",
          kSecAttrAccount as String: "snapshot-key.v1"]
     }
     private static func key(create: Bool) throws -> SymmetricKey {

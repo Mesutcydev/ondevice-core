@@ -2,7 +2,7 @@
 
 Welcome to the **iOS Local LLM User Guide**. This document serves as a comprehensive manual detailing every tab, menu, setting, and feature of iOS Local LLM.
 
-iOS Local LLM is a local-first, privacy-respecting AI studio built specifically for macOS and iOS. It runs third-party language models (LLMs) and vision-language models (VLMs) directly on your device's hardware using Apple's **MLX framework**, Core ML, and local native runtimes. It requires no iOS Local LLM account and includes no project-operated telemetry. Model downloads, optional web search, iCloud sync, and local bridge features use the network only when you enable or request them.
+iOS Local LLM is a local-first, privacy-respecting AI studio built specifically for macOS and iOS. It runs third-party language models (LLMs) and vision-language models (VLMs) directly on your device's hardware using Apple's **MLX framework**, Core ML, and local native runtimes. It requires no iOS Local LLM account and includes no project-operated telemetry. Model downloads, optional web search, and local bridge features use the network only when you enable or request them.
 
 ---
 

@@ -411,7 +411,7 @@ struct APIProviderConsentView: View {
                     APIProviderRule()
                     VStack(alignment: .leading, spacing: 12) {
                         Text("When you send a message, conversation text, system instructions, tool results, attached file excerpts, and supported images included in the request will be sent to this endpoint.")
-                        Text("The provider may route requests to its model operators. Its privacy, retention, and billing terms apply. OnDevice Max cannot verify a custom server's practices.")
+                        Text("The provider may route requests to its model operators. Its privacy, retention, and billing terms apply. Token AI cannot verify a custom server's practices.")
                         Text("You can choose an on-device model at any time. Local inference never silently switches to an API provider.")
                         if URL(string: provider.baseURL)?.scheme == "http" {
                             Label("This private-network endpoint uses HTTP. Requests and its API key are not encrypted in transit.", systemImage: "lock.open")

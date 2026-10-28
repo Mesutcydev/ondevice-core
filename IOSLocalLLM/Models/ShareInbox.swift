@@ -13,7 +13,7 @@ enum ShareInbox {
     }
 
     static func enqueue(_ url: URL, in container: URL, now: Date = Date()) throws {
-        guard url.scheme == "ondevice-max", url.host == "share" else {
+        guard url.scheme == "tokenai", url.host == "share" else {
             throw CocoaError(.fileWriteInapplicableStringEncoding)
         }
         let data = try JSONEncoder().encode(Entry(createdAt: now, url: url))
@@ -48,7 +48,7 @@ enum ShareInbox {
             let entry = data.count <= maximumBytes
                 ? try? JSONDecoder().decode(Entry.self, from: data) : nil
             let valid = entry.map {
-                $0.url.scheme == "ondevice-max" && $0.url.host == "share"
+                $0.url.scheme == "tokenai" && $0.url.host == "share"
                     && now.timeIntervalSince($0.createdAt) <= maximumAge
                     && $0.createdAt <= now.addingTimeInterval(60)
             } ?? false

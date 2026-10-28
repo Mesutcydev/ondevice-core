@@ -19,7 +19,7 @@
     {
       "name": "ios-local-llm",
       "SPDXID": "SPDXRef-Package-ios-local-llm",
-      "versionInfo": "1.0.1",
+      "versionInfo": "2.1.1",
       "downloadLocation": "git+https://github.com/Mesutcydev/ios-local-llm.git",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT AND LicenseRef-Apple-Sample-Code AND LicenseRef-CMUdict",
@@ -255,6 +255,83 @@
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "Copyright 2026 Mesut and VoiceAgentOrb contributors"
+    },
+    {
+      "name": "llama.cpp b11558 shared classifier/chat/vision runtime",
+      "SPDXID": "SPDXRef-Package-llama-cpp-b11558-runtime",
+      "versionInfo": "b11558",
+      "downloadLocation": "git+https://github.com/ggml-org/llama.cpp.git@c83f3058b6f876f2f7e6ccbada858b2446860c85",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Pinned, checksum-verified upstream binary/source recipe in scripts/bootstrap_classifier_runtime.py. Generated framework and source archive are excluded from Git."
+    },
+    {
+      "name": "llama.cpp b11938 experimental LFM3 runtime",
+      "SPDXID": "SPDXRef-Package-llama-cpp-b11938-runtime",
+      "versionInfo": "b11938",
+      "downloadLocation": "git+https://github.com/ggml-org/llama.cpp.git@19cce6919992fdffd92e0ac152caaf1e2b8f254e",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "Copyright 2023-2026 The ggml authors",
+      "comment": "Opt-in only; checksum-verified recipe in scripts/bootstrap_lfm3_runtime.py. The existing b11558 runtime remains the default."
+    },
+    {
+      "name": "LFM3 1.7B GGUF optional download",
+      "SPDXID": "SPDXRef-Package-lfm3-text-model",
+      "versionInfo": "b3f2ae5d73cd3c91bf40e8ba752c648aa05dffdf",
+      "downloadLocation": "https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF/tree/b3f2ae5d73cd3c91bf40e8ba752c648aa05dffdf",
+      "filesAnalyzed": false,
+      "licenseConcluded": "LicenseRef-LFM-Open-1.0",
+      "licenseDeclared": "LicenseRef-LFM-Open-1.0",
+      "copyrightText": "NOASSERTION",
+      "comment": "Experimental catalog only; weights are downloaded by the user and excluded from Git."
+    },
+    {
+      "name": "LFM3 VL 2B GGUF optional download",
+      "SPDXID": "SPDXRef-Package-lfm3-vision-model",
+      "versionInfo": "7c3b4a43c9023e80bf234fec5e826a3365c8dda8",
+      "downloadLocation": "https://huggingface.co/LiquidAI/LFM3-VL-2B-GGUF/tree/7c3b4a43c9023e80bf234fec5e826a3365c8dda8",
+      "filesAnalyzed": false,
+      "licenseConcluded": "LicenseRef-LFM-Open-1.0",
+      "licenseDeclared": "LicenseRef-LFM-Open-1.0",
+      "copyrightText": "NOASSERTION",
+      "comment": "Experimental catalog only; weights and projector are downloaded by the user and excluded from Git."
+    },
+    {
+      "name": "MiniCPM 4.7 private LES runtime",
+      "SPDXID": "SPDXRef-Package-minicpm-les-runtime",
+      "versionInfo": "0b74404c9b3dfe2c6b11aebe0dd58fc23f133ee2",
+      "downloadLocation": "git+https://github.com/OpenBMB/llama.cpp-omni.git@0b74404c9b3dfe2c6b11aebe0dd58fc23f133ee2",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT AND LicenseRef-MIT-0",
+      "licenseDeclared": "MIT AND LicenseRef-MIT-0",
+      "copyrightText": "NOASSERTION",
+      "comment": "Private framework built from checksum-verified source. Generated framework and source cache excluded from Git. JSON, stb_image and miniaudio notices are preserved under LICENSES."
+    },
+    {
+      "name": "MiniCPM-V 4.7 1B GGUF optional download",
+      "SPDXID": "SPDXRef-Package-minicpm-v47-1b-model",
+      "versionInfo": "6c2f4cb8bde51a00247e11003bbf66ca7c4f9249",
+      "downloadLocation": "https://huggingface.co/openbmb/MiniCPM-V-4.7-1B-gguf/tree/6c2f4cb8bde51a00247e11003bbf66ca7c4f9249",
+      "filesAnalyzed": false,
+      "licenseConcluded": "Apache-2.0",
+      "licenseDeclared": "Apache-2.0",
+      "copyrightText": "NOASSERTION",
+      "comment": "Catalog metadata and notices only; weights downloaded explicitly and excluded from Git."
+    },
+    {
+      "name": "MiniCPM-V 4.7 35B A3B GGUF optional download",
+      "SPDXID": "SPDXRef-Package-minicpm-v47-35b-model",
+      "versionInfo": "1e04eae556a075a1e78808a50266ed0b11de9bf1",
+      "downloadLocation": "https://huggingface.co/openbmb/MiniCPM-V-4.7-35B-A3B-gguf/tree/1e04eae556a075a1e78808a50266ed0b11de9bf1",
+      "filesAnalyzed": false,
+      "licenseConcluded": "Apache-2.0",
+      "licenseDeclared": "Apache-2.0",
+      "copyrightText": "NOASSERTION",
+      "comment": "Pinned official mixed Q3 source. Original on-device preparation changes file layout only. No community model conversion or weights bundled."
     }
   ],
   "relationships": [
@@ -312,9 +389,48 @@
       "spdxElementId": "SPDXRef-Package-coreai-models",
       "relationshipType": "DEPENDS_ON",
       "relatedSpdxElement": "SPDXRef-Package-swift-argument-parser"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-ios-local-llm",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-llama-cpp-b11558-runtime"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-llama-cpp-b11938-runtime",
+      "relationshipType": "OPTIONAL_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-Package-ios-local-llm"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-lfm3-text-model",
+      "relationshipType": "OPTIONAL_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-Package-ios-local-llm"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-lfm3-vision-model",
+      "relationshipType": "OPTIONAL_DEPENDENCY_OF",
+      "relatedSpdxElement": "SPDXRef-Package-ios-local-llm"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-ios-local-llm",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-minicpm-les-runtime"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-ios-local-llm",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-minicpm-v47-1b-model"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-ios-local-llm",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-minicpm-v47-35b-model"
     }
   ],
   "hasExtractedLicensingInfos": [
+    {
+      "licenseId": "LicenseRef-LFM-Open-1.0",
+      "extractedText": "See LICENSES/Models/LiquidAI--LFM3-1.7B-GGUF/LICENSE and LICENSES/Models/LiquidAI--LFM3-VL-2B-GGUF/LICENSE."
+    },
     {
       "licenseId": "LicenseRef-Apple-Sample-Code",
       "extractedText": "See LICENSES/Apple-Sample-Code-License.txt."
@@ -322,6 +438,10 @@
     {
       "licenseId": "LicenseRef-CMUdict",
       "extractedText": "See IOSLocalLLM/Resources/Voice/LICENSE."
+    },
+    {
+      "licenseId": "LicenseRef-MIT-0",
+      "extractedText": "\n===============================================================================\nCopyright 2026 David Reid\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of\nthis software and associated documentation files (the \"Software\"), to deal in\nthe Software without restriction, including without limitation the rights to\nuse, copy, modify, merge, publish, distribute, sublicense, and/or sell copies\nof the Software, and to permit persons to whom the Software is furnished to do\nso.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.\n"
     }
   ]
 }

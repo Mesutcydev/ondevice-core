@@ -99,8 +99,7 @@ public struct ODComposer: View {
             // Any tap on the card that no control claims focuses the text.
             .contentShape(composerShape)
             .onTapGesture { focus.wrappedValue = true }
-            .background(ODPalette.surface, in: composerShape)
-            .overlay { composerShape.strokeBorder(ODPalette.line, lineWidth: ODLayout.hairline(displayScale: displayScale)) }
+            .glassEffect(.regular, in: composerShape)
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("chat.composer.panel")
             .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: text)
@@ -116,7 +115,7 @@ public struct ODComposer: View {
     }
 
     private var prompt: Text {
-        Text("Message").foregroundStyle(ODPalette.secondary)
+        Text("Message", bundle: .module).foregroundStyle(ODPalette.secondary)
     }
 
     private var writingField: some View {
@@ -128,7 +127,7 @@ public struct ODComposer: View {
             .submitLabel(.return)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .focused(focus)
-            .accessibilityLabel("Message")
+            .accessibilityLabel(Text("Message", bundle: .module))
             .accessibilityIdentifier("chat.composer.text")
     }
 
@@ -183,7 +182,7 @@ public struct ODComposer: View {
         }
         .buttonStyle(ODPressButtonStyle())
         .disabled(!canAdd)
-        .accessibilityLabel("Message tools and attachments")
+        .accessibilityLabel(Text("Message tools and attachments", bundle: .module))
         .accessibilityIdentifier("chat.composer.add")
     }
 
@@ -203,9 +202,9 @@ public struct ODComposer: View {
         }
         .buttonStyle(ODPressButtonStyle())
         .disabled(isResponding)
-        .accessibilityLabel("Thinking")
-        .accessibilityValue(isOn ? "On" : "Off")
-        .accessibilityHint("Reason step by step before answering")
+        .accessibilityLabel(Text("Thinking", bundle: .module))
+        .accessibilityValue(Text(odKey: isOn ? "On" : "Off"))
+        .accessibilityHint(Text("Reason step by step before answering", bundle: .module))
         .accessibilityAddTraits(.isToggle)
         .accessibilityIdentifier("chat.composer.thinking")
     }
@@ -240,7 +239,7 @@ public struct ODComposer: View {
         }
         .scrollClipDisabled()
         .frame(height: ordinaryAttachmentRow ? ODLayout.minimumHit : nil)
-        .accessibilityLabel("Draft attachments")
+        .accessibilityLabel(Text("Draft attachments", bundle: .module))
     }
 
     /// File tokens share a 44-point row. Image previews keep their own height.
@@ -280,7 +279,7 @@ private struct ODComposerPrimaryAction: View {
         .buttonStyle(ODComposerPrimaryActionStyle())
         .disabled(!isEnabled)
         .animation(reduceMotion ? nil : .snappy(duration: 0.22), value: symbol)
-        .accessibilityLabel(label)
+        .accessibilityLabel(Text(odKey: label))
         .accessibilityIdentifier(identifier)
     }
 }
@@ -348,7 +347,7 @@ private struct ODComposerAttachment: View {
             }
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Attachment: \(attachment.name)")
+        .accessibilityLabel(Text("Attachment: \(attachment.name)", bundle: .module))
         .task(id: attachment.previewData) {
             guard let data = attachment.previewData,
                   let source = CGImageSourceCreateWithData(data as CFData, nil),
@@ -372,21 +371,30 @@ private struct ODComposerAttachment: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain).disabled(!canRemove)
-        .accessibilityLabel("Remove \(attachment.name)")
+        .accessibilityLabel(Text("Remove \(attachment.name)", bundle: .module))
     }
 }
 
 /// Name and optional parameter token for the chat model pill. The full
 /// name stays on the control’s accessibility value.
+/// Runtime state behind the model picker's status dot.
+public enum ODRuntimeStatus: Sendable { case idle, ready, working }
+
 public struct ODModelMenuLabel: View {
     private let displayName: String
     private let metadata: String?
     private let preservesName: Bool
+    private let conversationTitle: String?
+    private let status: ODRuntimeStatus
+    @Environment(\.dynamicTypeSize) private var typeSize
 
-    public init(displayName: String, metadata: String? = nil, preservesName: Bool = false) {
+    public init(displayName: String, metadata: String? = nil, preservesName: Bool = false,
+                conversationTitle: String? = nil, status: ODRuntimeStatus = .idle) {
+        self.status = status
         self.displayName = displayName
         self.metadata = metadata
         self.preservesName = preservesName
+        self.conversationTitle = conversationTitle
     }
 
     public var body: some View {
@@ -394,16 +402,24 @@ public struct ODModelMenuLabel: View {
             ? (displayName, nil, displayName)
             : ODPresentation.modelFace(displayName: displayName, metadata: metadata)
         HStack(spacing: 6) {
-            Circle()
-                .fill(ODPalette.secondary)
-                .frame(width: 6, height: 6)
-                .accessibilityHidden(true)
-            Text(face.title.isEmpty ? "Select model" : face.title)
-                .font(.subheadline)
+            if conversationTitle == nil { statusDot }
+            VStack(alignment: conversationTitle == nil ? .leading : .center, spacing: 1) {
+                if let conversationTitle, !typeSize.isAccessibilitySize {
+                    Text(conversationTitle).font(.subheadline.weight(.semibold))
+                        .foregroundStyle(ODPalette.text).lineLimit(1)
+                }
+                HStack(spacing: ODLayout.unit) {
+                    if conversationTitle != nil { statusDot }
+                    Text(odKey: face.title.isEmpty ? "Select model" : face.title)
+                        .lineLimit(1).truncationMode(.tail)
+                    if conversationTitle != nil, let size = face.size {
+                        Text(size).lineLimit(1).layoutPriority(1)
+                    }
+                }
+                .font(conversationTitle == nil ? .subheadline : .caption)
                 .foregroundStyle(ODPalette.secondary)
-                .lineLimit(1)
-                .truncationMode(.tail)
-            if let size = face.size {
+            }
+            if conversationTitle == nil, let size = face.size {
                 Text(size)
                     .font(.footnote)
                     .foregroundStyle(ODPalette.secondary)
@@ -418,8 +434,17 @@ public struct ODModelMenuLabel: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .frame(minHeight: ODLayout.minimumHit)
-        .background(ODPalette.input, in: Capsule())
-        .overlay { Capsule().strokeBorder(ODPalette.line, lineWidth: 1) }
+        .glassEffect(.regular.interactive(), in: Capsule())
+    }
+
+    /// Green while weights are resident, pulsing while generating. The host's
+    /// status strip carries the same state as text, so the dot stays hidden.
+    private var statusDot: some View {
+        Image(systemName: "circle.fill")
+            .font(.system(size: 6))
+            .foregroundStyle(status == .idle ? ODPalette.secondary : Color.green)
+            .symbolEffect(.pulse, isActive: status == .working)
+            .accessibilityHidden(true)
     }
 }
 
@@ -433,7 +458,7 @@ public struct ODKeyboardDismissKey: View {
         self.clearance = clearance
     }
     public var body: some View {
-        Button("Hide keyboard", systemImage: "keyboard.chevron.compact.down") {
+        Button(ODLocalizedString("Hide keyboard"), systemImage: "keyboard.chevron.compact.down") {
             focus.wrappedValue = false
         }
         .labelStyle(.iconOnly)

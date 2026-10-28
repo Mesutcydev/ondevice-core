@@ -50,6 +50,25 @@ struct CoreAIClassifierContract: Sendable {
     let calibratedTemperatures: [Double]?
     let temperatureBuckets: [String: Double]
 
+    /// Portable encoders use the same row/readout with different graph inputs.
+    init(layout: Layout, window: Int, headBudget: Int, vocabSize: Int,
+         cls: Int32, sep: Int32, pad: Int32, mask: Int32,
+         sourceTemperatures: [Double], calibratedTemperatures: [Double]? = nil,
+         temperatureBuckets: [String: Double] = [:]) throws {
+        guard (16...2_048).contains(window), headBudget >= 16, headBudget <= window,
+              vocabSize > 0, Set([cls, sep, pad, mask]).count == 4,
+              [cls, sep, pad, mask].allSatisfy({ $0 >= 0 && Int($0) < vocabSize }),
+              sourceTemperatures.count == 3, sourceTemperatures.allSatisfy({ $0.isFinite && $0 > 0 }),
+              calibratedTemperatures.map({ $0.count == 3 && $0.allSatisfy { $0.isFinite && $0 > 0 } }) ?? true,
+              temperatureBuckets.values.allSatisfy({ $0.isFinite && $0 > 0 }) else { throw CoreAIClassifierError.unsupportedContract }
+        self.layout = layout; self.window = window; self.headBudget = headBudget
+        optionTokenLimit = 48; self.vocabSize = vocabSize
+        self.cls = cls; self.sep = sep; self.pad = pad; self.mask = mask
+        asset = nil; mainFunction = nil; actFunction = nil; pooledSize = nil
+        self.sourceTemperatures = sourceTemperatures; self.calibratedTemperatures = calibratedTemperatures
+        self.temperatureBuckets = temperatureBuckets
+    }
+
     /// MatchRater's Core ML Julia export uses the same strict row protocol,
     /// with a variable sequence and a scalar qtype instead of a one-hot input.
     /// This contract has no Core AI asset or function to resolve.
@@ -212,6 +231,7 @@ struct CoreAIClassifierInput: Sendable {
 struct CoreAIClassifierOutput: Sendable {
     let tokenLogits: [Float]
     var pooledCLS: [Float]? = nil
+    var directAnswerProbability: Double? = nil
 }
 
 struct CoreAIClassifierAnswer: Sendable {
@@ -257,6 +277,8 @@ actor CoreAIClassifierAdapter {
     func cancel() { cancellationEpoch &+= 1 }
 
     func validate(state: String, question: CoreAIClassifierQuestion) throws -> Int {
+        try Task.checkCancellation()
+        guard !inFlight else { throw CoreAIClassifierError.busy }
         let row = try Self.buildInput(contract: contract, state: state, question: question, encode: encode)
         return row.attentionMask.reduce(0) { $0 + Int($1) }
     }
@@ -266,6 +288,7 @@ actor CoreAIClassifierAdapter {
     /// and its spaces. Foundation's compact/sorted JSON changes the token row.
     func classify(state: String, question: CoreAIClassifierQuestion,
                   calibration: Calibration = .source) async throws -> CoreAIClassifierAnswer {
+        try Task.checkCancellation()
         guard !inFlight else { throw CoreAIClassifierError.busy }
         inFlight = true
         defer { inFlight = false }
@@ -281,7 +304,8 @@ actor CoreAIClassifierAdapter {
         guard output.tokenLogits.count == contract.window else { throw CoreAIClassifierError.invalidOutput }
         let logits = row.markers.map { Double(output.tokenLogits[$0]) }
         let raw = try Self.softmax(logits)
-        var direct: Double?
+        var direct = output.directAnswerProbability
+        if let direct, !direct.isFinite || !(0...1).contains(direct) { throw CoreAIClassifierError.invalidOutput }
         if let runAct {
             guard let pooled = output.pooledCLS, pooled.count == contract.pooledSize,
                   pooled.allSatisfy(\.isFinite) else { throw CoreAIClassifierError.invalidOutput }
@@ -313,8 +337,11 @@ actor CoreAIClassifierAdapter {
                                       question: CoreAIClassifierQuestion, encode: Encode) throws -> CoreAIClassifierInput {
         let p = question.pieces
         guard (2...20).contains(p.ids.count), Set(p.ids).count == p.ids.count,
-              p.ids.allSatisfy({ !$0.isEmpty }), p.descriptions.allSatisfy({ !$0.isEmpty })
+              p.ids.allSatisfy({ !$0.isEmpty && $0.utf8.count <= 512 }), p.descriptions.allSatisfy({ !$0.isEmpty })
         else { throw CoreAIClassifierError.invalidQuestion }
+        guard state.utf8.count <= 64_000 else { throw CoreAIClassifierError.stateTooLong }
+        guard p.instructions.utf8.count <= 16_000 else { throw CoreAIClassifierError.headTooLong }
+        guard p.descriptions.allSatisfy({ $0.utf8.count <= 8_000 }) else { throw CoreAIClassifierError.optionTooLong }
         if case .boolean(_, let no, let yes) = question, (no == nil) != (yes == nil) {
             throw CoreAIClassifierError.invalidQuestion
         }

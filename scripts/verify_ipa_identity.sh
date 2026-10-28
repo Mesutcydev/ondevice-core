@@ -11,7 +11,7 @@
 set -euo pipefail
 
 IPA="${1:?usage: $0 <ipa> [expected-bundle-id]}"
-EXPECTED="${2:-com.mesutcydev.ondevicemax}"
+EXPECTED="${2:-com.token.TokenAI}"
 
 [[ -f "$IPA" ]] || { echo "error: IPA not found: $IPA" >&2; exit 2; }
 

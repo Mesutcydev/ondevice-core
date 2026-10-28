@@ -4,10 +4,12 @@ import SwiftUI
 /// The host owns inference, permissions, files, microphone and camera lifecycle.
 @MainActor
 public struct OnDeviceWorkbench: View {
+    @AppStorage("uiLanguage") private var uiLanguage = "system"
     @ObservedObject private var store: ODStore
     private let cameraPreview: AnyView?
     private let lensResultContent: ((Binding<Bool>) -> AnyView)?
     private let chatContent: AnyView?
+    private let codingContent: AnyView?
     private let settingsContent: AnyView?
     private let imageContent: AnyView?
     private let deviceContent: AnyView?
@@ -17,7 +19,6 @@ public struct OnDeviceWorkbench: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.layoutDirection) private var layoutDirection
     @State private var visited: Set<ODTab> = []
     /// Animated mirror of `store.conversationsPresented`: every open/close runs
     /// one spring, and the drawer stays mounted until its close has finished.
@@ -37,7 +38,7 @@ public struct OnDeviceWorkbench: View {
                 chatContent: AnyView? = nil, settingsContent: AnyView? = nil,
                 imageContent: AnyView? = nil, deviceContent: AnyView? = nil,
                 voiceContent: AnyView? = nil, apiServerContent: AnyView? = nil,
-                classifierContent: AnyView? = nil,
+                classifierContent: AnyView? = nil, codingContent: AnyView? = nil,
                 lensResultContent: ((Binding<Bool>) -> AnyView)? = nil) {
         self.store = store
         self.cameraPreview = cameraPreview
@@ -49,6 +50,11 @@ public struct OnDeviceWorkbench: View {
         self.apiServerContent = apiServerContent
         self.voiceContent = voiceContent
         self.classifierContent = classifierContent
+        self.codingContent = codingContent
+    }
+
+    private var resolvedLanguage: ODAppLanguage {
+        ODLocalization.resolvedLanguage(ODAppLanguage(rawValue: uiLanguage) ?? .system)
     }
 
     public var body: some View {
@@ -64,7 +70,7 @@ public struct OnDeviceWorkbench: View {
                 : ODLayout.drawerWidth(availableWidth: geometry.size.width)
             let offset = pinned ? 0 : min(width, max(0, (drawerOpen ? width : 0) + drawerDrag))
             let progress = width > 0 ? offset / width : 0
-            let direction: CGFloat = layoutDirection == .rightToLeft ? -1 : 1
+            let direction: CGFloat = resolvedLanguage.isRightToLeft ? -1 : 1
             ZStack(alignment: .leading) {
                 if pinned || drawerMounted || drawerDrag > 0 {
                     ODConversationDrawer()
@@ -90,7 +96,7 @@ public struct OnDeviceWorkbench: View {
                                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                             }
                                 .buttonStyle(.plain)
-                                .accessibilityLabel("Close app menu")
+                                .accessibilityLabel(Text("Close app menu", bundle: .module))
                                 .accessibilityIdentifier("navigation.dismissMenu")
                                 .gesture(drawerGesture(width: width, direction: direction))
                         }
@@ -138,6 +144,8 @@ public struct OnDeviceWorkbench: View {
         // cut out to the drawer color instead of vanishing into the page color.
         .background { Color(uiColor: .systemGroupedBackground).ignoresSafeArea() }
         .environmentObject(store)
+        .environment(\.locale, ODLocalization.locale(for: resolvedLanguage))
+        .environment(\.layoutDirection, resolvedLanguage.isRightToLeft ? .rightToLeft : .leftToRight)
         .preferredColorScheme(store.appearance.colorScheme)
         .environment(\.odAppearance, store.appearance)
         .onChange(of: store.conversationsPresented, initial: true) { _, presented in
@@ -151,6 +159,8 @@ public struct OnDeviceWorkbench: View {
         .sensoryFeedback(.impact(weight: .light, intensity: 0.55), trigger: store.conversationsPresented)
         .onChange(of: store.selectedTab, initial: true) { _, destination in
             visited.insert(destination)
+            // Chat owns the conversation draft shared by the repository editor.
+            if destination == .code { visited.insert(.chat) }
         }
         .onChange(of: store.secondaryRoute, initial: true) { _, route in
             if route == .imageStudio || route == .device {
@@ -163,18 +173,22 @@ public struct OnDeviceWorkbench: View {
                onDismiss: { store.completeVoiceReturnAfterSheetDismissal() }) { route in
             secondaryWorkspace(route)
                 .environmentObject(store)
+                .environment(\.locale, ODLocalization.locale(for: resolvedLanguage))
+                .environment(\.layoutDirection, resolvedLanguage.isRightToLeft ? .rightToLeft : .leftToRight)
                 .preferredColorScheme(store.appearance.colorScheme)
                 .environment(\.odAppearance, store.appearance)
         }
-        .confirmationDialog("End voice conversation?", isPresented: $store.interruptionConfirmationPresented, titleVisibility: .visible) {
-            Button("End voice and continue", role: .destructive) { store.confirmInterruption() }
-            Button("Keep voice conversation", role: .cancel) { store.cancelInterruption() }
+        .confirmationDialog(ODLocalizedString("End voice conversation?"), isPresented: $store.interruptionConfirmationPresented, titleVisibility: .visible) {
+            Button(ODLocalizedString("End voice and continue"), role: .destructive) { store.confirmInterruption() }
+            Button(ODLocalizedString("Keep voice conversation"), role: .cancel) { store.cancelInterruption() }
         } message: {
-            Text("\(store.interruptionReason) needs the shared model or microphone. Your voice conversation will end before continuing.")
+            Text("\(store.interruptionReason) needs the shared model or microphone. Your voice conversation will end before continuing.", bundle: .module)
         }
         .fullScreenCover(isPresented: $store.voiceSessionPresented) {
             voiceWorkspace
                 .environmentObject(store)
+                .environment(\.locale, ODLocalization.locale(for: resolvedLanguage))
+                .environment(\.layoutDirection, resolvedLanguage.isRightToLeft ? .rightToLeft : .leftToRight)
                 .preferredColorScheme(store.appearance.colorScheme)
                 .environment(\.odAppearance, store.appearance)
                 .interactiveDismissDisabled(store.voiceSessionActive)
@@ -188,6 +202,9 @@ public struct OnDeviceWorkbench: View {
         ZStack {
             retained(.home) { ODConversationsHome() }
             retained(.chat) { chatWorkspace }
+            retained(.code) {
+                if let codingContent { codingContent }
+            }
             retained(.lens) {
                 ODLensView(preview: cameraPreview ?? AnyView(ODCameraPlaceholder()), resultContent: lensResultContent)
             }
@@ -214,11 +231,11 @@ public struct OnDeviceWorkbench: View {
         if visited.contains(destination) || store.selectedTab == destination {
             content()
                 .safeAreaInset(edge: .bottom, spacing: 0) {
-                    if [.models, .classifiers, .device, .apiServer].contains(destination) {
+                    if [.models, .device, .apiServer].contains(destination) {
                         ODWorkspaceBottomBar { EmptyView() }
                     }
                 }
-                .environment(\.odWorkspaceVisible, store.selectedTab == destination && !store.conversationsPresented && store.secondaryRoute == nil)
+                .environment(\.odWorkspaceVisible, store.selectedTab == destination && !store.conversationsPresented && !store.voiceSessionPresented && store.secondaryRoute == nil)
                 .animation(ODMotion.fade) { $0.opacity(store.selectedTab == destination ? 1 : 0) }
                 .allowsHitTesting(store.selectedTab == destination)
                 .accessibilityHidden(store.selectedTab != destination)
@@ -272,7 +289,7 @@ private struct ODCameraPlaceholder: View {
             VStack(spacing: ODLayout.labelGap) {
                 Image(systemName: "camera")
                     .font(.largeTitle.weight(.light))
-                Text("Camera preview unavailable")
+                Text("Camera preview unavailable", bundle: .module)
                     .font(.headline)
                     .multilineTextAlignment(.center)
             }

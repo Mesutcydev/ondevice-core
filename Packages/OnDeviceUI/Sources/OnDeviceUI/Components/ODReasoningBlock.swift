@@ -54,7 +54,7 @@ public struct ODReasoningBlock: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityValue(expanded ? "Expanded" : "Collapsed")
+            .accessibilityValue(Text(odKey: expanded ? "Expanded" : "Collapsed"))
             .accessibilityIdentifier("chat.reasoning")
 
             if expanded && isOpen {

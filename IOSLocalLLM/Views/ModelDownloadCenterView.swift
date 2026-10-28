@@ -30,6 +30,7 @@ struct ModelDownloadCenterView: View {
                         } actions: {
                             Button("Browse models") { openModels() }
                                 .buttonStyle(.borderedProminent)
+                                .odInkProminent()
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.top, 52)
@@ -81,6 +82,7 @@ private struct ModelTransferRow: View {
     @State private var cancelConfirmationPresented = false
 
     private var status: String {
+        if downloader.isCancellingDownload { return String(localized: "Canceling download") }
         if downloader.isPreparingModel {
             return downloader.state.isActive ? "Preparing model" : "Preparation paused"
         }
@@ -156,6 +158,7 @@ private struct ModelTransferRow: View {
                 }
                 .buttonStyle(.bordered)
             }
+            .disabled(downloader.isCancellingDownload)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

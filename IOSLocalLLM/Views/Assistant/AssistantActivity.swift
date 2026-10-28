@@ -171,9 +171,10 @@ enum AssistantActivity {
     static func parseToolResult(_ content: String) -> ToolResultPayload? {
         let t = content.trimmingCharacters(in: .whitespacesAndNewlines)
         guard t.hasPrefix("```tool_result") else { return nil }
-        let inner = t
-            .replacingOccurrences(of: "```tool_result", with: "")
-            .replacingOccurrences(of: "```", with: "")
+        // Remove only the envelope. Tool output can itself contain fenced
+        // code; replacing every backtick fence silently corrupts that output.
+        guard t.hasSuffix("```") else { return nil }
+        let inner = String(t.dropFirst("```tool_result".count).dropLast(3))
             .trimmingCharacters(in: .whitespacesAndNewlines)
         guard let data = inner.data(using: .utf8),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]

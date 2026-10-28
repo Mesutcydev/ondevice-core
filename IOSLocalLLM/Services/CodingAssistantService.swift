@@ -77,8 +77,10 @@ struct MLXAssistantExecutionProfile: Equatable, Sendable {
                 cacheLimitBytes: 0
             )
         }
-        if identity.contains("bonsai-27b") {
-            // Bonsai 27B fits as a tightly-bounded text model on high-memory
+        if identity.contains("bonsai-27b") || identity.contains("bonsai-2-9b")
+            || identity.contains("prism_hadamard_qwen35") {
+            // Bonsai 2 uses the same conservative envelope, including renamed
+            // imports identified by architecture. Bonsai 27B fits on high-memory
             // iPhones, but its vision activations do not. A rotating 2K cache
             // and small prefill chunks keep chat below the process
             // watermark while Lens independently chooses a smaller VLM. The
@@ -395,17 +397,25 @@ enum GGUFGenerationProfile: Equatable, Sendable {
 
     /// Prompt budget for message-level trimming. The bridge re-clamps with
     /// exact tokenizer counts, so this estimate only steers trimming.
-    func inputBudget(requestedOutputTokens: Int) -> Int {
+    func inputBudget(requestedOutputTokens: Int, retainingRecentSource: Bool = false) -> Int {
         switch self {
         case .compact:
             return Self.compactInputBudget
         case .standard:
             // Adaptive split: the reply may grow up to the window minus the
             // reserved prompt space, and the prompt keeps whatever remains.
-            let outputReserve = min(
+            var outputReserve = min(
                 max(1, requestedOutputTokens),
                 Self.standardContextTokens - Self.standardReservedInputTokens - 16
             )
+            // MiniCPM bounds the reply with its exact tokenizer after prefill.
+            // Reserving a long requested reply here used to discard preceding
+            // code even when the code and a brief follow-up fit the context.
+            // Keep at least half the existing window for source material;
+            // this does not lower the user's requested output limit.
+            if retainingRecentSource {
+                outputReserve = min(outputReserve, Self.standardContextTokens / 2)
+            }
             return max(256, Self.standardContextTokens - outputReserve - 16)
         }
     }
@@ -711,7 +721,8 @@ final class CodingAssistantService: ObservableObject {
         }
         if isLlamaCppExecution {
             return ggufProfile.inputBudget(
-                requestedOutputTokens: effectiveGenerationSettings.maxTokens
+                requestedOutputTokens: effectiveGenerationSettings.maxTokens,
+                retainingRecentSource: usesMiniCPMStreamingText || MiniCPMV47Catalog.is35B(activeModel.repoID)
             )
         }
         let executionProfile = activeExecutionProfile
@@ -752,6 +763,18 @@ final class CodingAssistantService: ObservableObject {
         case .ready, .generating: return true
         case .unloaded, .loading, .failed: return false
         }
+    }
+
+    /// API workspace loads must use installed files. A missing model belongs
+    /// in Models, where the user can explicitly start and observe a download.
+    var selectedModelIsInstalled: Bool {
+        guard !activeExecutionLocation.isCloud else { return false }
+        if activeExecutionLocation == .localSystem { return true }
+        if activeExecutionLocation == .localCoreAI {
+            return CoreAIModelStore.shared.installedModel(id: activeModel.id) != nil
+        }
+        guard let directory = Self.preStagedDirectory(for: activeModel) else { return false }
+        return activeModel.runtime != .llamaCpp || LocalModelFileValidator.ggufLLM(in: directory) != nil
     }
 
     private var container: ModelContainer?
@@ -802,6 +825,8 @@ final class CodingAssistantService: ObservableObject {
         container ?? LensInferenceLoop.shared.sharedContainer(for: activeModel.repoID)
     }
     private var ggufModel: LlamaCppVLM?
+    /// A cosmetic title must not queue another storage-heavy 35B inference.
+    var usesMiniCPMStreamingText: Bool { ggufModel?.usesMiniCPMStreamingText == true }
     private var generateTask: Task<Void, Never>?
     private var pccGenerateTask: Task<Void, Never>?
     private var coreAIGenerateTask: Task<Void, Never>?
@@ -819,7 +844,7 @@ final class CodingAssistantService: ObservableObject {
     /// Bumped by `stopGeneration`. A request parked waiting for a busy or
     /// loading runtime captures it and drops itself if Stop ran meanwhile,
     /// so a queued send can't start decoding after the user stopped.
-    private var stopEpoch = 0
+    private(set) var stopEpoch = 0
     private var activePCCRequestID: UUID?
     /// Identity of the MLX load currently allowed to publish a container.
     /// Model loading itself cannot be interrupted safely, so an unload/model
@@ -831,7 +856,11 @@ final class CodingAssistantService: ObservableObject {
     /// newer generation ready.
     private var activeGGUFGenerationID: UUID?
     private var memoryWarningObserver: NSObjectProtocol?
+    private var defaultModelObserver: NSObjectProtocol?
+    /// The saved default as last seen, so a change can be told from noise.
+    private var observedDefaultModelID = AppSettings.shared.assistantModelID
     private var isTransitioning = false
+    private var adoptRequest = 0
     /// Highest load-progress fraction seen during the active load().
     /// Progress callbacks hop to the MainActor via unordered `Task`s,
     /// so without this monotonic guard percentages can render out of order.
@@ -872,12 +901,29 @@ final class CodingAssistantService: ObservableObject {
             // is to free the easiest-to-reclaim GPU buffers and keep running.
             Task { await MLXGenerationGate.shared.clearCacheWhenIdle() }
         }
+        // The default changes in many places (first-launch tier pick, model
+        // setup, "use for new chats", repairs). An idle selection that was
+        // still the old default follows it, so the first send loads the new
+        // one instead of the stale model (see followDefaultSelection).
+        defaultModelObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                let current = AppSettings.shared.assistantModelID
+                guard current != self.observedDefaultModelID else { return }
+                let previous = self.observedDefaultModelID
+                self.observedDefaultModelID = current
+                await self.followDefaultSelection(from: previous)
+            }
+        }
     }
 
     deinit {
         if let o = memoryWarningObserver {
             NotificationCenter.default.removeObserver(o)
         }
+        if let defaultModelObserver { NotificationCenter.default.removeObserver(defaultModelObserver) }
         generateTask?.cancel()
         pccGenerateTask?.cancel()
         coreAIGenerateTask?.cancel()
@@ -1136,7 +1182,7 @@ final class CodingAssistantService: ObservableObject {
     // MARK: - System prompt
 
     nonisolated static let systemPrompt = """
-    You are an expert coding assistant running entirely on-device in OnDevice.
+    You are an expert coding assistant running entirely on-device in Token AI.
 
     Your capabilities:
     • Code completion, generation, and refactoring across all languages
@@ -1152,7 +1198,8 @@ final class CodingAssistantService: ObservableObject {
     - If a file, API, or fact is not in the conversation, say so — do not invent it
     - Prefer clarity over cleverness; name things explicitly
     - Cite the specific line/pattern when reviewing
-    - Use markdown with fenced code blocks and language tags
+    - Use Markdown with fenced code blocks and language tags by default.
+      Follow the user's requested output format; omit fences when requested.
     - Put a blank line between paragraphs and use Markdown bullets or numbered
       lists for multiple items. Never run headings, labels, or list items
       together without whitespace.
@@ -1175,7 +1222,8 @@ final class CodingAssistantService: ObservableObject {
     """
 
     nonisolated static let responseFormattingPrompt = """
-    Format every answer for a narrow mobile screen. Put a blank line between
+    Follow the user's requested output format. When no format is specified,
+    format the answer for a narrow mobile screen. Put a blank line between
     paragraphs. When presenting multiple fields, choices, steps, or facts, use
     a Markdown bullet or numbered list with one item per line. Never concatenate
     a heading, label, sentence, or list item directly into the next one.
@@ -1221,20 +1269,20 @@ final class CodingAssistantService: ObservableObject {
                      AIContentPolicy.textInstructions]
         if compact {
             parts.append("""
-            You are the assistant in OnDevice Max. Today is \(today). \
+            You are the assistant in Token AI. Today is \(today). \
             Reply in the user's language.\(languageLine) Answer first and keep it short. \
-            \(context.spoken ? "" : "Use short paragraphs and one list item per line. ")\(grounding)
+            \(context.spoken ? "" : "Follow the user's requested output format. Otherwise use short paragraphs and one list item per line. ")\(grounding)
             """)
         } else {
             var rules = ["- Answer first, then only the detail that helps. Match the length to the question."]
             if !context.spoken {
-                rules.append("- Format for a phone screen: short paragraphs with blank lines between them, one list item per line, and fenced code blocks with a language tag.")
+                rules.append("- Follow the user's requested output format, including raw code or JSON without Markdown fences. Otherwise format for a phone screen: short paragraphs with blank lines between them, one list item per line, and fenced code blocks with a language tag.")
                 rules.append("- Write math in plain text or Unicode (×, ÷, √, x²), not LaTeX.")
             }
             rules.append("- For facts about the user, their files or current events, rely only on this conversation, attached files, and tool or web results. \(grounding)")
             parts.append("""
             Context:
-            - You are the assistant in OnDevice Max.
+            - You are the assistant in Token AI.
             - Today is \(today).
             - Reply in the language the user writes in.\(languageLine)
 
@@ -1711,6 +1759,15 @@ final class CodingAssistantService: ObservableObject {
             state = .failed(restriction)
             return
         }
+        let requestedGGUF = !LFM3Catalog.isEnabled && requested.runtime == .llamaCpp
+            ? (Self.preStagedDirectory(for: requested)
+                .flatMap { LocalModelFileValidator.ggufLLM(in: $0)?.lastPathComponent } ?? "")
+            : ""
+        if let reason = LFM3Catalog.unavailableReason(for: requested.repoID)
+            ?? LFM3Catalog.unavailableReason(for: requestedGGUF) {
+            state = .failed(reason)
+            return
+        }
         if activeExecutionLocation == .applePrivateCloud {
             await refreshApplePrivateCloudStatus()
             return
@@ -1750,6 +1807,7 @@ final class CodingAssistantService: ObservableObject {
         // Resolve `model_type: nanbeige` before MLX reads config.json.
         // Registration is actor-isolated and idempotent.
         await NanbeigeMLXRegistration.register()
+        await Bonsai2MLXRegistration.register()
         guard activeLoadID == loadID, !Task.isCancelled else { return }
 
         // Loading/generation cannot be re-entered. A `.ready` state is only a
@@ -1934,7 +1992,9 @@ final class CodingAssistantService: ObservableObject {
         if isLlamaCppExecution {
             guard let directory = Self.preStagedDirectory(for: activeModel),
                   let modelURL = LocalModelFileValidator.ggufLLM(in: directory) else {
-                state = .failed("The imported GGUF file could not be found on disk.")
+                state = .failed(activeModel.repoID == LFM3Catalog.text.repoID
+                    ? "Download LFM3 from Models before selecting it for chat."
+                    : "The imported GGUF file could not be found on disk.")
                 return
             }
             if let reason = DeviceSafetyMonitor.shared.stopReason {
@@ -1957,7 +2017,24 @@ final class CodingAssistantService: ObservableObject {
                     fileBytes: fileBytes,
                     pagingEnabled: AppSettings.shared.largeModelLowMemoryEnabled
                 )
-                let minimumNeeded = loadPolicy.minimumAvailableBytes
+                let runtimeIdentity = MiniCPMV47Catalog.runtimeIdentity(repoID: activeModel.repoID,
+                    modelPath: modelURL.path, hasStreamingReceipt: MiniCPMV47Artifacts.isPrepared(in: directory))
+                let usesMiniCPM35B = MiniCPMV47Catalog.is35B(runtimeIdentity)
+                let miniCPMTextProfile = MiniCPM35BTextProfile.resolve(
+                    availableMemory: available,
+                    isThermallyNominal: DeviceSafetyMonitor.shared.effectiveThermalState == .nominal,
+                    isLowPowerMode: DeviceSafetyMonitor.shared.lowPowerMode,
+                    hasPressureCooldown: MemoryAdvisor.pressureCooldownRemaining != nil
+                )
+                if usesMiniCPM35B {
+                    guard MemoryAdvisor.deviceTotalRAM >= MiniCPMV47Catalog.minimum35BPhysicalMemory else {
+                        throw RuntimeError.modelLoadBlocked(reason: "MiniCPM 35B requires a device with at least 12 GB RAM. Choose the 1B model on this device.")
+                    }
+                    try MiniCPMV47Artifacts.validate(in: directory)
+                }
+                let minimumNeeded = usesMiniCPM35B
+                    ? max(loadPolicy.minimumAvailableBytes, miniCPMTextProfile.minimumAvailableBytes)
+                    : loadPolicy.minimumAvailableBytes
                 guard GGUFLoadAdmission.shouldAdmit(
                     fileBytes: fileBytes,
                     available: available,
@@ -1979,7 +2056,9 @@ final class CodingAssistantService: ObservableObject {
                         llmPath: modelURL.path,
                         nThreads: 4,
                         contextSize: context,
-                        gpuLayers: gpuLayers
+                        gpuLayers: gpuLayers,
+                        allowMiniCPMStreamingText: usesMiniCPM35B,
+                        miniCPMTextCacheSlots: miniCPMTextProfile.cacheSlots
                     )
                 }.value
                 guard activeLoadID == loadID, activeModel.id == loadingModel.id else {
@@ -2041,15 +2120,16 @@ final class CodingAssistantService: ObservableObject {
 
         let loadingModel = activeModel
 
-        let isDualRole = DualRoleModelPolicy.isTextAndVision(repoID: loadingModel.repoID)
+        let isDualRole = isMLXExecution && DualRoleModelPolicy.isTextAndVision(
+            repoID: loadingModel.repoID,
+            directory: Self.preStagedDirectory(for: loadingModel)
+        )
         let requiredVisionBytes = isDualRole
             ? LensInferenceLoop.requiredVisionLoadBytes(repoID: loadingModel.repoID)
             : 0
         let availableBytes = UInt64(max(0, MemoryAdvisor.availableMemoryForModel))
-        let shouldShareVisionRuntime = DualRoleModelPolicy.shouldShareRuntime(
-            isDualRole: isDualRole,
-            selectionsMatch: isDualRole
-                && DualRoleModelPolicy.selectionsMatch(repoID: loadingModel.repoID),
+        let shouldShareVisionRuntime = AssistantVisionPolicy.shouldLoadSharedRuntime(
+            isSupportedMultimodal: isDualRole,
             requiredVisionBytes: requiredVisionBytes,
             availableBytes: availableBytes
         )
@@ -2559,12 +2639,12 @@ final class CodingAssistantService: ObservableObject {
                     onComplete(0)
                     return
                 }
-                if case .loading = state {
-                    // Another caller is already loading — wait it out, with a
-                    // deadline so a wedged load (network stall, HubApi hang)
-                    // can't spin this poll forever and freeze the send.
+                if self.isLoadingOrSwitching {
+                    // Another caller is already loading or switching — wait it
+                    // out, with a deadline so a wedged load (network stall,
+                    // HubApi hang) can't spin this poll forever and freeze the send.
                     let deadline = Date().addingTimeInterval(60)
-                    while case .loading = self.state, self.stopEpoch == epoch {
+                    while self.isLoadingOrSwitching, self.stopEpoch == epoch {
                         if Date() >= deadline {
                             onError?("Timed out waiting for the model to load")
                             onComplete(0)
@@ -2573,7 +2653,12 @@ final class CodingAssistantService: ObservableObject {
                         try? await Task.sleep(nanoseconds: 100_000_000)
                     }
                 } else if state != .ready {
-                    await self.load()
+                    // Load the model this request was made for. It can differ
+                    // from the saved default (a conversation's own model, or
+                    // one restored after voice mode); reselecting the default
+                    // here made every send after backgrounding fail the
+                    // parked-request check below.
+                    await self.load(reselectFromSettings: false)
                 }
                 guard self.parkedRequestMayStart(epoch: epoch, model: model, onError: onError) else {
                     onComplete(0)
@@ -2770,7 +2855,8 @@ final class CodingAssistantService: ObservableObject {
             : effectiveMessages
         let deviceContextCap = (DeviceTierAdvisor.current == .max) ? 16_384 : 8_192
         let inputBudget = isImportedGGUF
-            ? ggufProfile.inputBudget(requestedOutputTokens: safeMaxTokens)
+            ? ggufProfile.inputBudget(requestedOutputTokens: safeMaxTokens,
+                                      retainingRecentSource: usesMiniCPMStreamingText)
             : executionProfile.inputBudget(
                 modelContextWindowTokens: activeModel.contextWindowTokens,
                 deviceContextCap: deviceContextCap,
@@ -2827,15 +2913,15 @@ final class CodingAssistantService: ObservableObject {
             let generationID = UUID()
             activeGGUFGenerationID = generationID
             let loggedFirstToken = OSAllocatedUnfairLock(initialState: false)
-            // Only the recurrent Gemma quants keep the hard 128-token output
-            // cap; other imported GGUFs follow the user's setting (already
-            // clamped by the thermal advisor in safeMaxTokens, and by the
-            // remaining context inside the bridge).
+            // Follow the user's response setting and thermal limit. Native
+            // backends also bound output by the exact remaining context; the
+            // MiniCPM text path must not inherit Lens's 256-token response cap.
+            let usesMiniCPM35B = ggufModel.usesMiniCPMStreamingText
             let ggufMaxTokens = ggufProfile.clampedOutputTokens(safeMaxTokens)
             let ggufPrompt = ggufProfile.prompt(
                 from: trimmedMessages,
-                template: template,
-                enableThinking: enableThinking,
+                template: usesMiniCPM35B ? .qwen3 : template,
+                enableThinking: usesMiniCPM35B ? false : enableThinking,
                 leaveLastAssistantOpen: resumeTruncatedReply
             )
             replyStartsInsideThinking = ggufPrompt
@@ -2874,6 +2960,31 @@ final class CodingAssistantService: ObservableObject {
                     }
                 }
             }
+            let miniCPMPromptMemory = MemoryAdvisor.memorySnapshot
+            let miniCPMAllowPrefixCache = usesMiniCPM35B
+                && MiniCPM35BTextProfile.allowsPrefixCache(
+                    availableMemory: miniCPMPromptMemory.available,
+                    processMemoryCeiling: miniCPMPromptMemory.ceiling,
+                    cacheSlots: ggufModel.miniCPMStreamingCacheSlots,
+                    thermalState: DeviceSafetyMonitor.shared.effectiveThermalState,
+                    isLowPowerMode: DeviceSafetyMonitor.shared.lowPowerMode,
+                    hasPressureCooldown: MemoryAdvisor.pressureCooldownRemaining != nil)
+            let miniCPMMaximumMicrobatch = usesMiniCPM35B
+                ? MiniCPM35BTextProfile.maximumPromptMicrobatch(
+                    availableMemory: miniCPMPromptMemory.available,
+                    processMemoryCeiling: miniCPMPromptMemory.ceiling,
+                    cacheSlots: ggufModel.miniCPMStreamingCacheSlots,
+                    thermalState: DeviceSafetyMonitor.shared.effectiveThermalState,
+                    isLowPowerMode: DeviceSafetyMonitor.shared.lowPowerMode,
+                    hasPressureCooldown: MemoryAdvisor.pressureCooldownRemaining != nil,
+                    reservingPrefixCache: miniCPMAllowPrefixCache)
+                : 128
+            if usesMiniCPM35B {
+                Diagnostics.shared.breadcrumb(
+                    "MiniCPM prompt policy · maximumBatch=\(miniCPMMaximumMicrobatch) · thermal=\(DeviceSafetyMonitor.shared.effectiveThermalState.rawValue) · lowPower=\(DeviceSafetyMonitor.shared.lowPowerMode) · pressureCooldown=\(MemoryAdvisor.pressureCooldownRemaining != nil)",
+                    category: "assistant"
+                )
+            }
             generateTask = Task.detached(priority: .userInitiated) {
                 defer { ggufThermalTask.cancel() }
                 do {
@@ -2907,6 +3018,8 @@ final class CodingAssistantService: ObservableObject {
                             maxTokens: ggufMaxTokens,
                             sampler: ggufSampler,
                             reuseContext: reuseGGUFContext,
+                            miniCPMMaximumMicrobatch: miniCPMMaximumMicrobatch,
+                            miniCPMAllowPrefixCache: miniCPMAllowPrefixCache,
                             onToken: emitToken
                         )
                     }()
@@ -2928,7 +3041,7 @@ final class CodingAssistantService: ObservableObject {
                         if ownsState {
                             service.tokenRate = rate
                             service.lastGenerationHitTokenLimit = result.hitTokenLimit
-                            service.canResumeFromCache = reuseGGUFContext && result.hitTokenLimit
+                            service.canResumeFromCache = ggufModel.hasContinuableCache && result.hitTokenLimit
                             service.lastPromptTokens = result.promptTokens
                             service.lastOutputTokens = result.outputTokens
                             service.estimatedInputTokens = result.promptTokens
@@ -4095,6 +4208,11 @@ final class CodingAssistantService: ObservableObject {
         cancelBackendGeneration()
     }
 
+    private var isLoadingOrSwitching: Bool {
+        if case .loading = state { return true }
+        return isTransitioning
+    }
+
     /// Rechecks a request that waited for a busy or loading runtime. Stop
     /// drops it silently, like a running decode; a model switch reports an
     /// error rather than answering with a model the caller didn't pick.
@@ -4298,6 +4416,15 @@ final class CodingAssistantService: ObservableObject {
         _ model: AssistantModel,
         persistAsDefault: Bool = true
     ) async {
+        let modelGGUF = !LFM3Catalog.isEnabled && model.runtime == .llamaCpp
+            ? (Self.preStagedDirectory(for: model)
+                .flatMap { LocalModelFileValidator.ggufLLM(in: $0)?.lastPathComponent } ?? "")
+            : ""
+        if let reason = LFM3Catalog.unavailableReason(for: model.repoID)
+            ?? LFM3Catalog.unavailableReason(for: modelGGUF) {
+            ToastCenter.shared.error("Model runtime unavailable", detail: reason)
+            return
+        }
         // MLX package loading is intentionally non-interruptible: invalidating
         // activeLoadID only prevents a late result from publishing; it does
         // not stop the loader from allocating the model. Starting a switch
@@ -4470,12 +4597,37 @@ final class CodingAssistantService: ObservableObject {
     /// the picker back — generate()'s lazy-load path brings the model
     /// up on the next send instead.
     func adoptSelectionWithoutLoading(_ model: AssistantModel) async {
+        adoptRequest &+= 1
+        let request = adoptRequest
         await unloadAndWaitForCleanup()
+        // Opening chats in quick succession: the last selection wins.
+        guard request == adoptRequest else { return }
         activeModel = model
         activeExecutionLocation = ModelExecutionLocation.of(
             assistantModelID: model.id
         )
         refreshVisionChatCapability()
+    }
+
+    /// A new default replaces a live selection that was still the old
+    /// default, without loading weights, so the next send loads the model
+    /// the user sees. A conversation's own model, or a resident or loading
+    /// one, stays: `generate()` loads the request's model, not the default.
+    private func followDefaultSelection(from previousDefaultID: String) async {
+        let next = AppSettings.shared.assistantModelID
+        guard next != previousDefaultID, !next.hasPrefix("api:"), next != ApplePrivateCloud.modelID,
+              !isTransitioning, !loadCoordinator.isLoading else { return }
+        switch state {
+        case .unloaded, .failed: break
+        default: return
+        }
+        // Resolve the old default the way `currentSelection()` did.
+        let previous = previousDefaultID.hasPrefix("api:") || previousDefaultID == ApplePrivateCloud.modelID
+            ? previousDefaultID
+            : (AssistantModelCatalog.selection(forStoredID: previousDefaultID) ?? AssistantModelCatalog.presets[0]).id
+        let model = AssistantModelCatalog.currentSelection()
+        guard activeSelectionID == previous, model.id != previous else { return }
+        await adoptSelectionWithoutLoading(model)
     }
 
     // MARK: - LoRA Adapter Support (Feature #9)

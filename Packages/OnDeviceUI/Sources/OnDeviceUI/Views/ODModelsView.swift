@@ -52,9 +52,9 @@ struct ODModelsView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     modelActions
                     VStack(alignment: .leading, spacing: 12) {
-                        Picker("Model library", selection: $scope) {
+                        Picker(ODLocalizedString("Model library"), selection: $scope) {
                             ForEach(ODModelScope.allCases) { option in
-                                Text(option.title).tag(option).accessibilityIdentifier("models.scope.\(option.rawValue)")
+                                Text(odKey: option.title).tag(option).accessibilityIdentifier("models.scope.\(option.rawValue)")
                             }
                         }
                         .pickerStyle(.segmented).accessibilityIdentifier("models.scope")
@@ -86,7 +86,7 @@ struct ODModelsView: View {
                         }
                         .buttonStyle(ODPressButtonStyle())
                         .disabled(!store.canPerformActions)
-                        .accessibilityHint("Opens the on-device model pack catalog")
+                        .accessibilityHint(Text("Opens the on-device model pack catalog", bundle: .module))
                         .accessibilityIdentifier("models.corePacks")
                     }
 
@@ -95,7 +95,7 @@ struct ODModelsView: View {
                     } else {
                         LazyVStack(alignment: .leading, spacing: 8) {
                             HStack(alignment: .firstTextBaseline) {
-                                Text(scope == .installed ? "Downloaded" : "Available to download")
+                                Text(odKey: scope == .installed ? "Downloaded" : "Available to download")
                                     .font(.headline).foregroundStyle(ODPalette.text)
                                     .accessibilityAddTraits(.isHeader)
                                 Spacer()
@@ -141,7 +141,7 @@ struct ODModelsView: View {
                 .frame(maxWidth: .infinity)
             }
             .background { Color(uiColor: .systemGroupedBackground).ignoresSafeArea() }
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search models")
+            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: Text("Search models", bundle: .module))
             .searchFocused($searchFocused)
             .onSubmit(of: .search) { searchFocused = false }
             .onChange(of: store.conversationsPresented) { _, open in
@@ -151,7 +151,7 @@ struct ODModelsView: View {
                 if destination != .models { searchFocused = false }
             }
             .scrollDismissesKeyboard(.interactively)
-            .navigationTitle("Models")
+            .odNavigationTitle("Models")
             .toolbar {
                 if !sidebarPinned {
                     ToolbarItem(placement: .topBarLeading) {
@@ -175,16 +175,16 @@ struct ODModelsView: View {
                 .navigationTransition(.zoom(sourceID: model.id, in: modelZoom))
             }
             .confirmationDialog(
-                "Use model in",
+                ODLocalizedString("Use model in"),
                 isPresented: $showsUseDestinations,
                 titleVisibility: .visible,
                 presenting: useDestinationModel
             ) { model in
-                Button("Assistant") {
+                Button(ODLocalizedString("Assistant")) {
                     store.send(.loadModelInWorkspace(model.id, .language))
                 }
                 .accessibilityIdentifier("model.use.assistant.\(model.id)")
-                Button("Lens") {
+                Button(ODLocalizedString("Lens")) {
                     store.send(.loadModelInWorkspace(model.id, .vision))
                 }
                 .accessibilityIdentifier("model.use.lens.\(model.id)")
@@ -207,7 +207,7 @@ struct ODModelsView: View {
             store.send(.importModel)
         }
         .disabled(!store.canPerformActions)
-        .accessibilityHint("Choose a model from Files")
+        .accessibilityHint(Text("Choose a model from Files", bundle: .module))
         .accessibilityIdentifier("models.import")
 
         ODModelTopAction(title: "Downloads", symbol: "arrow.down.circle", count: transferCount) {
@@ -219,15 +219,15 @@ struct ODModelsView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label(emptyTitle, systemImage: kind?.symbol ?? "cube")
+            Label(ODLocalizedString(key: emptyTitle), systemImage: kind?.symbol ?? "cube")
         } description: {
-            Text(emptyDetail)
+            Text(odKey: emptyDetail)
         } actions: {
             if !searchText.isEmpty || kind != nil {
-                Button("Clear filters") { searchText = ""; kind = nil }
+                Button(ODLocalizedString("Clear filters")) { searchText = ""; kind = nil }
                     .buttonStyle(.glass)
             } else if scope == .installed {
-                Button("Find a model") { scope = .discover }
+                Button(ODLocalizedString("Find a model")) { scope = .discover }
                     .buttonStyle(.glassProminent).odInkProminent()
             }
         }
@@ -286,7 +286,7 @@ private struct ODModelTopAction: View {
         Button(action: action) {
             HStack(spacing: 8) {
                 Image(systemName: symbol).accessibilityHidden(true)
-                Text(title)
+                Text(odKey: title)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 if count > 0 {
@@ -305,7 +305,7 @@ private struct ODModelTopAction: View {
         }
         .buttonStyle(ODPressButtonStyle())
         .frame(maxWidth: .infinity)
-        .accessibilityLabel(count > 0 ? "\(title), \(count) active" : title)
+        .accessibilityLabel(count > 0 ? Text("\(Text(odKey: title)), \(count) active", bundle: .module) : Text(odKey: title))
     }
 }
 
@@ -326,7 +326,7 @@ private struct ODCapabilityChips: View {
         }
         .scrollIndicators(.hidden)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Capability")
+        .accessibilityLabel(Text("Capability", bundle: .module))
         .accessibilityIdentifier("models.capability")
     }
 
@@ -334,7 +334,7 @@ private struct ODCapabilityChips: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 if let symbol { Image(systemName: symbol).font(.footnote.weight(.medium)).accessibilityHidden(true) }
-                Text(title).font(.subheadline.weight(.medium))
+                Text(odKey: title).font(.subheadline.weight(.medium))
             }
             .foregroundStyle(selected ? ODPalette.onSend : ODPalette.text)
             .padding(.horizontal, 14)
@@ -345,7 +345,7 @@ private struct ODCapabilityChips: View {
             .contentShape(Capsule())
         }
         .buttonStyle(ODPressButtonStyle())
-        .accessibilityLabel(title)
+        .accessibilityLabel(Text(odKey: title))
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityIdentifier("models.capability.\(id)")
     }
@@ -362,8 +362,8 @@ private struct ODLibraryRow: View {
         HStack(spacing: 12) {
             ODModelIconTile(symbol: symbol)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.body.weight(.semibold)).foregroundStyle(ODPalette.text)
-                Text(detail).font(.footnote).foregroundStyle(ODPalette.secondary)
+                Text(odKey: title).font(.body.weight(.semibold)).foregroundStyle(ODPalette.text)
+                Text(odKey: detail).font(.footnote).foregroundStyle(ODPalette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -402,21 +402,12 @@ private struct ODModelBrandTile: View {
         case "qwen": return "Q"
         case "meta": return "M"
         case "google": return "G"
-        case "huggingFace", "ggmlOrg": return "🙂"
+        case "huggingFace", "ggmlOrg": return "H"
         case "apple": return "A"
         case "mistral": return "M"
         default: return nil
         }
     }
-    private var colors: [Color] {
-        switch vendor {
-        case "qwen": return [Color(red: 0.49, green: 0.41, blue: 0.98), Color(red: 0.32, green: 0.27, blue: 0.83)]
-        case "meta": return [Color(red: 0.29, green: 0.53, blue: 0.95), Color(red: 0.14, green: 0.32, blue: 0.73)]
-        case "huggingFace", "ggmlOrg": return [Color(red: 1, green: 0.78, blue: 0.37), Color(red: 0.99, green: 0.59, blue: 0.23)]
-        default: return [Color(red: 0.35, green: 0.48, blue: 0.64), Color(red: 0.21, green: 0.31, blue: 0.45)]
-        }
-    }
-
     var body: some View {
         Group {
             if let mark {
@@ -426,8 +417,9 @@ private struct ODModelBrandTile: View {
             }
         }
         .frame(width: 48, height: 48)
-        .background(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing),
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        // Ink plate like the app icon, so vendor marks sit inside the Token identity.
+        .background(Color(red: 0.043, green: 0.047, blue: 0.063), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5) }
         .accessibilityHidden(true)
     }
 }
@@ -455,7 +447,7 @@ private struct ODModelBadge: View {
     }
 
     var body: some View {
-        Label(title, systemImage: symbol)
+        Label(ODLocalizedString(key: title), systemImage: symbol)
             .font(.caption2.weight(.semibold))
             .foregroundStyle(tint)
             .padding(.horizontal, 8)
@@ -504,7 +496,7 @@ private struct ODModelCard: View {
                                     .fixedSize()
                             }
                         }
-                        Text(model.isInstalled && !model.isSelectable && model.kind != .classifier
+                        Text(odKey: model.isInstalled && !model.isSelectable && model.kind != .classifier
                              ? "Installed · runtime unavailable"
                              : (summary.isEmpty ? model.workspaceLabel : summary))
                             .font(.subheadline)
@@ -513,7 +505,7 @@ private struct ODModelCard: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                         if model.declaredKinds.contains(.language)
                             && model.declaredKinds.contains(.vision) {
-                            Text(model.workspaceLabel)
+                            Text(odKey: model.workspaceLabel)
                                 .font(.caption.weight(.medium))
                                 .foregroundStyle(ODPalette.secondary)
                         }
@@ -536,8 +528,8 @@ private struct ODModelCard: View {
                 .accessibilityElement(children: .combine)
             }
             .buttonStyle(ODPressButtonStyle())
-            .accessibilityLabel("Details for \(model.name)")
-            .accessibilityValue(isSelected ? "Current model" : model.badges.joined(separator: ", "))
+            .accessibilityLabel(Text("Details for \(model.name)", bundle: .module))
+            .accessibilityValue(Text(odKey: isSelected ? "Current model" : model.badges.joined(separator: ", ")))
             .accessibilityIdentifier("model.row.\(model.id)")
 
             ODHairline().padding(.horizontal, 14)
@@ -553,11 +545,11 @@ private struct ODModelCard: View {
         }
         .animation(ODMotion.fade, value: phase)
         .animation(ODMotion.fade, value: model.downloadStatus == nil)
-        .confirmationDialog("Cancel download of \(model.name)?",
+        .confirmationDialog(ODLocalizedString("Cancel download of \(model.name)?"),
                             isPresented: $cancelConfirmationPresented, titleVisibility: .visible) {
-            Button("Cancel download", role: .destructive, action: onCancel)
+            Button(ODLocalizedString("Cancel download"), role: .destructive, action: onCancel)
         } message: {
-            Text("Downloaded files for this model will be removed. You can download it again later.")
+            Text("Downloaded files for this model will be removed. You can download it again later.", bundle: .module)
         }
     }
 
@@ -566,9 +558,9 @@ private struct ODModelCard: View {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
-                        Text(status).font(.footnote.weight(.medium)).foregroundStyle(ODPalette.text)
+                        Text(odKey: status).font(.footnote.weight(.medium)).foregroundStyle(ODPalette.text)
                         if let progress = model.downloadProgress, progress.isFinite {
-                            Text("\(Int((progress * 100).rounded()))%")
+                            Text("\(Int((progress * 100).rounded()))%", bundle: .module)
                                 .font(.footnote.monospacedDigit()).foregroundStyle(ODPalette.secondary)
                         }
                     }
@@ -577,10 +569,10 @@ private struct ODModelCard: View {
                             $0.isFinite ? min(1, max(0, $0)) : nil
                         })
                             .tint(ODPalette.text)
-                            .accessibilityLabel(model.downloadDetail == nil ? "Model download progress" : "Model preparation progress")
+                            .accessibilityLabel(Text(odKey: model.downloadDetail == nil ? "Model download progress" : "Model preparation progress"))
                     }
                     if let detail = model.downloadDetail {
-                        Text(detail).font(.footnote).foregroundStyle(ODPalette.secondary)
+                        Text(odKey: detail).font(.footnote).foregroundStyle(ODPalette.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -600,11 +592,11 @@ private struct ODModelCard: View {
             .transition(.opacity)
         } else if showsDownload {
             HStack(spacing: 12) {
-                Text("Available to download")
+                Text("Available to download", bundle: .module)
                     .font(.footnote).foregroundStyle(ODPalette.secondary)
                 Spacer(minLength: 8)
                 Button(action: onDownload) {
-                    Label("Download", systemImage: "arrow.down")
+                    Label(ODLocalizedString("Download"), systemImage: "arrow.down")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(ODPalette.onSend)
                         .padding(.horizontal, 16)
@@ -615,7 +607,7 @@ private struct ODModelCard: View {
                 }
                 .buttonStyle(ODPressButtonStyle())
                 .disabled(!canPerformActions)
-                .accessibilityLabel("Download \(model.name)")
+                .accessibilityLabel(Text("Download \(model.name)", bundle: .module))
                 .accessibilityIdentifier("model.download.\(model.id)")
             }
             .transition(.opacity)
@@ -624,10 +616,10 @@ private struct ODModelCard: View {
                 statusLabel
                 Spacer(minLength: 8)
                 if isSelected && model.supportedKinds.count == 1 {
-                    Text("Current")
+                    Text("Current", bundle: .module)
                         .font(.footnote.weight(.semibold)).foregroundStyle(ODPalette.text)
                 } else if model.isInstalled {
-                    Button(model.isSelectable ? "Use" : "Manage") { onUse() }
+                    Button(ODLocalizedString(key: model.isSelectable ? "Use" : "Manage")) { onUse() }
                         .font(.subheadline.weight(.semibold))
                         .buttonStyle(ODPressButtonStyle())
                         .disabled(!canPerformActions || phase.isPreparing)
@@ -641,15 +633,15 @@ private struct ODModelCard: View {
     @ViewBuilder private var statusLabel: some View {
         switch phase {
         case .ready:
-            Label { Text("Loaded") } icon: { Circle().fill(ODPalette.text).frame(width: 7, height: 7) }
+            Label { Text("Loaded", bundle: .module) } icon: { Circle().fill(ODPalette.text).frame(width: 7, height: 7) }
                 .font(.footnote.weight(.medium)).foregroundStyle(ODPalette.text)
         case .preparing:
-            Text("Preparing").font(.footnote.weight(.medium)).foregroundStyle(ODPalette.secondary).odShimmer()
+            Text("Preparing", bundle: .module).font(.footnote.weight(.medium)).foregroundStyle(ODPalette.secondary).odShimmer()
         case .failed:
-            Label("Needs attention", systemImage: "exclamationmark.circle.fill")
+            Label(ODLocalizedString("Needs attention"), systemImage: "exclamationmark.circle.fill")
                 .font(.footnote.weight(.medium)).foregroundStyle(ODPalette.red)
         case .unloaded:
-            Label(model.isInstalled ? "Installed" : (model.unavailableReason == nil ? "Not installed" : "Unavailable on this device"),
+            Label(ODLocalizedString(key: model.isInstalled ? "Installed" : (model.unavailableReason == nil ? "Not installed" : "Unavailable on this device")),
                   systemImage: model.isInstalled ? "checkmark.circle" : "icloud.and.arrow.down")
                 .font(.footnote).foregroundStyle(ODPalette.secondary)
         }
@@ -667,7 +659,7 @@ private struct ODModelCard: View {
         }
         .buttonStyle(ODPressButtonStyle())
         .disabled(!canPerformActions)
-        .accessibilityLabel(label)
+        .accessibilityLabel(Text(odKey: label))
         .accessibilityIdentifier(id)
     }
 }
@@ -685,9 +677,9 @@ struct ODWorkspaceLinkLabel: View {
                 .font(.subheadline).foregroundStyle(ODPalette.secondary)
                 .frame(minWidth: ODLayout.groupGap).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: ODLayout.unit) {
-                Text(title).font(.subheadline).foregroundStyle(ODPalette.text)
+                Text(odKey: title).font(.subheadline).foregroundStyle(ODPalette.text)
                 if let detail {
-                    Text(detail).font(.caption).foregroundStyle(ODPalette.secondary)
+                    Text(odKey: detail).font(.caption).foregroundStyle(ODPalette.secondary)
                 }
             }
             .fixedSize(horizontal: false, vertical: true)

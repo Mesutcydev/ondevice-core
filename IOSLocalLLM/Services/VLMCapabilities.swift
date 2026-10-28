@@ -277,7 +277,8 @@ private enum NormalizedArchitecture: String {
         // Qwen3-VL checked first — its repo IDs contain "qwen3-vl" which
         // would NOT match the older qwen2/qwen2.5 patterns, but ordering
         // explicit-newest-first keeps the family fan-out obvious.
-        if hay.contains("qwen3_5")    || hay.contains("qwen3.5")     { return .qwen35   }
+        if hay.contains("qwen3_5") || hay.contains("qwen3.5")
+            || modelType.lowercased() == "prism_hadamard_qwen35" { return .qwen35 }
         if hay.contains("qwen3_vl")   || hay.contains("qwen3-vl")    { return .qwen3VL  }
         if hay.contains("qwen2_5_vl") || hay.contains("qwen2.5-vl") { return .qwen25VL }
         if hay.contains("qwen2_vl")   || hay.contains("qwen2-vl")    { return .qwen2VL  }

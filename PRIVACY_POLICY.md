@@ -1,6 +1,6 @@
 # OnDevice Max Privacy Policy
 
-_Last updated: 2026-10-10_
+_Last updated: 2026-10-26_
 
 OnDevice Max is a local-first iOS app derived from iOS Local LLM. AI inference
 and app storage are local by default. The project does not operate an account system, analytics
@@ -47,14 +47,13 @@ approve:
    provider receives the query under its own privacy terms.
 4. **Mac Bridge and Local API Server** when you enable them. Requests are sent
    between devices on your local network.
-5. **iCloud sync** when you enable it.
-6. **External documentation and links** when you choose to open them.
-7. **Apple Private Cloud**, where available in an Apple-authorized build, only
+5. **External documentation and links** when you choose to open them.
+6. **Apple Private Cloud**, where available in an Apple-authorized build, only
    after you select it and accept its separate privacy consent. The prompt and
    included conversation context are sent to Apple's Private Cloud Compute
    service for remote inference under Apple's privacy practices. Local models
    never silently fall back to this service.
-8. **API providers** after you configure an endpoint, select an API model, and
+7. **API providers** after you configure an endpoint, select an API model, and
    accept its separate disclosure. Requests can include conversation text,
    system instructions, tool results, attached file excerpts, and supported
    images. The selected provider and any model operators it routes to apply
@@ -65,7 +64,7 @@ approve:
    back to an API provider. Custom HTTP endpoints are limited to trusted private
    networks; their requests and credentials are unencrypted in transit.
 
-9. **GitHub repository tools**, off by default. Connecting GitHub sends
+8. **GitHub repository tools**, off by default. Connecting GitHub sends
    authentication and request metadata to GitHub. After you enable tools and
    select a repository/branch, GitHub receives scoped file/API requests and
    approved commits, branch creation, pull requests or reverts. Credentials
@@ -100,15 +99,6 @@ Provider retention varies; local AI does not make these requests private:
 - For SearXNG and custom endpoints, the operator you select determines retention
   and access. OnDevice cannot verify an arbitrary endpoint's practices.
 
-## iCloud sync (optional, off by default)
-
-If you turn on "Sync conversations to iCloud" in Settings, saved conversations,
-including any persisted presentation or drafts in their stored record, are
-saved to your **private CloudKit database** associated with your Apple account.
-Apple operates this storage; the project does not have access to that private
-database. You can turn sync off and remove the cloud copy through Settings.
-Removing local content or uninstalling does not automatically remove that copy.
-
 ## Children's privacy
 
 The project operates no personal-data backend. Optional network features send
@@ -126,8 +116,9 @@ attached automatically.
   The parent PIN and restrictions are intentionally preserved by data clearing.
 - Uninstalling removes the app sandbox. Keychain records can survive uninstall;
   turn off parental controls with the parent PIN before uninstalling if you want
-  to remove that record. Exported content and optional iCloud copies require
-  deletion in their respective destinations.
+  to remove that record. Exported content and device backups require
+  deletion in their respective destinations. The app doesn't sync
+  conversations to iCloud.
 
 ## Models
 

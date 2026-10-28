@@ -1,0 +1,3815 @@
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -96,8 +96,8 @@
+ 
+ ```bash
+ xcodebuild test \
+-  -workspace OnDeviceMax.xcworkspace \
+-  -scheme OnDeviceMax \
++  -workspace TokenAI.xcworkspace \
++  -scheme TokenAI \
+   -destination 'platform=iOS,name=YOUR_IPHONE'
+ ```
+ 
+--- a/AppStoreMetadata/localizations/app-info/ar-SA.json
++++ b/AppStoreMetadata/localizations/app-info/ar-SA.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "OnDevice: Max",
++  "name": "Token: Local AI Studio",
+   "subtitle": "ذكاء محلي، دردشة وصوت وصور",
+-  "privacyPolicyUrl": "https://ondevice.fun/privacy/"
++  "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+ }
+--- a/AppStoreMetadata/localizations/app-info/de-DE.json
++++ b/AppStoreMetadata/localizations/app-info/de-DE.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "OnDevice: Max",
++  "name": "Token: Local AI Studio",
+   "subtitle": "Lokale KI: Chat, Stimme & Bild",
+-  "privacyPolicyUrl": "https://ondevice.fun/privacy/"
++  "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+ }
+--- a/AppStoreMetadata/localizations/app-info/en-US.json
++++ b/AppStoreMetadata/localizations/app-info/en-US.json
+@@ -1 +1,5 @@
+-{"name":"OnDevice: Max","subtitle":"Local AI, chat, voice & images","privacyPolicyUrl":"https://ondevice.fun/privacy/"}+{
++  "name": "Token: Local AI Studio",
++  "subtitle": "Local AI, chat, voice & images",
++  "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
++}
+--- a/AppStoreMetadata/localizations/app-info/es-ES.json
++++ b/AppStoreMetadata/localizations/app-info/es-ES.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "OnDevice: Max",
++  "name": "Token: Local AI Studio",
+   "subtitle": "IA local, chat, voz e imágenes",
+-  "privacyPolicyUrl": "https://ondevice.fun/privacy/"
++  "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+ }
+--- a/AppStoreMetadata/localizations/app-info/hi.json
++++ b/AppStoreMetadata/localizations/app-info/hi.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "OnDevice: Max",
++  "name": "Token: Local AI Studio",
+   "subtitle": "लोकल AI, चैट, आवाज़ व चित्र",
+-  "privacyPolicyUrl": "https://ondevice.fun/privacy/"
++  "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+ }
+--- a/AppStoreMetadata/localizations/app-info/ja.json
++++ b/AppStoreMetadata/localizations/app-info/ja.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "OnDevice: Max",
++  "name": "Token: Local AI Studio",
+   "subtitle": "ローカルAI・チャット・音声・画像",
+-  "privacyPolicyUrl": "https://ondevice.fun/privacy/"
++  "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+ }
+--- a/AppStoreMetadata/localizations/app-info/tr.json
++++ b/AppStoreMetadata/localizations/app-info/tr.json
+@@ -1,5 +1,5 @@
+ {
+-  "name": "OnDevice: Max",
++  "name": "Token: Local AI Studio",
+   "subtitle": "Yerel AI: sohbet, ses, görsel",
+-  "privacyPolicyUrl": "https://ondevice.fun/privacy/"
++  "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+ }
+--- a/AppStoreMetadata/localizations/version/2.0/ar-SA.json
++++ b/AppStoreMetadata/localizations/version/2.0/ar-SA.json
+@@ -0,0 +1,8 @@
++{
++  "description": "يوفّر Token AI مساحة عمل للذكاء الاصطناعي المحلي على iPhone. نزّل النماذج المتوافقة، واختر النموذج المناسب لمهمتك، ونظّم محادثاتك في مكان واحد.\n\nدردش وابتكر\nاطرح الأسئلة، واكتب المسودات، وراجع التعليمات البرمجية، واستكشف الأفكار. ابدأ محادثة جديدة أو عُد إلى دردشة محفوظة، مع البحث والمحادثات المثبّتة للوصول إلى عملك بسهولة.\n\nالصوت والرؤية\nاختر صوتًا للمحادثات المنطوقة. استخدم نماذج الرؤية المتوافقة للعمل مع الصور ولقطات الكاميرا في Lens.\n\nمكتبة نماذجك\nتصفّح النماذج المتاحة، ونزّل الحزم المتوافقة، واستورد ملفات النماذج المدعومة، وأدِر مساحة التخزين التي تستخدمها. يعتمد توفّر النماذج على جهاز iPhone ومتطلبات كل نموذج.\n\nاستوديو الصور\nأنشئ صورًا باستخدام نماذج الصور المحلية المدعومة. تُنزّل نماذج الصور بشكل منفصل. تتيح أدوات الرقابة الأبوية الاختيارية للوالدين تقييد إنشاء الصور برمز PIN.\n\nواجهة API محلية\nفعّل خادم API المحلي المحمي بالمصادقة لربط الأدوات المتوافقة عبر شبكتك المحلية الموثوقة.\n\nمحلي بشكل افتراضي\nلا يلزم إنشاء حساب Token AI. تُحفظ المحادثات على جهازك وتعمل النماذج المتوافقة محليًا. ترسل أدوات الويب الاختيارية الطلبات إلى المزوّد الذي تضبطه. وتستخدم مزامنة المحادثات الاختيارية عبر iCloud قاعدة بيانات CloudKit الخاصة بك.\n\nيتطلب iOS 27 أو أحدث. تُنزّل ملفات النماذج بشكل منفصل وقد تتطلب عدة غيغابايتات من مساحة التخزين. تعتمد الميزات المتاحة وتوافق النماذج وسرعة التوليد على ذاكرة iPhone ومساحة تخزينه وظروفه الحرارية. قد تكون نتائج الذكاء الاصطناعي غير دقيقة؛ راجعها قبل الاعتماد عليها.",
++  "keywords": "دردشة,مساعد,صوت,صور,نماذج,محلي,كتابة,llm",
++  "marketingUrl": "https://mesut.uk/apps/token",
++  "promotionalText": "أفسح المجال للذكاء الاصطناعي المحلي. دردش واكتب واستكشف الصور واستخدم الصوت على iPhone، مع نماذج قابلة للتنزيل وميزات شبكة اختيارية.",
++  "supportUrl": "https://mesut.uk/apps/token/support",
++  "whatsNew": "• تمت إضافة دعم iPhone Duo.\n• يجمع Token AI 2.0 الدردشات وLens والصوت والنماذج واستوديو الصور في مساحة عمل جديدة.\n• اعثر على المحادثات المحفوظة بالبحث والتثبيت، وأدِر تنزيل النماذج المتوافقة واستيرادها ومساحة تخزينها.\n• اختر أصواتًا للمحادثات الصوتية، واعمل على الصور ولقطات الكاميرا باستخدام نماذج الرؤية المدعومة.\n• أنشئ صورًا بنماذج محلية مدعومة مع أدوات رقابة أبوية اختيارية محمية برمز PIN.\n• اربط الأدوات المتوافقة عبر خادم API محلي موثّق على شبكتك المحلية الموثوقة.\n• مزامنة اختيارية للمحادثات عبر iCloud وأدوات ويب يمكن التحكم فيها بشكل مستقل."
++}
+--- a/AppStoreMetadata/localizations/version/2.0/de-DE.json
++++ b/AppStoreMetadata/localizations/version/2.0/de-DE.json
+@@ -0,0 +1,8 @@
++{
++  "description": "Token AI bringt einen lokalen KI-Arbeitsbereich auf dein iPhone. Lade kompatible Modelle herunter, wähle das passende für deine Aufgabe und organisiere deine Unterhaltungen an einem Ort.\n\nCHATTEN UND GESTALTEN\nStelle Fragen, entwirf Texte, prüfe Code und entwickle Ideen. Beginne eine neue Unterhaltung oder öffne einen gespeicherten Chat. Mit der Suche und angehefteten Unterhaltungen findest du deine Arbeit schnell wieder.\n\nSPRACHE UND BILDER\nWähle eine Stimme für gesprochene Unterhaltungen. Mit kompatiblen Bildverständnismodellen kannst du in Lens mit Fotos und Kameraaufnahmen arbeiten.\n\nDEINE MODELLBIBLIOTHEK\nEntdecke verfügbare Modelle, lade kompatible Pakete herunter, importiere unterstützte Modelldateien und verwalte ihren Speicherplatz. Welche Modelle verfügbar sind, hängt von deinem iPhone und den Anforderungen des jeweiligen Modells ab.\n\nBILDSTUDIO\nErstelle Bilder mit unterstützten lokalen Bildmodellen. Bildmodelle werden separat heruntergeladen. Mit der optionalen Kindersicherung können Eltern die Bilderstellung durch eine PIN einschränken.\n\nLOKALE API\nAktiviere den authentifizierten lokalen API-Server, um kompatible Werkzeuge in deinem vertrauenswürdigen lokalen Netzwerk zu verbinden.\n\nSTANDARDMÄSSIG LOKAL\nDu brauchst kein Token AI-Konto. Unterhaltungen werden auf deinem Gerät gespeichert und kompatible Modelle laufen lokal. Optionale Web-Werkzeuge senden Anfragen an den von dir eingerichteten Anbieter. Die optionale iCloud-Synchronisierung von Unterhaltungen nutzt deine private CloudKit-Datenbank.\n\nErfordert iOS 27 oder neuer. Modelldateien werden separat heruntergeladen und können mehrere Gigabyte Speicherplatz benötigen. Verfügbare Funktionen, Modellkompatibilität und Generierungsgeschwindigkeit hängen vom Arbeitsspeicher, Speicherplatz und Temperaturzustand deines iPhone ab. KI-Ergebnisse können fehlerhaft sein. Prüfe sie, bevor du dich darauf verlässt.",
++  "keywords": "offline,assistent,llm,chatbot,stimme,bilder,schreiben,programmieren,modelle,privat,lokal",
++  "marketingUrl": "https://mesut.uk/apps/token",
++  "promotionalText": "Platz für lokale KI: Chatte, schreibe, erkunde Bilder und nutze Sprache auf deinem iPhone – mit herunterladbaren Modellen und optionalen Netzwerkfunktionen.",
++  "supportUrl": "https://mesut.uk/apps/token/support",
++  "whatsNew": "• Unterstützung für iPhone Duo hinzugefügt.\n• Token AI 2.0 vereint Chats, Lens, Sprache, Modelle und Image Studio in einem neuen Arbeitsbereich.\n• Finde gespeicherte Gespräche mit Suche und angehefteten Chats und verwalte Downloads, Importe und Speicher kompatibler Modelle.\n• Wähle Stimmen für Gespräche und arbeite mit Fotos oder Kameraaufnahmen in unterstützten Bildverarbeitungsmodellen.\n• Erstelle Bilder mit unterstützten lokalen Modellen und optionaler PIN-geschützter Kindersicherung.\n• Verbinde kompatible Werkzeuge über den authentifizierten lokalen API-Server in einem vertrauenswürdigen lokalen Netzwerk.\n• Optionale iCloud-Synchronisierung für Gespräche und separat gesteuerte Webwerkzeuge."
++}
+--- a/AppStoreMetadata/localizations/version/2.0/en-US.json
++++ b/AppStoreMetadata/localizations/version/2.0/en-US.json
+@@ -0,0 +1,8 @@
++{
++  "description": "Token AI brings a local AI workspace to your iPhone. Download compatible models, choose the right one for your task, and keep your conversations organized in one place.\n\nCHAT AND CREATE\nAsk questions, draft writing, review code and explore ideas. Start a new conversation or return to a saved chat, with search and pinned conversations to help you find your work.\n\nVOICE AND VISION\nChoose a voice for spoken conversations. Use compatible vision models to work with photos and camera captures in Lens.\n\nYOUR MODEL LIBRARY\nBrowse available models, download compatible packs, import supported model files and manage the storage they use. Model availability depends on your iPhone and the model's requirements.\n\nIMAGE STUDIO\nCreate images using supported local image models. Image models are downloaded separately. Optional parental controls let a parent restrict image generation with a PIN.\n\nLOCAL API\nEnable the authenticated Local API Server to connect compatible tools on your trusted local network.\n\nLOCAL BY DEFAULT\nNo Token AI account is required. Conversations are stored on your device and compatible models run locally. Optional web tools send requests to the provider you configure. Optional iCloud conversation sync uses your private CloudKit database.\n\nRequires iOS 27 or later. Model files are downloaded separately and may require several gigabytes of storage. Available features, model compatibility and generation speed depend on your iPhone's memory, storage and thermal conditions. AI results can be inaccurate; review them before relying on them.",
++  "keywords": "offline,assistant,llm,chatbot,voice,vision,images,writing,coding,models,private,local,ai",
++  "marketingUrl": "https://mesut.uk/apps/token",
++  "promotionalText": "Make room for local AI. Chat, write, explore images and use voice on your iPhone, with downloadable models and optional network features.",
++  "supportUrl": "https://mesut.uk/apps/token/support",
++  "whatsNew": "• Added iPhone Duo support.\n• Token AI 2.0 brings chats, Lens, voice, models and Image Studio together in a new workspace.\n• Find saved conversations with search and pins, and manage compatible model downloads, imports and storage.\n• Choose voices for spoken conversations and work with photos or camera captures using supported vision models.\n• Create images with supported local models, with optional PIN-protected parental controls.\n• Connect compatible tools through the authenticated Local API Server on a trusted local network.\n• Optional iCloud conversation sync and separately controlled web tools."
++}
+--- a/AppStoreMetadata/localizations/version/2.0/es-ES.json
++++ b/AppStoreMetadata/localizations/version/2.0/es-ES.json
+@@ -0,0 +1,8 @@
++{
++  "description": "Token AI lleva un espacio de trabajo de IA local a tu iPhone. Descarga modelos compatibles, elige el adecuado para cada tarea y organiza tus conversaciones en un solo lugar.\n\nCONVERSA Y CREA\nHaz preguntas, redacta textos, revisa código y explora ideas. Inicia una conversación o retoma un chat guardado. La búsqueda y las conversaciones fijadas te ayudan a encontrar tu trabajo.\n\nVOZ Y VISIÓN\nElige una voz para las conversaciones habladas. Usa modelos de visión compatibles para trabajar con fotos y capturas de cámara en Lens.\n\nTU BIBLIOTECA DE MODELOS\nExplora los modelos disponibles, descarga paquetes compatibles, importa archivos de modelos admitidos y gestiona el espacio que ocupan. La disponibilidad depende de tu iPhone y de los requisitos de cada modelo.\n\nESTUDIO DE IMÁGENES\nCrea imágenes con modelos locales de imagen compatibles. Los modelos de imagen se descargan por separado. Los controles parentales opcionales permiten restringir la generación de imágenes con un PIN.\n\nAPI LOCAL\nActiva el servidor de API local con autenticación para conectar herramientas compatibles en tu red local de confianza.\n\nLOCAL POR DEFECTO\nNo necesitas una cuenta de Token AI. Las conversaciones se guardan en tu dispositivo y los modelos compatibles se ejecutan localmente. Las herramientas web opcionales envían solicitudes al proveedor que configures. La sincronización opcional de conversaciones con iCloud utiliza tu base de datos privada de CloudKit.\n\nRequiere iOS 27 o posterior. Los archivos de los modelos se descargan por separado y pueden necesitar varios gigabytes de almacenamiento. Las funciones disponibles, la compatibilidad de los modelos y la velocidad de generación dependen de la memoria, el almacenamiento y las condiciones térmicas de tu iPhone. Los resultados de la IA pueden ser incorrectos; revísalos antes de basarte en ellos.",
++  "keywords": "offline,asistente,llm,chatbot,voz,visión,imágenes,escritura,código,modelos,privado,local",
++  "marketingUrl": "https://mesut.uk/apps/token",
++  "promotionalText": "Haz sitio a la IA local. Chatea, escribe, explora imágenes y usa la voz en tu iPhone, con modelos descargables y funciones de red opcionales.",
++  "supportUrl": "https://mesut.uk/apps/token/support",
++  "whatsNew": "• Añadida compatibilidad con iPhone Duo.\n• Token AI 2.0 reúne chats, Lens, voz, modelos e Image Studio en un nuevo espacio de trabajo.\n• Encuentra conversaciones guardadas con búsqueda y fijación, y gestiona descargas, importaciones y almacenamiento de modelos compatibles.\n• Elige voces para conversar y trabaja con fotos o capturas de cámara mediante modelos de visión compatibles.\n• Crea imágenes con modelos locales compatibles y controles parentales opcionales protegidos por PIN.\n• Conecta herramientas compatibles mediante el servidor de API local autenticado en una red local de confianza.\n• Sincronización opcional de conversaciones con iCloud y herramientas web con controles independientes."
++}
+--- a/AppStoreMetadata/localizations/version/2.0/hi.json
++++ b/AppStoreMetadata/localizations/version/2.0/hi.json
+@@ -0,0 +1,8 @@
++{
++  "description": "Token AI आपके iPhone पर लोकल AI का कार्यक्षेत्र लाता है। संगत मॉडल डाउनलोड करें, अपने काम के लिए सही मॉडल चुनें और अपनी बातचीत एक ही जगह व्यवस्थित रखें।\n\nचैट करें और रचें\nसवाल पूछें, लेखन के मसौदे तैयार करें, कोड की समीक्षा करें और नए विचार खोजें। नई बातचीत शुरू करें या सहेजी गई चैट पर लौटें। खोज और पिन की गई बातचीत से अपना काम आसानी से ढूँढें।\n\nआवाज़ और दृश्य\nबोलकर बातचीत करने के लिए एक आवाज़ चुनें। Lens में फ़ोटो और कैमरे से ली गई तस्वीरों के साथ काम करने के लिए संगत विज़न मॉडल इस्तेमाल करें।\n\nआपकी मॉडल लाइब्रेरी\nउपलब्ध मॉडल देखें, संगत पैक डाउनलोड करें, समर्थित मॉडल फ़ाइलें इंपोर्ट करें और उनके स्टोरेज का प्रबंधन करें। मॉडल की उपलब्धता आपके iPhone और मॉडल की ज़रूरतों पर निर्भर करती है।\n\nइमेज स्टूडियो\nसमर्थित लोकल इमेज मॉडल से तस्वीरें बनाएँ। इमेज मॉडल अलग से डाउनलोड किए जाते हैं। वैकल्पिक अभिभावकीय नियंत्रण से माता-पिता PIN लगाकर तस्वीरें बनाने पर रोक लगा सकते हैं।\n\nलोकल API\nअपने भरोसेमंद लोकल नेटवर्क पर संगत टूल जोड़ने के लिए प्रमाणीकरण वाला लोकल API सर्वर चालू करें।\n\nडिफ़ॉल्ट रूप से लोकल\nToken AI खाते की ज़रूरत नहीं है। बातचीत आपके डिवाइस पर सहेजी जाती है और संगत मॉडल लोकल रूप से चलते हैं। वैकल्पिक वेब टूल आपके कॉन्फ़िगर किए गए प्रदाता को अनुरोध भेजते हैं। वैकल्पिक iCloud बातचीत सिंक आपके निजी CloudKit डेटाबेस का उपयोग करता है।\n\niOS 27 या उसके बाद का संस्करण ज़रूरी है। मॉडल फ़ाइलें अलग से डाउनलोड की जाती हैं और इनके लिए कई गीगाबाइट स्टोरेज की ज़रूरत हो सकती है। उपलब्ध सुविधाएँ, मॉडल की संगतता और जनरेशन की गति आपके iPhone की मेमोरी, स्टोरेज और तापमान की स्थिति पर निर्भर करती हैं। AI के नतीजे गलत हो सकते हैं; उन पर भरोसा करने से पहले उनकी समीक्षा करें।",
++  "keywords": "चैट,सहायक,आवाज़,चित्र,लेखन,मॉडल,llm,offline",
++  "marketingUrl": "https://mesut.uk/apps/token",
++  "promotionalText": "अपने iPhone पर लोकल AI अपनाएँ। डाउनलोड किए जा सकने वाले मॉडल और वैकल्पिक नेटवर्क सुविधाओं के साथ चैट करें, लिखें, तस्वीरों पर काम करें और आवाज़ का उपयोग करें।",
++  "supportUrl": "https://mesut.uk/apps/token/support",
++  "whatsNew": "• iPhone Duo का समर्थन जोड़ा गया।\n• Token AI 2.0 चैट, Lens, आवाज़, मॉडल और Image Studio को एक नए कार्यक्षेत्र में लाता है।\n• खोज और पिन से सहेजी गई बातचीत ढूँढें तथा संगत मॉडलों के डाउनलोड, इंपोर्ट और स्टोरेज का प्रबंधन करें।\n• बोलकर बातचीत के लिए आवाज़ चुनें और समर्थित विज़न मॉडलों से फ़ोटो या कैमरा चित्रों पर काम करें।\n• समर्थित लोकल मॉडलों से चित्र बनाएँ और वैकल्पिक PIN-सुरक्षित अभिभावकीय नियंत्रण इस्तेमाल करें।\n• भरोसेमंद लोकल नेटवर्क पर प्रमाणित लोकल API सर्वर से संगत टूल जोड़ें।\n• वैकल्पिक iCloud बातचीत सिंक और अलग-अलग नियंत्रित वेब टूल।"
++}
+--- a/AppStoreMetadata/localizations/version/2.0/ja.json
++++ b/AppStoreMetadata/localizations/version/2.0/ja.json
+@@ -0,0 +1,8 @@
++{
++  "description": "Token AIは、iPhoneで使えるローカルAIのワークスペースです。対応モデルをダウンロードし、目的に合ったモデルを選んで、会話をひとつの場所に整理できます。\n\nチャットで考え、つくる\n質問、文章の下書き、コードのレビュー、アイデアの検討に。新しい会話を始めたり、保存したチャットを再開したりできます。検索や会話のピン留めで、必要な内容を見つけやすくなります。\n\n音声と画像認識\n音声での会話に使う声を選べます。対応する画像認識モデルを使えば、Lensで写真やカメラで撮影した画像を扱えます。\n\nモデルライブラリ\n利用可能なモデルを探し、対応パックのダウンロード、対応モデルファイルの読み込み、使用ストレージの管理ができます。利用できるモデルは、iPhoneの仕様と各モデルの要件によって異なります。\n\n画像スタジオ\n対応するローカル画像モデルで画像を生成できます。画像モデルは別途ダウンロードが必要です。任意のペアレンタルコントロールで、保護者がPINによって画像生成を制限できます。\n\nローカルAPI\n認証付きのローカルAPIサーバーを有効にすると、信頼できるローカルネットワーク上で対応ツールを接続できます。\n\n標準でローカル処理\nToken AIアカウントは不要です。会話はデバイスに保存され、対応モデルはローカルで動作します。任意のWebツールは、設定したプロバイダにリクエストを送信します。任意のiCloud会話同期では、自分専用のCloudKitプライベートデータベースを使用します。\n\niOS 27以降が必要です。モデルファイルは別途ダウンロードが必要で、数GBのストレージを使用する場合があります。利用できる機能、モデルの互換性、生成速度は、iPhoneのメモリ、ストレージ、温度条件によって異なります。AIの結果には誤りが含まれる場合があります。利用する際は内容を確認してください。",
++  "keywords": "オフライン,アシスタント,チャット,モデル,ローカル,llm",
++  "marketingUrl": "https://mesut.uk/apps/token",
++  "promotionalText": "iPhoneにローカルAIを。ダウンロード可能なモデルで、チャット、文章作成、画像の活用、音声でのやり取りをひとつに。任意のネットワーク機能も利用できます。",
++  "supportUrl": "https://mesut.uk/apps/token/support",
++  "whatsNew": "• iPhone Duoに対応しました。\n• Token AI 2.0は、チャット、Lens、音声、モデル、Image Studioを新しいワークスペースにまとめます。\n• 検索とピン留めで保存した会話を見つけ、対応モデルのダウンロード、読み込み、ストレージを管理できます。\n• 会話に使う声を選び、対応する視覚モデルで写真やカメラ画像を扱えます。\n• 対応するローカルモデルで画像を生成。PINで保護するペアレンタルコントロールも任意で設定できます。\n• 認証付きローカルAPIサーバーで、信頼できるローカルネットワーク上の対応ツールを接続できます。\n• 任意のiCloud会話同期と、個別に管理できるWebツールに対応しました。"
++}
+--- a/AppStoreMetadata/localizations/version/2.0/tr.json
++++ b/AppStoreMetadata/localizations/version/2.0/tr.json
+@@ -0,0 +1,8 @@
++{
++  "description": "Token AI, iPhone'unuza yerel bir yapay zekâ çalışma alanı getirir. Uyumlu modelleri indirin, işinize uygun olanı seçin ve konuşmalarınızı tek bir yerde düzenleyin.\n\nSOHBET EDİN VE ÜRETİN\nSorular sorun, yazı taslakları oluşturun, kod inceleyin ve fikirleri keşfedin. Yeni bir konuşma başlatın veya kayıtlı bir sohbete dönün. Arama ve sabitlenmiş konuşmalar, çalışmalarınızı bulmanızı kolaylaştırır.\n\nSES VE GÖRÜNTÜ\nSesli konuşmalar için bir ses seçin. Lens'te fotoğraflar ve kamera çekimleriyle çalışmak için uyumlu görsel anlama modellerini kullanın.\n\nMODEL KİTAPLIĞINIZ\nMevcut modellere göz atın, uyumlu paketleri indirin, desteklenen model dosyalarını içe aktarın ve kullandıkları depolama alanını yönetin. Modellerin kullanılabilirliği iPhone'unuza ve modelin gereksinimlerine bağlıdır.\n\nGÖRSEL STÜDYOSU\nDesteklenen yerel görüntü modelleriyle görseller oluşturun. Görüntü modelleri ayrıca indirilir. İsteğe bağlı ebeveyn denetimleri, ebeveynlerin görsel oluşturmayı bir PIN ile kısıtlamasına olanak tanır.\n\nYEREL API\nGüvenilir yerel ağınızdaki uyumlu araçları bağlamak için kimlik doğrulamalı Yerel API Sunucusu'nu etkinleştirin.\n\nVARSAYILAN OLARAK YEREL\nToken AI hesabı gerekmez. Konuşmalar cihazınızda saklanır ve uyumlu modeller yerel olarak çalışır. İsteğe bağlı web araçları, yapılandırdığınız sağlayıcıya istek gönderir. İsteğe bağlı iCloud konuşma eşzamanlaması, özel CloudKit veritabanınızı kullanır.\n\niOS 27 veya üzeri gerekir. Model dosyaları ayrıca indirilir ve birkaç gigabayt depolama alanı gerektirebilir. Kullanılabilir özellikler, model uyumluluğu ve üretim hızı; iPhone'unuzun belleğine, depolama alanına ve sıcaklık koşullarına bağlıdır. Yapay zekâ sonuçları hatalı olabilir; bunlara güvenmeden önce sonuçları gözden geçirin.",
++  "keywords": "çevrimdışı,asistan,llm,sohbet,ses,görsel,yazma,kodlama,model,özel,yerel,yapayzeka",
++  "marketingUrl": "https://mesut.uk/apps/token",
++  "promotionalText": "Yerel yapay zekâya yer açın. İndirilebilir modeller ve isteğe bağlı ağ özellikleriyle iPhone'unuzda sohbet edin, yazın, görselleri keşfedin ve sesi kullanın.",
++  "supportUrl": "https://mesut.uk/apps/token/support",
++  "whatsNew": "• iPhone Duo desteği eklendi.\n• Token AI 2.0; sohbetleri, Lens'i, sesi, modelleri ve Görsel Stüdyosu'nu yeni bir çalışma alanında birleştirir.\n• Arama ve sabitlemeyle kayıtlı sohbetleri bulun; uyumlu modellerin indirmelerini, içe aktarmalarını ve depolamasını yönetin.\n• Sesli sohbetler için ses seçin ve desteklenen görsel anlama modelleriyle fotoğraf veya kamera çekimleri üzerinde çalışın.\n• Desteklenen yerel modellerle görseller oluşturun; isteğe bağlı PIN korumalı ebeveyn denetimlerini kullanın.\n• Güvenilir yerel ağınızdaki uyumlu araçları kimlik doğrulamalı Yerel API Sunucusu ile bağlayın.\n• İsteğe bağlı iCloud sohbet eşzamanlaması ve ayrı ayrı denetlenen web araçları."
++}
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -2,6 +2,11 @@
+ 
+ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+ and intends to use semantic version tags for source releases.
++
++## [2.0] - 2026-10-24
++
++- Rebrand the working OnDeviceMax app as Token: Local AI Studio, retaining its icon and app behavior.
++- Use the Token AI bundle ID, shared app group, extension IDs, URL scheme, privacy and support links.
+ 
+ ## [Unreleased]
+ 
+--- a/CITATION.cff
++++ b/CITATION.cff
+@@ -9,7 +9,7 @@
+ repository-code: "https://github.com/Mesutcydev/ios-local-llm"
+ url: "https://mesutcydev.github.io/ios-local-llm/"
+ license: MIT
+-version: 1.0.1
++version: 2.0
+ date-released: 2026-10-10
+ keywords:
+   - OnDevice
+--- a/DownloadActivityExtension/DownloadActivityWidget.swift
++++ b/DownloadActivityExtension/DownloadActivityWidget.swift
+@@ -17,7 +17,7 @@
+         } dynamicIsland: { context in
+             DynamicIsland {
+                 DynamicIslandExpandedRegion(.leading) {
+-                    Label("OnDevice Max", systemImage: "arrow.down.circle")
++                    Label("Token AI", systemImage: "arrow.down.circle")
+                         .font(.caption).foregroundStyle(.secondary)
+                 }
+                 DynamicIslandExpandedRegion(.trailing) {
+--- a/DownloadActivityExtension/Info.plist
++++ b/DownloadActivityExtension/Info.plist
+@@ -5,7 +5,7 @@
+ 	<key>CFBundleDevelopmentRegion</key>
+ 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+ 	<key>CFBundleDisplayName</key>
+-	<string>OnDevice Max Downloads</string>
++	<string>Token AI Downloads</string>
+ 	<key>CFBundleExecutable</key>
+ 	<string>$(EXECUTABLE_NAME)</string>
+ 	<key>CFBundleIdentifier</key>
+@@ -17,7 +17,7 @@
+ 	<key>CFBundlePackageType</key>
+ 	<string>XPC!</string>
+ 	<key>CFBundleShortVersionString</key>
+-	<string>1.0.1</string>
++	<string>2.0</string>
+ 	<key>CFBundleVersion</key>
+ 	<string>$(CURRENT_PROJECT_VERSION)</string>
+ 	<key>ITSAppUsesNonExemptEncryption</key>
+--- a/IOSLocalLLM/IOSLocalLLM-AppStore-PCC.entitlements
++++ b/IOSLocalLLM/IOSLocalLLM-AppStore-PCC.entitlements
+@@ -3,13 +3,13 @@
+ <plist version="1.0">
+ <dict>
+   <key>com.apple.security.application-groups</key>
+-  <array><string>group.com.mesutcydev.ondevicemax.shared</string></array>
++  <array><string>group.com.token.TokenAI</string></array>
+   <key>com.apple.developer.kernel.increased-memory-limit</key>
+   <true/>
+   <key>com.apple.developer.kernel.extended-virtual-addressing</key>
+   <true/>
+   <key>com.apple.developer.icloud-container-identifiers</key>
+-  <array><string>iCloud.com.mesutcydev.ondevicemax</string></array>
++  <array><string>iCloud.com.token.TokenAI</string></array>
+   <key>com.apple.developer.icloud-services</key>
+   <array><string>CloudKit</string></array>
+   <!-- Use only after Apple grants this managed capability to the team/App ID. -->
+--- a/IOSLocalLLM/IOSLocalLLM-AppStore.entitlements
++++ b/IOSLocalLLM/IOSLocalLLM-AppStore.entitlements
+@@ -3,13 +3,13 @@
+ <plist version="1.0">
+ <dict>
+   <key>com.apple.security.application-groups</key>
+-  <array><string>group.com.mesutcydev.ondevicemax.shared</string></array>
++  <array><string>group.com.token.TokenAI</string></array>
+   <key>com.apple.developer.kernel.increased-memory-limit</key>
+   <true/>
+   <key>com.apple.developer.kernel.extended-virtual-addressing</key>
+   <true/>
+   <key>com.apple.developer.icloud-container-identifiers</key>
+-  <array><string>iCloud.com.mesutcydev.ondevicemax</string></array>
++  <array><string>iCloud.com.token.TokenAI</string></array>
+   <key>com.apple.developer.icloud-services</key>
+   <array><string>CloudKit</string></array>
+ </dict>
+--- a/IOSLocalLLM/IOSLocalLLM-Catalyst.entitlements
++++ b/IOSLocalLLM/IOSLocalLLM-Catalyst.entitlements
+@@ -29,13 +29,13 @@
+        the iOS build). Kept so shared UserDefaults/containers resolve. -->
+   <key>com.apple.security.application-groups</key>
+   <array>
+-    <string>group.com.mesutcydev.ondevicemax.shared</string>
++    <string>group.com.token.TokenAI</string>
+   </array>
+   <!-- Match the iOS target so conversation sync uses the same private
+        CloudKit container when the app runs through Mac Catalyst. -->
+   <key>com.apple.developer.icloud-container-identifiers</key>
+   <array>
+-    <string>iCloud.com.mesutcydev.ondevicemax</string>
++    <string>iCloud.com.token.TokenAI</string>
+   </array>
+   <key>com.apple.developer.icloud-services</key>
+   <array>
+--- a/IOSLocalLLM/IOSLocalLLM-PCC.entitlements
++++ b/IOSLocalLLM/IOSLocalLLM-PCC.entitlements
+@@ -4,7 +4,7 @@
+ <dict>
+   <key>com.apple.security.application-groups</key>
+   <array>
+-    <string>group.com.mesutcydev.ondevicemax.shared</string>
++    <string>group.com.token.TokenAI</string>
+   </array>
+   <!-- Profiles that grant it (development builds, some ad-hoc
+        certificates) raise the memory ceiling for high-watermark loads.
+@@ -17,7 +17,7 @@
+   <true/>
+   <key>com.apple.developer.icloud-container-identifiers</key>
+   <array>
+-    <string>iCloud.com.mesutcydev.ondevicemax</string>
++    <string>iCloud.com.token.TokenAI</string>
+   </array>
+   <key>com.apple.developer.icloud-services</key>
+   <array>
+--- a/IOSLocalLLM/IOSLocalLLM.entitlements
++++ b/IOSLocalLLM/IOSLocalLLM.entitlements
+@@ -4,7 +4,7 @@
+ <dict>
+   <key>com.apple.security.application-groups</key>
+   <array>
+-    <string>group.com.mesutcydev.ondevicemax.shared</string>
++    <string>group.com.token.TokenAI</string>
+   </array>
+   <!-- Profiles that grant it (development builds, some ad-hoc
+        certificates) raise the memory ceiling for high-watermark loads.
+@@ -23,7 +23,7 @@
+   <true/>
+   <key>com.apple.developer.icloud-container-identifiers</key>
+   <array>
+-    <string>iCloud.com.mesutcydev.ondevicemax</string>
++    <string>iCloud.com.token.TokenAI</string>
+   </array>
+   <key>com.apple.developer.icloud-services</key>
+   <array>
+--- a/IOSLocalLLM/Info.plist
++++ b/IOSLocalLLM/Info.plist
+@@ -5,7 +5,7 @@
+ 	<key>CFBundleDevelopmentRegion</key>
+ 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+ 	<key>CFBundleDisplayName</key>
+-	<string>OnDevice Max</string>
++	<string>Token: Local AI Studio</string>
+ 	<key>CFBundleExecutable</key>
+ 	<string>$(EXECUTABLE_NAME)</string>
+ 	<key>CFBundleIdentifier</key>
+@@ -35,15 +35,15 @@
+ 	<key>CFBundlePackageType</key>
+ 	<string>APPL</string>
+ 	<key>CFBundleShortVersionString</key>
+-	<string>1.0.1</string>
++	<string>2.0</string>
+ 	<key>CFBundleURLTypes</key>
+ 	<array>
+ 		<dict>
+ 			<key>CFBundleURLName</key>
+-			<string>com.mesutcydev.ondevicemax.scheme</string>
++			<string>com.token.TokenAI.scheme</string>
+ 			<key>CFBundleURLSchemes</key>
+ 			<array>
+-				<string>ondevice-max</string>
++				<string>tokenai</string>
+ 			</array>
+ 		</dict>
+ 	</array>
+@@ -65,17 +65,17 @@
+ 		<string>_localllm._tcp</string>
+ 	</array>
+ 	<key>NSCameraUsageDescription</key>
+-	<string>OnDevice Max uses the camera so Lens can read text and describe objects, documents, and scenes you choose to capture.</string>
++	<string>Token AI uses the camera so Lens can read text and describe objects, documents, and scenes you choose to capture.</string>
+ 	<key>NSLocalNetworkUsageDescription</key>
+-	<string>OnDevice Max uses your local network when you enable the Local API Server, pair a Mac, or choose a custom API provider on your network.</string>
++	<string>Token AI uses your local network when you enable the Local API Server, pair a Mac, or choose a custom API provider on your network.</string>
+ 	<key>NSMicrophoneUsageDescription</key>
+-	<string>OnDevice Max uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control.</string>
++	<string>Token AI uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control.</string>
+ 	<key>NSPhotoLibraryAddUsageDescription</key>
+-	<string>OnDevice Max saves images you create to your photo library when you choose Save Image.</string>
++	<string>Token AI saves images you create to your photo library when you choose Save Image.</string>
+ 	<key>NSPhotoLibraryUsageDescription</key>
+-	<string>OnDevice Max uses photos you select for image understanding and conversations with compatible vision models.</string>
++	<string>Token AI uses photos you select for image understanding and conversations with compatible vision models.</string>
+ 	<key>NSSpeechRecognitionUsageDescription</key>
+-	<string>OnDevice Max uses speech recognition to turn your speech into text for voice conversations and dictation.</string>
++	<string>Token AI uses speech recognition to turn your speech into text for voice conversations and dictation.</string>
+ 	<key>NSSupportsLiveActivities</key>
+ 	<true/>
+ 	<key>UIApplicationSceneManifest</key>
+--- a/IOSLocalLLM/LocalAIRuntimeFoundation/Public/LocalAIController.swift
++++ b/IOSLocalLLM/LocalAIRuntimeFoundation/Public/LocalAIController.swift
+@@ -83,7 +83,7 @@
+                         continuation.yield(.started)
+                         if options.toolMode != .disabled {
+                             continuation.yield(.warning(
+-                                "Tool mode is a host-app feature; this facade streams model text and leaves tool execution to OnDevice."
++                                "Tool mode is a host-app feature; this facade streams model text and leaves tool execution to Token AI."
+                             ))
+                         }
+ 
+@@ -318,7 +318,7 @@
+             throw RuntimeError.underlying("Invalid repo id: \(repoID)")
+         }
+         var request = URLRequest(url: url)
+-        request.setValue("OnDeviceMax/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
++        request.setValue("TokenAI/2.0 (iOS)", forHTTPHeaderField: "User-Agent")
+         request.setValue("application/json", forHTTPHeaderField: "Accept")
+         HFTokenStore.authorize(&request)
+ 
+--- a/IOSLocalLLM/Models/AppBridge.swift
++++ b/IOSLocalLLM/Models/AppBridge.swift
+@@ -11,7 +11,7 @@
+     static let shared = AppBridge()
+ 
+     /// App Group identifier — must match the share extension.
+-    static let appGroupID = "group.com.mesutcydev.ondevicemax.shared"
++    static let appGroupID = "group.com.token.TokenAI"
+ 
+     // Set by AnalysisPanelView; consumed once by CodingAssistantView
+     @Published var pendingCode: PendingCode? = nil
+@@ -59,7 +59,7 @@
+         let body: String
+         /// When true the assistant view sends the prefilled prompt
+         /// automatically instead of waiting for the user to tap send. Set by
+-        /// the "Ask OnDevice" App Intent so a Siri/Shortcuts request actually
++        /// the "Ask Token AI" App Intent so a Siri/Shortcuts request actually
+         /// produces an answer rather than just opening the composer.
+         var autoSend: Bool = false
+         var appendToDraft: Bool = false
+@@ -148,11 +148,11 @@
+             }
+         } catch {
+             ToastCenter.shared.error("Couldn't receive shared content",
+-                                     detail: "Open OnDevice Max again to retry.")
+-        }
+-    }
+-
+-    /// Handles `ondevice-max://share?...` URLs from the share extension.
++                                     detail: "Open Token AI again to retry.")
++        }
++    }
++
++    /// Handles `tokenai://share?...` URLs from the share extension.
+     /// Supports four payload shapes:
+     ///   • `file=<jpg>`     — staged image, routes to camera/lens tab
+     ///   • `textfile=<txt>` — long text staged to a file, routes to assistant
+@@ -161,7 +161,7 @@
+     /// The text/URL paths land in `pendingSharedText` and switch to the
+     /// assistant tab so CodingAssistantView can prefill the composer.
+     func handleIncomingURL(_ url: URL) {
+-        guard url.scheme == "ondevice-max" else { return }
++        guard url.scheme == "tokenai" else { return }
+         if url.host == "downloads" {
+             requestTab(.models); requestedDownloads = true
+             return
+@@ -193,7 +193,7 @@
+         }
+     }
+ 
+-    /// `ondevice-max://share?file=…` is a PUBLIC custom URL scheme — any app or web
++    /// `tokenai://share?file=…` is a PUBLIC custom URL scheme — any app or web
+     /// page can invoke it. The filename must be a single safe path component so
+     /// a value like "../../Documents/conversations.json" can't escape the
+     /// staging dir and give an out-of-app caller arbitrary read/delete in our
+--- a/IOSLocalLLM/Models/AssistantModelCatalog.swift
++++ b/IOSLocalLLM/Models/AssistantModelCatalog.swift
+@@ -101,7 +101,7 @@
+ enum AssistantModelCatalog {
+ 
+     /// Built-in text models. Order = priority; the existing Qwen preset stays
+-    /// first so new installations keep OnDeviceMax's established default.
++    /// first so new installations keep TokenAI's established default.
+     ///
+     /// Curation rule: every preset must be a **text** model whose runtime
+     /// is wired through CodingAssistantService. Multimodal models (Qwen3-VL,
+--- a/IOSLocalLLM/Models/LegalDocuments.swift
++++ b/IOSLocalLLM/Models/LegalDocuments.swift
+@@ -15,12 +15,12 @@
+     // MARK: - Versioning
+     // Bump this whenever any legal text materially changes. Existing users
+     // will be re-prompted to accept on app launch.
+-    static let currentVersion = 6
++    static let currentVersion = 7
+ 
+     // MARK: - Public URLs
+-    static let privacyPolicyURL = "https://ondevice.fun/privacy/"
++    static let privacyPolicyURL = "https://mesut.uk/apps/token/privacy"
+     static let eulaURL          = "https://github.com/Mesutcydev/ios-local-llm/blob/main/LICENSE"
+-    static let supportURL       = "https://ondevice.fun/support/"
++    static let supportURL       = "https://mesut.uk/apps/token/support"
+ 
+     // MARK: - Privacy Policy
+ 
+@@ -29,7 +29,7 @@
+ 
+     **Last updated:** \(currentVersionDate)
+ 
+-    OnDevice Max runs AI locally by default. The project operates no account, analytics, advertising, or inference backend and does not sell personal data. Optional network features send requests to providers, which may collect and retain them as described below.
++    Token AI runs AI locally by default. The project operates no account, analytics, advertising, or inference backend and does not sell personal data. Optional network features send requests to providers, which may collect and retain them as described below.
+ 
+     ## 1. Project-operated collection
+     The project does not operate a service that receives the following content. Optional providers have separate collection and retention practices described below.
+@@ -58,9 +58,9 @@
+     - **External documentation and links:** These open only after your action.
+     - **GitHub repository tools:** Off by default. After you connect GitHub, enable tools and select a repository/branch, GitHub receives authentication, request metadata, scoped file requests and approved commits, branches, pull requests or reverts. Credentials stay in device-only Keychain and never enter chat model requests. File edits remain a protected conversation draft until review. An API model receives included repository excerpts/tool results under its separate disclosure. Disconnecting deletes the saved token and turns off GitHub tools.
+ 
+-    There is no OnDevice telemetry channel, remote configuration service, analytics SDK, or advertising SDK.
+-
+-    Search providers can retain requests. Brave Search API documents query retention up to 90 days unless a qualifying enterprise zero-retention arrangement applies. Tavily describes query collection, potential service improvement use, and limited sharing with search index providers. Exa and DuckDuckGo apply their published policies. SearXNG and custom endpoints apply the selected operator's practices. Provider policy links are in the public Privacy Policy; OnDevice cannot promise zero retention for these optional features.
++    There is no Token AI telemetry channel, remote configuration service, analytics SDK, or advertising SDK.
++
++    Search providers can retain requests. Brave Search API documents query retention up to 90 days unless a qualifying enterprise zero-retention arrangement applies. Tavily describes query collection, potential service improvement use, and limited sharing with search index providers. Exa and DuckDuckGo apply their published policies. SearXNG and custom endpoints apply the selected operator's practices. Provider policy links are in the public Privacy Policy; Token AI cannot promise zero retention for these optional features.
+ 
+     ## 4. Permissions we request
+     - **Camera:** Required to capture frames for live analysis. Disable in iOS Settings any time; the app will continue to work with imported photos only.
+@@ -76,7 +76,7 @@
+     The app uses third-party AI models that run on your device. We are not the authors of these models. Each model's license, source repository, and citation is shown in **Settings → Legal → Attributions**. A model may be open source, source-available, community-licensed, or restricted to research use; review its terms before downloading or using it.
+ 
+     ## 7. Hugging Face downloads
+-    When you tap "download" on a Hugging Face model, your device makes HTTPS requests to `huggingface.co`. We do not control Hugging Face. Their privacy policy and terms of service apply. If you save a Hugging Face token for a gated repository, the app stores it in the Keychain and sends it to Hugging Face for authorized requests; OnDevice does not receive it.
++    When you tap "download" on a Hugging Face model, your device makes HTTPS requests to `huggingface.co`. We do not control Hugging Face. Their privacy policy and terms of service apply. If you save a Hugging Face token for a gated repository, the app stores it in the Keychain and sends it to Hugging Face for authorized requests; Token AI does not receive it.
+ 
+     ## 8. Apple frameworks
+     The app uses Apple-provided iOS frameworks (Vision, Speech, Core ML, MetricKit, ActivityKit, CloudKit when iCloud sync is enabled). These frameworks operate under Apple's privacy practices. **Speech recognition is forced on-device** wherever the device supports it (recent iPhones). CloudKit sync, if you enable it, stores conversations in **your** private iCloud database — Apple, not us, controls that storage.
+@@ -109,13 +109,13 @@
+ 
+     This source distribution contains original open-source software and separately licensed third-party material. This notice summarizes licenses and important safety information; it does not add copyright restrictions to the MIT-licensed portions of the app.
+ 
+-    ## 1. OnDevice license
+-    OnDevice is an independent modified distribution derived from the **iOS Local LLM** open-source project. The original project code, this distribution's modifications, and the documentation are available under the **MIT License**. Subject to that license, you may use, copy, modify, merge, publish, distribute, sublicense, and sell copies.
+-
+-    The MIT copyright and permission notice must be included in copies or substantial portions of the software. “OnDevice” is this distribution's product identity; “iOS Local LLM” remains the upstream project attribution. iOS and related names are Apple Inc. trademarks. Neither project is affiliated with or endorsed by Apple or any compatibility provider.
++    ## 1. Token AI license
++    Token AI is an independent modified distribution derived from the **iOS Local LLM** open-source project. The original project code, this distribution's modifications, and the documentation are available under the **MIT License**. Subject to that license, you may use, copy, modify, merge, publish, distribute, sublicense, and sell copies.
++
++    The MIT copyright and permission notice must be included in copies or substantial portions of the software. “Token AI” is this distribution's product identity; “iOS Local LLM” remains the upstream project attribution. iOS and related names are Apple Inc. trademarks. Neither project is affiliated with or endorsed by Apple or any compatibility provider.
+ 
+     ## 2. Third-party components and models
+-    OnDevice includes or downloads components that are separate works under their own terms. Those terms are not replaced by the OnDevice MIT License.
++    Token AI includes or downloads components that are separate works under their own terms. Those terms are not replaced by the Token AI MIT License.
+ 
+     A model may be open source, source-available, community-licensed, non-commercial, or research-only. **Review the license shown by the model source before downloading, using, modifying, or redistributing it.** Apple FastVLM model weights, for example, are licensed for research purposes only and are not part of the MIT-licensed source distribution.
+ 
+@@ -154,7 +154,7 @@
+     static let aiDisclaimer = """
+     # AI Output Disclaimer
+ 
+-    OnDevice runs **third-party artificial intelligence models entirely on your device** to analyse images, generate text, extract code, review code, transcribe speech, and synthesize speech. A model's availability in the catalog does not mean it is open source. Read its license and understand the following before relying on any output.
++    Token AI runs **third-party artificial intelligence models entirely on your device** to analyse images, generate text, extract code, review code, transcribe speech, and synthesize speech. A model's availability in the catalog does not mean it is open source. Read its license and understand the following before relying on any output.
+ 
+     ## 1. AI output is generated by statistics, not understanding
+     Outputs are produced by neural networks that predict the next token based on patterns in their training data. They do not "understand" your input, do not have access to real-time information, and do not verify their own answers. They can and routinely will produce:
+@@ -212,7 +212,7 @@
+     Running large models is computationally intensive. Your device will warm up, occasionally significantly, and battery will drain faster than during normal use. iOS may throttle performance to protect the device, and we apply additional protections (token-cap reduction, generation refusal, mid-stream halts) when iOS reports a "serious" or "critical" thermal state. **Do not place the device on flammable surfaces, do not charge in an enclosed space while running heavy generation, and stop using the app if the device becomes uncomfortably hot.**
+ 
+     ## 8. Bias and content
+-    The underlying models can reflect biases, errors, and offensive content in their training data. OnDevice adds safety instructions to chat requests and checks image requests for some explicit-content phrases. Image models that support negative prompts also receive additional exclusions. These safeguards are not comprehensive prompt or image-output classifiers, and inappropriate output remains possible. Use **Report content concern** in an image's or response's action menu to open support; nothing is attached or sent automatically. Stop generation and delete content that concerns you.
++    The underlying models can reflect biases, errors, and offensive content in their training data. Token AI adds safety instructions to chat requests and checks image requests for some explicit-content phrases. Image models that support negative prompts also receive additional exclusions. These safeguards are not comprehensive prompt or image-output classifiers, and inappropriate output remains possible. Use **Report content concern** in an image's or response's action menu to open support; nothing is attached or sent automatically. Stop generation and delete content that concerns you.
+ 
+     ## 9. Voice / text-to-speech outputs
+     Spoken output is synthesized from text by a TTS model. Tone and emphasis may differ from what a human reader would convey. Do not rely on voice mode for time-critical or safety-critical instructions, and do not assume the spoken version captures every detail of the written reply.
+@@ -230,7 +230,7 @@
+     static let deviceSafetyNotice = """
+     # Device Safety Notice
+ 
+-    On-device AI inference is computationally intensive. By using OnDevice you acknowledge and accept the following.
++    On-device AI inference is computationally intensive. By using Token AI you acknowledge and accept the following.
+ 
+     ## What to expect
+     - **Heat** — your device will become warm, sometimes hot, during model loading and long replies. This is normal for sustained GPU/Neural-Engine work and is the same effect you'd see from a long gaming session or a long video-call.
+@@ -251,7 +251,7 @@
+     - **Stop using the app** if the device becomes uncomfortably hot or behaves strangely.
+     - **Charge with an Apple-certified cable and adapter** to avoid charging-related thermal issues unrelated to the app.
+ 
+-    These are intrinsic properties of on-device machine learning, not defects of OnDevice. By continuing you accept that we are not liable for normal thermal output, normal battery drain, or accelerated battery wear consistent with intensive use.
++    These are intrinsic properties of on-device machine learning, not defects of Token AI. By continuing you accept that we are not liable for normal thermal output, normal battery drain, or accelerated battery wear consistent with intensive use.
+     """
+ 
+     // MARK: - Attributions
+@@ -439,7 +439,7 @@
+         let f = DateFormatter()
+         f.dateStyle = .long
+         f.timeStyle = .none
+-        return f.string(from: Date(timeIntervalSince1970: 1_791_417_600)) // 2026-10-08
++        return f.string(from: Date(timeIntervalSince1970: 1_792_800_000)) // 2026-10-24
+     }
+ }
+ 
+--- a/IOSLocalLLM/Models/LocalAPIClientSetup.swift
++++ b/IOSLocalLLM/Models/LocalAPIClientSetup.swift
+@@ -70,7 +70,7 @@
+ 
+     func shareText(apiKey: String) -> String {
+         """
+-        OnDevice Max local API
++        Token AI local API
+         OpenAI base URL: \(openAIBaseURL)
+         Ollama / Anthropic base URL: \(origin)
+         API key: \(apiKey)
+--- a/IOSLocalLLM/Models/ShareInbox.swift
++++ b/IOSLocalLLM/Models/ShareInbox.swift
+@@ -13,7 +13,7 @@
+     }
+ 
+     static func enqueue(_ url: URL, in container: URL, now: Date = Date()) throws {
+-        guard url.scheme == "ondevice-max", url.host == "share" else {
++        guard url.scheme == "tokenai", url.host == "share" else {
+             throw CocoaError(.fileWriteInapplicableStringEncoding)
+         }
+         let data = try JSONEncoder().encode(Entry(createdAt: now, url: url))
+@@ -48,7 +48,7 @@
+             let entry = data.count <= maximumBytes
+                 ? try? JSONDecoder().decode(Entry.self, from: data) : nil
+             let valid = entry.map {
+-                $0.url.scheme == "ondevice-max" && $0.url.host == "share"
++                $0.url.scheme == "tokenai" && $0.url.host == "share"
+                     && now.timeIntervalSince($0.createdAt) <= maximumAge
+                     && $0.createdAt <= now.addingTimeInterval(60)
+             } ?? false
+--- a/IOSLocalLLM/Models/UserGuideChapters.swift
++++ b/IOSLocalLLM/Models/UserGuideChapters.swift
+@@ -207,7 +207,7 @@
+             .init(id: "image-share-or-remove-the-result", title: "Share or remove the result",
+                   path: "Finished image → Share image or image actions",
+                   action: "Use Share image to export the finished result. The actions menu also offers Report content concern and Delete image.",
+-                  note: "Deleting the result from OnDevice leaves copies you already exported to Photos or another app.",
++                  note: "Deleting the result from Token AI leaves copies you already exported to Photos or another app.",
+                   visual: .screenshot(asset: "UserGuideImage", focus: .init(x: 0.04, y: 0.137, width: 0.92, height: 0.1), label: "Result area")),
+         ])
+ 
+@@ -305,7 +305,7 @@
+                   visual: .flow(nodes: [.init(id: "server-get-v1-models", title: "GET /v1/models", symbol: "list.bullet"), .init(id: "server-choose-available-model", title: "Choose available model", symbol: "cpu"), .init(id: "server-send-authenticated-request", title: "Send authenticated request", symbol: "text.bubble")], code: "/v1/chat/completions · /v1/responses · /v1/messages · /api")),
+             .init(id: "server-keep-the-session-available", title: "Keep the session available",
+                   path: "API server → foreground; rotate key when needed",
+-                  action: "Keep OnDevice in the foreground while clients use the server. If you rotate the key, update every connected client.",
++                  action: "Keep Token AI in the foreground while clients use the server. If you rotate the key, update every connected client.",
+                   note: "The server stops in the background and starts again on return when enabled. A 401 usually means the client key needs checking.",
+                   visual: .flow(nodes: [.init(id: "server-background-or-old-key", title: "Background or old key", symbol: "questionmark.circle"), .init(id: "server-return-or-update-client-key", title: "Return or update client key", symbol: "checklist"), .init(id: "server-reconnect", title: "Reconnect", symbol: "checkmark.circle")], code: nil)),
+         ])
+--- a/IOSLocalLLM/Resources/Localization/InfoPlist.xcstrings
++++ b/IOSLocalLLM/Resources/Localization/InfoPlist.xcstrings
+@@ -8,43 +8,43 @@
+         "en": {
+           "stringUnit": {
+             "state": "translated",
+-            "value": "OnDevice Max uses the camera so Lens can read text and describe objects, documents, and scenes you choose to capture."
+-          }
+-        },
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max nutzt die Kamera, damit Lens Texte lesen und von dir aufgenommene Objekte, Dokumente und Szenen beschreiben kann."
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max usa la cámara para que Lens lea texto y describa los objetos, documentos y escenas que elijas capturar."
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "يستخدم OnDevice Max الكاميرا لتقرأ العدسة النصوص وتصف الأشياء والمستندات والمشاهد التي تختار التقاطها."
+-          }
+-        },
+-        "tr": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max, Lens'in çekmeyi seçtiğiniz nesne, belge ve sahneleri açıklaması ve metinleri okuması için kamerayı kullanır."
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max कैमरे का उपयोग करता है ताकि लेंस पाठ पढ़ सके और आपके चुने हुए ऑब्जेक्ट, दस्तावेज़ और दृश्यों का वर्णन कर सके।"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Maxはカメラを使い、レンズでテキストを読み取ったり、撮影した物、文書、風景を説明したりします。"
++            "value": "Token AI uses the camera so Lens can read text and describe objects, documents, and scenes you choose to capture."
++          }
++        },
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI nutzt die Kamera, damit Lens Texte lesen und von dir aufgenommene Objekte, Dokumente und Szenen beschreiben kann."
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI usa la cámara para que Lens lea texto y describa los objetos, documentos y escenas que elijas capturar."
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "يستخدم Token AI الكاميرا لتقرأ العدسة النصوص وتصف الأشياء والمستندات والمشاهد التي تختار التقاطها."
++          }
++        },
++        "tr": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI, Lens'in çekmeyi seçtiğiniz nesne, belge ve sahneleri açıklaması ve metinleri okuması için kamerayı kullanır."
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI कैमरे का उपयोग करता है ताकि लेंस पाठ पढ़ सके और आपके चुने हुए ऑब्जेक्ट, दस्तावेज़ और दृश्यों का वर्णन कर सके।"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AIはカメラを使い、レンズでテキストを読み取ったり、撮影した物、文書、風景を説明したりします。"
+           }
+         }
+       }
+@@ -56,43 +56,43 @@
+         "en": {
+           "stringUnit": {
+             "state": "translated",
+-            "value": "OnDevice Max uses photos you select for image understanding and conversations with compatible vision models."
+-          }
+-        },
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max nutzt ausgewählte Fotos zur Bilderkennung und für Unterhaltungen mit kompatiblen Bildmodellen."
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max usa las fotos que seleccionas para comprender imágenes y conversar con modelos de visión compatibles."
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "يستخدم OnDevice Max الصور التي تختارها لفهم الصور والمحادثات مع نماذج الرؤية المتوافقة."
+-          }
+-        },
+-        "tr": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max, seçtiğiniz fotoğrafları görsel anlama ve uyumlu görme modelleriyle sohbet için kullanır."
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max आपकी चुनी हुई फ़ोटो का उपयोग छवि समझने और संगत दृष्टि मॉडल से बातचीत के लिए करता है।"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Maxは選択した写真を、対応する画像認識モデルでの画像理解や会話に使用します。"
++            "value": "Token AI uses photos you select for image understanding and conversations with compatible vision models."
++          }
++        },
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI nutzt ausgewählte Fotos zur Bilderkennung und für Unterhaltungen mit kompatiblen Bildmodellen."
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI usa las fotos que seleccionas para comprender imágenes y conversar con modelos de visión compatibles."
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "يستخدم Token AI الصور التي تختارها لفهم الصور والمحادثات مع نماذج الرؤية المتوافقة."
++          }
++        },
++        "tr": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI, seçtiğiniz fotoğrafları görsel anlama ve uyumlu görme modelleriyle sohbet için kullanır."
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI आपकी चुनी हुई फ़ोटो का उपयोग छवि समझने और संगत दृष्टि मॉडल से बातचीत के लिए करता है।"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AIは選択した写真を、対応する画像認識モデルでの画像理解や会話に使用します。"
+           }
+         }
+       }
+@@ -104,43 +104,43 @@
+         "en": {
+           "stringUnit": {
+             "state": "translated",
+-            "value": "OnDevice Max uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control."
+-          }
+-        },
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max nutzt das Mikrofon für Sprachunterhaltungen und Diktat. Die Aufnahme startet, wenn du eine Sprach- oder Mikrofonsteuerung wählst."
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max usa el micrófono para conversaciones por voz y dictado. La grabación comienza al elegir un control de voz o micrófono."
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "يستخدم OnDevice Max الميكروفون للمحادثات الصوتية والإملاء. يبدأ التسجيل عندما تختار أحد عناصر التحكم بالصوت أو الميكروفون."
+-          }
+-        },
+-        "tr": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max, mikrofonu sesli sohbetler ve dikte için kullanır. Kayıt, ses veya mikrofon denetimini seçtiğinizde başlar."
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max माइक्रोफ़ोन का उपयोग आवाज़ से बातचीत और डिक्टेशन के लिए करता है। आवाज़ या माइक्रोफ़ोन नियंत्रण चुनने पर रिकॉर्डिंग शुरू होती है।"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Maxはマイクを音声会話と音声入力に使用します。音声またはマイクの操作を選ぶと録音を開始します。"
++            "value": "Token AI uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control."
++          }
++        },
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI nutzt das Mikrofon für Sprachunterhaltungen und Diktat. Die Aufnahme startet, wenn du eine Sprach- oder Mikrofonsteuerung wählst."
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI usa el micrófono para conversaciones por voz y dictado. La grabación comienza al elegir un control de voz o micrófono."
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "يستخدم Token AI الميكروفون للمحادثات الصوتية والإملاء. يبدأ التسجيل عندما تختار أحد عناصر التحكم بالصوت أو الميكروفون."
++          }
++        },
++        "tr": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI, mikrofonu sesli sohbetler ve dikte için kullanır. Kayıt, ses veya mikrofon denetimini seçtiğinizde başlar."
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI माइक्रोफ़ोन का उपयोग आवाज़ से बातचीत और डिक्टेशन के लिए करता है। आवाज़ या माइक्रोफ़ोन नियंत्रण चुनने पर रिकॉर्डिंग शुरू होती है।"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AIはマイクを音声会話と音声入力に使用します。音声またはマイクの操作を選ぶと録音を開始します。"
+           }
+         }
+       }
+@@ -152,43 +152,43 @@
+         "en": {
+           "stringUnit": {
+             "state": "translated",
+-            "value": "OnDevice Max uses your local network when you enable the Local API Server, pair a Mac, or choose a custom API provider on your network."
+-          }
+-        },
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max nutzt dein lokales Netzwerk, wenn du den lokalen API-Server aktivierst, einen Mac koppelst oder einen eigenen API-Anbieter im Netzwerk auswählst."
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max usa la red local al activar el servidor API local, enlazar un Mac o elegir un proveedor API personalizado en tu red."
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "يستخدم OnDevice Max شبكتك المحلية عند تفعيل خادم API المحلي أو إقران Mac أو اختيار مزوّد API مخصص على شبكتك."
+-          }
+-        },
+-        "tr": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max, Yerel API Sunucusu'nu etkinleştirdiğinizde, Mac eşlediğinizde veya ağınızda özel API sağlayıcısı seçtiğinizde yerel ağınızı kullanır."
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max स्थानीय नेटवर्क का उपयोग तब करता है जब आप स्थानीय API सर्वर चालू करते हैं, Mac जोड़ते हैं या अपने नेटवर्क पर कस्टम API प्रदाता चुनते हैं।"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice MaxはローカルAPIサーバーの有効化、Macとのペアリング、ネットワーク上のカスタムAPIプロバイダーの選択時にローカルネットワークを使用します。"
++            "value": "Token AI uses your local network when you enable the Local API Server, pair a Mac, or choose a custom API provider on your network."
++          }
++        },
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI nutzt dein lokales Netzwerk, wenn du den lokalen API-Server aktivierst, einen Mac koppelst oder einen eigenen API-Anbieter im Netzwerk auswählst."
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI usa la red local al activar el servidor API local, enlazar un Mac o elegir un proveedor API personalizado en tu red."
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "يستخدم Token AI شبكتك المحلية عند تفعيل خادم API المحلي أو إقران Mac أو اختيار مزوّد API مخصص على شبكتك."
++          }
++        },
++        "tr": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI, Yerel API Sunucusu'nu etkinleştirdiğinizde, Mac eşlediğinizde veya ağınızda özel API sağlayıcısı seçtiğinizde yerel ağınızı kullanır."
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI स्थानीय नेटवर्क का उपयोग तब करता है जब आप स्थानीय API सर्वर चालू करते हैं, Mac जोड़ते हैं या अपने नेटवर्क पर कस्टम API प्रदाता चुनते हैं।"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AIはローカルAPIサーバーの有効化、Macとのペアリング、ネットワーク上のカスタムAPIプロバイダーの選択時にローカルネットワークを使用します。"
+           }
+         }
+       }
+@@ -200,43 +200,43 @@
+         "en": {
+           "stringUnit": {
+             "state": "translated",
+-            "value": "OnDevice Max uses speech recognition to turn your speech into text for voice conversations and dictation."
+-          }
+-        },
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max nutzt Spracherkennung, um deine Sprache für Unterhaltungen und Diktat in Text umzuwandeln."
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max usa reconocimiento de voz para convertir tu voz en texto en conversaciones y dictado."
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "يستخدم OnDevice Max التعرف على الكلام لتحويل كلامك إلى نص في المحادثات الصوتية والإملاء."
+-          }
+-        },
+-        "tr": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max, sesli sohbet ve dikte için konuşmanızı metne dönüştürmek üzere konuşma tanımayı kullanır."
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max वाक् पहचान का उपयोग आवाज़ से बातचीत और डिक्टेशन में आपकी आवाज़ को पाठ में बदलने के लिए करता है।"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Maxは音声認識を使い、音声会話と音声入力で話した内容をテキストに変換します。"
++            "value": "Token AI uses speech recognition to turn your speech into text for voice conversations and dictation."
++          }
++        },
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI nutzt Spracherkennung, um deine Sprache für Unterhaltungen und Diktat in Text umzuwandeln."
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI usa reconocimiento de voz para convertir tu voz en texto en conversaciones y dictado."
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "يستخدم Token AI التعرف على الكلام لتحويل كلامك إلى نص في المحادثات الصوتية والإملاء."
++          }
++        },
++        "tr": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI, sesli sohbet ve dikte için konuşmanızı metne dönüştürmek üzere konuşma tanımayı kullanır."
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI वाक् पहचान का उपयोग आवाज़ से बातचीत और डिक्टेशन में आपकी आवाज़ को पाठ में बदलने के लिए करता है।"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AIは音声認識を使い、音声会話と音声入力で話した内容をテキストに変換します。"
+           }
+         }
+       }
+@@ -248,43 +248,43 @@
+         "en": {
+           "stringUnit": {
+             "state": "translated",
+-            "value": "OnDevice Max saves images you create to your photo library when you choose Save Image."
+-          }
+-        },
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max speichert erstellte Bilder in deiner Fotomediathek, wenn du „Bild sichern“ auswählst."
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max guarda las imágenes que creas en tu fototeca al elegir Guardar imagen."
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "يحفظ OnDevice Max الصور التي تنشئها في مكتبة الصور عند اختيار حفظ الصورة."
+-          }
+-        },
+-        "tr": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max, Görseli Kaydet'i seçtiğinizde oluşturduğunuz görselleri fotoğraf arşivinize kaydeder."
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max आपके बनाए चित्र फ़ोटो लाइब्रेरी में सहेजता है, जब आप छवि सहेजें चुनते हैं।"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Maxは「画像を保存」を選択すると、作成した画像を写真ライブラリに保存します。"
++            "value": "Token AI saves images you create to your photo library when you choose Save Image."
++          }
++        },
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI speichert erstellte Bilder in deiner Fotomediathek, wenn du „Bild sichern“ auswählst."
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI guarda las imágenes que creas en tu fototeca al elegir Guardar imagen."
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "يحفظ Token AI الصور التي تنشئها في مكتبة الصور عند اختيار حفظ الصورة."
++          }
++        },
++        "tr": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI, Görseli Kaydet'i seçtiğinizde oluşturduğunuz görselleri fotoğraf arşivinize kaydeder."
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI आपके बनाए चित्र फ़ोटो लाइब्रेरी में सहेजता है, जब आप छवि सहेजें चुनते हैं।"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AIは「画像を保存」を選択すると、作成した画像を写真ライブラリに保存します。"
+           }
+         }
+       }
+--- a/IOSLocalLLM/Services/APIProviderClient.swift
++++ b/IOSLocalLLM/Services/APIProviderClient.swift
+@@ -209,7 +209,7 @@
+         guard APIProviderEndpoint.isValidKey(key) else { throw APIProviderError.invalidKey }
+         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 240)
+         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+-        request.setValue("OnDeviceMax/1.0", forHTTPHeaderField: "User-Agent")
++        request.setValue("TokenAI/2.0", forHTTPHeaderField: "User-Agent")
+         if provider.requiresAPIKey && !key.isEmpty {
+             switch format {
+             case .anthropic:
+--- a/IOSLocalLLM/Services/APIProviderStore.swift
++++ b/IOSLocalLLM/Services/APIProviderStore.swift
+@@ -10,7 +10,7 @@
+ }
+ 
+ nonisolated struct APIProviderKeychain: APIProviderCredentialStorage {
+-    private let service = "com.mesutcydev.ondevicemax.chatproviders"
++    private let service = "com.token.TokenAI.chatproviders"
+     private func query(_ id: UUID? = nil) -> [String: Any] {
+         var result: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                    kSecAttrService as String: service]
+--- a/IOSLocalLLM/Services/BackgroundDownloadCoordinator.swift
++++ b/IOSLocalLLM/Services/BackgroundDownloadCoordinator.swift
+@@ -21,7 +21,7 @@
+ final class BackgroundDownloadCoordinator: NSObject {
+ 
+     static let shared = BackgroundDownloadCoordinator()
+-    static let sessionIdentifier = "com.mesutcydev.ondevicemax.background-downloads"
++    static let sessionIdentifier = "com.token.TokenAI.background-downloads"
+ 
+     private let journal: BackgroundDownloadJournal
+     private var suppliedConfiguration: URLSessionConfiguration?
+@@ -274,7 +274,7 @@
+         // the main queue that blocks UI and can trigger the iOS watchdog at
+         // 100%. Keep callbacks serial, but perform file finalization off-main.
+         let delegateQueue = OperationQueue()
+-        delegateQueue.name = "com.mesutcydev.ondevicemax.download-finalization"
++        delegateQueue.name = "com.token.TokenAI.download-finalization"
+         delegateQueue.maxConcurrentOperationCount = 1
+         delegateQueue.qualityOfService = .utility
+         return URLSession(configuration: cfg, delegate: self, delegateQueue: delegateQueue)
+@@ -284,7 +284,7 @@
+     /// whether we're on an expensive (cellular / hotspot) link.
+     private let pathMonitor: NWPathMonitor = {
+         let monitor = NWPathMonitor()
+-        monitor.start(queue: DispatchQueue(label: "com.mesutcydev.ondevicemax.download-path-monitor"))
++        monitor.start(queue: DispatchQueue(label: "com.token.TokenAI.download-path-monitor"))
+         return monitor
+     }()
+ 
+--- a/IOSLocalLLM/Services/Bridge/BridgeIdentity.swift
++++ b/IOSLocalLLM/Services/Bridge/BridgeIdentity.swift
+@@ -8,8 +8,8 @@
+ final class BridgeIdentity {
+     static let shared = BridgeIdentity()
+ 
+-    private static let certLabel = "com.mesutcydev.ondevicemax.bridge.cert"
+-    private static let keyTag    = "com.mesutcydev.ondevicemax.bridge.privkey"
++    private static let certLabel = "com.token.TokenAI.bridge.cert"
++    private static let keyTag    = "com.token.TokenAI.bridge.privkey"
+ 
+     private(set) var identity: SecIdentity?
+     private(set) var fingerprint: String = ""
+--- a/IOSLocalLLM/Services/Bridge/BridgePairingStore.swift
++++ b/IOSLocalLLM/Services/Bridge/BridgePairingStore.swift
+@@ -5,7 +5,7 @@
+ // One item per token; the token is used as the account key.
+ final class BridgePairingStore {
+     static let shared = BridgePairingStore()
+-    private static let service = "com.mesutcydev.ondevicemax.bridge.pairings"
++    private static let service = "com.token.TokenAI.bridge.pairings"
+     private init() {}
+ 
+     /// Three new optional fields landed with the agent channel:
+--- a/IOSLocalLLM/Services/Bridge/LocalAPIServer.swift
++++ b/IOSLocalLLM/Services/Bridge/LocalAPIServer.swift
+@@ -2594,7 +2594,7 @@
+ 
+     private func describeAPI(_ connection: NWConnection, corsOrigin: String?) async {
+         let payload = LocalAPIResponse.json([
+-            "name": "OnDevice Max",
++            "name": "Token AI",
+             "status": "ok",
+             "authentication": ["bearer", "x-api-key"],
+             "openai_base_url": "/v1",
+@@ -3145,7 +3145,7 @@
+ 
+     private let server = LocalAPIServer()
+     private let pathMonitor = NWPathMonitor()
+-    private let pathQueue = DispatchQueue(label: "com.mesutcydev.ondevicemax.local-api-network")
++    private let pathQueue = DispatchQueue(label: "com.token.TokenAI.local-api-network")
+ 
+     private var startEpoch: UInt64 = 0
+ 
+--- a/IOSLocalLLM/Services/CameraService.swift
++++ b/IOSLocalLLM/Services/CameraService.swift
+@@ -40,7 +40,7 @@
+     private var videoDevice: AVCaptureDevice?
+ 
+     // Frame management
+-    private let processingQueue = DispatchQueue(label: "com.mesutcydev.ondevicemax.camera", qos: .userInteractive)
++    private let processingQueue = DispatchQueue(label: "com.token.TokenAI.camera", qos: .userInteractive)
+     private var frameIndex: Int = 0
+     // Was a plain Bool. Promoted to a lock so the read-then-flip inside
+     // captureOutput is one atomic critical section — the serial-queue
+@@ -324,7 +324,7 @@
+             if shouldRun { captureSession.startRunning() }
+             else { captureSession.stopRunning() }
+             #if DEBUG
+-            Logger(subsystem: "com.mesutcydev.ondevicemax", category: "sensor-ownership")
++            Logger(subsystem: "com.token.TokenAI", category: "sensor-ownership")
+                 .debug("camera operation=\(self.ownershipID.uuidString, privacy: .public) running=\(self.captureSession.isRunning) requested=\(self.demand.isRequested) foreground=\(self.demand.isForeground)")
+             #endif
+         }
+--- a/IOSLocalLLM/Services/CloudSyncService.swift
++++ b/IOSLocalLLM/Services/CloudSyncService.swift
+@@ -23,7 +23,7 @@
+     @Published private(set) var isSyncing = false
+     @Published private(set) var lastError: String?
+ 
+-    private let container = CKContainer(identifier: "iCloud.com.mesutcydev.ondevicemax")
++    private let container = CKContainer(identifier: "iCloud.com.token.TokenAI")
+     private var privateDB: CKDatabase { container.privateCloudDatabase }
+ 
+     private init() {}
+--- a/IOSLocalLLM/Services/CodingAssistantService.swift
++++ b/IOSLocalLLM/Services/CodingAssistantService.swift
+@@ -1159,7 +1159,7 @@
+     // MARK: - System prompt
+ 
+     nonisolated static let systemPrompt = """
+-    You are an expert coding assistant running entirely on-device in OnDevice.
++    You are an expert coding assistant running entirely on-device in Token AI.
+ 
+     Your capabilities:
+     • Code completion, generation, and refactoring across all languages
+@@ -1246,7 +1246,7 @@
+                      AIContentPolicy.textInstructions]
+         if compact {
+             parts.append("""
+-            You are the assistant in OnDevice Max. Today is \(today). \
++            You are the assistant in Token AI. Today is \(today). \
+             Reply in the user's language.\(languageLine) Answer first and keep it short. \
+             \(context.spoken ? "" : "Follow the user's requested output format. Otherwise use short paragraphs and one list item per line. ")\(grounding)
+             """)
+@@ -1259,7 +1259,7 @@
+             rules.append("- For facts about the user, their files or current events, rely only on this conversation, attached files, and tool or web results. \(grounding)")
+             parts.append("""
+             Context:
+-            - You are the assistant in OnDevice Max.
++            - You are the assistant in Token AI.
+             - Today is \(today).
+             - Reply in the language the user writes in.\(languageLine)
+ 
+--- a/IOSLocalLLM/Services/CoreAIHFDownloadManager.swift
++++ b/IOSLocalLLM/Services/CoreAIHFDownloadManager.swift
+@@ -7,7 +7,7 @@
+ enum CoreAIDownloadUserAgent {
+     static let value: String = {
+         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+-        return "OnDeviceMax/\(version) (iOS; Core AI pack download)"
++        return "TokenAI/\(version) (iOS; Core AI pack download)"
+     }()
+ }
+ 
+--- a/IOSLocalLLM/Services/Diagnostics/Diagnostics.swift
++++ b/IOSLocalLLM/Services/Diagnostics/Diagnostics.swift
+@@ -57,7 +57,7 @@
+ 
+     static let shared = Diagnostics()
+ 
+-    private let subsystem = "com.mesutcydev.ondevicemax.IOSLocalLLM"
++    private let subsystem = "com.token.TokenAI.IOSLocalLLM"
+     private let lock = NSLock()
+     private var ring: [DiagEntry] = []
+     private let ringCap = 600
+@@ -67,7 +67,7 @@
+     var minimumLevel: DiagLevel = .info
+ 
+     private var loggers: [String: Logger] = [:]
+-    private let diskQueue = DispatchQueue(label: "com.mesutcydev.ondevicemax.diagnostics.disk", qos: .utility)
++    private let diskQueue = DispatchQueue(label: "com.token.TokenAI.diagnostics.disk", qos: .utility)
+     private let maxFileBytes = 512 * 1024
+ 
+     static let timestampFormatter: ISO8601DateFormatter = {
+--- a/IOSLocalLLM/Services/Diagnostics/SystemSnapshot.swift
++++ b/IOSLocalLLM/Services/Diagnostics/SystemSnapshot.swift
+@@ -57,7 +57,7 @@
+     static func header() -> String {
+         let mem = memory()
+         var lines: [String] = []
+-        lines.append("=== OnDevice diagnostics ===")
++        lines.append("=== Token AI diagnostics ===")
+         lines.append("exported: \(Diagnostics.timestampFormatter.string(from: Date()))")
+         lines.append("app: \(appVersion())")
+         lines.append("device: \(deviceModelIdentifier()) · iOS \(osVersion())")
+--- a/IOSLocalLLM/Services/GitHubClient.swift
++++ b/IOSLocalLLM/Services/GitHubClient.swift
+@@ -327,7 +327,7 @@
+         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
+         request.httpMethod = method
+         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+-        request.setValue("OnDeviceMax", forHTTPHeaderField: "User-Agent")
++        request.setValue("TokenAI", forHTTPHeaderField: "User-Agent")
+         if host == "api.github.com" { request.setValue("2026-03-10", forHTTPHeaderField: "X-GitHub-Api-Version") }
+         else { request.setValue("application/json", forHTTPHeaderField: "Accept") }
+         if let token {
+--- a/IOSLocalLLM/Services/GitHubConnectionStore.swift
++++ b/IOSLocalLLM/Services/GitHubConnectionStore.swift
+@@ -11,7 +11,7 @@
+ 
+ /// Separate service, no shared access group, no synchronization or file fallback.
+ nonisolated struct GitHubKeychain: GitHubCredentialStorage {
+-    private let service = "com.mesutcydev.ondevicemax.github"
++    private let service = "com.token.TokenAI.github"
+     private func query(_ id: UUID? = nil) -> [String: Any] {
+         var value: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service]
+         if let id { value[kSecAttrAccount as String] = id.uuidString }
+--- a/IOSLocalLLM/Services/GitHubDraftProtection.swift
++++ b/IOSLocalLLM/Services/GitHubDraftProtection.swift
+@@ -10,7 +10,7 @@
+     static let keyInfo = CodingUserInfoKey(rawValue: "ondevice.github.draft.key")!
+     private static var query: [String: Any] {
+         [kSecClass as String: kSecClassGenericPassword,
+-         kSecAttrService as String: "com.mesutcydev.ondevicemax.github.drafts",
++         kSecAttrService as String: "com.token.TokenAI.github.drafts",
+          kSecAttrAccount as String: "snapshot-key.v1"]
+     }
+     private static func key(create: Bool) throws -> SymmetricKey {
+--- a/IOSLocalLLM/Services/GitHubWorkspaceService.swift
++++ b/IOSLocalLLM/Services/GitHubWorkspaceService.swift
+@@ -145,7 +145,7 @@
+         return result
+     }
+ 
+-    func review(message: String = "Update files with OnDevice Max") async throws -> GitHubReviewPlan {
++    func review(message: String = "Update files with Token AI") async throws -> GitHubReviewPlan {
+         let draft = try activeDraft()
+         guard !draft.changes.isEmpty, let sha = draft.baseSHA else { throw GitHubError.emptyChanges }
+         return GitHubReviewPlan(id: UUID(), draft: draft, expectedSHA: sha, action: .commit(message: try commitMessage(message)))
+@@ -544,7 +544,7 @@
+             result = try await client.checks(selection, sha: sha, token: token)
+         case "workflow_status": result = try await client.workflowStatus(selection, token: token)
+         case "request_user_approval":
+-            return .review(try await review(message: args["message"] as? String ?? "Update files with OnDevice Max"))
++            return .review(try await review(message: args["message"] as? String ?? "Update files with Token AI"))
+         case "create_branch", "open_pull_request", "revert_last_commit":
+             guard workspace.changes.isEmpty else { return .result("Error: commit or discard staged changes before this action.") }
+             let head = try await client.head(selection, token: token)
+--- a/IOSLocalLLM/Services/HFTokenStore.swift
++++ b/IOSLocalLLM/Services/HFTokenStore.swift
+@@ -8,7 +8,7 @@
+ // Used to authenticate downloads of gated repos (google/gemma-3-*,
+ // meta-llama/*, mistralai/Ministral-*, etc.).
+ //
+-// Storage: Generic password under service "com.mesutcydev.ondevicemax.huggingface".
++// Storage: Generic password under service "com.token.TokenAI.huggingface".
+ // Accessibility is `AfterFirstUnlockThisDeviceOnly` — survives reboots
+ // but never leaves the device or syncs via iCloud Keychain. Encryption
+ // is iOS Data Protection, tied to the user's passcode.
+@@ -50,7 +50,7 @@
+     //
+     // Keep these stable — renaming would orphan tokens stored under
+     // the old service name and force users to re-enter.
+-    private let service = "com.mesutcydev.ondevicemax.huggingface"
++    private let service = "com.token.TokenAI.huggingface"
+     private let account = "default-token"
+ 
+     private init() {
+@@ -249,7 +249,7 @@
+ 
+         let query: [String: Any] = [
+             kSecClass as String:       kSecClassGenericPassword,
+-            kSecAttrService as String: "com.mesutcydev.ondevicemax.huggingface",
++            kSecAttrService as String: "com.token.TokenAI.huggingface",
+             kSecAttrAccount as String: "default-token",
+             kSecReturnData as String:  true,
+             kSecMatchLimit as String:  kSecMatchLimitOne,
+--- a/IOSLocalLLM/Services/Intents/IOSLocalLLMAppIntents.swift
++++ b/IOSLocalLLM/Services/Intents/IOSLocalLLMAppIntents.swift
+@@ -18,9 +18,9 @@
+ // MARK: Ask
+ 
+ struct AskIOSLocalLLMIntent: AppIntent {
+-    static var title: LocalizedStringResource = "Ask OnDevice"
++    static var title: LocalizedStringResource = "Ask Token AI"
+     static var description = IntentDescription(
+-        "Ask the on-device assistant a question. Opens OnDevice and answers locally — nothing leaves your device."
++        "Ask the on-device assistant a question. Opens Token AI and answers locally — nothing leaves your device."
+     )
+     static var openAppWhenRun: Bool = true
+ 
+@@ -34,7 +34,7 @@
+     }
+ 
+     static var parameterSummary: some ParameterSummary {
+-        Summary("Ask OnDevice \(\.$prompt)")
++        Summary("Ask Token AI \(\.$prompt)")
+     }
+ }
+ 
+@@ -44,9 +44,9 @@
+ /// using Apple's on-device system model. This is the headless counterpart to
+ /// `AskIOSLocalLLMIntent`: instant, private, zero-download. Falls back with a
+ /// clear error when Apple Intelligence isn't available (older OS / device /
+-/// toggle off), nudging the user to the app-opening "Ask OnDevice" instead.
++/// toggle off), nudging the user to the app-opening "Ask Token AI" instead.
+ struct QuickAskIOSLocalLLMIntent: AppIntent {
+-    static var title: LocalizedStringResource = "Quick Ask OnDevice"
++    static var title: LocalizedStringResource = "Quick Ask Token AI"
+     static var description = IntentDescription(
+         "Get a fast on-device answer from the built-in system model — no app launch, fully private."
+     )
+@@ -60,7 +60,7 @@
+             let reason = AppleFoundationModel.unavailableReason
+                 ?? "The on-device system model isn't available."
+             throw AppleFoundationModel.AppleFMError.unavailable(
+-                "\(reason) Try \"Ask OnDevice\" to use a downloaded model instead."
++                "\(reason) Try \"Ask Token AI\" to use a downloaded model instead."
+             )
+         }
+         let answer = try await AppleFoundationModel.answer(
+@@ -71,14 +71,14 @@
+     }
+ 
+     static var parameterSummary: some ParameterSummary {
+-        Summary("Quick ask OnDevice \(\.$prompt)")
++        Summary("Quick ask Token AI \(\.$prompt)")
+     }
+ }
+ 
+ // MARK: New chat
+ 
+ struct NewChatIntent: AppIntent {
+-    static var title: LocalizedStringResource = "New OnDevice Chat"
++    static var title: LocalizedStringResource = "New Token AI Chat"
+     static var description = IntentDescription("Start a fresh conversation with the on-device assistant.")
+     static var openAppWhenRun: Bool = true
+ 
+@@ -106,7 +106,7 @@
+ // MARK: Voice
+ 
+ struct VoiceChatIntent: AppIntent {
+-    static var title: LocalizedStringResource = "Talk to OnDevice"
++    static var title: LocalizedStringResource = "Talk to Token AI"
+     static var description = IntentDescription("Open hands-free voice conversation with the on-device assistant.")
+     static var openAppWhenRun: Bool = true
+ 
+--- a/IOSLocalLLM/Services/LiveOCRService.swift
++++ b/IOSLocalLLM/Services/LiveOCRService.swift
+@@ -30,7 +30,7 @@
+     /// Frames per second cap for OCR — anything over ~2 fps makes the phone
+     /// hotter without materially improving tap targets.
+     private let throttleFPS: Double = 2.0
+-    private let recognitionQueue = DispatchQueue(label: "com.mesutcydev.ondevicemax.live-ocr",
++    private let recognitionQueue = DispatchQueue(label: "com.token.TokenAI.live-ocr",
+                                                  qos: .utility)
+     private var recognitionInFlight = false
+ 
+--- a/IOSLocalLLM/Services/LocalModelImportService.swift
++++ b/IOSLocalLLM/Services/LocalModelImportService.swift
+@@ -33,7 +33,7 @@
+     }
+ 
+     /// Model folders and GGUF files the user placed in On My iPhone ›
+-    /// OnDeviceMax (or that arrived in its Inbox). Importing these needs no
++    /// TokenAI (or that arrived in its Inbox). Importing these needs no
+     /// document picker, so it keeps working on re-signed sideload installs
+     /// where Files silently refuses open-in-place folder access.
+     static func documentsCandidates() -> [URL] {
+@@ -215,7 +215,7 @@
+             }.value } catch let error as CocoaError where error.code == .fileReadNoPermission {
+                 throw NSError(domain: "LocalImport", code: -4, userInfo: [
+                     NSLocalizedDescriptionKey:
+-                        "Files didn't give OnDevice Max access to “\(cleaned)”, which is common on sideloaded installs. Copy it to On My iPhone › OnDevice Max in Files, then pick it from the Import model list."
++                        "Files didn't give Token AI access to “\(cleaned)”, which is common on sideloaded installs. Copy it to On My iPhone › Token AI in Files, then pick it from the Import model list."
+                 ])
+             }
+         }
+--- a/IOSLocalLLM/Services/ModelPrefetcher.swift
++++ b/IOSLocalLLM/Services/ModelPrefetcher.swift
+@@ -28,7 +28,7 @@
+     /// link is expensive (cellular/hotspot) or constrained (data saver).
+     private let pathMonitor: NWPathMonitor = {
+         let monitor = NWPathMonitor()
+-        monitor.start(queue: DispatchQueue(label: "com.mesutcydev.ondevicemax.prefetch-path-monitor"))
++        monitor.start(queue: DispatchQueue(label: "com.token.TokenAI.prefetch-path-monitor"))
+         return monitor
+     }()
+ 
+--- a/IOSLocalLLM/Services/ParentalControlManager.swift
++++ b/IOSLocalLLM/Services/ParentalControlManager.swift
+@@ -16,7 +16,7 @@
+ final class ParentalControlKeychain: ParentalControlStorage {
+     private var query: [String: Any] {
+         [kSecClass as String: kSecClassGenericPassword,
+-         kSecAttrService as String: "com.mesutcydev.ondevicemax.parental-controls",
++         kSecAttrService as String: "com.token.TokenAI.parental-controls",
+          kSecAttrAccount as String: "parent-pin-v1"]
+     }
+ 
+--- a/IOSLocalLLM/Services/SpotlightIndexer.swift
++++ b/IOSLocalLLM/Services/SpotlightIndexer.swift
+@@ -11,7 +11,7 @@
+ 
+ enum SpotlightIndexer {
+ 
+-    static let domain = "com.mesutcydev.ondevicemax.conversation"
++    static let domain = "com.token.TokenAI.conversation"
+ 
+     /// Rebuild the whole index from the current conversation list. Cheap —
+     /// runs on a background queue inside CoreSpotlight.
+@@ -39,7 +39,7 @@
+         attr.title = c.title
+         let firstUser = c.messages.first(where: { $0.role == "user" })?.content ?? ""
+         attr.contentDescription = String(firstUser.prefix(200))
+-        attr.keywords = ["chat", "OnDevice", "ai", "conversation", "assistant"]
++        attr.keywords = ["chat", "Token AI", "ai", "conversation", "assistant"]
+         attr.contentModificationDate = c.updatedAt
+         return CSSearchableItem(
+             uniqueIdentifier: c.id.uuidString,
+--- a/IOSLocalLLM/Services/Voice/VoicePerformanceSignposts.swift
++++ b/IOSLocalLLM/Services/Voice/VoicePerformanceSignposts.swift
+@@ -6,7 +6,7 @@
+ // Points of Interest for Instruments. Cheap when disabled by OS.
+ 
+ enum VoicePerformanceSignposts {
+-    static let log = OSLog(subsystem: "com.mesutcydev.ondevicemax.IOSLocalLLM", category: "VoicePerformance")
++    static let log = OSLog(subsystem: "com.token.TokenAI.IOSLocalLLM", category: "VoicePerformance")
+ 
+     static func begin(_ name: StaticString, id: OSSignpostID = .exclusive) {
+         os_signpost(.begin, log: log, name: name, signpostID: id)
+--- a/IOSLocalLLM/Services/Voice/VoiceProfileRegistry.swift
++++ b/IOSLocalLLM/Services/Voice/VoiceProfileRegistry.swift
+@@ -23,7 +23,7 @@
+ //
+ // User overrides (rate / pitch / engine / chunking strategy) are
+ // applied ON TOP of the base profile, keyed under
+-// `com.mesutcydev.ondevicemax.voice.profile.<modelId>.<field>` in UserDefaults.
++// `com.token.TokenAI.voice.profile.<modelId>.<field>` in UserDefaults.
+ // They beat built-in defaults but never replace the structural
+ // fields (`usesReasoningTokens`, `reasoningTokenPattern`,
+ // `dominantLanguages`) — those are model-architecture facts, not
+@@ -195,7 +195,7 @@
+     // it." UserDefaults.standard.double(forKey:) returns 0.0 for
+     // missing keys, which would silently zero out the rate.
+ 
+-    private static let overridePrefix = "com.mesutcydev.ondevicemax.voice.profile."
++    private static let overridePrefix = "com.token.TokenAI.voice.profile."
+ 
+     /// Set or clear the user's rate override for `modelId`. `nil`
+     /// removes the override (reverting to the profile default).
+--- a/IOSLocalLLM/Services/Voice/VoiceRuntimeDiagnostics.swift
++++ b/IOSLocalLLM/Services/Voice/VoiceRuntimeDiagnostics.swift
+@@ -83,7 +83,7 @@
+         counters.captureMemory()
+         syncLiveState()
+         let report = """
+-        OnDevice Voice Validation Report
++        Token AI Voice Validation Report
+         -------------------------------
+         Conversation model: \(conversationModel)
+         TTS engine: \(ttsEngine)
+--- a/IOSLocalLLM/Services/VoiceConversationService.swift
++++ b/IOSLocalLLM/Services/VoiceConversationService.swift
+@@ -61,7 +61,7 @@
+     private func owns(_ operation: UUID) -> Bool { sessionOperationID == operation }
+     private func event(_ name: String, operation: UUID) {
+         #if DEBUG
+-        Logger(subsystem: "com.mesutcydev.ondevicemax", category: "sensor-ownership")
++        Logger(subsystem: "com.token.TokenAI", category: "sensor-ownership")
+             .debug("voice operation=\(operation.uuidString, privacy: .public) event=\(name, privacy: .public)")
+         #endif
+     }
+--- a/IOSLocalLLM/Services/Web/KeychainStore.swift
++++ b/IOSLocalLLM/Services/Web/KeychainStore.swift
+@@ -14,7 +14,7 @@
+ 
+     /// Account name namespace — keep it scoped to the web-tool so other parts
+     /// of the app can use their own keychain space if they want one.
+-    public static let service = "com.mesutcydev.ondevicemax.webtool"
++    public static let service = "com.token.TokenAI.webtool"
+ 
+     public static func set(_ value: String, account: String) {
+         guard let data = value.data(using: .utf8) else { return }
+--- a/IOSLocalLLM/Views/APIProvidersView.swift
++++ b/IOSLocalLLM/Views/APIProvidersView.swift
+@@ -411,7 +411,7 @@
+                     APIProviderRule()
+                     VStack(alignment: .leading, spacing: 12) {
+                         Text("When you send a message, conversation text, system instructions, tool results, attached file excerpts, and supported images included in the request will be sent to this endpoint.")
+-                        Text("The provider may route requests to its model operators. Its privacy, retention, and billing terms apply. OnDevice Max cannot verify a custom server's practices.")
++                        Text("The provider may route requests to its model operators. Its privacy, retention, and billing terms apply. Token AI cannot verify a custom server's practices.")
+                         Text("You can choose an on-device model at any time. Local inference never silently switches to an API provider.")
+                         if URL(string: provider.baseURL)?.scheme == "http" {
+                             Label("This private-network endpoint uses HTTP. Requests and its API key are not encrypted in transit.", systemImage: "lock.open")
+--- a/IOSLocalLLM/Views/BootSplashView.swift
++++ b/IOSLocalLLM/Views/BootSplashView.swift
+@@ -25,10 +25,10 @@
+             .ignoresSafeArea()
+             .overlay {
+                 VStack(spacing: ODLayout.labelGap) {
+-                    Text("OnDevice")
++                    Text("Token AI")
+                         .font(.system(.largeTitle, design: .serif).weight(.semibold))
+                         .foregroundStyle(ODPalette.text)
+-                    Text("LOCAL AI WORKBENCH")
++                    Text("LOCAL AI STUDIO")
+                         .font(.footnote.weight(.medium))
+                         .tracking(2.5)
+                         .foregroundStyle(ODPalette.secondary)
+@@ -38,7 +38,7 @@
+                 .offset(y: -ODLayout.pageInset)
+             }
+             .accessibilityElement(children: .combine)
+-            .accessibilityLabel("OnDevice")
++            .accessibilityLabel("Token AI")
+             .task {
+                 try? await Task.sleep(for: Self.minimumHold)
+                 guard !Task.isCancelled else { return }
+--- a/IOSLocalLLM/Views/Bridge/ArgentRemoteView.swift
++++ b/IOSLocalLLM/Views/Bridge/ArgentRemoteView.swift
+@@ -27,7 +27,7 @@
+     @State private var devices: [DeviceRow] = []
+     @State private var selectedUDID: String = ""
+ 
+-    @State private var customBundleID: String = "com.mesutcydev.ondevicemax.IOSLocalLLM"
++    @State private var customBundleID: String = "com.token.TokenAI"
+     @State private var customURL: String     = ""
+     @State private var customFlow: String    = ""
+     @State private var customText: String    = ""
+--- a/IOSLocalLLM/Views/Bridge/LocalAPIServerView.swift
++++ b/IOSLocalLLM/Views/Bridge/LocalAPIServerView.swift
+@@ -97,7 +97,7 @@
+     private var operatorHeader: some View {
+         HStack(spacing: 12) {
+             VStack(alignment: .leading, spacing: 2) {
+-                Text("OnDevice Max")
++                Text("Token AI")
+                     .font(.title3.weight(.bold))
+                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+                     .fixedSize(horizontal: false, vertical: true)
+@@ -675,7 +675,7 @@
+ 
+     private func shareConnection(host: String, port: UInt16, identifier: String) -> some View {
+         ShareLink(item: connectionShareText(host: host, port: port),
+-                  subject: Text("OnDevice Max local API")) {
++                  subject: Text("Token AI local API")) {
+             Group {
+                 if dynamicTypeSize.isAccessibilitySize {
+                     HStack(alignment: .top, spacing: 12) {
+--- a/IOSLocalLLM/Views/Classifiers/ClassifierMachine.swift
++++ b/IOSLocalLLM/Views/Classifiers/ClassifierMachine.swift
+@@ -1,4 +1,4 @@
+-// Adapted from the owner-supplied OnDevice Classifier, App/Design/Machine.swift.
++// Adapted from the owner-supplied Token AI Classifier, App/Design/Machine.swift.
+ // Geometry, materials and motion timings are preserved. See Docs/CLASSIFIER_PRINT_INTEGRATION.md.
+ import SwiftUI
+ import OnDeviceUI
+--- a/IOSLocalLLM/Views/Classifiers/ClassifierPrintStage.swift
++++ b/IOSLocalLLM/Views/Classifiers/ClassifierPrintStage.swift
+@@ -1,4 +1,4 @@
+-// Adapted from the owner-supplied OnDevice Classifier's MachineStage/HangingTicket.
++// Adapted from the owner-supplied Token AI Classifier's MachineStage/HangingTicket.
+ // The mouth mask, overlap, feed spring, sway keyframes and print ticks are unchanged.
+ import SwiftUI
+ import OnDeviceUI
+--- a/IOSLocalLLM/Views/Classifiers/ClassifierResultTicket.swift
++++ b/IOSLocalLLM/Views/Classifiers/ClassifierResultTicket.swift
+@@ -1,4 +1,4 @@
+-// Adapted from the owner-supplied OnDevice Classifier, App/Design/Ticket.swift.
++// Adapted from the owner-supplied Token AI Classifier, App/Design/Ticket.swift.
+ // Paper, typography, count-up and row timing match the original classifier.
+ import SwiftUI
+ import UIKit
+--- a/IOSLocalLLM/Views/CodingAssistantView.swift
++++ b/IOSLocalLLM/Views/CodingAssistantView.swift
+@@ -456,7 +456,7 @@
+                 }
+             }
+             .onDisappear { completionScrollTask?.cancel(); cancelDocumentSearch(); savePresentation() }
+-            .navigationTitle(currentConversationTitle ?? "OnDevice")
++            .navigationTitle(currentConversationTitle ?? "Token AI")
+             .navigationBarTitleDisplayMode(.inline)
+             .toolbarBackground(.hidden, for: .navigationBar)
+             .toolbar {
+@@ -904,7 +904,7 @@
+         inputText = payload.appendToDraft && !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+             ? inputText + "\n\n" + prefill : prefill
+ 
+-        // "Ask OnDevice" App Intent path: fire the prompt automatically so a
++        // "Ask Token AI" App Intent path: fire the prompt automatically so a
+         // Siri/Shortcuts request actually produces an answer. Defer one run
+         // loop so the @State write above is committed before sendMessage()
+         // reads `inputText`, and give ensureModelReady() a beat to kick in.
+@@ -2764,7 +2764,7 @@
+     /// Bonsai 27B from being loaded merely to inspect a small diagnostics log.
+     private func diagnoseAppErrors() {
+         inputFocused = false
+-        let instructions = "You are analyzing diagnostics from OnDevice, an on-device iOS AI app that runs local models (MLX / Core ML). Identify the most likely root cause(s), ranked, and give concrete prioritized fixes or user actions. Be concise and specific. If nothing looks wrong, say the device looks healthy. Do not invent log lines that are not present."
++        let instructions = "You are analyzing diagnostics from Token AI, an on-device iOS AI app that runs local models (MLX / Core ML). Identify the most likely root cause(s), ranked, and give concrete prioritized fixes or user actions. Be concise and specific. If nothing looks wrong, say the device looks healthy. Do not invent log lines that are not present."
+         let displayText = loc.t("Diagnose my app's recent errors and suggest fixes.")
+         messages.append(ChatMessage(role: .user, content: displayText))
+         let reply = ChatMessage(role: .assistant, content: "", isStreaming: true)
+@@ -4629,7 +4629,7 @@
+                     VStack(alignment: .leading, spacing: 14) {
+                         riskRow(
+                             symbol: "xmark.app.fill",
+-                            text: "iOS may terminate OnDevice while the model loads or generates."
++                            text: "iOS may terminate Token AI while the model loads or generates."
+                         )
+                         riskRow(
+                             symbol: "doc.badge.clock",
+--- a/IOSLocalLLM/Views/DiagnosticsView.swift
++++ b/IOSLocalLLM/Views/DiagnosticsView.swift
+@@ -560,7 +560,7 @@
+     @Published var error: String?
+ 
+     private let systemPrompt = """
+-    You are an on-device diagnostics analyst for OnDevice, an iOS app that runs \
++    You are an on-device diagnostics analyst for Token AI, an iOS app that runs \
+     local AI models (MLX / Core ML) fully offline. You are given a system \
+     snapshot (memory, thermal, device), the last crash if any, and recent \
+     warnings/errors from the app's log. Respond with: (1) the most likely root \
+--- a/IOSLocalLLM/Views/GitHubWorkspaceView.swift
++++ b/IOSLocalLLM/Views/GitHubWorkspaceView.swift
+@@ -24,7 +24,7 @@
+                 .padding(ODLayout.settingsPageInset)
+             }
+             ODSettingsSection(title: "GitHub connection",
+-                              footer: "Credentials stay in device-only Keychain. OnDeviceMax never includes them in model requests, logs, or exports.") {
++                              footer: "Credentials stay in device-only Keychain. TokenAI never includes them in model requests, logs, or exports.") {
+                 if let account = connection.account {
+                     GitHubRow(title: account.login, subtitle: "Connected to GitHub", symbol: "person.crop.circle")
+                         .padding(ODLayout.settingsPageInset).accessibilityIdentifier("github.account")
+@@ -81,7 +81,7 @@
+                         Text("Sign-in requests repository access. The agent can use only the repo you select in chat, and publishing changes requires your review.")
+                             .font(.subheadline).foregroundStyle(ODPalette.secondary)
+                         if GitHubSignInSession.usesSiteAgentRegistration {
+-                            Text("GitHub's authorization page names SiteAgent, the sign-in registration shared by these apps. OnDeviceMax stores its own token separately.")
++                            Text("GitHub's authorization page names SiteAgent, the sign-in registration shared by these apps. TokenAI stores its own token separately.")
+                                 .font(.footnote).foregroundStyle(ODPalette.secondary)
+                         }
+                         if let code = session.userCode, let url = session.verificationURL {
+--- a/IOSLocalLLM/Views/HFTokenSheet.swift
++++ b/IOSLocalLLM/Views/HFTokenSheet.swift
+@@ -270,7 +270,7 @@
+                 .font(T.sans(11))
+                 .foregroundColor(T.ink2)
+                 .fixedSize(horizontal: false, vertical: true)
+-            Text("Most OnDevice defaults (mlx-community/*, ggml-org/*) are open and don't need a token. Set one only if you want to download from gated repos.")
++            Text("Most Token AI defaults (mlx-community/*, ggml-org/*) are open and don't need a token. Set one only if you want to download from gated repos.")
+                 .font(T.sans(11))
+                 .foregroundColor(T.ink3)
+                 .fixedSize(horizontal: false, vertical: true)
+--- a/IOSLocalLLM/Views/ImageGenerationView.swift
++++ b/IOSLocalLLM/Views/ImageGenerationView.swift
+@@ -129,7 +129,7 @@
+                 Button("Cancel", role: .cancel) {}
+                     .accessibilityIdentifier("image.delete-result.cancel")
+             } message: {
+-                Text("This removes the image from OnDevice. Copies you exported to Photos or another app remain there.")
++                Text("This removes the image from Token AI. Copies you exported to Photos or another app remain there.")
+             }
+         }
+     }
+--- a/IOSLocalLLM/Views/Legal/AttributionsView.swift
++++ b/IOSLocalLLM/Views/Legal/AttributionsView.swift
+@@ -78,7 +78,7 @@
+                 KMono(text: "thank you to the open-source community",
+                        size: 12, weight: .semibold, color: T.ink)
+             }
+-            Text("OnDevice uses models, frameworks, and tools from many researchers and engineers. Selected components are listed below. The app also includes license texts in its third-party notices, and model details link to the selected source repository.")
++            Text("Token AI uses models, frameworks, and tools from many researchers and engineers. Selected components are listed below. The app also includes license texts in its third-party notices, and model details link to the selected source repository.")
+                 .font(T.sans(11))
+                 .foregroundColor(T.ink2)
+                 .fixedSize(horizontal: false, vertical: true)
+--- a/IOSLocalLLM/Views/LocalModelImportPicker.swift
++++ b/IOSLocalLLM/Views/LocalModelImportPicker.swift
+@@ -51,7 +51,7 @@
+                 Button("Choose model files in Files") { pickerKind = .modelFiles }
+                 Button("Choose GGUF file in Files") { pickerKind = .file }
+             } message: {
+-                Text("For an MLX model, open its folder in Files, tap Select All, then Open. You can also pick a folder or one GGUF file. If Files won't open a folder, copy it to On My iPhone › OnDevice Max.")
++                Text("For an MLX model, open its folder in Files, tap Select All, then Open. You can also pick a folder or one GGUF file. If Files won't open a folder, copy it to On My iPhone › Token AI.")
+             }
+             .sheet(item: $pickerKind) { kind in
+                 LocalModelDocumentPicker(kind: kind, onPick: { urls in
+--- a/IOSLocalLLM/Views/MicDictationButton.swift
++++ b/IOSLocalLLM/Views/MicDictationButton.swift
+@@ -55,7 +55,7 @@
+             }
+             Button("Cancel", role: .cancel) {}
+         } message: {
+-            Text("Enable microphone and speech recognition for OnDevice in Settings → Privacy.")
++            Text("Enable microphone and speech recognition for Token AI in Settings → Privacy.")
+         }
+     }
+ 
+--- a/IOSLocalLLM/Views/ModelsManagerView.swift
++++ b/IOSLocalLLM/Views/ModelsManagerView.swift
+@@ -2896,7 +2896,7 @@
+             guard let engine = supportedVoiceEngine(for: model) else {
+                 ToastCenter.shared.info(
+                     "Voice model downloaded",
+-                    detail: "This repo is stored locally, but OnDevice can only switch between Apple System Voice, KittenTTS, and Kokoro right now."
++                    detail: "This repo is stored locally, but Token AI can only switch between Apple System Voice, KittenTTS, and Kokoro right now."
+                 )
+                 return
+             }
+--- a/IOSLocalLLM/Views/OnboardingOnePager.swift
++++ b/IOSLocalLLM/Views/OnboardingOnePager.swift
+@@ -10,7 +10,7 @@
+             ScrollView {
+                 VStack(alignment: .leading, spacing: 32) {
+                     VStack(alignment: .leading, spacing: 12) {
+-                        Text("OnDevice")
++                        Text("Token AI")
+                             .font(.system(.largeTitle, design: .serif).weight(.semibold))
+                         Text("A calmer place to think.")
+                             .font(.title2).foregroundStyle(ODPalette.secondary)
+--- a/IOSLocalLLM/Views/SettingsView.swift
++++ b/IOSLocalLLM/Views/SettingsView.swift
+@@ -16,7 +16,7 @@
+ 
+     @State private var showingHFTokenSheet: Bool = false
+     #if !targetEnvironment(macCatalyst)
+-    /// nil = default "Max" wordmark; "AppIconClassic" = previous pink mark.
++    /// nil = default Token AI icon (original OnDeviceMax artwork); "AppIconClassic" = previous pink mark.
+     @State private var activeIconName: String? = UIApplication.shared.alternateIconName
+     #endif
+     /// Presents the onboarding model picker as a sheet so existing
+@@ -167,7 +167,7 @@
+ 
+         var subtitle: String {
+             switch self {
+-            case .userGuide:    return "learn how to use OnDevice & local models"
++            case .userGuide:    return "learn how to use Token AI & local models"
+             case .capture:      return "analysis mode, camera, detection"
+             case .modelsAI:     return AppStoreModelPolicy.isPublicDistribution
+                 ? "assistant, API keys, model downloads" : "assistant, api keys, fastvlm pipeline"
+@@ -1204,7 +1204,7 @@
+     private var appIconPickerRow: some View {
+         VStack(alignment: .leading, spacing: 8) {
+             HStack(spacing: 14) {
+-                appIconOption(name: nil, title: "Max", preview: "AppIconPreview")
++                appIconOption(name: nil, title: "Token AI", preview: "AppIconPreview")
+                 appIconOption(name: "AppIconClassic", title: "Classic", preview: "AppIconClassicPreview")
+                 Spacer()
+             }
+@@ -1621,7 +1621,7 @@
+     private var aboutSection: some View {
+         Group {
+             LabeledContent("Version", value: appVersionLabel)
+-            Text("OnDevice combines local models with optional API providers, web access, Apple Private Cloud Compute, and paired Mac tools. Each network feature is controlled separately.")
++            Text("Token AI combines local models with optional API providers, web access, Apple Private Cloud Compute, and paired Mac tools. Each network feature is controlled separately.")
+                 .font(.footnote).foregroundStyle(.secondary)
+         }
+     }
+--- a/IOSLocalLLM/Views/Voice/VoiceSettingsView.swift
++++ b/IOSLocalLLM/Views/Voice/VoiceSettingsView.swift
+@@ -241,7 +241,7 @@
+     // For users who DO want per-model tuning, this is where they set
+     // a slower rate for a deliberate coder model or a pinned engine
+     // for a model whose locale they know better than the router
+-    // does. Overrides persist under `com.mesutcydev.ondevicemax.voice.profile.
++    // does. Overrides persist under `com.token.TokenAI.voice.profile.
+     // <modelId>.<field>` and are applied on top of the built-in
+     // profile by `VoiceProfileRegistry`.
+     //
+--- a/IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements
++++ b/IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements
+@@ -4,7 +4,7 @@
+ <dict>
+   <key>com.apple.security.application-groups</key>
+   <array>
+-    <string>group.com.mesutcydev.ondevicemax.shared</string>
++    <string>group.com.token.TokenAI</string>
+   </array>
+ </dict>
+ </plist>
+--- a/IOSLocalLLMShareExtension/Info.plist
++++ b/IOSLocalLLMShareExtension/Info.plist
+@@ -5,7 +5,7 @@
+ 	<key>CFBundleDevelopmentRegion</key>
+ 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+ 	<key>CFBundleDisplayName</key>
+-	<string>OnDevice Max</string>
++	<string>Token AI</string>
+ 	<key>CFBundleExecutable</key>
+ 	<string>$(EXECUTABLE_NAME)</string>
+ 	<key>CFBundleIdentifier</key>
+@@ -17,7 +17,7 @@
+ 	<key>CFBundlePackageType</key>
+ 	<string>XPC!</string>
+ 	<key>CFBundleShortVersionString</key>
+-	<string>1.0.1</string>
++	<string>2.0</string>
+ 	<key>CFBundleVersion</key>
+ 	<string>$(CURRENT_PROJECT_VERSION)</string>
+ 	<key>ITSAppUsesNonExemptEncryption</key>
+--- a/IOSLocalLLMShareExtension/ShareViewController.swift
++++ b/IOSLocalLLMShareExtension/ShareViewController.swift
+@@ -8,13 +8,13 @@
+ // Entry point for the iOS share sheet. Accepts images, plain text, URLs, and
+ // Safari web pages (NSExtensionJavaScriptPreprocessingResultsKey payload) from
+ // any host app, stages the content into the App Group container, and opens
+-// the main app's inbox. The user opens OnDevice Max to receive the content;
++// the main app's inbox. The user opens Token AI to receive the content;
+ // Share extensions cannot use UIApplication to force a containing-app launch.
+ //
+ // Hand-off URLs:
+-//   ondevice-max://share?file=<jpg-name>          → image (lens tab)
+-//   ondevice-max://share?text=<percent-encoded>   → text snippet (assistant tab)
+-//   ondevice-max://share?url=<percent-encoded>    → URL (assistant tab)
++//   tokenai://share?file=<jpg-name>          → image (lens tab)
++//   tokenai://share?text=<percent-encoded>   → text snippet (assistant tab)
++//   tokenai://share?url=<percent-encoded>    → URL (assistant tab)
+ //
+ // Long text shares (>1500 chars) go through the file-staging path instead of
+ // the URL — iOS truncates open URLs around 2KB and Safari/Mail share
+@@ -23,8 +23,8 @@
+ final class ShareViewController: UIViewController {
+ 
+     // App Group identifier — must match the main app's entitlements.
+-    private static let appGroupID = "group.com.mesutcydev.ondevicemax.shared"
+-    private static let urlScheme  = "ondevice-max"
++    private static let appGroupID = "group.com.token.TokenAI"
++    private static let urlScheme  = "tokenai"
+ 
+     /// Threshold above which we stash text in a file and hand the
+     /// filename to the main app instead of inlining via URL query.
+@@ -301,14 +301,14 @@
+         guard let container = FileManager.default.containerURL(
+             forSecurityApplicationGroupIdentifier: Self.appGroupID
+         ) else {
+-            await dismiss(success: false, error: "Couldn't access OnDevice Max's shared storage.")
++            await dismiss(success: false, error: "Couldn't access Token AI's shared storage.")
+             return
+         }
+         do {
+             try ShareInbox.enqueue(url, in: container)
+             await dismiss(success: true, error: nil)
+         } catch {
+-            await dismiss(success: false, error: "Couldn't save this item to OnDevice Max.")
++            await dismiss(success: false, error: "Couldn't save this item to Token AI.")
+         }
+     }
+ 
+@@ -325,8 +325,8 @@
+     @MainActor
+     static func receiptAlert(success: Bool, error: String?, onDone: @escaping () -> Void) -> UIAlertController {
+         let alert = UIAlertController(
+-            title: success ? String(localized: "Saved to OnDevice Max") : String(localized: "Couldn't share"),
+-            message: success ? String(localized: "Open OnDevice Max to continue with your shared content.") : error,
++            title: success ? String(localized: "Saved to Token AI") : String(localized: "Couldn't share"),
++            message: success ? String(localized: "Open Token AI to continue with your shared content.") : error,
+             preferredStyle: .alert
+         )
+         alert.addAction(UIAlertAction(title: String(localized: "Done"), style: .default) { _ in
+--- a/IOSLocalLLMTests/DiagnosticsTests.swift
++++ b/IOSLocalLLMTests/DiagnosticsTests.swift
+@@ -66,7 +66,7 @@
+     func test_exportContainsHeaderAndEntry() {
+         Diagnostics.shared.error("boom", category: "test")
+         let text = Diagnostics.shared.exportText()
+-        XCTAssertTrue(text.contains("OnDevice diagnostics"))
++        XCTAssertTrue(text.contains("Token AI diagnostics"))
+         XCTAssertTrue(text.contains("boom"))
+         // The shared Diagnostics singleton can hold entries logged by the app
+         // during launch, so assert the section header shape, not an exact count.
+--- a/Packages/OnDeviceUI/Sources/OnDeviceUI/Components/ODComponents.swift
++++ b/Packages/OnDeviceUI/Sources/OnDeviceUI/Components/ODComponents.swift
+@@ -27,16 +27,16 @@
+     }
+ }
+ 
+-/// OnDevice's sole display-serif element. No external font dependency is required.
++/// Token AI's sole display-serif element. No external font dependency is required.
+ struct ODWordmark: View {
+     private let style: Font.TextStyle
+     init(style: Font.TextStyle = .largeTitle) { self.style = style }
+     var body: some View {
+-        Text("OnDevice", bundle: .module)
++        Text("Token AI", bundle: .module)
+             .font(.system(style, design: .serif).weight(.bold))
+             .foregroundStyle(ODPalette.text)
+             .fixedSize(horizontal: false, vertical: true)
+-            .accessibilityLabel(Text("OnDevice", bundle: .module))
++            .accessibilityLabel(Text("Token AI", bundle: .module))
+     }
+ }
+ 
+--- a/Packages/OnDeviceUI/Sources/OnDeviceUI/Resources/Localizable.xcstrings
++++ b/Packages/OnDeviceUI/Sources/OnDeviceUI/Resources/Localizable.xcstrings
+@@ -18064,43 +18064,43 @@
+       },
+       "generatesSymbol": false
+     },
+-    "For an MLX model, open its folder in Files, tap Select All, then Open. You can also pick a folder or one GGUF file. If Files won't open a folder, copy it to On My iPhone › OnDevice Max.": {
+-      "extractionState": "manual",
+-      "localizations": {
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "Öffne für ein MLX-Modell den Ordner in Dateien, tippe auf Alles auswählen und Öffnen. Du kannst auch einen Ordner oder eine GGUF-Datei wählen. Falls Dateien einen Ordner nicht öffnet, kopiere ihn nach Auf meinem iPhone › OnDevice Max."
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "Para un modelo MLX, abre su carpeta en Archivos, toca Seleccionar todo y Abrir. También puedes elegir una carpeta o un archivo GGUF. Si Archivos no abre la carpeta, cópiala a En mi iPhone › OnDevice Max."
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "لنموذج MLX، افتح مجلده في الملفات واضغط تحديد الكل ثم فتح. يمكنك أيضًا اختيار مجلد أو ملف GGUF واحد. إذا تعذّر فتح المجلد، انسخه إلى على الـ iPhone › OnDevice Max."
+-          }
+-        },
+-        "tr": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "MLX modeli için Dosyalar'da klasörünü açın, Tümünü Seç'e ve Aç'a dokunun. Klasör veya tek GGUF dosyası da seçebilirsiniz. Dosyalar klasörü açmazsa iPhone'umda › OnDevice Max'e kopyalayın."
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "MLX मॉडल के लिए फ़ाइलों में उसका फ़ोल्डर खोलें, सभी चुनें और फिर खोलें टैप करें। फ़ोल्डर या एक GGUF फ़ाइल भी चुन सकते हैं। फ़ोल्डर न खुले तो उसे मेरे iPhone पर › OnDevice Max में कॉपी करें।"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "MLXモデルはファイルでフォルダーを開き、「すべてを選択」してから「開く」をタップします。フォルダーや1つのGGUFファイルも選べます。開けない場合は「このiPhone内」›「OnDevice Max」にコピーしてください。"
++    "For an MLX model, open its folder in Files, tap Select All, then Open. You can also pick a folder or one GGUF file. If Files won't open a folder, copy it to On My iPhone › Token AI.": {
++      "extractionState": "manual",
++      "localizations": {
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Öffne für ein MLX-Modell den Ordner in Dateien, tippe auf Alles auswählen und Öffnen. Du kannst auch einen Ordner oder eine GGUF-Datei wählen. Falls Dateien einen Ordner nicht öffnet, kopiere ihn nach Auf meinem iPhone › Token AI."
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Para un modelo MLX, abre su carpeta en Archivos, toca Seleccionar todo y Abrir. También puedes elegir una carpeta o un archivo GGUF. Si Archivos no abre la carpeta, cópiala a En mi iPhone › Token AI."
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "لنموذج MLX، افتح مجلده في الملفات واضغط تحديد الكل ثم فتح. يمكنك أيضًا اختيار مجلد أو ملف GGUF واحد. إذا تعذّر فتح المجلد، انسخه إلى على الـ iPhone › Token AI."
++          }
++        },
++        "tr": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "MLX modeli için Dosyalar'da klasörünü açın, Tümünü Seç'e ve Aç'a dokunun. Klasör veya tek GGUF dosyası da seçebilirsiniz. Dosyalar klasörü açmazsa iPhone'umda › Token AI'e kopyalayın."
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "MLX मॉडल के लिए फ़ाइलों में उसका फ़ोल्डर खोलें, सभी चुनें और फिर खोलें टैप करें। फ़ोल्डर या एक GGUF फ़ाइल भी चुन सकते हैं। फ़ोल्डर न खुले तो उसे मेरे iPhone पर › Token AI में कॉपी करें।"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "MLXモデルはファイルでフォルダーを開き、「すべてを選択」してから「開く」をタップします。フォルダーや1つのGGUFファイルも選べます。開けない場合は「このiPhone内」›「Token AI」にコピーしてください。"
+           }
+         }
+       },
+@@ -19319,43 +19319,43 @@
+       },
+       "generatesSymbol": false
+     },
+-    "GitHub's authorization page names SiteAgent, the sign-in registration shared by these apps. OnDeviceMax stores its own token separately.": {
+-      "extractionState": "manual",
+-      "localizations": {
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "GitHubs Autorisierungsseite zeigt SiteAgent, die gemeinsame Anmelderegistrierung dieser Apps. OnDeviceMax speichert seinen Token separat."
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "La página de autorización de GitHub muestra SiteAgent, el registro de acceso compartido por estas apps. OnDeviceMax guarda su propio token por separado."
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "تُظهر صفحة تفويض GitHub اسم SiteAgent، وهو تسجيل الدخول المشترك بين هذه التطبيقات. يخزّن OnDeviceMax رمزه الخاص منفصلًا."
+-          }
+-        },
+-        "tr": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "GitHub yetkilendirme sayfası, bu uygulamaların ortak oturum kaydı olan SiteAgent adını gösterir. OnDeviceMax kendi belirtecini ayrı saklar."
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "GitHub अनुमति पृष्ठ पर इन ऐप के साझा साइन-इन पंजीकरण SiteAgent का नाम दिखता है। OnDeviceMax अपना टोकन अलग सहेजता है।"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "GitHubの認証画面には、これらのアプリで共有するサインイン登録名SiteAgentが表示されます。OnDeviceMaxのトークンは個別に保存します。"
++    "GitHub's authorization page names SiteAgent, the sign-in registration shared by these apps. TokenAI stores its own token separately.": {
++      "extractionState": "manual",
++      "localizations": {
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "GitHubs Autorisierungsseite zeigt SiteAgent, die gemeinsame Anmelderegistrierung dieser Apps. TokenAI speichert seinen Token separat."
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "La página de autorización de GitHub muestra SiteAgent, el registro de acceso compartido por estas apps. TokenAI guarda su propio token por separado."
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "تُظهر صفحة تفويض GitHub اسم SiteAgent، وهو تسجيل الدخول المشترك بين هذه التطبيقات. يخزّن TokenAI رمزه الخاص منفصلًا."
++          }
++        },
++        "tr": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "GitHub yetkilendirme sayfası, bu uygulamaların ortak oturum kaydı olan SiteAgent adını gösterir. TokenAI kendi belirtecini ayrı saklar."
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "GitHub अनुमति पृष्ठ पर इन ऐप के साझा साइन-इन पंजीकरण SiteAgent का नाम दिखता है। TokenAI अपना टोकन अलग सहेजता है।"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "GitHubの認証画面には、これらのアプリで共有するサインイン登録名SiteAgentが表示されます。TokenAIのトークンは個別に保存します。"
+           }
+         }
+       },
+@@ -29145,90 +29145,90 @@
+       },
+       "generatesSymbol": false
+     },
+-    "OnDevice": {
++    "Token AI": {
+       "extractionState": "manual",
+       "generatesSymbol": false,
+       "shouldTranslate": false
+     },
+-    "OnDevice combines local models with optional API providers, web access, Apple Private Cloud Compute, and paired Mac tools. Each network feature is controlled separately.": {
+-      "extractionState": "manual",
+-      "localizations": {
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice kombiniert lokale Modelle mit optionalen API-Anbietern, Webzugriff, Apple Private Cloud Compute und gekoppelten Mac-Werkzeugen. Jede Netzwerkfunktion wird einzeln gesteuert."
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice combina modelos locales con proveedores API opcionales, acceso web, Apple Private Cloud Compute y herramientas de Mac enlazadas. Cada función de red se controla por separado."
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "يجمع OnDevice بين النماذج المحلية ومزوّدي API الاختياريين والوصول للويب وApple Private Cloud Compute وأدوات Mac المقترنة. يمكن التحكم بكل ميزة شبكة على حدة."
+-          }
+-        },
+-        "tr": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice; yerel modelleri, isteğe bağlı API sağlayıcıları, web erişimi, Apple Private Cloud Compute ve eşlenmiş Mac araçlarıyla birleştirir. Her ağ özelliği ayrı yönetilir."
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice स्थानीय मॉडल के साथ वैकल्पिक API प्रदाता, वेब एक्सेस, Apple Private Cloud Compute और जुड़े Mac टूल जोड़ता है। हर नेटवर्क सुविधा अलग नियंत्रित होती है।"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDeviceはローカルモデルに加え、任意のAPIプロバイダー、ウェブアクセス、Apple Private Cloud Compute、ペアリングしたMacのツールに対応します。各ネットワーク機能は個別に管理できます。"
+-          }
+-        }
+-      },
+-      "generatesSymbol": false
+-    },
+-    "OnDevice: %@": {
+-      "extractionState": "manual",
+-      "localizations": {
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice: %@"
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice: %@"
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice: %@"
+-          }
+-        },
+-        "tr": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice: %@"
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice: %@"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice：%@"
++    "Token AI combines local models with optional API providers, web access, Apple Private Cloud Compute, and paired Mac tools. Each network feature is controlled separately.": {
++      "extractionState": "manual",
++      "localizations": {
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI kombiniert lokale Modelle mit optionalen API-Anbietern, Webzugriff, Apple Private Cloud Compute und gekoppelten Mac-Werkzeugen. Jede Netzwerkfunktion wird einzeln gesteuert."
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI combina modelos locales con proveedores API opcionales, acceso web, Apple Private Cloud Compute y herramientas de Mac enlazadas. Cada función de red se controla por separado."
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "يجمع Token AI بين النماذج المحلية ومزوّدي API الاختياريين والوصول للويب وApple Private Cloud Compute وأدوات Mac المقترنة. يمكن التحكم بكل ميزة شبكة على حدة."
++          }
++        },
++        "tr": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI; yerel modelleri, isteğe bağlı API sağlayıcıları, web erişimi, Apple Private Cloud Compute ve eşlenmiş Mac araçlarıyla birleştirir. Her ağ özelliği ayrı yönetilir."
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI स्थानीय मॉडल के साथ वैकल्पिक API प्रदाता, वेब एक्सेस, Apple Private Cloud Compute और जुड़े Mac टूल जोड़ता है। हर नेटवर्क सुविधा अलग नियंत्रित होती है।"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AIはローカルモデルに加え、任意のAPIプロバイダー、ウェブアクセス、Apple Private Cloud Compute、ペアリングしたMacのツールに対応します。各ネットワーク機能は個別に管理できます。"
++          }
++        }
++      },
++      "generatesSymbol": false
++    },
++    "Token AI: %@": {
++      "extractionState": "manual",
++      "localizations": {
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI: %@"
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI: %@"
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI: %@"
++          }
++        },
++        "tr": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI: %@"
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI: %@"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI：%@"
+           }
+         }
+       },
+@@ -29756,43 +29756,43 @@
+       },
+       "generatesSymbol": false
+     },
+-    "Open OnDevice Max to continue with your shared content.": {
+-      "extractionState": "manual",
+-      "localizations": {
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "Öffne OnDevice Max, um mit dem geteilten Inhalt fortzufahren."
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "Abre OnDevice Max para continuar con el contenido compartido."
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "افتح OnDevice Max للمتابعة بالمحتوى الذي شاركته."
+-          }
+-        },
+-        "tr": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "Paylaştığınız içerikle devam etmek için OnDevice Max'i açın."
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "साझा सामग्री के साथ जारी रखने के लिए OnDevice Max खोलें।"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "共有したコンテンツで続けるにはOnDevice Maxを開いてください。"
++    "Open Token AI to continue with your shared content.": {
++      "extractionState": "manual",
++      "localizations": {
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Öffne Token AI, um mit dem geteilten Inhalt fortzufahren."
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Abre Token AI para continuar con el contenido compartido."
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "افتح Token AI للمتابعة بالمحتوى الذي شاركته."
++          }
++        },
++        "tr": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Paylaştığınız içerikle devam etmek için Token AI'i açın."
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "साझा सामग्री के साथ जारी रखने के लिए Token AI खोलें।"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "共有したコンテンツで続けるにはToken AIを開いてください。"
+           }
+         }
+       },
+@@ -29804,85 +29804,85 @@
+         "tr": {
+           "stringUnit": {
+             "state": "translated",
+-            "value": "Mac'inizde OnDevice Köprü uygulamasını açın ve gösterilen QR kodunu tarayın."
+-          }
+-        },
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "Öffnen Sie OnDevice auf Ihrem Mac und scannen Sie den dort angezeigten QR-Code."
++            "value": "Mac'inizde Token AI Köprü uygulamasını açın ve gösterilen QR kodunu tarayın."
++          }
++        },
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Öffnen Sie Token AI auf Ihrem Mac und scannen Sie den dort angezeigten QR-Code."
+           }
+         },
+         "fr": {
+           "stringUnit": {
+             "state": "translated",
+-            "value": "Ouvrez OnDevice sur votre Mac et scannez le code QR affiché."
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "Abra OnDevice en su Mac y escanee el código QR que se muestra allí."
++            "value": "Ouvrez Token AI sur votre Mac et scannez le code QR affiché."
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Abra Token AI en su Mac y escanee el código QR que se muestra allí."
+           }
+         },
+         "it": {
+           "stringUnit": {
+             "state": "translated",
+-            "value": "Apri OnDevice sul tuo Mac e scansiona il codice QR mostrato lì."
++            "value": "Apri Token AI sul tuo Mac e scansiona il codice QR mostrato lì."
+           }
+         },
+         "pt": {
+           "stringUnit": {
+             "state": "translated",
+-            "value": "Abra o OnDevice no seu Mac e escaneie o código QR mostrado lá."
++            "value": "Abra o Token AI no seu Mac e escaneie o código QR mostrado lá."
+           }
+         },
+         "ru": {
+           "stringUnit": {
+             "state": "translated",
+-            "value": "Откройте OnDevice на вашем Mac и отсканируйте показанный QR-код."
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "अपने Mac पर OnDevice खोलें और वहां दिखाए गए QR कोड को स्कैन करें।"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "MacでOnDeviceを開き、表示されたQRコードをスキャンしてください。"
++            "value": "Откройте Token AI на вашем Mac и отсканируйте показанный QR-код."
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "अपने Mac पर Token AI खोलें और वहां दिखाए गए QR कोड को स्कैन करें।"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "MacでToken AIを開き、表示されたQRコードをスキャンしてください。"
+           }
+         },
+         "el": {
+           "stringUnit": {
+             "state": "translated",
+-            "value": "Ανοίξτε το OnDevice στο Mac σας και σαρώστε τον κωδικό QR που εμφανίζεται εκεί."
++            "value": "Ανοίξτε το Token AI στο Mac σας και σαρώστε τον κωδικό QR που εμφανίζεται εκεί."
+           }
+         },
+         "ro": {
+           "stringUnit": {
+             "state": "translated",
+-            "value": "Deschideți OnDevice pe Mac și scanați codul QR afișat acolo."
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "افتح OnDevice على جهاز Mac وامسح رمز QR الظاهر هناك."
++            "value": "Deschideți Token AI pe Mac și scanați codul QR afișat acolo."
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "افتح Token AI على جهاز Mac وامسح رمز QR الظاهر هناك."
+           }
+         },
+         "ko": {
+           "stringUnit": {
+             "state": "translated",
+-            "value": "Mac에서 OnDevice를 열고 표시된 QR 코드를 스캔하세요."
++            "value": "Mac에서 Token AI를 열고 표시된 QR 코드를 스캔하세요."
+           }
+         },
+         "zh-Hans": {
+           "stringUnit": {
+             "state": "translated",
+-            "value": "在 Mac 上打开 OnDevice 并扫描显示的二维码。"
++            "value": "在 Mac 上打开 Token AI 并扫描显示的二维码。"
+           }
+         }
+       },
+@@ -37498,43 +37498,43 @@
+       },
+       "generatesSymbol": false
+     },
+-    "Saved to OnDevice Max": {
+-      "extractionState": "manual",
+-      "localizations": {
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "In OnDevice Max gespeichert"
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "Guardado en OnDevice Max"
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "تم الحفظ في OnDevice Max"
+-          }
+-        },
+-        "tr": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max'e kaydedildi"
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Max में सहेजा गया"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice Maxに保存しました"
++    "Saved to Token AI": {
++      "extractionState": "manual",
++      "localizations": {
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "In Token AI gespeichert"
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Guardado en Token AI"
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "تم الحفظ في Token AI"
++          }
++        },
++        "tr": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI'e kaydedildi"
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI में सहेजा गया"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AIに保存しました"
+           }
+         }
+       },
+@@ -43389,43 +43389,43 @@
+       },
+       "generatesSymbol": false
+     },
+-    "The provider may route requests to its model operators. Its privacy, retention, and billing terms apply. OnDevice Max cannot verify a custom server's practices.": {
+-      "extractionState": "manual",
+-      "localizations": {
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "Der Anbieter kann Anfragen an Modellbetreiber weiterleiten. Seine Datenschutz-, Speicher- und Abrechnungsbedingungen gelten. OnDevice Max kann die Praxis eigener Server nicht prüfen."
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "El proveedor puede dirigir solicitudes a los operadores de sus modelos. Se aplican sus condiciones de privacidad, retención y facturación. OnDevice Max no puede verificar las prácticas de servidores personalizados."
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "قد يوجّه المزوّد الطلبات إلى مشغّلي نماذجه. تنطبق شروط الخصوصية والاحتفاظ والفوترة لديه. لا يستطيع OnDevice Max التحقق من ممارسات خادم مخصص."
+-          }
+-        },
+-        "tr": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "Sağlayıcı istekleri model işletmecilerine yönlendirebilir. Kendi gizlilik, saklama ve ücretlendirme koşulları geçerlidir. OnDevice Max özel sunucuların uygulamalarını doğrulayamaz."
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "प्रदाता अनुरोध अपने मॉडल संचालकों तक भेज सकता है। उसकी गोपनीयता, प्रतिधारण और बिलिंग शर्तें लागू हैं। OnDevice Max कस्टम सर्वर की प्रथाएँ सत्यापित नहीं कर सकता।"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "プロバイダーはモデル運営者にリクエストを転送する場合があります。各社のプライバシー、保持、課金の規約が適用されます。OnDevice Maxはカスタムサーバーの運用を検証できません。"
++    "The provider may route requests to its model operators. Its privacy, retention, and billing terms apply. Token AI cannot verify a custom server's practices.": {
++      "extractionState": "manual",
++      "localizations": {
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Der Anbieter kann Anfragen an Modellbetreiber weiterleiten. Seine Datenschutz-, Speicher- und Abrechnungsbedingungen gelten. Token AI kann die Praxis eigener Server nicht prüfen."
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "El proveedor puede dirigir solicitudes a los operadores de sus modelos. Se aplican sus condiciones de privacidad, retención y facturación. Token AI no puede verificar las prácticas de servidores personalizados."
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "قد يوجّه المزوّد الطلبات إلى مشغّلي نماذجه. تنطبق شروط الخصوصية والاحتفاظ والفوترة لديه. لا يستطيع Token AI التحقق من ممارسات خادم مخصص."
++          }
++        },
++        "tr": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Sağlayıcı istekleri model işletmecilerine yönlendirebilir. Kendi gizlilik, saklama ve ücretlendirme koşulları geçerlidir. Token AI özel sunucuların uygulamalarını doğrulayamaz."
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "प्रदाता अनुरोध अपने मॉडल संचालकों तक भेज सकता है। उसकी गोपनीयता, प्रतिधारण और बिलिंग शर्तें लागू हैं। Token AI कस्टम सर्वर की प्रथाएँ सत्यापित नहीं कर सकता।"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "プロバイダーはモデル運営者にリクエストを転送する場合があります。各社のプライバシー、保持、課金の規約が適用されます。Token AIはカスタムサーバーの運用を検証できません。"
+           }
+         }
+       },
+@@ -44235,43 +44235,43 @@
+       },
+       "generatesSymbol": false
+     },
+-    "This removes the image from OnDevice. Copies you exported to Photos or another app remain there.": {
+-      "extractionState": "manual",
+-      "localizations": {
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "Das Bild wird aus OnDevice entfernt. In Fotos oder andere Apps exportierte Kopien bleiben erhalten."
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "Se elimina la imagen de OnDevice. Las copias exportadas a Fotos u otras apps se conservan."
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "تُحذف الصورة من OnDevice. تبقى النسخ التي صدّرتها إلى الصور أو تطبيق آخر."
+-          }
+-        },
+-        "tr": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "Görsel OnDevice'tan kaldırılır. Fotoğraflar'a veya başka uygulamaya aktardığınız kopyalar kalır."
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "यह छवि OnDevice से हटाता है। फ़ोटो या अन्य ऐप में निर्यात की गई प्रतियाँ बनी रहती हैं।"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDeviceから画像を削除します。写真やほかのアプリに書き出したコピーは残ります。"
++    "This removes the image from Token AI. Copies you exported to Photos or another app remain there.": {
++      "extractionState": "manual",
++      "localizations": {
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Das Bild wird aus Token AI entfernt. In Fotos oder andere Apps exportierte Kopien bleiben erhalten."
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Se elimina la imagen de Token AI. Las copias exportadas a Fotos u otras apps se conservan."
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "تُحذف الصورة من Token AI. تبقى النسخ التي صدّرتها إلى الصور أو تطبيق آخر."
++          }
++        },
++        "tr": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Görsel Token AI'tan kaldırılır. Fotoğraflar'a veya başka uygulamaya aktardığınız kopyalar kalır."
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "यह छवि Token AI से हटाता है। फ़ोटो या अन्य ऐप में निर्यात की गई प्रतियाँ बनी रहती हैं।"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AIから画像を削除します。写真やほかのアプリに書き出したコピーは残ります。"
+           }
+         }
+       },
+@@ -54362,43 +54362,43 @@
+       },
+       "generatesSymbol": false
+     },
+-    "learn how to use OnDevice & local models": {
+-      "extractionState": "manual",
+-      "localizations": {
+-        "de": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice und lokale Modelle kennenlernen"
+-          }
+-        },
+-        "es": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "aprende a usar OnDevice y modelos locales"
+-          }
+-        },
+-        "ar": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "تعلم استخدام OnDevice والنماذج المحلية"
+-          }
+-        },
+-        "tr": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice ve yerel modelleri kullanmayı öğrenin"
+-          }
+-        },
+-        "hi": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDevice और स्थानीय मॉडल का उपयोग सीखें"
+-          }
+-        },
+-        "ja": {
+-          "stringUnit": {
+-            "state": "translated",
+-            "value": "OnDeviceとローカルモデルの使い方"
++    "learn how to use Token AI & local models": {
++      "extractionState": "manual",
++      "localizations": {
++        "de": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI und lokale Modelle kennenlernen"
++          }
++        },
++        "es": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "aprende a usar Token AI y modelos locales"
++          }
++        },
++        "ar": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "تعلم استخدام Token AI والنماذج المحلية"
++          }
++        },
++        "tr": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI ve yerel modelleri kullanmayı öğrenin"
++          }
++        },
++        "hi": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AI और स्थानीय मॉडल का उपयोग सीखें"
++          }
++        },
++        "ja": {
++          "stringUnit": {
++            "state": "translated",
++            "value": "Token AIとローカルモデルの使い方"
+           }
+         }
+       },
+--- a/Packages/OnDeviceUI/Sources/OnDeviceUI/Views/ODChatView.swift
++++ b/Packages/OnDeviceUI/Sources/OnDeviceUI/Views/ODChatView.swift
+@@ -115,7 +115,7 @@
+                     }
+                 }
+             }
+-            .navigationTitle(store.selectedConversation?.title ?? "OnDevice")
++            .navigationTitle(store.selectedConversation?.title ?? "Token AI")
+             .navigationBarTitleDisplayMode(.inline)
+             .toolbar {
+                 if !sidebarPinned {
+@@ -357,6 +357,6 @@
+         .contextMenu {
+             Button(ODLocalizedString("Copy"), systemImage: "doc.on.doc") { UIPasteboard.general.string = message.text }
+         }
+-        .accessibilityLabel(Text(message.role == .user ? ODLocalizedString("You: \(message.text)") : ODLocalizedString("OnDevice: \(message.text)")))
++        .accessibilityLabel(Text(message.role == .user ? ODLocalizedString("You: \(message.text)") : ODLocalizedString("Token AI: \(message.text)")))
+     }
+ }
+--- a/Packages/OnDeviceUI/Sources/OnDeviceUI/Views/ODConversationDrawer.swift
++++ b/Packages/OnDeviceUI/Sources/OnDeviceUI/Views/ODConversationDrawer.swift
+@@ -38,7 +38,7 @@
+     @EnvironmentObject private var store: ODStore
+     var body: some View {
+         HStack(alignment: .center, spacing: 12) {
+-            Text("OnDevice", bundle: .module)
++            Text("Token AI", bundle: .module)
+                 .font(.title.weight(.bold))
+                 .lineLimit(1).minimumScaleFactor(0.7)
+                 .accessibilityAddTraits(.isHeader)
+--- a/Packages/OnDeviceUI/Sources/OnDeviceUI/Views/ODVoiceSessionView.swift
++++ b/Packages/OnDeviceUI/Sources/OnDeviceUI/Views/ODVoiceSessionView.swift
+@@ -190,7 +190,7 @@
+                 .accessibilityAddTraits(.isHeader)
+             ForEach(store.voiceTranscript) { message in
+                 VStack(alignment: .leading, spacing: ODLayout.elementGap) {
+-                    Text(odKey: message.role == .user ? "You" : "OnDevice")
++                    Text(odKey: message.role == .user ? "You" : "Token AI")
+                         .font(.caption.weight(.medium))
+                         .foregroundStyle(ODPalette.secondary)
+                     Text(message.text)
+--- a/Podfile
++++ b/Podfile
+@@ -1,6 +1,6 @@
+ platform :ios, '27.0'
+ 
+-project 'OnDeviceMax.xcodeproj'
++project 'TokenAI.xcodeproj'
+ 
+ target 'IOSLocalLLM' do
+   # Native ONNX inference for the official KittenTTS 0.8 artifacts.
+--- a/Podfile.lock
++++ b/Podfile.lock
+@@ -17,6 +17,6 @@
+   onnxruntime-c: 3174c63a963d9abbc2bf9627e3d622819c0ed5f7
+   onnxruntime-objc: 1254d12f8160e562e7693ff17f5aa3dd17dc409e
+ 
+-PODFILE CHECKSUM: fd5e93a5d31660f053a3734f2acc840c88f9e6d0
++PODFILE CHECKSUM: 5725ea1b3b704380f114d07f90e6571da7765ef9
+ 
+ COCOAPODS: 1.17.0
+--- a/QA/NativeUI/DownloadActivityReview.swift
++++ b/QA/NativeUI/DownloadActivityReview.swift
+@@ -23,7 +23,7 @@
+                 Text("Dynamic Island · expanded").font(.title2.bold())
+                 VStack(spacing: 14) {
+                     HStack {
+-                        Label("OnDevice Max", systemImage: "arrow.down.circle").font(.caption).foregroundStyle(.white.opacity(0.7))
++                        Label("Token AI", systemImage: "arrow.down.circle").font(.caption).foregroundStyle(.white.opacity(0.7))
+                         Spacer()
+                         Text(state.progress, format: .percent.precision(.fractionLength(0)))
+                             .font(.caption.monospacedDigit()).foregroundStyle(.cyan)
+--- a/QA/NativeUI/HomeConcepts.swift
++++ b/QA/NativeUI/HomeConcepts.swift
+@@ -27,7 +27,7 @@
+                 .accessibilityIdentifier("home.concept")
+             }
+             .background { ODPageBackground().ignoresSafeArea() }
+-            .navigationTitle("OnDevice").navigationBarTitleDisplayMode(.inline)
++            .navigationTitle("Token AI").navigationBarTitleDisplayMode(.inline)
+             .toolbar {
+                 ToolbarItem(placement: .topBarLeading) {
+                     Button("App menu", systemImage: "line.3.horizontal") { store.conversationsPresented = true }.labelStyle(.iconOnly)
+--- a/QA/NativeUI/HostContracts/ShareInboxTests.swift
++++ b/QA/NativeUI/HostContracts/ShareInboxTests.swift
+@@ -54,7 +54,7 @@
+ 
+     private func handoff(_ text: String) throws -> URL {
+         var url = URLComponents()
+-        url.scheme = "ondevice-max"
++        url.scheme = "tokenai"
+         url.host = "share"
+         url.queryItems = [URLQueryItem(name: "text", value: text)]
+         return try XCTUnwrap(url.url)
+--- a/QA/NativeUI/Info.plist
++++ b/QA/NativeUI/Info.plist
+@@ -5,7 +5,7 @@
+ 	<key>CFBundleDevelopmentRegion</key>
+ 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+ 	<key>CFBundleDisplayName</key>
+-	<string>NativeUIReview</string>
++	<string>Token AI QA</string>
+ 	<key>CFBundleExecutable</key>
+ 	<string>$(EXECUTABLE_NAME)</string>
+ 	<key>CFBundleIdentifier</key>
+@@ -17,13 +17,13 @@
+ 	<key>CFBundlePackageType</key>
+ 	<string>APPL</string>
+ 	<key>CFBundleShortVersionString</key>
+-	<string>1.0.1</string>
++	<string>2.0</string>
+ 	<key>CFBundleURLTypes</key>
+ 	<array>
+ 		<dict>
+ 			<key>CFBundleURLSchemes</key>
+ 			<array>
+-				<string>ondevice-max</string>
++				<string>tokenai</string>
+ 			</array>
+ 		</dict>
+ 	</array>
+--- a/QA/NativeUI/ReviewApp.swift
++++ b/QA/NativeUI/ReviewApp.swift
+@@ -129,7 +129,7 @@
+         shown = true
+         let failed = ProcessInfo.processInfo.arguments.contains("-share-failed")
+         present(ShareViewController.receiptAlert(
+-            success: !failed, error: "Couldn't save this item to OnDevice Max.", onDone: {}
++            success: !failed, error: "Couldn't save this item to Token AI.", onDone: {}
+         ), animated: false)
+     }
+ }
+@@ -472,7 +472,7 @@
+             store.loadedModelID = selectedID
+             store.modelPhase = .ready
+             store.metrics.modelStorageBytes = nil
+-            store.editionLabel = "OnDevice Max"
++            store.editionLabel = "Token AI"
+             store.voiceSessionNotice = nil
+             store.lensStatusMessage = nil
+         }
+@@ -630,7 +630,7 @@
+                 .frame(maxWidth: .infinity, alignment: .leading).padding(welcome ? 0 : 20)
+             }
+             .background { ODPageBackground().ignoresSafeArea() }
+-            .navigationTitle(welcome ? "OnDevice" : "A focused workday").navigationBarTitleDisplayMode(.inline)
++            .navigationTitle(welcome ? "Token AI" : "A focused workday").navigationBarTitleDisplayMode(.inline)
+             .safeAreaInset(edge: .bottom, spacing: 0) {
+                 ODWorkspaceBottomBar {
+                     VStack(spacing: 0) {
+@@ -675,7 +675,7 @@
+                     }.accessibilityIdentifier("navigation.menu")
+                 }
+                 ToolbarItem(placement: .principal) {
+-                    Text(welcome ? "OnDevice" : "A focused workday").font(.headline)
++                    Text(welcome ? "Token AI" : "A focused workday").font(.headline)
+                 }
+                 ToolbarItem(placement: .topBarTrailing) {
+                     Button("More options", systemImage: "ellipsis") { status = "Options opened" }
+--- a/QA/NativeUI/UITests/APIServerWorkspaceTests.swift
++++ b/QA/NativeUI/UITests/APIServerWorkspaceTests.swift
+@@ -94,7 +94,7 @@
+         app.launchArguments = ["-review-language", "en", "-screen", "api", "-api-running"]
+         app.launch()
+ 
+-        XCTAssertTrue(app.staticTexts["OnDevice Max"].waitForExistence(timeout: 5))
++        XCTAssertTrue(app.staticTexts["Token AI"].waitForExistence(timeout: 5))
+         XCTAssertEqual(app.descendants(matching: .any)["api.parser"].value as? String,
+                        "Ready, ON DEVICE")
+         XCTAssertTrue(app.buttons["Copy IP"].exists)
+--- a/QA/NativeUI/UITests/ShareReceiptFlows.swift
++++ b/QA/NativeUI/UITests/ShareReceiptFlows.swift
+@@ -6,14 +6,14 @@
+         let app = XCUIApplication()
+         app.launchArguments = ["-screen", "share-receipt"]
+         app.launch()
+-        XCTAssertTrue(app.alerts["Saved to OnDevice Max"].waitForExistence(timeout: 5))
+-        XCTAssertTrue(app.staticTexts["Open OnDevice Max to continue with your shared content."].exists)
++        XCTAssertTrue(app.alerts["Saved to Token AI"].waitForExistence(timeout: 5))
++        XCTAssertTrue(app.staticTexts["Open Token AI to continue with your shared content."].exists)
+         let screenshot = XCTAttachment(screenshot: app.screenshot())
+         screenshot.name = "appstore-share-receipt"
+         screenshot.lifetime = .keepAlways
+         add(screenshot)
+         app.buttons["Done"].tap()
+-        XCTAssertFalse(app.alerts["Saved to OnDevice Max"].exists)
++        XCTAssertFalse(app.alerts["Saved to Token AI"].exists)
+     }
+ 
+     @MainActor
+@@ -23,7 +23,7 @@
+                                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+         app.launch()
+         XCTAssertTrue(app.alerts["Couldn't share"].waitForExistence(timeout: 5))
+-        XCTAssertTrue(app.staticTexts["Couldn't save this item to OnDevice Max."].exists)
++        XCTAssertTrue(app.staticTexts["Couldn't save this item to Token AI."].exists)
+         XCTAssertTrue(app.buttons["Done"].isHittable)
+         let screenshot = XCTAttachment(screenshot: app.screenshot())
+         screenshot.name = "appstore-share-error-large-text"
+--- a/QA/NativeUI/project.yml
++++ b/QA/NativeUI/project.yml
+@@ -11,7 +11,7 @@
+   base:
+     SWIFT_VERSION: '5.0'
+     CURRENT_PROJECT_VERSION: '8'
+-    MARKETING_VERSION: '1.0.1'
++    MARKETING_VERSION: '2.0'
+     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+     GENERATE_INFOPLIST_FILE: YES
+     CODE_SIGNING_ALLOWED: NO
+@@ -23,12 +23,12 @@
+     info:
+       path: Info.plist
+       properties:
+-        CFBundleDisplayName: NativeUIReview
+-        CFBundleShortVersionString: "1.0.1"
++        CFBundleDisplayName: Token AI QA
++        CFBundleShortVersionString: "2.0"
+         CFBundleVersion: "8"
+         NSSupportsLiveActivities: true
+         CFBundleURLTypes:
+-          - CFBundleURLSchemes: [ondevice-max]
++          - CFBundleURLSchemes: [tokenai]
+         UIFileSharingEnabled: true
+         LSSupportsOpeningDocumentsInPlace: true
+     sources:
+@@ -144,7 +144,7 @@
+       path: DownloadActivityReview-Info.plist
+       properties:
+         CFBundleDisplayName: Download Activity Review
+-        CFBundleShortVersionString: "1.0.1"
++        CFBundleShortVersionString: "2.0"
+         CFBundleVersion: "8"
+         NSExtension:
+           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+--- a/README.md
++++ b/README.md
+@@ -1,4 +1,6 @@
+-# OnDevice LLM
++# Token: Local AI Studio
++
++Token AI **2.0 (71)** uses the working OnDeviceMax app with Token branding and bundle ID `com.token.TokenAI`. Open `TokenAI.xcworkspace` and select the `TokenAI` scheme. The original OnDeviceMax icon is retained. The sections below also document the upstream architecture and project history.
+ 
+ **Run open-source LLMs on iPhone offline** — chat, vision, voice, RAG, and an
+ authenticated local API. Built in SwiftUI with MLX, llama.cpp, whisper.cpp, and
+--- a/SBOM.spdx.json
++++ b/SBOM.spdx.json
+@@ -19,7 +19,7 @@
+     {
+       "name": "ios-local-llm",
+       "SPDXID": "SPDXRef-Package-ios-local-llm",
+-      "versionInfo": "1.0.1",
++      "versionInfo": "2.0",
+       "downloadLocation": "git+https://github.com/Mesutcydev/ios-local-llm.git",
+       "filesAnalyzed": false,
+       "licenseConcluded": "MIT AND LicenseRef-Apple-Sample-Code AND LicenseRef-CMUdict",
+--- a/SETUP_INSTRUCTIONS.md
++++ b/SETUP_INSTRUCTIONS.md
+@@ -74,7 +74,7 @@
+ ```bash
+ xcodegen generate
+ pod install
+-open OnDeviceMax.xcworkspace
++open TokenAI.xcworkspace
+ ```
+ 
+ Open the workspace, not the `.xcodeproj`, so the ONNX Runtime pods are
+@@ -269,8 +269,8 @@
+ 
+ ```bash
+ xcodebuild test \
+-  -workspace OnDeviceMax.xcworkspace \
+-  -scheme OnDeviceMax \
++  -workspace TokenAI.xcworkspace \
++  -scheme TokenAI \
+   -destination 'platform=iOS,name=YOUR_IPHONE'
+ ```
+ 
+@@ -278,8 +278,8 @@
+ 
+ ```bash
+ xcodebuild build-for-testing \
+-  -workspace OnDeviceMax.xcworkspace \
+-  -scheme OnDeviceMax \
++  -workspace TokenAI.xcworkspace \
++  -scheme TokenAI \
+   -destination 'generic/platform=iOS' \
+   CODE_SIGNING_ALLOWED=NO
+ ```
+--- a/Shared/DownloadActivityAttributes.swift
++++ b/Shared/DownloadActivityAttributes.swift
+@@ -19,6 +19,6 @@
+     /// An opaque job identifier keeps different variants independent.
+     var repoID: String
+     var displayName: String
+-    static let downloadsURL = URL(string: "ondevice-max://downloads")!
++    static let downloadsURL = URL(string: "tokenai://downloads")!
+ }
+ #endif
+--- a/TokenAI.xcodeproj/xcshareddata/xcschemes/TokenAI.xcscheme
++++ b/TokenAI.xcodeproj/xcshareddata/xcschemes/TokenAI.xcscheme
+@@ -0,0 +1,141 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<Scheme
++   LastUpgradeVersion = "2700"
++   version = "1.7">
++   <BuildAction
++      parallelizeBuildables = "YES"
++      buildImplicitDependencies = "YES"
++      runPostActionsOnFailure = "NO">
++      <BuildActionEntries>
++         <BuildActionEntry
++            buildForTesting = "YES"
++            buildForRunning = "YES"
++            buildForProfiling = "YES"
++            buildForArchiving = "YES"
++            buildForAnalyzing = "YES">
++            <BuildableReference
++               BuildableIdentifier = "primary"
++               BlueprintIdentifier = "57CD8F156853458A2CEAD239"
++               BuildableName = "IOSLocalLLM.app"
++               BlueprintName = "IOSLocalLLM"
++               ReferencedContainer = "container:TokenAI.xcodeproj">
++            </BuildableReference>
++         </BuildActionEntry>
++         <BuildActionEntry
++            buildForTesting = "YES"
++            buildForRunning = "NO"
++            buildForProfiling = "NO"
++            buildForArchiving = "NO"
++            buildForAnalyzing = "NO">
++            <BuildableReference
++               BuildableIdentifier = "primary"
++               BlueprintIdentifier = "D0E1E1B7E91B24AA0D1A7C63"
++               BuildableName = "IOSLocalLLMTests.xctest"
++               BlueprintName = "IOSLocalLLMTests"
++               ReferencedContainer = "container:TokenAI.xcodeproj">
++            </BuildableReference>
++         </BuildActionEntry>
++         <BuildActionEntry
++            buildForTesting = "YES"
++            buildForRunning = "NO"
++            buildForProfiling = "NO"
++            buildForArchiving = "NO"
++            buildForAnalyzing = "NO">
++            <BuildableReference
++               BuildableIdentifier = "primary"
++               BlueprintIdentifier = "9B81CE1DA83FC0DE0A8B5276"
++               BuildableName = "IOSLocalLLMUITests.xctest"
++               BlueprintName = "IOSLocalLLMUITests"
++               ReferencedContainer = "container:TokenAI.xcodeproj">
++            </BuildableReference>
++         </BuildActionEntry>
++      </BuildActionEntries>
++   </BuildAction>
++   <TestAction
++      buildConfiguration = "Debug"
++      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
++      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
++      shouldUseLaunchSchemeArgsEnv = "YES"
++      onlyGenerateCoverageForSpecifiedTargets = "NO">
++      <MacroExpansion>
++         <BuildableReference
++            BuildableIdentifier = "primary"
++            BlueprintIdentifier = "57CD8F156853458A2CEAD239"
++            BuildableName = "IOSLocalLLM.app"
++            BlueprintName = "IOSLocalLLM"
++            ReferencedContainer = "container:TokenAI.xcodeproj">
++         </BuildableReference>
++      </MacroExpansion>
++      <Testables>
++         <TestableReference
++            skipped = "NO"
++            parallelizable = "NO">
++            <BuildableReference
++               BuildableIdentifier = "primary"
++               BlueprintIdentifier = "D0E1E1B7E91B24AA0D1A7C63"
++               BuildableName = "IOSLocalLLMTests.xctest"
++               BlueprintName = "IOSLocalLLMTests"
++               ReferencedContainer = "container:TokenAI.xcodeproj">
++            </BuildableReference>
++         </TestableReference>
++         <TestableReference
++            skipped = "NO"
++            parallelizable = "NO">
++            <BuildableReference
++               BuildableIdentifier = "primary"
++               BlueprintIdentifier = "9B81CE1DA83FC0DE0A8B5276"
++               BuildableName = "IOSLocalLLMUITests.xctest"
++               BlueprintName = "IOSLocalLLMUITests"
++               ReferencedContainer = "container:TokenAI.xcodeproj">
++            </BuildableReference>
++         </TestableReference>
++      </Testables>
++      <CommandLineArguments>
++      </CommandLineArguments>
++   </TestAction>
++   <LaunchAction
++      buildConfiguration = "Debug"
++      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
++      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
++      launchStyle = "0"
++      useCustomWorkingDirectory = "NO"
++      ignoresPersistentStateOnLaunch = "NO"
++      debugDocumentVersioning = "YES"
++      debugServiceExtension = "internal"
++      allowLocationSimulation = "YES">
++      <BuildableProductRunnable
++         runnableDebuggingMode = "0">
++         <BuildableReference
++            BuildableIdentifier = "primary"
++            BlueprintIdentifier = "57CD8F156853458A2CEAD239"
++            BuildableName = "IOSLocalLLM.app"
++            BlueprintName = "IOSLocalLLM"
++            ReferencedContainer = "container:TokenAI.xcodeproj">
++         </BuildableReference>
++      </BuildableProductRunnable>
++   </LaunchAction>
++   <ProfileAction
++      buildConfiguration = "Release"
++      shouldUseLaunchSchemeArgsEnv = "YES"
++      savedToolIdentifier = ""
++      useCustomWorkingDirectory = "NO"
++      debugDocumentVersioning = "YES">
++      <BuildableProductRunnable
++         runnableDebuggingMode = "0">
++         <BuildableReference
++            BuildableIdentifier = "primary"
++            BlueprintIdentifier = "57CD8F156853458A2CEAD239"
++            BuildableName = "IOSLocalLLM.app"
++            BlueprintName = "IOSLocalLLM"
++            ReferencedContainer = "container:TokenAI.xcodeproj">
++         </BuildableReference>
++      </BuildableProductRunnable>
++   </ProfileAction>
++   <AnalyzeAction
++      buildConfiguration = "Debug">
++   </AnalyzeAction>
++   <ArchiveAction
++      buildConfiguration = "Release"
++      revealArchiveInOrganizer = "YES">
++   </ArchiveAction>
++</Scheme>
+--- a/TokenAI.xcworkspace/contents.xcworkspacedata
++++ b/TokenAI.xcworkspace/contents.xcworkspacedata
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<Workspace
++   version = "1.0">
++   <FileRef
++      location = "group:TokenAI.xcodeproj">
++   </FileRef>
++   <FileRef
++      location = "group:Pods/Pods.xcodeproj">
++   </FileRef>
++</Workspace>
+--- a/project.yml
++++ b/project.yml
+@@ -1,6 +1,6 @@
+-name: OnDeviceMax
++name: TokenAI
+ options:
+-  bundleIdPrefix: com.mesutcydev.ondevicemax
++  bundleIdPrefix: com.token
+   deploymentTarget:
+     # This is the iOS-27 Core AI edition. The untouched CodeLens reference
+     # remains iOS 18+; this copy keeps its MLX/llama stack and adds Core AI.
+@@ -54,6 +54,7 @@
+ settings:
+   base:
+     SWIFT_VERSION: "5.10"
++    MARKETING_VERSION: "2.0"
+     # Restored product owner's team. Release packaging can override this value
+     # with its explicit TEAM_ID argument; forks must select their own team.
+     DEVELOPMENT_TEAM: PUH4GMFV56
+@@ -162,7 +163,7 @@
+     info:
+       path: IOSLocalLLM/Info.plist
+       properties:
+-        CFBundleDisplayName: OnDevice Max
++        CFBundleDisplayName: "Token: Local AI Studio"
+         CFBundleLocalizations: [en, hi, de, es, ar, tr, ja, fr, pt, it, el, ro, ru, zh-Hans, ko]
+         # Public OAuth identifier only; credentials are stored exclusively in Keychain.
+         GitHubOAuthClientID: "Ov23likbAwZPky4GT7B5"
+@@ -170,25 +171,25 @@
+         # writes these into the generated Info.plist files on every run,
+         # so hand-edits to those plists get reverted next regen — always
+         # bump HERE first, then `xcodegen` to propagate.
+-        CFBundleShortVersionString: "1.0.1"
++        CFBundleShortVersionString: "2.0"
+         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+         # Standard HTTPS only — answers the ASC export-compliance question
+         # automatically so review submission doesn't stall on it.
+         ITSAppUsesNonExemptEncryption: false
+-        NSCameraUsageDescription: "OnDevice Max uses the camera so Lens can read text and describe objects, documents, and scenes you choose to capture."
+-        NSPhotoLibraryUsageDescription: "OnDevice Max uses photos you select for image understanding and conversations with compatible vision models."
+-        NSMicrophoneUsageDescription: "OnDevice Max uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control."
+-        NSLocalNetworkUsageDescription: "OnDevice Max uses your local network when you enable the Local API Server, pair a Mac, or choose a custom API provider on your network."
++        NSCameraUsageDescription: "Token AI uses the camera so Lens can read text and describe objects, documents, and scenes you choose to capture."
++        NSPhotoLibraryUsageDescription: "Token AI uses photos you select for image understanding and conversations with compatible vision models."
++        NSMicrophoneUsageDescription: "Token AI uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control."
++        NSLocalNetworkUsageDescription: "Token AI uses your local network when you enable the Local API Server, pair a Mac, or choose a custom API provider on your network."
+         NSAppTransportSecurity:
+           NSAllowsLocalNetworking: true
+         # A previously paired Mac bridge auto-starts and advertises this type;
+         # iOS 14+ refuses undeclared Bonjour advertisements.
+         NSBonjourServices:
+           - _localllm._tcp
+-        NSSpeechRecognitionUsageDescription: "OnDevice Max uses speech recognition to turn your speech into text for voice conversations and dictation."
++        NSSpeechRecognitionUsageDescription: "Token AI uses speech recognition to turn your speech into text for voice conversations and dictation."
+         # The share sheet's "Save Image" action (Image studio results) runs in
+         # this process; without this key iOS terminates the app on that tap.
+-        NSPhotoLibraryAddUsageDescription: "OnDevice Max saves images you create to your photo library when you choose Save Image."
++        NSPhotoLibraryAddUsageDescription: "Token AI saves images you create to your photo library when you choose Save Image."
+         UISupportedInterfaceOrientations:
+           - UIInterfaceOrientationPortrait
+         UILaunchScreen:
+@@ -197,24 +198,24 @@
+           UIApplicationSupportsMultipleScenes: false
+         NSSupportsLiveActivities: true
+         # Make downloaded/imported models under Documents/HFModels visible at
+-        # Files → On My iPhone → OnDevice. Per-model export remains
++        # Files → On My iPhone → Token AI. Per-model export remains
+         # available from the Models tab for copying to any Files provider.
+         UIFileSharingEnabled: true
+         LSSupportsOpeningDocumentsInPlace: true
+         CFBundleURLTypes:
+-          - CFBundleURLName: com.mesutcydev.ondevicemax.scheme
++          - CFBundleURLName: com.token.TokenAI.scheme
+             CFBundleURLSchemes:
+-              - ondevice-max
++              - tokenai
+     settings:
+       base:
+-        PRODUCT_NAME: OnDeviceMax
++        PRODUCT_NAME: TokenAI
+         PRODUCT_MODULE_NAME: IOSLocalLLM
+-        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicemax
++        PRODUCT_BUNDLE_IDENTIFIER: com.token.TokenAI
+         INFOPLIST_FILE: IOSLocalLLM/Info.plist
+         CODE_SIGN_ENTITLEMENTS: IOSLocalLLM/IOSLocalLLM.entitlements
+         CODE_SIGN_STYLE: Automatic
+         VERSIONING_SYSTEM: apple-generic
+-        CURRENT_PROJECT_VERSION: "19"
++        CURRENT_PROJECT_VERSION: "71"
+         # Release uses public-distribution entitlements. PCC is optional and
+         # requires Apple's managed grant; the App Store script can select the
+         # PCC variant without overriding the share extension's entitlements.
+@@ -249,7 +250,7 @@
+         # mic/network) on the macOS SDK; the iOS entitlements are untouched.
+         "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": IOSLocalLLM/IOSLocalLLM-Catalyst.entitlements
+         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+-        # Default icon is the silver "eye" mark (AppIcon); the previous
++        # Keep the existing OnDeviceMax icon as the Token AI default (AppIcon). The previous
+         # pink mark ships as AppIconClassic so users can switch back in
+         # Settings → Appearance. INCLUDE_ALL_APPICON_ASSETS is required for
+         # alternate icons to be compiled into the bundle.
+@@ -472,10 +473,10 @@
+     info:
+       path: IOSLocalLLMShareExtension/Info.plist
+       properties:
+-        CFBundleDisplayName: OnDevice Max
++        CFBundleDisplayName: Token AI
+         # Must match the main target's version above — App Store rejects
+         # extension targets with mismatched marketing versions.
+-        CFBundleShortVersionString: "1.0.1"
++        CFBundleShortVersionString: "2.0"
+         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+         ITSAppUsesNonExemptEncryption: false
+         NSExtension:
+@@ -489,14 +490,14 @@
+           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+     settings:
+       base:
+-        PRODUCT_NAME: OnDeviceMaxShare
++        PRODUCT_NAME: TokenAIShare
+         PRODUCT_MODULE_NAME: IOSLocalLLMShareExtension
+-        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicemax.share
++        PRODUCT_BUNDLE_IDENTIFIER: com.token.TokenAI.Share
+         INFOPLIST_FILE: IOSLocalLLMShareExtension/Info.plist
+         CODE_SIGN_ENTITLEMENTS: IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements
+         CODE_SIGN_STYLE: Automatic
+         VERSIONING_SYSTEM: apple-generic
+-        CURRENT_PROJECT_VERSION: "19"
++        CURRENT_PROJECT_VERSION: "71"
+         APPLICATION_EXTENSION_API_ONLY: YES
+         TARGETED_DEVICE_FAMILY: "1"
+         SWIFT_EMIT_LOC_STRINGS: YES
+@@ -517,21 +518,21 @@
+     info:
+       path: DownloadActivityExtension/Info.plist
+       properties:
+-        CFBundleDisplayName: OnDevice Max Downloads
+-        CFBundleShortVersionString: "1.0.1"
++        CFBundleDisplayName: Token AI Downloads
++        CFBundleShortVersionString: "2.0"
+         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+         ITSAppUsesNonExemptEncryption: false
+         NSExtension:
+           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+     settings:
+       base:
+-        PRODUCT_NAME: OnDeviceMaxDownloads
++        PRODUCT_NAME: TokenAIDownloads
+         PRODUCT_MODULE_NAME: DownloadActivityExtension
+-        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicemax.downloads
++        PRODUCT_BUNDLE_IDENTIFIER: com.token.TokenAI.Downloads
+         INFOPLIST_FILE: DownloadActivityExtension/Info.plist
+         CODE_SIGN_STYLE: Automatic
+         VERSIONING_SYSTEM: apple-generic
+-        CURRENT_PROJECT_VERSION: "19"
++        CURRENT_PROJECT_VERSION: "71"
+         APPLICATION_EXTENSION_API_ONLY: YES
+         SKIP_INSTALL: YES
+         TARGETED_DEVICE_FAMILY: "1"
+@@ -550,13 +551,13 @@
+       - target: IOSLocalLLM
+     settings:
+       base:
+-        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicemax.tests
++        PRODUCT_BUNDLE_IDENTIFIER: com.token.TokenAITests
+         INFOPLIST_FILE: ""   # auto-generate
+         CODE_SIGN_STYLE: Automatic
+         TARGETED_DEVICE_FAMILY: "1"
+         "TARGETED_DEVICE_FAMILY[sdk=macosx*]": "2,6"
+         GENERATE_INFOPLIST_FILE: YES
+-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/OnDeviceMax.app/OnDeviceMax"
++        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/TokenAI.app/TokenAI"
+         BUNDLE_LOADER: "$(TEST_HOST)"
+         SWIFT_EMIT_LOC_STRINGS: NO
+         # Clear the bridging header — tests only test Swift code.
+@@ -581,14 +582,14 @@
+       - target: IOSLocalLLM
+     settings:
+       base:
+-        PRODUCT_BUNDLE_IDENTIFIER: com.mesutcydev.ondevicemax.uitests
++        PRODUCT_BUNDLE_IDENTIFIER: com.token.TokenAIUITests
+         CODE_SIGN_STYLE: Automatic
+         TARGETED_DEVICE_FAMILY: "1"
+         GENERATE_INFOPLIST_FILE: YES
+         SWIFT_EMIT_LOC_STRINGS: NO
+ 
+ schemes:
+-  OnDeviceMax:
++  TokenAI:
+     build:
+       targets:
+         IOSLocalLLM: all
+--- a/scripts/audit_appstore_model_licenses.py
++++ b/scripts/audit_appstore_model_licenses.py
+@@ -14,7 +14,7 @@
+ 
+ 
+ def read_url(url):
+-    request = urllib.request.Request(url, headers={"User-Agent": "OnDeviceMax-license-audit/1.0"})
++    request = urllib.request.Request(url, headers={"User-Agent": "TokenAI-license-audit/1.0"})
+     with urllib.request.urlopen(request, timeout=25) as response:
+         return response.read(2_000_000)
+ 
+--- a/scripts/bootstrap_minicpm_v47_runtime.py
++++ b/scripts/bootstrap_minicpm_v47_runtime.py
+@@ -110,7 +110,7 @@
+     patch_context_rebuild(source)
+     patch_numeric_counters(source)
+     cmake = source / "CMakeLists.txt"
+-    marker = "# OnDevice isolated MiniCPM adapter"
++    marker = "# Token AI isolated MiniCPM adapter"
+     original = cmake.read_text().split(marker)[0].rstrip()
+     cmake.write_text(original + '\n\n' + marker
+         + '\nif(NOT TARGET mtmd)\n add_subdirectory(tools/mtmd od-mtmd)\nendif()\n'
+--- a/scripts/build_appstore.sh
++++ b/scripts/build_appstore.sh
+@@ -69,7 +69,7 @@
+ DERIVED="${ONDEVICE_DERIVED_DATA:-$ROOT/build/appstore/DerivedData}"
+ SOURCE_PACKAGES="${ONDEVICE_SOURCE_PACKAGES:-$DERIVED/SourcePackages}"
+ MIN_FREE_KB=15728640
+-WARM_APP="$DERIVED/Build/Products/Release-iphoneos/OnDeviceMax.app"
++WARM_APP="$DERIVED/Build/Products/Release-iphoneos/TokenAI.app"
+ if [[ -f "$WARM_APP/Info.plist" ]]; then
+   WARM_BUILD="$(/usr/libexec/PlistBuddy -c 'Print :DTXcodeBuild' "$WARM_APP/Info.plist" 2>/dev/null || true)"
+   WARM_SDK="$(/usr/libexec/PlistBuddy -c 'Print :DTSDKName' "$WARM_APP/Info.plist" 2>/dev/null || true)"
+@@ -97,7 +97,7 @@
+ VERSION="$(awk -F'"' '/CFBundleShortVersionString:/ {print $2; exit}' project.yml)"
+ BUILD="$(awk -F'"' '/CURRENT_PROJECT_VERSION:/ {print $2; exit}' project.yml)"
+ OUT="$ROOT/build/appstore/$VERSION-$BUILD"
+-ARCHIVE="$OUT/OnDeviceMax.xcarchive"
++ARCHIVE="$OUT/TokenAI.xcarchive"
+ ENTITLEMENTS="IOSLocalLLM/IOSLocalLLM-AppStore.entitlements"
+ [[ "$PCC" == NO ]] || ENTITLEMENTS="IOSLocalLLM/IOSLocalLLM-AppStore-PCC.entitlements"
+ [[ ! -e "$OUT" ]] || { echo "error: $OUT exists; preserve the previous artifact and choose a new build number." >&2; exit 1; }
+@@ -108,7 +108,7 @@
+ ./scripts/verify_zoo_catalog.sh --appstore > "$OUT/catalog.log" 2>&1
+ python3 scripts/verify_zoo_downloads.py > "$OUT/model-downloads.log" 2>&1
+ 
+-xcodebuild archive -workspace OnDeviceMax.xcworkspace -scheme OnDeviceMax \
++xcodebuild archive -workspace TokenAI.xcworkspace -scheme TokenAI \
+   -configuration Release -destination 'generic/platform=iOS' \
+   -archivePath "$ARCHIVE" -derivedDataPath "$DERIVED" \
+   -clonedSourcePackagesDirPath "$SOURCE_PACKAGES" \
+@@ -119,7 +119,7 @@
+   ONDEVICE_PACKAGE_CHECKOUTS="$SOURCE_PACKAGES/checkouts" \
+   > "$OUT/archive.log" 2>&1 \
+   || { tail -60 "$OUT/archive.log"; exit 1; }
+-APP="$ARCHIVE/Products/Applications/OnDeviceMax.app"
++APP="$ARCHIVE/Products/Applications/TokenAI.app"
+ python3 scripts/verify_appstore.py --app "$APP" \
+   --expected-version "$VERSION" --expected-build "$BUILD" --expected-xcode-build "$SELECTED_BUILD"
+ ./scripts/verify_foundationmodels_symbols.sh "$APP" FoundationModels "$SDK"
+@@ -136,13 +136,13 @@
+   -exportOptionsPlist "$OUT/ExportOptions.plist" -exportPath "$OUT/export" \
+   "${SIGNING_ARGS[@]}" > "$OUT/export.log" 2>&1 \
+   || { tail -60 "$OUT/export.log"; exit 1; }
+-IPA="$OUT/export/OnDeviceMax.ipa"
++IPA="$OUT/export/TokenAI.ipa"
+ [[ -f "$IPA" ]] || { echo "error: App Store export produced no IPA" >&2; exit 1; }
+ VERIFY="$(mktemp -d "${TMPDIR:-/tmp}/ondevice-appstore.XXXXXX")"
+ trap 'rm -rf "$VERIFY"' EXIT
+ unzip -tq "$IPA" >/dev/null
+ unzip -q "$IPA" -d "$VERIFY"
+-python3 scripts/verify_appstore.py --app "$VERIFY/Payload/OnDeviceMax.app" --team-id "$TEAM" --distribution \
++python3 scripts/verify_appstore.py --app "$VERIFY/Payload/TokenAI.app" --team-id "$TEAM" --distribution \
+   --expected-version "$VERSION" --expected-build "$BUILD" --expected-xcode-build "$SELECTED_BUILD"
+ shasum -a 256 "$IPA" > "$OUT/sha256.txt"
+ echo "Signed local App Store export: $IPA"
+--- a/scripts/build_sideload_ipa.sh
++++ b/scripts/build_sideload_ipa.sh
+@@ -14,10 +14,10 @@
+ OUT_DIR="${1:-$HOME/Desktop}"
+ VERSION="$(awk -F'"' '/CFBundleShortVersionString:/ { print $2; exit }' project.yml)"
+ BUILD="$(awk -F'"' '/CURRENT_PROJECT_VERSION:/ { print $2; exit }' project.yml)"
+-ARCHIVE="$ROOT/build/OnDeviceMax-$VERSION-$BUILD.xcarchive"
+-IPA="$OUT_DIR/OnDeviceMax-sideload-entitled-$VERSION-$BUILD.ipa"
+-LATEST="$OUT_DIR/OnDeviceMax-sideload-entitled-latest.ipa"
+-APP="$ARCHIVE/Products/Applications/OnDeviceMax.app"
++ARCHIVE="$ROOT/build/TokenAI-$VERSION-$BUILD.xcarchive"
++IPA="$OUT_DIR/TokenAI-sideload-entitled-$VERSION-$BUILD.ipa"
++LATEST="$OUT_DIR/TokenAI-sideload-entitled-latest.ipa"
++APP="$ARCHIVE/Products/Applications/TokenAI.app"
+ MAIN_ENTITLEMENTS="$ROOT/IOSLocalLLM/IOSLocalLLM-PCC.entitlements"
+ EXT_ENTITLEMENTS="$ROOT/IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements"
+ 
+@@ -41,8 +41,8 @@
+ rm -rf "$ARCHIVE"
+ mkdir -p build "$OUT_DIR"
+ xcodebuild archive \
+-  -workspace OnDeviceMax.xcworkspace \
+-  -scheme OnDeviceMax \
++  -workspace TokenAI.xcworkspace \
++  -scheme TokenAI \
+   -configuration Release \
+   -destination 'generic/platform=iOS' \
+   -archivePath "$ARCHIVE" \
+@@ -51,7 +51,7 @@
+   ONDEVICE_MODEL_POLICY=RESEARCH_MODE ONDEVICE_RESEARCH_BUILD=YES \
+   > build/sideload-archive.log 2>&1 \
+   || { tail -80 build/sideload-archive.log; die "archive failed"; }
+-[[ -d "$APP" ]] || die "archive contains no OnDeviceMax.app"
++[[ -d "$APP" ]] || die "archive contains no TokenAI.app"
+ 
+ echo "=== 4/8  Reject unsafe FoundationModels imports"
+ ./scripts/verify_foundationmodels_symbols.sh "$APP" >/dev/null \
+@@ -59,9 +59,9 @@
+ 
+ echo "=== 5/8  Verify archive identity and required resources"
+ PLIST="$APP/Info.plist"
+-[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")" == "com.mesutcydev.ondevicemax" ]] \
++[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST")" == "com.token.TokenAI" ]] \
+   || die "wrong bundle id"
+-[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$PLIST")" == "OnDevice Max" ]] \
++[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' "$PLIST")" == "Token AI" ]] \
+   || die "wrong display name"
+ [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")" == "$VERSION" ]] \
+   || die "wrong version"
+@@ -70,10 +70,10 @@
+ [[ "$(/usr/libexec/PlistBuddy -c 'Print :MinimumOSVersion' "$PLIST")" == "27.0" ]] \
+   || die "wrong minimum OS"
+ [[ -f "$APP/PrivacyInfo.xcprivacy" ]] || die "privacy manifest missing"
+-[[ -d "$APP/PlugIns/OnDeviceMaxShare.appex" ]] || die "share extension missing"
++[[ -d "$APP/PlugIns/TokenAIShare.appex" ]] || die "share extension missing"
+ [[ -d "$APP/Frameworks/llama.framework" ]] || die "llama framework missing"
+ [[ -d "$APP/Frameworks/whisper.framework" ]] || die "whisper framework missing"
+-otool -L "$APP/OnDeviceMax" | grep -q 'CoreAI.framework' || die "CoreAI framework is not linked"
++otool -L "$APP/TokenAI" | grep -q 'CoreAI.framework' || die "CoreAI framework is not linked"
+ 
+ python3 scripts/collect_sideload_notices.py "$APP" build/sideload-archive.log
+ 
+@@ -84,14 +84,14 @@
+ cp "$IPA" "$LATEST"
+ 
+ echo "=== 7/8  Verify final Payload, signatures, flags and entitlements"
+-VERIFY="$(mktemp -d "${TMPDIR:-/tmp}/ondevice-max-ipa.XXXXXX")"
++VERIFY="$(mktemp -d "${TMPDIR:-/tmp}/tokenai-ipa.XXXXXX")"
+ trap 'rm -rf "$VERIFY"' EXIT
+ unzip -tq "$IPA" >/dev/null || die "IPA zip integrity failed"
+ unzip -q "$IPA" -d "$VERIFY"
+ ROOT_ENTRIES="$(find "$VERIFY" -mindepth 1 -maxdepth 1 -print | wc -l | tr -d ' ')"
+ [[ "$ROOT_ENTRIES" == "1" && -d "$VERIFY/Payload" ]] || die "IPA root must contain only Payload/"
+-SIGNED_APP="$VERIFY/Payload/OnDeviceMax.app"
+-SIGNED_EXT="$SIGNED_APP/PlugIns/OnDeviceMaxShare.appex"
++SIGNED_APP="$VERIFY/Payload/TokenAI.app"
++SIGNED_EXT="$SIGNED_APP/PlugIns/TokenAIShare.appex"
+ codesign --verify --deep --strict "$SIGNED_APP" || die "final app signature invalid"
+ [[ -f "$SIGNED_APP/PrivacyInfo.xcprivacy" ]] || die "final privacy manifest missing"
+ for key in UIFileSharingEnabled LSSupportsOpeningDocumentsInPlace; do
+@@ -113,7 +113,7 @@
+ EXT_ACTUAL="$VERIFY/extension-entitlements.plist"
+ codesign -d --entitlements :- "$SIGNED_EXT" > "$EXT_ACTUAL" 2>/dev/null
+ /usr/libexec/PlistBuddy -c 'Print :com.apple.security.application-groups:0' "$EXT_ACTUAL" \
+-  | grep -q '^group.com.mesutcydev.ondevicemax.shared$' \
++  | grep -q '^group.com.token.TokenAI$' \
+   || die "share extension app-group entitlement mismatch"
+ 
+ echo "=== 8/8  Artifact"
+--- a/scripts/collect_sideload_notices.py
++++ b/scripts/collect_sideload_notices.py
+@@ -36,7 +36,7 @@
+         if package.is_dir():
+             for pattern in ['LICENSE*', 'NOTICE*', 'COPYING*']:
+                 paths.extend(sorted(package.glob(pattern)))
+-sections = ['OnDevice Max — bundled third-party notices\n']
++sections = ['Token AI — bundled third-party notices\n']
+ seen = set()
+ for path in paths:
+     if not path.is_file() or path.resolve() in seen:
+--- a/scripts/test_mlx_quantization_runtime.sh
++++ b/scripts/test_mlx_quantization_runtime.sh
+@@ -49,7 +49,7 @@
+ xcodegen generate --spec "$evidence_directory/project.yml"
+ lock_directory="$evidence_directory/MLXQuantizationChecks.xcodeproj/project.xcworkspace/xcshareddata/swiftpm"
+ mkdir -p "$lock_directory"
+-cp "$repository_root/OnDeviceMax.xcworkspace/xcshareddata/swiftpm/Package.resolved" \
++cp "$repository_root/TokenAI.xcworkspace/xcshareddata/swiftpm/Package.resolved" \
+    "$lock_directory/Package.resolved"
+ xcodebuild build -project "$evidence_directory/MLXQuantizationChecks.xcodeproj" \
+     -scheme MLXQuantizationChecks -configuration Debug -destination 'platform=macOS,arch=arm64' \
+--- a/scripts/tests/test_appstore_verification.py
++++ b/scripts/tests/test_appstore_verification.py
+@@ -15,7 +15,7 @@
+ class ReviewFunnelTests(unittest.TestCase):
+     def testRetiredFunnelRejectedRegardlessOfFilename(self):
+         with self.assertRaisesRegex(ValueError, "review funnel"):
+-            verification.check_review_funnel('struct RenamedView { let title = "Enjoying OnDevice?" }')
++            verification.check_review_funnel('struct RenamedView { let title = "Enjoying Token AI?" }')
+ 
+     def testNativeReviewRequestIsAllowed(self):
+         verification.check_review_funnel('AppStore.requestReview(in: scene)')
+@@ -151,7 +151,7 @@
+         self.verify()
+ 
+     def testDownloadWidgetProfileNeedsNoSharedModelStorage(self):
+-        self.bundle = verification.APP_ID + ".downloads"
++        self.bundle = verification.APP_ID + ".Downloads"
+         self.entitlements = {"application-identifier": "LEGACY1234." + self.bundle,
+                              "com.apple.developer.team-identifier": self.team, "get-task-allow": False}
+         self.profile["Entitlements"] = copy.deepcopy(self.entitlements)
+@@ -161,7 +161,7 @@
+             self.verify()
+ 
+     def testShareExtensionStillRequiresItsAppGroup(self):
+-        self.bundle = verification.APP_ID + ".share"
++        self.bundle = verification.APP_ID + ".Share"
+         self.entitlements["application-identifier"] = "LEGACY1234." + self.bundle
+         self.profile["Entitlements"]["application-identifier"] = "LEGACY1234." + self.bundle
+         self.entitlements.pop("com.apple.security.application-groups")
+--- a/scripts/validate_open_source.sh
++++ b/scripts/validate_open_source.sh
+@@ -86,8 +86,8 @@
+ fi
+ 
+ if ! cmp -s \
+-  OnDeviceMax.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved \
+-  OnDeviceMax.xcworkspace/xcshareddata/swiftpm/Package.resolved; then
++  TokenAI.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved \
++  TokenAI.xcworkspace/xcshareddata/swiftpm/Package.resolved; then
+   echo "error: committed Swift package lockfiles differ" >&2
+   exit 1
+ fi
+--- a/scripts/verify_appstore.py
++++ b/scripts/verify_appstore.py
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""Check OnDevice Max source or a built bundle before App Store export."""
++"""Check Token AI source or a built bundle before App Store export."""
+ import argparse
+ import json
+ import re
+@@ -10,8 +10,8 @@
+ import sys
+ 
+ ROOT = Path(__file__).resolve().parent.parent
+-APP_ID = "com.mesutcydev.ondevicemax"
+-GROUP = "group.com.mesutcydev.ondevicemax.shared"
++APP_ID = "com.token.TokenAI"
++GROUP = "group.com.token.TokenAI"
+ DEBUG_MEMORY = "com.apple.developer.kernel.increased-debugging-memory-limit"
+ 
+ 
+@@ -32,7 +32,7 @@
+     covers the known rejected implementation, not every conceivable funnel.
+     """
+     for marker in ("ReviewPromptService", "ReviewPromptSheet", "review.didRequestReview",
+-                   "Love it — rate on App Store", "Enjoying OnDevice?"):
++                   "Love it — rate on App Store", "Enjoying Token AI?"):
+         require(marker not in source, "Custom App Store review funnel was reintroduced: " + marker)
+ 
+ 
+@@ -105,7 +105,7 @@
+     require(granted.get("application-identifier") == app_identifier, "Profile does not match the explicit App ID")
+     require(entitlements.get("application-identifier") == app_identifier, "Signed App ID does not match its profile")
+     require(entitlements.get("com.apple.developer.team-identifier") == team_id, "Signed team does not match")
+-    if bundle_id == APP_ID + ".downloads":
++    if bundle_id == APP_ID + ".Downloads":
+         require(not entitlements.get("com.apple.security.application-groups"), "Download widget must not claim model storage access")
+     else:
+         require(entitlements.get("com.apple.security.application-groups") == [GROUP], "Signed App Group does not match")
+@@ -184,7 +184,7 @@
+     info = read_plist(app / "Info.plist")
+     check_candidate_metadata(info, expected_version, expected_build, expected_xcode_build)
+     require(info["CFBundleIdentifier"] == APP_ID, "Wrong app bundle ID")
+-    require(info.get("CFBundleDisplayName") == "OnDevice Max", "Wrong display name")
++    require(info.get("CFBundleDisplayName") == "Token: Local AI Studio", "Wrong display name")
+     require(info.get("MinimumOSVersion") == "27.0", "Unexpected minimum OS")
+     require(info.get("ITSAppUsesNonExemptEncryption") is False, "Export-compliance declaration missing")
+     require(info.get("UIFileSharingEnabled") and info.get("LSSupportsOpeningDocumentsInPlace"), "Files access flags missing")
+@@ -201,16 +201,16 @@
+         require(path.suffix.lower() not in (".p8", ".p12", ".pem", ".key", ".pkg", ".ipa"),
+                 f"Unexpected credential/installer artifact: {path.name}")
+     check_embedded_frameworks(app, info["MinimumOSVersion"])
+-    extension = app / "PlugIns/OnDeviceMaxShare.appex"
++    extension = app / "PlugIns/TokenAIShare.appex"
+     ext_info = read_plist(extension / "Info.plist")
+     check_candidate_metadata(ext_info, expected_version, expected_build, expected_xcode_build)
+-    require(ext_info["CFBundleIdentifier"] == APP_ID + ".share", "Wrong extension bundle ID")
++    require(ext_info["CFBundleIdentifier"] == APP_ID + ".Share", "Wrong extension bundle ID")
+     for key in ("CFBundleShortVersionString", "CFBundleVersion"):
+         require(info[key] == ext_info[key], f"App/extension mismatch: {key}")
+-    widget = app / "PlugIns/OnDeviceMaxDownloads.appex"
++    widget = app / "PlugIns/TokenAIDownloads.appex"
+     widget_info = read_plist(widget / "Info.plist")
+     check_candidate_metadata(widget_info, expected_version, expected_build, expected_xcode_build)
+-    require(widget_info["CFBundleIdentifier"] == APP_ID + ".downloads", "Wrong download widget bundle ID")
++    require(widget_info["CFBundleIdentifier"] == APP_ID + ".Downloads", "Wrong download widget bundle ID")
+     require(widget_info.get("NSExtension", {}).get("NSExtensionPointIdentifier") == "com.apple.widgetkit-extension",
+             "Download widget extension is not configured for WidgetKit")
+     require(info.get("NSSupportsLiveActivities") is True, "Live Activities are not enabled")
+--- a/scripts/verify_ipa_identity.sh
++++ b/scripts/verify_ipa_identity.sh
+@@ -11,7 +11,7 @@
+ set -euo pipefail
+ 
+ IPA="${1:?usage: $0 <ipa> [expected-bundle-id]}"
+-EXPECTED="${2:-com.mesutcydev.ondevicemax}"
++EXPECTED="${2:-com.token.TokenAI}"
+ 
+ [[ -f "$IPA" ]] || { echo "error: IPA not found: $IPA" >&2; exit 2; }
+ 

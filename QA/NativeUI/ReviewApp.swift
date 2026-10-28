@@ -4,16 +4,32 @@ import OnDeviceUI
 @main
 struct NativeUIReviewApp: App {
     @StateObject private var fixture = ReviewFixture()
+    @ObservedObject private var localization = LocalizationService.shared
     @State private var hostTab: ODTab = .chat
     @AppStorage(MLXAssistantKVCachePolicy.preferenceKey) private var turboQuantEnabled = false
-    private var argsLargeType: Bool { ProcessInfo.processInfo.arguments.contains("-large-type") }
+    private var argsLargeType: Bool {
+        ProcessInfo.processInfo.arguments.contains("-large-type")
+            || Bundle.main.object(forInfoDictionaryKey: "APIServerReviewFixture") as? String == "dark-large-type"
+    }
     var body: some Scene {
         WindowGroup {
             Group {
-                if fixture.screen == "home-concept" {
+                if fixture.screen == "response-rendering" {
+                    ResponseRenderingReview()
+                        .preferredColorScheme(fixture.dark ? .dark : .light)
+                        .dynamicTypeSize(argsLargeType ? .accessibility5 : .large)
+                } else if fixture.screen == "download-activity" {
+                    DownloadActivityReview()
+                } else if fixture.screen == "coding" {
+                    CodingWorkspaceReview(store: fixture.store)
+                } else if fixture.screen == "home-concept" {
                     OnDeviceWorkbench(store: fixture.store, chatContent: AnyView(HomeConceptReview(variant: fixture.homeVariant)))
                 } else if fixture.screen == "appearance" {
                     AppearanceReview(store: fixture.store)
+                } else if fixture.screen == "user-guide" {
+                    NavigationStack { UserGuideView() }
+                        .preferredColorScheme(fixture.dark ? .dark : .light)
+                        .dynamicTypeSize(argsLargeType ? .accessibility5 : .large)
                 } else if fixture.screen == "api-providers" {
                     APIProviderSettingsReview()
                         .preferredColorScheme(fixture.store.appearance.colorScheme)
@@ -61,9 +77,10 @@ struct NativeUIReviewApp: App {
                         voiceContent: AnyView(ODVoiceSessionView().dynamicTypeSize(argsLargeType ? .accessibility3 : .large)),
                         apiServerContent: AnyView(LocalAPIServerView(onOpenMenu: { fixture.store.conversationsPresented = true })),
                         classifierContent: AnyView(CoreAIClassifierWorkbenchView(controller: fixture.classifier,
-                            models: [.init(id: "coreai:zoo-laya-multilingual", name: "Laya Multilingual", window: 512)],
+                            models: ClassifierFixture.models,
                             onOpenMenu: { fixture.store.conversationsPresented = true },
-                            onActivate: { fixture.classifier.startActivation() }, onRun: { fixture.classifier.startRun() })))
+                            onActivate: { fixture.classifier.startActivation() }, onRun: { fixture.classifier.startRun() },
+                            onOpenModels: { fixture.store.selectedTab = .models })))
                 }
             }
             .modifier(WorkbenchSelectionObserver(
@@ -83,6 +100,8 @@ struct NativeUIReviewApp: App {
                     Text(fixture.lastAction).accessibilityIdentifier("fixture.action").allowsHitTesting(false)
                 }
             }
+            .environment(\.locale, ODLocalization.locale(for: localization.effectiveLanguage))
+            .environment(\.layoutDirection, localization.effectiveLanguage.isRightToLeft ? .rightToLeft : .leftToRight)
             .dynamicTypeSize(argsLargeType ? .accessibility3 : .large)
             .frame(width: fixture.probeWidth)
         }
@@ -114,7 +133,7 @@ private final class ShareReceiptReviewController: UIViewController {
         shown = true
         let failed = ProcessInfo.processInfo.arguments.contains("-share-failed")
         present(ShareViewController.receiptAlert(
-            success: !failed, error: "Couldn't save this item to OnDevice Max.", onDone: {}
+            success: !failed, error: "Couldn't save this item to Token AI.", onDone: {}
         ), animated: false)
     }
 }
@@ -149,6 +168,7 @@ private struct ModelImportPickerReview: View {
 }
 
 final class ReviewFixture: ObservableObject {
+    private var interruptedDownloadScope: HFDownloadScope?
     let store = ODStore.demo()
     let classifier = ClassifierFixture.makeController()
     @Published var lastAction = "None"
@@ -160,6 +180,12 @@ final class ReviewFixture: ObservableObject {
     let isStoreScreenshot: Bool
     init() {
         var args = ProcessInfo.processInfo.arguments
+        if Bundle.main.object(forInfoDictionaryKey: "UserGuideReviewFixture") as? Bool == true {
+            args += ["-screen", "user-guide"]
+        }
+        if Bundle.main.object(forInfoDictionaryKey: "CodingWorkspaceReviewFixture") as? Bool == true {
+            args += ["-screen", "coding", "-review-language", "en"]
+        }
         // Screenshot presets select the production UI with sample content.
         // This key exists only in a copied QA bundle, never in the shipping app.
         let screenshotScene = Bundle.main.object(forInfoDictionaryKey: "AppStoreScreenshotScene") as? String
@@ -178,7 +204,21 @@ final class ReviewFixture: ObservableObject {
         if let pack = Bundle.main.object(forInfoDictionaryKey: "CoreAIRemovalFixture") as? String {
             args += ["-screen", "models", "-coreai-installed", pack, "-action-probe"]
         }
+        if let server = Bundle.main.object(forInfoDictionaryKey: "APIServerReviewFixture") as? String {
+            args += ["-screen", "api", "-review-language", "en"]
+            if server != "stopped" { args.append("-api-running") }
+            if server == "generating" { args.append("-api-generating") }
+            if server == "dark-large-type" { args += ["-dark", "-large-type"] }
+        }
+        if let classifier = Bundle.main.object(forInfoDictionaryKey: "ClassifierPrintReviewFixture") as? String {
+            args += ["-screen", "classifiers", "-classifier-input", "-review-language", "en"]
+            if classifier == "dark" { args.append("-dark") }
+            if classifier == "image" { args.append("-classifier-image") }
+        }
         func value(_ key: String) -> String? { guard let i = args.firstIndex(of: key), args.indices.contains(i + 1) else { return nil }; return args[i + 1] }
+        if let language = value("-review-language").flatMap(AppLanguage.init(rawValue:)) {
+            LocalizationService.shared.setLanguage(language)
+        }
         screen = value("-screen") ?? "composer"
         if screen == "quantization-settings", args.contains("-reset-turboquant-setting") {
             UserDefaults.standard.removeObject(forKey: MLXAssistantKVCachePolicy.preferenceKey)
@@ -188,7 +228,8 @@ final class ReviewFixture: ObservableObject {
         compact = args.contains("-compact")
         probeWidth = value("-width").flatMap(Double.init).map { CGFloat($0) } ?? (compact ? 320 : nil)
         store.appearance = args.contains("-oled") ? .oled : (dark ? .dark : .light)
-        store.selectedTab = screen == "home" ? .home : .chat
+        store.selectedTab = screen == "home" ? .home : screen == "coding" ? .code : .chat
+        store.capabilities.canOpenCodeWorkspace = screen == "coding"
         store.capabilities.canPinConversations = true
         store.capabilities.canOpenAPIServer = true
         ODBridge.shared.store = store
@@ -225,6 +266,18 @@ final class ReviewFixture: ObservableObject {
             if args.contains("-api-no-address") { LocalAPIManager.shared.addresses = [] }
             if args.contains("-api-model-loading") { CodingAssistantService.shared.state = .loading("Preparing weights") }
             if args.contains("-api-model-unloaded") { CodingAssistantService.shared.state = .unloaded }
+            if args.contains("-api-model-not-installed") {
+                CodingAssistantService.shared.state = .unloaded
+                CodingAssistantService.shared.selectedModelIsInstalled = false
+            }
+            if let message = value("-api-model-failed") {
+                CodingAssistantService.shared.state = .failed(message)
+            }
+            if args.contains("-api-cloud-model") {
+                CodingAssistantService.shared.activeExecutionLocation = .externalCloud
+                CodingAssistantService.shared.activeDisplayName = "Cloud model"
+                CodingAssistantService.shared.state = .ready
+            }
             if args.contains("-api-generating") {
                 CodingAssistantService.shared.state = .generating
                 CodingAssistantService.shared.tokenRate = 18.4
@@ -246,7 +299,21 @@ final class ReviewFixture: ObservableObject {
         if screen == "models" { store.selectedTab = .models }
         if screen == "classifiers" { store.selectedTab = .classifiers }
         if args.contains("-classifier-input") { classifier.input = "The service was very helpful." }
-        if screen == "lens" { store.selectedTab = .lens }
+        if args.contains("-classifier-image") {
+            classifier.selectedModelID = "classifier:fastvit-t8"
+            classifier.imageData = Bundle.main.url(forResource: "studio-example", withExtension: "png").flatMap { try? Data(contentsOf: $0) }
+        }
+        if screen == "lens" {
+            store.selectedTab = .lens
+            if let stage = value("-lens-waiting-stage") {
+                store.lensIsAnalyzing = true
+                store.lensAnalysisStartedAt = .now.addingTimeInterval(-45)
+                store.lensAnalysisStage = ODLensAnalysisStage(rawValue: stage) ?? .readingImage
+                store.lensUsesLargeModel = true
+                store.lensModelName = "MiniCPM-V 4.7 35B A3B"
+                store.capabilities.canCancelLensAnalysis = true
+            }
+        }
         if args.contains("-drawer-open") { store.conversationsPresented = true }
         store.capabilities.canCapture = true
         store.capabilities.canChoosePhoto = true
@@ -311,24 +378,56 @@ final class ReviewFixture: ObservableObject {
         if args.contains("-model-failed") { store.modelPhase = .failed(message: "Model could not be loaded. Choose another model or retry.") }
         if args.contains("-model-actions") {
             store.capabilities.canLoadModels = true
+            let interrupted = args.contains("-model-interrupted")
+            if interrupted {
+                let root = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                    .appendingPathComponent("interrupted-edge0-ui-fixture")
+                let scope = HFDownloadScope(destination: root, fileAllowlist: ["model.safetensors"])
+                interruptedDownloadScope = scope
+                if args.contains("-interrupted-reset") {
+                    try? FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+                    try? Data("Edge0/Edge0-35B-A3B-preview".utf8).write(to: root.appendingPathComponent(".repoID"))
+                    try? JSONEncoder().encode(["model.safetensors": Int64(16)])
+                        .write(to: root.appendingPathComponent(".hf-expected.json"))
+                }
+            }
+            let hasInterruptedReceipt = interruptedDownloadScope?.hasResumableReceipt(repoID: "Edge0/Edge0-35B-A3B-preview") == true
             store.models.append(.init(id: "review/catalog-model", name: "Review catalog model",
                 metadata: "UI test fixture", byteCount: 1_000_000_000, kind: .language,
                 isInstalled: false, availableCommands: [.details, .configure, .download, .pauseDownload, .cancelDownload],
-                downloadStatus: args.contains("-model-preparing") ? "Preparing model" : args.contains("-preparation-paused") ? "Preparation paused" : args.contains("-model-paused") ? "Paused"
+                downloadStatus: hasInterruptedReceipt ? "Interrupted" : args.contains("-model-preparing") ? "Preparing model" : args.contains("-preparation-paused") ? "Preparation paused" : args.contains("-model-paused") ? "Paused"
                     : args.contains("-model-downloading") || args.contains("-model-invalid-progress") ? "Downloading" : nil,
                 downloadDetail: args.contains("-model-preparing") ? "Preparing model · 12 of 40"
                     : args.contains("-preparation-paused") ? "Preparing this model needs about 20 GB more free space. Free storage, then resume. The original download has been kept." : nil,
                 downloadProgress: args.contains("-model-preparing") || args.contains("-preparation-paused") ? 0.3 : args.contains("-model-invalid-progress") ? .nan
                     : args.contains("-model-downloading") || args.contains("-model-paused") ? 0.4 : nil,
-                isDownloadPaused: args.contains("-model-paused") || args.contains("-preparation-paused"),
+                isDownloadPaused: hasInterruptedReceipt || args.contains("-model-paused") || args.contains("-preparation-paused"),
                 summary: "Fast for chat and code.", vendor: "qwen", badges: ["Recommended"],
                 downloadSizeLabel: "~1 GB"))
+        }
+        if args.contains("-minicpm-v47") {
+            store.capabilities.canLoadModels = true
+            for model in MiniCPMV47Catalog.downloadableModels {
+                store.models.append(.init(
+                    id: model.repoID, name: model.displayName,
+                    metadata: model == MiniCPMV47Catalog.oneB ? "Q4_K_M · llama.cpp" : "Mixed Q3 · expert streaming",
+                    byteCount: model.downloadBytes,
+                    kind: .vision, isInstalled: false, isSelectable: false,
+                    availableCommands: [.details, .download],
+                    estimatedMemoryBytes: model.approxRAMBytes,
+                    summary: model.description, vendor: "openbmb", badges: ["Vision", "New"],
+                    downloadSizeLabel: ByteCountFormatter.string(fromByteCount: model.downloadBytes, countStyle: .file)
+                ))
+            }
         }
         if args.contains("-classifier-catalog") {
             store.models += CoreAIModelLibrary.catalog.filter { $0.category == .classifier }.map {
                 CoreAIModelLibrary.entry(for: $0,
                     isInstalled: args.contains("-classifier-installed") && $0.id == "zoo-laya-multilingual")
             }
+        }
+        if args.contains("-classifier-catalog") {
+            store.models += ClassifierCatalog.models.map { ClassifierModelLibrary.entry(for: $0) }
         }
         if let packID = value("-coreai-installed"), let pack = CoreAIZooCatalog.model(id: packID) {
             store.models = [CoreAIModelLibrary.entry(for: pack, isInstalled: true),
@@ -339,8 +438,8 @@ final class ReviewFixture: ObservableObject {
             store.capabilities.canLoadModels = true
             store.models.append(.init(
                 id: "review/dual-model",
-                name: "Unified test model",
-                metadata: "Chat and vision",
+                name: args.contains("-bonsai2-vision") ? "Ternary Bonsai 2 9B" : "Unified test model",
+                metadata: args.contains("-bonsai2-vision") ? "2-bit · Text + images" : "Chat and vision",
                 kind: .language,
                 supportedKinds: [.language, .vision],
                 isInstalled: true,
@@ -377,7 +476,7 @@ final class ReviewFixture: ObservableObject {
             store.loadedModelID = selectedID
             store.modelPhase = .ready
             store.metrics.modelStorageBytes = nil
-            store.editionLabel = "OnDevice Max"
+            store.editionLabel = "Token AI"
             store.voiceSessionNotice = nil
             store.lensStatusMessage = nil
         }
@@ -385,6 +484,18 @@ final class ReviewFixture: ObservableObject {
             guard let store else { return }
             self?.lastAction = String(describing: action)
             switch action {
+            case .modelAction(let id, .cancelDownload):
+                if let scope = self?.interruptedDownloadScope,
+                   let index = store.models.firstIndex(where: { $0.id == id }) {
+                    do {
+                        try scope.discardReceipt(repoID: "Edge0/Edge0-35B-A3B-preview")
+                        store.models[index].downloadStatus = nil
+                        store.models[index].downloadProgress = nil
+                        store.models[index].isDownloadPaused = false
+                    } catch {
+                        store.models[index].downloadStatus = "Download failed"
+                    }
+                }
             case .modelAction(let id, .delete):
                 if args.contains("-coreai-installed"), let pack = CoreAIZooCatalog.model(forSelectionID: id),
                    let index = store.models.firstIndex(where: { $0.id == id }) {
@@ -402,6 +513,9 @@ final class ReviewFixture: ObservableObject {
                 store.lensIsAnalyzing = true
                 store.capabilities.canCancelLensAnalysis = true
             case .cancelLensAnalysis:
+                store.lensIsAnalyzing = false
+                store.lensAnalysisStartedAt = nil
+                store.capabilities.canCancelLensAnalysis = false
                 store.lensIsAnalyzing = false
                 store.capabilities.canCancelLensAnalysis = false
                 store.lensStatusMessage = "Analysis cancelled"
@@ -520,7 +634,7 @@ struct ComposerContractView: View {
                 .frame(maxWidth: .infinity, alignment: .leading).padding(welcome ? 0 : 20)
             }
             .background { ODPageBackground().ignoresSafeArea() }
-            .navigationTitle(welcome ? "OnDevice" : "A focused workday").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(welcome ? "Token AI" : "A focused workday").navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 ODWorkspaceBottomBar {
                     VStack(spacing: 0) {
@@ -565,7 +679,7 @@ struct ComposerContractView: View {
                     }.accessibilityIdentifier("navigation.menu")
                 }
                 ToolbarItem(placement: .principal) {
-                    Text(welcome ? "OnDevice" : "A focused workday").font(.headline)
+                    Text(welcome ? "Token AI" : "A focused workday").font(.headline)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("More options", systemImage: "ellipsis") { status = "Options opened" }
@@ -580,7 +694,7 @@ struct AppearanceReview: View {
     @ObservedObject var store: ODStore
     @State private var haptics = true
     @State private var fps = false
-    @State private var language = "Auto"
+    @ObservedObject private var localization = LocalizationService.shared
     @State private var icon = "Max"
     @State private var reset = false
     var body: some View {
@@ -602,10 +716,10 @@ struct AppearanceReview: View {
                         }
                     }.padding(.vertical, 8)
                 } languagePicker: {
-                    Picker("Language", selection: $language) {
-                        Text("Auto").tag("Auto")
-                        Text("English").tag("English")
-                    }
+                    ODLanguagePicker(selection: Binding(
+                        get: { localization.language },
+                        set: { localization.setLanguage($0) }
+                    ))
                 } onResetTips: { reset = true }
             }
             .listStyle(.plain)

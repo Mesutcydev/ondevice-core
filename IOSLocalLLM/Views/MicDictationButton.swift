@@ -55,7 +55,7 @@ struct MicDictationButton: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Enable microphone and speech recognition for OnDevice in Settings → Privacy.")
+            Text("Enable microphone and speech recognition for Token AI in Settings → Privacy.")
         }
     }
 

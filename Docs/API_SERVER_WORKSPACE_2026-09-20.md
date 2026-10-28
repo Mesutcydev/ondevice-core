@@ -1,5 +1,45 @@
 # API server workspace
 
+## 2026-10-16: OnDeviceLAS reference pass
+
+The workspace now puts listener status, live runtime activity and Start/Stop/
+Restart ahead of model controls, LAN shortcuts and device health. Activity
+follows the listener first: another workspace's loaded or generating model
+cannot make a stopped server appear ready. Idle and stopped activity stays
+still; work animation respects Reduce Motion and workspace visibility.
+
+Connection details, key controls and client setup remain available as an
+explicit preview while stopped. Model ID copying and loading cancellation are
+available beside model status. The API model picker excludes both configured
+API providers and Apple Private Cloud. A cloud selection made in Chat shows
+local-model recovery guidance. Loading a missing selection opens Models so a
+download remains an explicit action with visible progress. Leaving the retained
+workspace hides revealed keys again.
+
+Client recipes and endpoint URLs share `LocalAPIClientSetup`; JSON model names
+and shell arguments are escaped, and model-detail IDs stay in one URL path
+component. The collapsed endpoint catalog includes the three classifier routes.
+Command previews scroll horizontally to preserve command lines at large text sizes.
+The listener, bearer authentication, opt-in settings and runtime admission stay
+owned by the existing services.
+
+Verification for this pass is under the ignored
+`build/api-server-reference-2026-10-16/` directory. Six production-data contracts
+passed. All thirteen API UI scenarios passed across focused runs; the initial
+endpoint disclosure identifier failures remain in the earlier logs, and the
+corrected connection/key/catalog scenario passes in `ui-final.log`. Coverage
+includes port validation and lifecycle, retained navigation, model load/cancel/
+unload and missing-file recovery, cloud and LAN boundaries, key rotation and
+masking, command formats, generation settings, and appearance/text-size states.
+
+`production-build-final.log` records a successful generic iPhone
+`build-for-testing`, including the production app and hosted tests.
+`repository-validation-final.log` records successful localization and repository
+checks. Final original screenshots show stopped/running light and dark with
+accessibility text; `start-transition/` contains the visual diff for Start.
+These simulator fixtures never bind a listener or run inference. Live HTTP and
+device inference still require a physical iPhone check.
+
 The leading sidebar now opens **API server** as a retained primary workspace.
 It does not present the former Mac pairing sheet. Device’s Advanced tools entry
 opens the same workspace. Mac pairing and the chat-menu bridge probe are hidden;

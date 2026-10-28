@@ -40,7 +40,7 @@ final class CameraService: NSObject, ObservableObject {
     private var videoDevice: AVCaptureDevice?
 
     // Frame management
-    private let processingQueue = DispatchQueue(label: "com.mesutcydev.ondevicemax.camera", qos: .userInteractive)
+    private let processingQueue = DispatchQueue(label: "com.token.TokenAI.camera", qos: .userInteractive)
     private var frameIndex: Int = 0
     // Was a plain Bool. Promoted to a lock so the read-then-flip inside
     // captureOutput is one atomic critical section — the serial-queue
@@ -324,7 +324,7 @@ final class CameraService: NSObject, ObservableObject {
             if shouldRun { captureSession.startRunning() }
             else { captureSession.stopRunning() }
             #if DEBUG
-            Logger(subsystem: "com.mesutcydev.ondevicemax", category: "sensor-ownership")
+            Logger(subsystem: "com.token.TokenAI", category: "sensor-ownership")
                 .debug("camera operation=\(self.ownershipID.uuidString, privacy: .public) running=\(self.captureSession.isRunning) requested=\(self.demand.isRequested) foreground=\(self.demand.isForeground)")
             #endif
         }

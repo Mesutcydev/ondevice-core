@@ -1,0 +1,110 @@
+{
+  "data" : [ {
+    "type" : "appInfoLocalizations",
+    "id" : "310459fa-ac07-44d6-8118-a3fc7f41049e",
+    "attributes" : {
+      "locale" : "ar-SA",
+      "name" : "OnDevice: Max",
+      "subtitle" : "ذكاء محلي، دردشة وصوت وصور",
+      "privacyPolicyUrl" : "https://ondevice.fun/privacy/",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/310459fa-ac07-44d6-8118-a3fc7f41049e"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "5d7c0b7f-2f9b-43d3-bffa-cd036deb472d",
+    "attributes" : {
+      "locale" : "en-US",
+      "name" : "OnDevice: Max",
+      "subtitle" : "Local AI, chat, voice & images",
+      "privacyPolicyUrl" : "https://ondevice.fun/privacy/",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/5d7c0b7f-2f9b-43d3-bffa-cd036deb472d"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "67b82cff-4ca2-4fa6-b101-0da4fcffc8bc",
+    "attributes" : {
+      "locale" : "tr",
+      "name" : "OnDevice: Max",
+      "subtitle" : "Yerel AI: sohbet, ses, görsel",
+      "privacyPolicyUrl" : "https://ondevice.fun/privacy/",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/67b82cff-4ca2-4fa6-b101-0da4fcffc8bc"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "e69e7047-80f5-4d90-98b1-a391f79a5944",
+    "attributes" : {
+      "locale" : "ja",
+      "name" : "OnDevice: Max",
+      "subtitle" : "ローカルAI・チャット・音声・画像",
+      "privacyPolicyUrl" : "https://ondevice.fun/privacy/",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/e69e7047-80f5-4d90-98b1-a391f79a5944"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "6eeb2212-9049-4580-81f0-b186ac2c61fa",
+    "attributes" : {
+      "locale" : "hi",
+      "name" : "OnDevice: Max",
+      "subtitle" : "लोकल AI, चैट, आवाज़ व चित्र",
+      "privacyPolicyUrl" : "https://ondevice.fun/privacy/",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/6eeb2212-9049-4580-81f0-b186ac2c61fa"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "1a853d60-3ad6-4c65-a788-ca2145f3ddf8",
+    "attributes" : {
+      "locale" : "es-ES",
+      "name" : "OnDevice: Max",
+      "subtitle" : "IA local, chat, voz e imágenes",
+      "privacyPolicyUrl" : "https://ondevice.fun/privacy/",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/1a853d60-3ad6-4c65-a788-ca2145f3ddf8"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "af78646a-612b-4596-a870-b3104d37aaab",
+    "attributes" : {
+      "locale" : "de-DE",
+      "name" : "OnDevice: Max",
+      "subtitle" : "Lokale KI: Chat, Stimme & Bild",
+      "privacyPolicyUrl" : "https://ondevice.fun/privacy/",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/af78646a-612b-4596-a870-b3104d37aaab"
+    }
+  } ],
+  "links" : {
+    "self" : "https://api.appstoreconnect.apple.com/v1/appInfos/6ddf14c6-d32f-428a-8fb8-a7225ef104f3/appInfoLocalizations"
+  },
+  "meta" : {
+    "paging" : {
+      "total" : 7,
+      "limit" : 50
+    }
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "appId": "6774354746",
+  "versionId": "2d111ea6-2fa5-4774-9f20-a511a067573f",
+  "version": "2.0",
+  "state": "PREPARE_FOR_SUBMISSION",
+  "locales": [
+    {
+      "locale": "ar-SA",
+      "duoSupportFirst": true
+    },
+    {
+      "locale": "de-DE",
+      "duoSupportFirst": true
+    },
+    {
+      "locale": "el",
+      "duoSupportFirst": true
+    },
+    {
+      "locale": "en-US",
+      "duoSupportFirst": true
+    },
+    {
+      "locale": "es-ES",
+      "duoSupportFirst": true
+    },
+    {
+      "locale": "hi",
+      "duoSupportFirst": true
+    },
+    {
+      "locale": "ja",
+      "duoSupportFirst": true
+    },
+    {
+      "locale": "pt-PT",
+      "duoSupportFirst": true
+    },
+    {
+      "locale": "ro",
+      "duoSupportFirst": true
+    },
+    {
+      "locale": "ru",
+      "duoSupportFirst": true
+    },
+    {
+      "locale": "tr",
+      "duoSupportFirst": true
+    }
+  ],
+  "removedPlacements": [
+    {
+      "id": "0ac00019-3c87-833a-8f25-b66b95e97566",
+      "type": "PRODUCT_PAGE_HEADER_ASSET",
+      "locale": "en-US"
+    },
+    {
+      "id": "53c00019-3c87-833a-8f24-af100f28c4b1",
+      "type": "APP_STORE_SEARCH_RESULTS_ASSET",
+      "locale": "en-US"
+    }
+  ],
+  "metadataMatchesPlan": true,
+  "errors": [],
+  "verifiedAtUTC": "2026-10-24T16:09:03.048370+00:00",
+  "url": "https://appstoreconnect.apple.com/apps/6774354746/distribution/ios/version/2d111ea6-2fa5-4774-9f20-a511a067573f",
+  "submittedForReview": false,
+  "additionalAppInformation": {
+    "secondaryCategory": "UTILITIES",
+    "contentRightsDeclaration": "USES_THIRD_PARTY_CONTENT",
+    "ageRatingDeclarationsMatchSource": true,
+    "ageRatingOverrideV2": "SIXTEEN_PLUS",
+    "parentalControls": true
+  },
+  "selectedBuild": null,
+  "clearedPreviousVersionBuild": {
+    "id": "c4b6e2fa-7194-4036-a116-5582b4c47eb2",
+    "preReleaseVersion": [
+      "1.5"
+    ]
+  },
+  "targetOnlyKeywordsAligned": [
+    "pt-PT",
+    "ru",
+    "el",
+    "ro"
+  ]
+}

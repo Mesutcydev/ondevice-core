@@ -1,199 +1,289 @@
 import SwiftUI
+import OnDeviceUI
 
 struct UserGuideView: View {
-    @Environment(\.koduTheme) private var T
-    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        List {
+            Section { UserGuideIntroduction() }
+            ForEach(UserGuideContent.sections) { section in
+                Section {
+                    ForEach(section.chapters) { chapter in
+                        NavigationLink {
+                            UserGuideChapterView(chapter: chapter)
+                        } label: {
+                            UserGuideChapterRow(title: chapter.title, summary: chapter.summary, symbol: chapter.symbol)
+                        }
+                        .accessibilityIdentifier("guide.chapter.\(chapter.id)")
+                    }
+                } header: { Text(section.title) }
+            }
+            Section {
+                Text("Screen references contain example content. Features depend on your model, device, and app build.")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background { ODPageBackground().ignoresSafeArea() }
+        .navigationTitle("User Guide")
+        .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("guide.index")
+    }
+}
+
+private struct UserGuideIntroduction: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Make yourself at home", systemImage: "book.closed").font(.headline)
+            Text("Start your first chat, explore each workspace, and learn where your content goes.")
+            Text("Local models process content on your device. Downloads and the optional network features you choose can connect to other services.")
+                .font(.subheadline).foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+private struct UserGuideChapterRow: View {
+    let title: LocalizedStringResource
+    let summary: LocalizedStringResource
+    let symbol: String
 
     var body: some View {
-        ScrollView {
-            // spacing 0: `KSection` is an `InstrumentPanel` now, and panels
-            // tile against each other on shared rules. A 20pt gap between them
-            // would float each one on the page — the card look the grammar
-            // removes. The lead blocks below carry their own vertical padding.
-            VStack(spacing: 0) {
-                // Intro Section
-                VStack(alignment: .leading, spacing: 6) {
-                    KCaption(text: "manual")
-                    KPageTitle(title: "User Guide", size: 28)
-                    KMono(text: "On-device AI studio manual & workflows", size: 12, color: T.ink3)
+        Label {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).foregroundStyle(.primary)
+                Text(summary).font(.subheadline).foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 6)
+        } icon: { Image(systemName: symbol).foregroundStyle(.secondary) }
+    }
+}
+
+struct UserGuideChapterView: View {
+    let chapter: UserGuideChapter
+    @State private var stepIndex = 0
+
+    var body: some View {
+        ScrollViewReader { scroll in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    UserGuideStepInstructions(step: chapter.steps[stepIndex], number: stepIndex + 1, total: chapter.steps.count)
+                        .id("guide.step.top")
+                    UserGuideStepVisual(visual: chapter.steps[stepIndex].visual, number: stepIndex + 1)
+                    UserGuideStepNote(note: chapter.steps[stepIndex].note)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 18)
-
-                // Privacy Note
-                HStack(spacing: 12) {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 16))
-                        .foregroundColor(T.accent)
-                        .frame(width: 32, height: 32)
-                        .background(RoundedRectangle(cornerRadius: StudioRadius.panel).fill(T.accentSoft))
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("100% On-Device & Private")
-                            .font(T.sans(14, .semibold))
-                            .foregroundColor(T.ink)
-                        Text("All models run locally. No data leaves this device.")
-                            .font(T.sans(11))
-                            .foregroundColor(T.ink3)
-                    }
-                    Spacer()
-                }
-                .padding(14)
-                .kGlass(cornerRadius: StudioRadius.panel, fallbackFill: T.surface)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 18)
-
-                // 1. Assistant View Section
-                KSection(title: "assistant") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Interactive Local Chat")
-                            .font(T.sans(15, .semibold))
-                            .foregroundColor(T.ink)
-                        
-                        Text("Engage in direct chats with your chosen reasoning model (e.g. Qwen, Llama). Code blocks are automatically formatted with syntax highlighting.")
-                            .font(T.sans(12))
-                            .foregroundColor(T.ink2)
-                            .lineSpacing(3)
-                        
-                        visualImage("img_assistant")
-                        
-                        bulletPoint("Composer Inputs", "Attach images, documents, or repositories. Access saved snip presets from the toolbar.")
-                        bulletPoint("Conversation Search", "Filter local chat histories by keywords in real-time.")
-                        bulletPoint("Tool Integrations", "Supports local tool-calling like Web Search, with user approvals.")
-                    }
-                    .padding(14)
-                }
-
-                // 2. Image Generation Section
-                KSection(title: "image_generation") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Local Diffusion Models")
-                            .font(T.sans(15, .semibold))
-                            .foregroundColor(T.ink)
-                        
-                        Text("Create artwork locally using Stable Diffusion or SDXL-Turbo, designed to operate safely within iOS RAM limits.")
-                            .font(T.sans(12))
-                            .foregroundColor(T.ink2)
-                            .lineSpacing(3)
-
-                        HStack(spacing: 10) {
-                            visualImage("img_prompting")
-                            visualImage("img_generation")
+                .padding(20)
+                .frame(maxWidth: 680, alignment: .leading)
+                .frame(maxWidth: .infinity)
+            }
+            .onChange(of: stepIndex) { _, _ in scroll.scrollTo("guide.step.top", anchor: .top) }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                UserGuideStepNavigation(stepIndex: $stepIndex, total: chapter.steps.count)
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Step", selection: $stepIndex) {
+                            ForEach(chapter.steps.enumerated(), id: \.element.id) { index, step in
+                                Text(step.title).tag(index)
+                            }
                         }
-
-                        bulletPoint("Model Profiles", "Select specialized profiles like DreamShaper 8 and configure negative prompts.")
-                        bulletPoint("Refining Details", "Configure generation steps. Fast models require only 1–4 steps.")
-                    }
-                    .padding(14)
-                }
-
-                // 3. Lens (Camera) Section
-                KSection(title: "camera_&_lens") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Real-Time Code & Vision")
-                            .font(T.sans(15, .semibold))
-                            .foregroundColor(T.ink)
-                        
-                        Text("Use the viewfinder to scan source code from screens or whiteboards, or stream continuous descriptive VLM captions.")
-                            .font(T.sans(12))
-                            .foregroundColor(T.ink2)
-                            .lineSpacing(3)
-
-                        visualImage("img_lens")
-
-                        bulletPoint("Code Mode (Default)", "Frames and captures code using a high-fidelity OCR pass, sending it directly to the LLM analyzer.")
-                        bulletPoint("Visual Mode (VLM)", "Point at anything to generate live text descriptions of objects, screens, or layouts.")
-                        bulletPoint("Describe Interval", "Adjust follow-up refresh intervals from 6s to 30s. Manual describes can be triggered at any time.")
-                    }
-                    .padding(14)
-                }
-
-                // 4. Voice Section
-                KSection(title: "voice_assistant") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Hands-Free Conversational Loop")
-                            .font(T.sans(15, .semibold))
-                            .foregroundColor(T.ink)
-                        
-                        Text("Talk directly with models using robust voice activity detection (VAD) that filters out ambient background noise.")
-                            .font(T.sans(12))
-                            .foregroundColor(T.ink2)
-                            .lineSpacing(3)
-
-                        visualImage("img_voice")
-
-                        bulletPoint("Synchronized Audio", "Uses a single synchronized audio session for seamless transitions between listening and speaking.")
-                        bulletPoint("Neural TTS Engines", "Select between system voice synthesis and advanced local voices (KittenTTS, Kokoro).")
-                    }
-                    .padding(14)
-                }
-
-                // 5. Models Hub
-                KSection(title: "model_management") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Unified Model Library")
-                            .font(T.sans(15, .semibold))
-                            .foregroundColor(T.ink)
-                        
-                        Text("The central hub for downloading models, searching HuggingFace, and tracking local disk space usage.")
-                            .font(T.sans(12))
-                            .foregroundColor(T.ink2)
-                            .lineSpacing(3)
-
-                        bulletPoint("Residency Gates", "Models automatically load and unload dynamically to protect your device from memory-related jetsam kills.")
-                        bulletPoint("Disk Management", "Segments total storage sizes per type (Language, Vision, Voice) and allows one-tap cleanups of orphaned files.")
-                        bulletPoint("Hugging Face Search", "Find and download any compatible open-source model directly by entering its repository path.")
-                    }
-                    .padding(14)
-                }
-
-                // 6. Local API server
-                KSection(title: "API server") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Local API server")
-                            .font(T.sans(15, .semibold))
-                            .foregroundColor(T.ink)
-                        
-                        Text("Open API server from the sidebar to let compatible clients send requests to a model running on this device.")
-                            .font(T.sans(12))
-                            .foregroundColor(T.ink2)
-                            .lineSpacing(3)
-
-                        bulletPoint("Client setup", "Enable the server, choose a downloaded model, then copy the connection URL and API key into your client.")
-                        bulletPoint("Local network", "Use a trusted network. Requests require authentication, and the server stops when the app enters the background.")
-                    }
-                    .padding(14)
+                    } label: { Label("Choose a step", systemImage: "list.bullet") }
+                    .accessibilityIdentifier("guide.steps")
                 }
             }
-            .padding(.bottom, 40)
+            .navigationTitle(Text(chapter.title))
+            .navigationBarTitleDisplayMode(.inline)
+            .background { ODPageBackground().ignoresSafeArea() }
         }
-        .background(StudioPageBackground())
-        .navigationBarTitleDisplayMode(.inline)
-
     }
+}
 
-    @ViewBuilder
-    private func visualImage(_ name: String) -> some View {
-        Image(name)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .cornerRadius(StudioRadius.panel)
-            .overlay(RoundedRectangle(cornerRadius: StudioRadius.panel).stroke(T.glassBorder, lineWidth: 0.5))
+private struct UserGuideStepInstructions: View {
+    let step: UserGuideStep
+    let number: Int
+    let total: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Step \(number) of \(total)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                .accessibilityIdentifier("guide.step.position")
+            Text(step.title).font(.title2.weight(.semibold)).accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("guide.step.title")
+            Text(step.path).font(.subheadline).foregroundStyle(.secondary)
+            Text(step.action).textSelection(.enabled).accessibilityIdentifier("guide.step.action")
+        }
+        .accessibilityElement(children: .contain)
     }
+}
 
-    @ViewBuilder
-    private func bulletPoint(_ title: String, _ desc: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                Rectangle().fill(T.accent).frame(width: 4, height: 4)
-                KMono(text: title.uppercased(), size: 10, weight: .semibold, color: T.accent)
+private struct UserGuideStepNote: View {
+    let note: LocalizedStringResource
+    var body: some View {
+        Label { Text(note).font(.subheadline).foregroundStyle(.secondary) } icon: {
+            Image(systemName: "info.circle").foregroundStyle(.secondary)
+        }
+        .accessibilityIdentifier("guide.step.note")
+    }
+}
+
+private struct UserGuideStepNavigation: View {
+    @Binding var stepIndex: Int
+    @Environment(\.dynamicTypeSize) private var typeSize
+    let total: Int
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Button { stepIndex -= 1 } label: {
+                UserGuideNavigationLabel(title: "Previous", symbol: "chevron.left",
+                                         compact: typeSize.isAccessibilitySize)
             }
-            Text(desc)
-                .font(T.sans(12))
-                .foregroundColor(T.ink3)
-                .lineSpacing(2)
-                .padding(.leading, 10)
+                .buttonStyle(.glass).disabled(stepIndex == 0).accessibilityIdentifier("guide.previous")
+                .accessibilityLabel("Previous step")
+            Spacer(minLength: 0)
+            if stepIndex == total - 1 {
+                UserGuideNavigationLabel(title: "Topic complete", symbol: "checkmark",
+                                         compact: typeSize.isAccessibilitySize)
+                    .font(.subheadline).accessibilityIdentifier("guide.complete")
+                    .accessibilityLabel("Topic complete")
+            } else {
+                Button { stepIndex += 1 } label: {
+                    UserGuideNavigationLabel(title: "Next", symbol: "chevron.right",
+                                             compact: typeSize.isAccessibilitySize)
+                }
+                    .buttonStyle(.glassProminent).odInkProminent().accessibilityIdentifier("guide.next")
+                    .accessibilityLabel("Next step")
+            }
         }
+        .controlSize(.large)
+        .padding(.horizontal, 20).padding(.vertical, 12)
+        .background(ODPalette.surface)
+    }
+}
+
+private struct UserGuideNavigationLabel: View {
+    let title: LocalizedStringResource
+    let symbol: String
+    let compact: Bool
+    var body: some View {
+        Label { Text(title) } icon: { Image(systemName: symbol) }
+            .labelStyle(UserGuideAdaptiveLabelStyle(compact: compact))
+    }
+}
+
+private struct UserGuideAdaptiveLabelStyle: LabelStyle {
+    let compact: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        if compact {
+            configuration.icon
+        } else {
+            HStack { configuration.icon; configuration.title }
+        }
+    }
+}
+
+private struct UserGuideStepVisual: View {
+    let visual: UserGuideVisual
+    let number: Int
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            switch visual {
+            case let .screenshot(asset, focus, label):
+                UserGuideScreenReference(asset: asset, focus: focus, label: label, number: number)
+            case let .flow(nodes, code):
+                UserGuideFlow(nodes: nodes, code: code)
+            case .modelStates:
+                UserGuideModelStates()
+            }
+        }
+    }
+}
+
+private struct UserGuideScreenReference: View {
+    let asset: String
+    let focus: UserGuideFocus
+    let label: LocalizedStringResource
+    let number: Int
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label { Text(label) } icon: { Image(systemName: "viewfinder") }.font(.subheadline)
+            Image(asset).resizable().scaledToFit()
+                .overlay { UserGuideScreenHighlight(focus: focus, number: number) }
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .frame(maxWidth: 300).frame(maxWidth: .infinity)
+                // The reference image itself is English/LTR in every locale.
+                .environment(\.layoutDirection, .leftToRight)
+                .accessibilityLabel(Text("Example screen. Highlighted: \(Text(label))"))
+                .accessibilityIdentifier("guide.screen.\(asset)")
+            Text("App capture · example content").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct UserGuideScreenHighlight: View {
+    let focus: UserGuideFocus
+    let number: Int
+    var body: some View {
+        GeometryReader { geometry in
+            RoundedRectangle(cornerRadius: 12)
+                .strokeBorder(Color.accentColor, lineWidth: 3)
+                .frame(width: geometry.size.width * CGFloat(focus.width),
+                       height: geometry.size.height * CGFloat(focus.height))
+                .overlay(alignment: .topLeading) {
+                    Text(number, format: .number).font(.caption.weight(.semibold)).foregroundStyle(.white)
+                        .padding(6).background(Color.accentColor, in: Circle()).offset(x: -8, y: -10)
+                }
+                .position(x: geometry.size.width * CGFloat(focus.x + focus.width / 2),
+                          y: geometry.size.height * CGFloat(focus.y + focus.height / 2))
+        }
+        .allowsHitTesting(false).accessibilityHidden(true)
+    }
+}
+
+private struct UserGuideFlow: View {
+    let nodes: [UserGuideFlowNode]
+    let code: String?
+    var body: some View {
+        VStack(spacing: 16) {
+            ForEach(nodes.enumerated(), id: \.element.id) { index, node in
+                VStack(spacing: 16) {
+                    if index > 0 {
+                        Image(systemName: "arrow.down").foregroundStyle(.secondary).accessibilityHidden(true)
+                    }
+                    Label { Text(node.title) } icon: { Image(systemName: node.symbol) }
+                        .multilineTextAlignment(.center)
+                }
+            }
+            if let code { Text(code).font(.footnote.monospaced()).textSelection(.enabled) }
+        }
+        .padding(.vertical, 16).frame(maxWidth: .infinity)
+        .accessibilityIdentifier("guide.diagram")
+    }
+}
+
+private struct UserGuideModelStates: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            UserGuideStateRow(title: "Available", detail: "Catalog entry; files not downloaded", symbol: "cloud")
+            UserGuideStateRow(title: "Downloading", detail: "Files transfer to your device", symbol: "arrow.down.circle")
+            UserGuideStateRow(title: "Preparing", detail: "Local conversion when the format needs it", symbol: "gearshape.2")
+            UserGuideStateRow(title: "Installed", detail: "Files available on disk", symbol: "internaldrive")
+            UserGuideStateRow(title: "Loaded", detail: "Active in runtime memory", symbol: "cpu")
+        }
+        .accessibilityIdentifier("guide.modelStates")
+    }
+}
+
+private struct UserGuideStateRow: View {
+    let title: LocalizedStringResource
+    let detail: LocalizedStringResource
+    let symbol: String
+    var body: some View {
+        Label {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title).font(.headline)
+                Text(detail).font(.subheadline).foregroundStyle(.secondary)
+            }
+        } icon: { Image(systemName: symbol).foregroundStyle(.secondary) }
     }
 }

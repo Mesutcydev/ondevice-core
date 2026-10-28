@@ -18,12 +18,11 @@ public struct ChatMessage: Identifiable, Codable, Hashable, Sendable {
     /// True when the user tapped Stop while this message was streaming.
     /// Rendered as a small "[stopped]" badge in the bubble header.
     public var wasInterrupted: Bool
-    /// JPEG-compressed thumbnail (~480 px long edge) the user attached
+    /// Bounded JPEG image the user attached
     /// to this message. Rendered above the text in the user bubble.
     /// Stored as Data so the message stays Codable/Hashable-friendly
     /// for any future persistence layer. The full-resolution image
-    /// isn't kept after the OCR/VLM pass — only what's needed to show
-    /// the user what they sent.
+    /// isn't kept; the bounded image is also the input for vision inference.
     public var imageThumbnailData: Data?
     /// Multiple image thumbnails for interleaved vision (feature #11).
     /// Each entry represents one attached image in order. The first image

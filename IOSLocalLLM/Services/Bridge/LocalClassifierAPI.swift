@@ -1,12 +1,17 @@
 import Foundation
 
 enum LocalClassifierAPI {
+    private static func selectionID(_ id: String) -> String {
+        if let entry = ClassifierCatalog.model(id: id) { return entry.selectionID }
+        return id.hasPrefix("coreai:") ? id : "coreai:\(id)"
+    }
     static func decodeActivation(_ body: Data) throws -> String {
         guard body.count <= 4_096,
               let value = try JSONSerialization.jsonObject(with: body) as? [String: Any],
               Set(value.keys) == ["model"], let id = value["model"] as? String,
               !id.isEmpty, id.count <= 512 else { throw CoreAIClassifierError.invalidQuestion }
-        return id.hasPrefix("coreai:") ? id : "coreai:\(id)"
+        guard ClassifierCatalog.model(id: id)?.isImage != true else { throw CoreAIClassifierError.invalidQuestion }
+        return selectionID(id)
     }
     static func decodeRequest(_ body: Data) throws -> ClassifierRequest {
         let keys: Set<String> = ["model", "input", "instructions", "type", "options", "rubric", "falseCriterion", "trueCriterion", "calibrated"]
@@ -20,7 +25,7 @@ enum LocalClassifierAPI {
               decoded.rubric.map({ (2...20).contains($0.count) && $0.allSatisfy { $0.utf8.count <= 8_000 } }) ?? true,
               (decoded.falseCriterion?.utf8.count ?? 0) <= 8_000,
               (decoded.trueCriterion?.utf8.count ?? 0) <= 8_000 else { throw CoreAIClassifierError.invalidQuestion }
-        let request = ClassifierRequest(model: decoded.model.hasPrefix("coreai:") ? decoded.model : "coreai:\(decoded.model)",
+        let request = ClassifierRequest(model: selectionID(decoded.model),
             input: decoded.input, instructions: decoded.instructions, type: decoded.type,
             options: decoded.options, rubric: decoded.rubric, falseCriterion: decoded.falseCriterion,
             trueCriterion: decoded.trueCriterion, calibrated: decoded.calibrated)

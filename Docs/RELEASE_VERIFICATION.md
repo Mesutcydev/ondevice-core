@@ -102,8 +102,8 @@ submit the app.
 
 Release defaults to `IOSLocalLLM-AppStore.entitlements`, which omits debugging
 memory and Private Cloud Compute. Use `--enable-pcc` only after confirming
-Apple's managed capability grant for the same App ID and team. CloudKit's
-production schema also needs verification before enabling sync in production.
+Apple's managed capability grant for the same App ID and team. The app ships
+no iCloud entitlements; `verify_appstore.py` rejects any that appear.
 
 Public Release builds compile `APP_STORE` model policy, reject confirmed
 FastVLM/Youtu identities, exclude the FastVLM encoder, and use the bundled
@@ -154,7 +154,7 @@ cannot upload a new signed candidate.
 Xcode's authenticated Apple Account can upload without the CLI API key. Copy
 the verified export's `ExportOptions.plist` to `UploadOptions.plist`, change only
 `destination` to `upload`, and preserve the owner team, automatic signing,
-Production CloudKit, and fixed build number. Then run:
+and fixed build number. Then run:
 
 ```bash
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \

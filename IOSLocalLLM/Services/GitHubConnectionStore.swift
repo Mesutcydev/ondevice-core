@@ -11,7 +11,7 @@ nonisolated protocol GitHubCredentialStorage: Sendable {
 
 /// Separate service, no shared access group, no synchronization or file fallback.
 nonisolated struct GitHubKeychain: GitHubCredentialStorage {
-    private let service = "com.mesutcydev.ondevicemax.github"
+    private let service = "com.token.TokenAI.github"
     private func query(_ id: UUID? = nil) -> [String: Any] {
         var value: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service]
         if let id { value[kSecAttrAccount as String] = id.uuidString }

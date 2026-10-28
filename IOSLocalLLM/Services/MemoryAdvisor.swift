@@ -617,7 +617,8 @@ enum MemoryAdvisor {
         for modelID: String,
         allowTightFit: Bool = false,
         runtime: ModelRuntime? = nil,
-        allowUnsafeMemoryLoad: Bool = false
+        allowUnsafeMemoryLoad: Bool = false,
+        estimatedPeakBytes: Int64? = nil
     ) -> String? {
         // Callers that can start MLX work must await
         // `MLXGenerationGate.clearCacheWhenIdle()` before entering this
@@ -640,7 +641,7 @@ enum MemoryAdvisor {
         }
 
         // Size before sampling: filesystem work should not age the live budget.
-        let footprint = estimatedFootprint(for: modelID)
+        let footprint = estimatedPeakBytes ?? estimatedFootprint(for: modelID)
         let assumed = footprint > 0 ? footprint : unknownFootprintFloor
         let memory = memorySnapshot
         Diagnostics.shared.breadcrumb(

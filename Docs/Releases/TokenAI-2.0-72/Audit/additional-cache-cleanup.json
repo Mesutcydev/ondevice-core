@@ -1,0 +1,12 @@
+[
+  {
+    "path": "/Users/m/.cache/uv",
+    "logicalBytes": 425106226,
+    "kind": "regenerable package download cache"
+  },
+  {
+    "path": "/Users/m/.npm/_cacache",
+    "logicalBytes": 200182280,
+    "kind": "regenerable package download cache"
+  }
+]

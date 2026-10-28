@@ -404,10 +404,22 @@ final class ToolRunnerTests: XCTestCase {
         XCTAssertTrue(prompt.contains("Their device language is Turkish."))
         XCTAssertTrue(prompt.contains("Never invent citations"))
         XCTAssertTrue(prompt.contains("fenced code blocks"))
+        XCTAssertTrue(prompt.contains("Follow the user's requested output format"))
         XCTAssertTrue(prompt.hasSuffix(ToolRunner.systemPromptAddendum))
         // Content rules only appear when that material is in the conversation.
         XCTAssertFalse(prompt.contains("ATTACHED FILES"))
         XCTAssertFalse(prompt.contains("WEB CONTEXT"))
+    }
+
+    @MainActor
+    func test_requestedOutputFormatOverridesDefaultCodeFencesAtBothBudgets() {
+        for budget in [1_008, 2_032, 8_192] {
+            let prompt = CodingAssistantService.composeSystemPrompt(.init(
+                persona: PersonaStore.builtIns.first { $0.id == "coder" }!.systemPrompt,
+                inputBudget: budget, date: friday))
+            XCTAssertTrue(prompt.contains("Follow the user's requested output format"))
+        }
+        XCTAssertTrue(CodingAssistantService.systemPrompt.contains("omit fences when requested"))
     }
 
     func test_composedPromptAddsRulesForMaterialInTheConversation() {

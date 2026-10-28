@@ -1,4 +1,6 @@
-# OnDevice LLM
+# Token: Local AI Studio
+
+Token AI **2.0 (71)** uses the working OnDeviceMax app with Token branding and bundle ID `com.token.TokenAI`. Open `TokenAI.xcworkspace` and select the `TokenAI` scheme. The original OnDeviceMax icon is retained. The sections below also document the upstream architecture and project history.
 
 **Run open-source LLMs on iPhone offline** — chat, vision, voice, RAG, and an
 authenticated local API. Built in SwiftUI with MLX, llama.cpp, whisper.cpp, and
@@ -53,12 +55,17 @@ performance evidence; see [validation policy](Docs/VALIDATION.md).
 - On-device chat and code assistance with MLX models
 - Optional [GitHub repository tools](Docs/GITHUB_TOOLS.md), off by default, with
   Keychain sign-in, per-chat repo selection, and review before publishing edits.
+- A sidebar Code workspace with a source editor, explicit file/selection context,
+  per-file diff review, encrypted checkpoints and offline files, local web preview,
+  ZIP export, and a repository reading guide.
 - Optional [API providers](Docs/API_PROVIDERS.md) with Keychain credentials,
   explicit privacy consent, live model catalogs, and custom endpoints
 - Native Edge0 8B and experimental 35B expert-streaming chat models, with
   bounded memory admission and user-initiated model downloads
 - Core AI model packs through the iOS 27 device runtime
 - Live camera and image analysis
+- MiniCPM-V 4.7 1B vision and experimental 35B expert streaming in the model
+  library; see [requirements and validation](Docs/MINICPM_V47_SUPPORT_AUDIT_2026-10-13.md)
 - Local voice activity detection, transcription, and speech synthesis
 - Local OpenAI-compatible API server and Mac bridge
 - Model discovery and downloads from Hugging Face
@@ -157,10 +164,11 @@ Build the native inference frameworks:
 
 ```bash
 ./scripts/build_native_frameworks.sh
+python3 scripts/bootstrap_classifier_runtime.py
 ```
 
 For the optional Apple-Silicon Mac Catalyst target, add
-`--with-catalyst`. The tracked root scripts build only the required slices
+`--with-catalyst` to both commands. The tracked root scripts build only the required slices
 from the pinned submodules; no untracked submodule edits are required.
 
 Generate the Xcode project and install CocoaPods:
@@ -173,7 +181,7 @@ open OnDeviceMax.xcworkspace
 
 Select the `OnDeviceMax` scheme. For a physical device, select your own
 development team in Xcode; this fork already uses its own `com.mesutcydev.ondevicemax`
-identifiers, App Group, CloudKit container and URL scheme, so it installs
+identifiers, App Group and URL scheme, so it installs
 alongside OnDevice Core rather than replacing it.
 See [SETUP_INSTRUCTIONS.md](SETUP_INSTRUCTIONS.md) and
 [fork configuration](Docs/FORK_CONFIGURATION.md) for every identifier,

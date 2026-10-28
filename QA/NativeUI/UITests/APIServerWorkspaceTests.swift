@@ -2,14 +2,101 @@ import XCTest
 
 /// Production view and shell; review-only manager never binds a network socket.
 final class APIServerWorkspaceTests: XCTestCase {
+    @MainActor func testMissingModelOpensDownloadsWithoutLoading() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-review-language", "en", "-screen", "api", "-api-model-not-installed"]
+        app.launch()
+        let load = app.buttons["api.model.load"]
+        for _ in 0..<6 where !load.isHittable { app.swipeUp() }
+        load.tap()
+        XCTAssertTrue(app.navigationBars["Models"].waitForExistence(timeout: 5))
+        app.buttons["navigation.menu"].firstMatch.tap()
+        let api = app.buttons["sidebar.apiServer"]
+        XCTAssertTrue(api.waitForExistence(timeout: 3))
+        api.tap()
+        XCTAssertTrue(app.buttons["api.model.load"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["api.model.unload"].exists)
+    }
+
+    @MainActor func testStoppedServerNeverClaimsTheSharedModelIsServing() {
+        let app = XCUIApplication()
+        for options in [[String](), ["-api-generating"]] {
+            app.launchArguments = ["-review-language", "en", "-screen", "api"] + options
+            app.launch()
+            XCTAssertEqual(app.descendants(matching: .any)["api.parser"].value as? String,
+                           "Offline, SERVER STOPPED")
+            XCTAssertEqual(app.buttons["api.lifecycle"].label, "Start server")
+            XCTAssertFalse(app.descendants(matching: .any)["api.activity"].exists)
+            let preview = app.staticTexts["api.connection.preview"]
+            for _ in 0..<8 where !preview.isHittable { app.swipeUp() }
+            XCTAssertTrue(preview.exists)
+            XCTAssertTrue(app.buttons["api.key.reveal"].exists)
+            app.terminate()
+        }
+    }
+
+    @MainActor func testCloudModelAndNoLANHaveExplicitRecovery() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-review-language", "en", "-screen", "api", "-api-running", "-api-cloud-model", "-api-no-address"]
+        app.launch()
+        XCTAssertEqual(app.descendants(matching: .any)["api.parser"].value as? String,
+                       "Listening, NO LOCAL MODEL")
+        XCTAssertTrue(app.staticTexts["Unavailable to the local API"].exists)
+        XCTAssertFalse(app.buttons["api.model.load"].exists)
+        XCTAssertTrue(app.buttons["api.model.get"].exists)
+        let refresh = app.buttons["api.addresses.refresh"]
+        for _ in 0..<8 where !refresh.isHittable { app.swipeUp() }
+        refresh.tap()
+        XCTAssertTrue(app.staticTexts["http://localhost:11434"].exists)
+        let example = app.staticTexts["api.client.example"]
+        for _ in 0..<8 where !example.isHittable { app.swipeUp() }
+        XCTAssertTrue(example.label.contains("http://localhost:11434/v1"))
+        XCTAssertFalse(example.label.contains("review-fixture-key"))
+    }
+
+    @MainActor func testModelLoadingCanBeCancelledAndRetried() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-review-language", "en", "-screen", "api", "-api-running", "-api-model-loading"]
+        app.launch()
+        XCTAssertEqual(app.descendants(matching: .any)["api.parser"].value as? String,
+                       "Loading model, PREPARING")
+        let cancel = app.buttons["api.model.cancel"]
+        for _ in 0..<6 where !cancel.isHittable { app.swipeUp() }
+        cancel.tap()
+        XCTAssertEqual(app.descendants(matching: .any)["api.parser"].value as? String,
+                       "Listening, NO LOCAL MODEL")
+        app.buttons["api.model.load"].tap()
+        XCTAssertEqual(app.descendants(matching: .any)["api.parser"].value as? String,
+                       "Ready, ON DEVICE")
+    }
+
+    @MainActor func testKeyIsHiddenWhenReturningToRetainedWorkspace() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-review-language", "en", "-screen", "api"]
+        app.launch()
+        let reveal = app.buttons["api.key.reveal"]
+        for _ in 0..<8 where !reveal.isHittable { app.swipeUp() }
+        reveal.tap()
+        XCTAssertTrue(app.staticTexts["review-fixture-key"].exists)
+        for destination in ["sidebar.home", "sidebar.apiServer"] {
+            app.buttons["navigation.menu"].firstMatch.tap()
+            let row = app.buttons[destination]
+            XCTAssertTrue(row.waitForExistence(timeout: 3))
+            row.tap()
+            XCTAssertTrue(app.buttons["navigation.dismissMenu"].waitForNonExistence(timeout: 3))
+        }
+        XCTAssertTrue(app.staticTexts["review-fixture-key"].waitForNonExistence(timeout: 3))
+        XCTAssertEqual(reveal.label, "Reveal API key")
+    }
+
     @MainActor func testOperatorHomeShowsConnectionModelAndDiagnostics() {
         let app = XCUIApplication()
-        app.launchArguments = ["-screen", "api", "-api-running"]
+        app.launchArguments = ["-review-language", "en", "-screen", "api", "-api-running"]
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["OnDevice Max"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Token AI"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.descendants(matching: .any)["api.parser"].value as? String,
-                       "READY, ON DEVICE")
+                       "Ready, ON DEVICE")
         XCTAssertTrue(app.buttons["Copy IP"].exists)
         XCTAssertTrue(app.buttons["Copy API"].exists)
         XCTAssertTrue(app.buttons["Copy key"].exists)
@@ -23,7 +110,7 @@ final class APIServerWorkspaceTests: XCTestCase {
 
     @MainActor func testGenerationControlsUpdateOnTheServerPage() {
         let app = XCUIApplication()
-        app.launchArguments = ["-screen", "api"]
+        app.launchArguments = ["-review-language", "en", "-screen", "api"]
         app.launch()
 
         let tools = app.switches["api.generation.tools"]
@@ -41,7 +128,7 @@ final class APIServerWorkspaceTests: XCTestCase {
 
     @MainActor func testConnectionActionsInDarkLargeType() {
         let app = XCUIApplication()
-        app.launchArguments = ["-screen", "api", "-api-running", "-dark", "-large-type"]
+        app.launchArguments = ["-review-language", "en", "-screen", "api", "-api-running", "-dark", "-large-type"]
         app.launch()
 
         let share = app.buttons["api.share"]
@@ -60,12 +147,12 @@ final class APIServerWorkspaceTests: XCTestCase {
 
     @MainActor func testLiveParserMovesWhileGenerating() {
         let app = XCUIApplication()
-        app.launchArguments = ["-screen", "api", "-api-running", "-api-generating"]
+        app.launchArguments = ["-review-language", "en", "-screen", "api", "-api-running", "-api-generating"]
         app.launch()
 
         let parser = app.descendants(matching: .any)["api.parser"]
         XCTAssertTrue(parser.waitForExistence(timeout: 5))
-        XCTAssertEqual(parser.value as? String, "STREAMING, 18 tokens per second, ON DEVICE")
+        XCTAssertEqual(parser.value as? String, "Streaming, 18 tokens per second, ON DEVICE")
 
         let first = parser.screenshot().pngRepresentation
         Thread.sleep(forTimeInterval: 0.11)
@@ -78,7 +165,7 @@ final class APIServerWorkspaceTests: XCTestCase {
 
     @MainActor func testPageNavigationPortEditAndServerLifecycle() {
         let app = XCUIApplication()
-        app.launchArguments = ["-screen", "home"]
+        app.launchArguments = ["-review-language", "en", "-screen", "home"]
         app.launch()
         app.buttons["navigation.menu"].tap()
         XCTAssertFalse(app.buttons["sidebar.mac"].exists)
@@ -89,7 +176,9 @@ final class APIServerWorkspaceTests: XCTestCase {
 
         // The port edits in a focused sheet; Save stays disabled until the
         // value is valid AND changed.
-        app.buttons.matching(NSPredicate(format: "identifier == %@", "api.port.row")).firstMatch.tap()
+        let portRow = app.buttons.matching(NSPredicate(format: "identifier == %@", "api.port.row")).firstMatch
+        for _ in 0..<10 where !portRow.isHittable { app.swipeUp() }
+        portRow.tap()
         let port = app.textFields["api.port"]
         XCTAssertTrue(port.waitForExistence(timeout: 5))
         let save = app.buttons["api.port.save"]
@@ -121,6 +210,7 @@ final class APIServerWorkspaceTests: XCTestCase {
 
         // One lifecycle control owns start and stop.
         let lifecycle = app.buttons["api.lifecycle"]
+        for _ in 0..<10 where !lifecycle.isHittable { app.swipeDown() }
         lifecycle.tap()
         XCTAssertEqual(app.descendants(matching: .any)["api.status"].value as? String, "Running on port 12000")
         app.buttons["api.restart"].tap()
@@ -155,7 +245,7 @@ final class APIServerWorkspaceTests: XCTestCase {
 
     @MainActor func testRunningServerConnectionAndKeyControls() {
         let app = XCUIApplication()
-        app.launchArguments = ["-screen", "api", "-api-running"]
+        app.launchArguments = ["-review-language", "en", "-screen", "api", "-api-running"]
         app.launch()
         // OpenAI base, shared Ollama/Anthropic origin, and the on-device address.
         XCTAssertTrue(app.staticTexts["http://192.0.2.1:11434/v1"].waitForExistence(timeout: 5))
@@ -196,7 +286,7 @@ final class APIServerWorkspaceTests: XCTestCase {
         let example = app.staticTexts["api.client.example"]
         let copyExample = app.buttons["api.client.example.copy"]
         for _ in 0..<6 where !copyExample.isHittable { app.swipeUp() }
-        XCTAssertTrue(example.label.contains("OPENAI_API_KEY=review-fixture-rotated-key"))
+        XCTAssertTrue(example.label.contains("OPENAI_API_KEY='review-fixture-rotated-key'"))
         app.segmentedControls.buttons["Anthropic"].tap()
         XCTAssertTrue(example.label.contains("x-api-key: review-fixture-rotated-key"))
         XCTAssertTrue(example.label.contains("local/local_Ornith-1.5-9B-Q5_K_M"))
@@ -204,9 +294,17 @@ final class APIServerWorkspaceTests: XCTestCase {
 
         // The catalog includes discovery, model detail, and Ollama probes.
         let endpointCopies = app.buttons.matching(NSPredicate(format: "identifier == %@", "api.endpoint.copy"))
-        XCTAssertEqual(endpointCopies.count, 14)
-        for _ in 0..<10 where !endpointCopies.element(boundBy: 13).isHittable { app.swipeUp() }
-        endpointCopies.element(boundBy: 13).tap()
+        let catalog = app.buttons["api.endpoints.toggle"]
+        for _ in 0..<10 where !catalog.isHittable { app.swipeUp() }
+        catalog.tap()
+        XCTAssertEqual(catalog.value as? String, "Expanded")
+        guard endpointCopies.firstMatch.waitForExistence(timeout: 5) else {
+            XCTFail("Expanding Endpoints must expose its route copy buttons")
+            return
+        }
+        XCTAssertEqual(endpointCopies.count, 17)
+        for _ in 0..<10 where !endpointCopies.element(boundBy: 16).isHittable { app.swipeUp() }
+        endpointCopies.element(boundBy: 16).tap()
 
         // Hiding the key masks both the key row and the example again.
         let reveal = app.buttons["api.key.reveal"]
@@ -222,7 +320,7 @@ final class APIServerWorkspaceTests: XCTestCase {
 
     @MainActor func testModelUnloadAndNearbyDevicesSetting() {
         let app = XCUIApplication()
-        app.launchArguments = ["-screen", "api", "-api-running"]
+        app.launchArguments = ["-review-language", "en", "-screen", "api", "-api-running"]
         app.launch()
         let unload = app.buttons["api.model.unload"]
         XCTAssertTrue(unload.waitForExistence(timeout: 5))
@@ -249,7 +347,7 @@ final class APIServerWorkspaceTests: XCTestCase {
                                 ("running-dark-large-type", ["-api-running", "-dark", "-large-type"]),
                                 ("failed", ["-api-failed", "Port 11434 is already in use."]),
                                 ("model-loading", ["-api-model-loading"]), ("no-model", ["-api-no-model"])] {
-            app.launchArguments = ["-screen", "api"] + options
+            app.launchArguments = ["-review-language", "en", "-screen", "api"] + options
             app.launch()
             XCTAssertTrue(app.descendants(matching: .any)["api.status"].waitForExistence(timeout: 5))
             XCTAssertEqual(app.sheets.count, 0)

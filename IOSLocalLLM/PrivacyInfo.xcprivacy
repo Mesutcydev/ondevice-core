@@ -4,7 +4,7 @@
 <dict>
     <!-- Local inference by default; no tracking, analytics or telemetry.
          Explicit network features include model downloads/search, web search,
-         local API/paired bridge, optional private CloudKit sync, external
+         local API/paired bridge, external
          links, and Apple Private Cloud in provisioned builds after consent.
          App Store privacy answers must be reviewed for the shipped features. -->
     <key>NSPrivacyTracking</key>

@@ -8,6 +8,7 @@ struct AssistantModelPickerView: View {
 
     let downloadedOnly: Bool
     let allowsAPIProviders: Bool
+    let allowsApplePrivateCloud: Bool
 
     @ObservedObject private var assistant = CodingAssistantService.shared
     @ObservedObject private var center = ModelDownloadCenter.shared
@@ -26,9 +27,10 @@ struct AssistantModelPickerView: View {
     @State private var isImporting = false
     @State private var isActivating = false
 
-    init(downloadedOnly: Bool = false, allowsAPIProviders: Bool = true) {
+    init(downloadedOnly: Bool = false, allowsAPIProviders: Bool = true, allowsApplePrivateCloud: Bool = true) {
         self.downloadedOnly = downloadedOnly
         self.allowsAPIProviders = allowsAPIProviders
+        self.allowsApplePrivateCloud = allowsApplePrivateCloud
     }
 
     private var recommendedAssistant: AssistantModel? {
@@ -245,7 +247,7 @@ struct AssistantModelPickerView: View {
                 } else {
                     Text("New conversations start with your default model.")
                         .font(.footnote).foregroundStyle(.secondary)
-                    if ApplePrivateCloud.isSupportedOnCurrentOS {
+                    if allowsApplePrivateCloud && ApplePrivateCloud.isSupportedOnCurrentOS {
                         ApplePrivateCloudPickerSection(
                             status: assistant.applePrivateCloudStatus,
                             isActive: assistant.activeExecutionLocation == .applePrivateCloud,
@@ -304,7 +306,7 @@ struct AssistantModelPickerView: View {
                 }
             }
             .listStyle(.insetGrouped).scrollContentBackground(.hidden)
-            .navigationTitle(downloadedOnly ? "Chat model" : "Default model")
+            .navigationTitle(downloadedOnly ? (allowsApplePrivateCloud ? "Chat model" : "Local model") : "Default model")
             .localModelImportFlow(isPresented: $showLocalImport) { urls in
                 Task { await importLocal(urls) }
             }
@@ -325,7 +327,7 @@ struct AssistantModelPickerView: View {
             .onAppear {
                 coreAIStore.refresh()
                 selectedID = assistant.activeSelectionID
-                if ApplePrivateCloud.isSupportedOnCurrentOS {
+                if allowsApplePrivateCloud && ApplePrivateCloud.isSupportedOnCurrentOS {
                     Task { await assistant.refreshApplePrivateCloudStatus() }
                 }
             }
@@ -335,7 +337,7 @@ struct AssistantModelPickerView: View {
     @ViewBuilder
     private var availablePickerContent: some View {
         if availableLocalModels.isEmpty && unavailableDownloadedModels.isEmpty
-            && !assistant.applePrivateCloudStatus.canSend
+            && (!allowsApplePrivateCloud || !assistant.applePrivateCloudStatus.canSend)
             && (!allowsAPIProviders || !apiProviders.providers.contains(where: { !$0.models.isEmpty && apiProviders.canUse($0) })) {
             ContentUnavailableView(
                 "No chat models installed",
@@ -361,7 +363,7 @@ struct AssistantModelPickerView: View {
                     Text("Tap to use a model and remember it for new chats. The star saves a default without loading it.")
                 }
             }
-            if ApplePrivateCloud.isSupportedOnCurrentOS && assistant.applePrivateCloudStatus.canSend {
+            if allowsApplePrivateCloud && ApplePrivateCloud.isSupportedOnCurrentOS && assistant.applePrivateCloudStatus.canSend {
                 Section("Apple Private Cloud") {
                     Button(action: chooseApplePrivateCloud) {
                         HStack(spacing: 12) {

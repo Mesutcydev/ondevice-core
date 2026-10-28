@@ -37,18 +37,18 @@ struct ODLensView: View {
                 if let resultContent { resultContent($store.lensResultPresented) }
                 else { NavigationStack {
                     ScrollView {
-                        Text(store.lensResultText ?? "")
+                        Text(odKey: store.lensResultText ?? "")
                             .font(.body).textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(ODLayout.pageInset)
                     }
                     .background { ODPageBackground().ignoresSafeArea() }
-                    .navigationTitle(store.cameraMode.title)
+                    .odNavigationTitle(store.cameraMode.title)
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
-                        ToolbarItem(placement: .confirmationAction) { Button("Done") { store.lensResultPresented = false } }
+                        ToolbarItem(placement: .confirmationAction) { Button(ODLocalizedString("Done")) { store.lensResultPresented = false } }
                         ToolbarItem(placement: .topBarTrailing) {
-                            ShareLink(item: store.lensResultText ?? "") { Label("Share result", systemImage: "square.and.arrow.up") }
+                            ShareLink(item: store.lensResultText ?? "") { Label(ODLocalizedString("Share result"), systemImage: "square.and.arrow.up") }
                         }
                     }
                 }
@@ -60,7 +60,7 @@ struct ODLensView: View {
             .onChange(of: store.selectedTab) { _, destination in
                 if destination != .lens { questionFocused = false }
             }
-            .navigationTitle("Lens")
+            .odNavigationTitle("Lens")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if !sidebarPinned {
@@ -75,10 +75,10 @@ struct ODLensView: View {
                 }
                 if store.capabilities.canConfigureLens {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Menu("Lens options", systemImage: "ellipsis") {
-                            Button("Prompt and capture options", systemImage: "slider.horizontal.3") { store.send(.showLensOptions) }
+                        Menu(ODLocalizedString("Lens options"), systemImage: "ellipsis") {
+                            Button(ODLocalizedString("Prompt and capture options"), systemImage: "slider.horizontal.3") { store.send(.showLensOptions) }
                             if store.capabilities.canViewLensHistory {
-                                Button("Capture history", systemImage: "clock") { store.send(.showLensHistory) }
+                                Button(ODLocalizedString("Capture history"), systemImage: "clock") { store.send(.showLensHistory) }
                             }
                         }
                         .labelStyle(.iconOnly)
@@ -130,8 +130,8 @@ struct ODLensView: View {
         }
         .buttonStyle(.plain)
         .disabled(!store.canPerformActions || !store.capabilities.canSelectLensModel || store.lensIsAnalyzing)
-        .accessibilityLabel(store.lensModelInstalled ? "Vision model, \(store.lensModelName)" : "Vision model required")
-        .accessibilityHint(store.capabilities.canSelectLensModel ? "Choose a vision model" : "Current vision model")
+        .accessibilityLabel(Text(store.lensModelInstalled ? ODLocalizedString("Vision model, \(store.lensModelName)") : ODLocalizedString("Vision model required")))
+        .accessibilityHint(Text(odKey: store.capabilities.canSelectLensModel ? "Choose a vision model" : "Current vision model"))
     }
 
     /// The panel keeps its intrinsic height, then scrolls if the keyboard,
@@ -171,7 +171,7 @@ struct ODLensView: View {
             TextField(
                 store.cameraMode == .ask ? "Ask about this image…" : "Add instructions (optional)…",
                 text: $store.lensQuestion,
-                prompt: Text(store.cameraMode == .ask ? "Ask about this image…" : "Add instructions (optional)…")
+                prompt: Text(odKey: store.cameraMode == .ask ? "Ask about this image…" : "Add instructions (optional)…")
                     .foregroundStyle(ODPalette.secondary),
                 axis: .vertical
             )
@@ -195,34 +195,30 @@ struct ODLensView: View {
             .onTapGesture { questionFocused = true }
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("lens.instructions.container")
-            .accessibilityLabel(store.cameraMode == .ask ? "Question about this image" : "Optional image instructions")
-            .accessibilityHint(store.cameraMode.instruction)
+            .accessibilityLabel(Text(odKey: store.cameraMode == .ask ? "Question about this image" : "Optional image instructions"))
+            .accessibilityHint(Text(odKey: store.cameraMode.instruction))
 
             if let message = store.lensStatusMessage, !message.isEmpty {
-                Text(message)
+                Text(odKey: message)
                     .font(.footnote)
                     .foregroundStyle(ODPalette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             } else if !store.capabilities.canCapture {
-                Text("Camera capture is unavailable.")
+                Text("Camera capture is unavailable.", bundle: .module)
                     .font(.footnote)
                     .foregroundStyle(ODPalette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             if store.cameraNeedsSettings {
-                Button("Open camera settings", systemImage: "gearshape") { store.send(.openCameraSettings) }
+                Button(ODLocalizedString("Open camera settings"), systemImage: "gearshape") { store.send(.openCameraSettings) }
                     .buttonStyle(.glass)
             }
             if store.lensIsAnalyzing {
-                HStack(spacing: ODLayout.elementGap) {
-                    Text("Analyzing image").font(.footnote).foregroundStyle(.secondary).odShimmer()
-                    Spacer(minLength: 0)
-                    if store.capabilities.canCancelLensAnalysis {
-                        Button("Stop", systemImage: "stop.fill") { store.send(.cancelLensAnalysis) }
-                            .buttonStyle(.glass)
-                            .accessibilityLabel("Stop image analysis")
-                    }
+                ODLensAnalysisProgress(stage: store.lensAnalysisStage,
+                    startedAt: store.lensAnalysisStartedAt, usesLargeModel: store.lensUsesLargeModel,
+                    canStop: store.capabilities.canCancelLensAnalysis) {
+                    store.send(.cancelLensAnalysis)
                 }
             }
             if let result = store.lensResultText, !result.isEmpty {
@@ -236,7 +232,7 @@ struct ODLensView: View {
                     .frame(minHeight: ODLayout.minimumHit)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Read analysis result")
+                .accessibilityLabel(Text("Read analysis result", bundle: .module))
             }
             HStack(alignment: .top, spacing: 5 * ODLayout.unit) {
                 auxiliaryControl(
@@ -264,10 +260,10 @@ struct ODLensView: View {
                     .odInkProminent()
                     .frame(minWidth: 15 * ODLayout.unit, minHeight: 15 * ODLayout.unit)
                     .disabled(!store.canPerformActions || store.lensIsAnalyzing || (!store.lensHasSelectedImage && !store.capabilities.canCapture))
-                    .accessibilityLabel(store.lensHasSelectedImage ? (store.lensModelInstalled ? "Analyze selected image" : "Choose vision model") : "Capture image")
+                    .accessibilityLabel(Text(odKey: store.lensHasSelectedImage ? (store.lensModelInstalled ? "Analyze selected image" : "Choose vision model") : "Capture image"))
                     .accessibilityIdentifier("lens.primary")
-                    .accessibilityHint(store.lensHasSelectedImage ? "Uses this reviewed image and your editable instructions" : "Takes a still image for review before analysis")
-                    Text(store.lensHasSelectedImage ? (store.lensModelInstalled ? "Analyze" : "Choose model") : "Capture")
+                    .accessibilityHint(Text(odKey: store.lensHasSelectedImage ? "Uses this reviewed image and your editable instructions" : "Takes a still image for review before analysis"))
+                    Text(odKey: store.lensHasSelectedImage ? (store.lensModelInstalled ? "Analyze" : "Choose model") : "Capture")
                         .font(.caption.weight(.medium))
                         .foregroundStyle(ODPalette.text)
                         .fixedSize(horizontal: false, vertical: true)
@@ -311,9 +307,9 @@ struct ODLensView: View {
     }
 
     private var modePicker: some View {
-        Picker("Lens mode", selection: $store.cameraMode) {
+        Picker(ODLocalizedString("Lens mode"), selection: $store.cameraMode) {
             ForEach(ODLensMode.allCases) { mode in
-                Text(mode.title).tag(mode)
+                Text(odKey: mode.title).tag(mode)
             }
         }
     }
@@ -333,14 +329,60 @@ struct ODLensView: View {
             .controlSize(.large)
             .frame(minWidth: 15 * ODLayout.unit, minHeight: 15 * ODLayout.unit)
             .disabled(!store.canPerformActions || !enabled)
-            .accessibilityLabel(label)
-            Text(title)
+            .accessibilityLabel(Text(odKey: label))
+            Text(odKey: title)
                 .font(.caption)
                 .foregroundStyle(ODPalette.secondary)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityHidden(true)
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+/// Runtime stages and elapsed time make a long local prefill visibly alive.
+private struct ODLensAnalysisProgress: View {
+    let stage: ODLensAnalysisStage
+    let startedAt: Date?
+    let usesLargeModel: Bool
+    let canStop: Bool
+    let onStop: () -> Void
+
+    var body: some View {
+        TimelineView(.periodic(from: startedAt ?? .now, by: 1)) { timeline in
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 10) {
+                    ODBrandMark(height: 10, motion: .live)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(stage.title).font(.subheadline.weight(.medium))
+                            .accessibilityIdentifier("lens.analysis.stage")
+                        if let startedAt {
+                            Text("\(Int(max(0, timeline.date.timeIntervalSince(startedAt)))) sec elapsed", bundle: .module)
+                                .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                                .accessibilityIdentifier("lens.analysis.elapsed")
+                        }
+                    }
+                    Spacer(minLength: 0)
+                    if canStop {
+                        Button(ODLocalizedString("Stop"), systemImage: "stop.fill", action: onStop)
+                            .buttonStyle(.glass).frame(minHeight: 44)
+                            .accessibilityLabel(Text("Stop image analysis", bundle: .module))
+                    }
+                }
+                if usesLargeModel {
+                    Text("Large models take longer to read an image and prepare a reply. Everything is running on your device.", bundle: .module)
+                        .font(.footnote).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else if let startedAt, timeline.date.timeIntervalSince(startedAt) >= 15 {
+                    Text("Still working on your device. You can stop at any time.", bundle: .module)
+                        .font(.footnote).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        }
     }
 }
 

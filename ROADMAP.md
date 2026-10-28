@@ -8,8 +8,8 @@ This roadmap communicates direction, not a promise of delivery dates.
 - Expand unit tests around memory admission, thermal policy, cancellation,
   authentication, and model lifecycle.
 - Publish an honest physical-device validation matrix with reproducible steps.
-- Improve first-run fork configuration for bundle IDs, App Groups, CloudKit,
-  and signing.
+- Improve first-run fork configuration for bundle IDs, App Groups and
+  signing.
 - Stabilize the reusable runtime boundaries documented in
   `Docs/REUSABLE_COMPONENTS.md`.
 

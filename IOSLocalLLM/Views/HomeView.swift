@@ -73,7 +73,7 @@ struct NativeDeviceView: View {
             .listStyle(.insetGrouped).monospacedDigit()
             .scrollContentBackground(.hidden)
             .background { ODPageBackground().ignoresSafeArea() }
-            .navigationTitle("Device")
+            .odNavigationTitle("Device")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if let onOpenMenu {

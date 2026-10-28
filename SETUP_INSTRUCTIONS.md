@@ -39,9 +39,14 @@ The tracked root script builds the required slices from pinned submodules:
 
 ```bash
 ./scripts/build_native_frameworks.sh
+python3 scripts/bootstrap_classifier_runtime.py
+python3 scripts/bootstrap_minicpm_v47_runtime.py
 ```
 
-Add `--with-catalyst` when you also need the Apple-Silicon Mac Catalyst target.
+Add `--with-catalyst` to the first two commands when you also need the Apple-Silicon Mac Catalyst target.
+The MiniCPM bootstrap produces iPhone, Apple-silicon Mac Catalyst, and native Mac
+slices by default. Its isolated LES engine is required for the experimental
+MiniCPM-V 4.7 35B library entry and leaves the shared llama.cpp engine intact.
 The script may apply the tracked iOS-only patch inside the generated
 llama.cpp build checkout; do not commit that submodule worktree change.
 
@@ -50,9 +55,17 @@ Expected outputs:
 ```text
 ThirdParty/llama.cpp/build-apple/llama.xcframework
 ThirdParty/whisper.cpp/build-apple/whisper.xcframework
+build/ClassifierNative/llama.xcframework
+build/MiniCPMNative/ODMiniCPM.xcframework
 ```
 
 These outputs are generated files and must not be committed.
+
+MiniCPM 1B downloads its model and vision encoder (about 1.78 GB). MiniCPM 35B
+requires at least 12 GB physical RAM, downloads about 16.62 GB, and temporarily
+needs about 35 GB free storage before download and preparation. Preparation
+verifies the pinned source and creates a resumable expert-streaming pack before
+the model becomes ready. See [the audit](Docs/MINICPM_V47_SUPPORT_AUDIT_2026-10-13.md).
 
 ## Generate the workspace
 
@@ -61,7 +74,7 @@ These outputs are generated files and must not be committed.
 ```bash
 xcodegen generate
 pod install
-open OnDeviceMax.xcworkspace
+open TokenAI.xcworkspace
 ```
 
 Open the workspace, not the `.xcodeproj`, so the ONNX Runtime pods are
@@ -96,7 +109,7 @@ Use your own signing identity:
 1. Select the IOSLocalLLM project in Xcode.
 2. For the app, share extension, unit-test, and UI-test targets, select your
    development team.
-3. Replace the app, extension, App Group, and CloudKit identifiers with values
+3. Replace the app, extension, and App Group identifiers with values
    owned by your team, following [Docs/FORK_CONFIGURATION.md](Docs/FORK_CONFIGURATION.md).
 4. Build and run on your device.
 
@@ -256,8 +269,8 @@ App unit tests are hosted in the app, so they run only on a connected iPhone:
 
 ```bash
 xcodebuild test \
-  -workspace OnDeviceMax.xcworkspace \
-  -scheme OnDeviceMax \
+  -workspace TokenAI.xcworkspace \
+  -scheme TokenAI \
   -destination 'platform=iOS,name=YOUR_IPHONE'
 ```
 
@@ -265,8 +278,8 @@ Without a device, compile them as the gate:
 
 ```bash
 xcodebuild build-for-testing \
-  -workspace OnDeviceMax.xcworkspace \
-  -scheme OnDeviceMax \
+  -workspace TokenAI.xcworkspace \
+  -scheme TokenAI \
   -destination 'generic/platform=iOS' \
   CODE_SIGNING_ALLOWED=NO
 ```

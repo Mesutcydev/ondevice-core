@@ -1,0 +1,166 @@
+{
+  "data" : [ {
+    "type" : "appInfoLocalizations",
+    "id" : "2091826d-3ae3-4c6c-be81-58d8d438b98e",
+    "attributes" : {
+      "locale" : "en-US",
+      "name" : "Token: Local AI Studio",
+      "subtitle" : "Local AI, chat, voice & images",
+      "privacyPolicyUrl" : "https://mesut.uk/apps/token/privacy",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/2091826d-3ae3-4c6c-be81-58d8d438b98e"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "3a5baa69-8292-4a67-a612-6ce08d35ba6d",
+    "attributes" : {
+      "locale" : "pt-PT",
+      "name" : "Token: Local AI Studio",
+      "subtitle" : "IA local, chat, voz e imagens",
+      "privacyPolicyUrl" : "https://mesut.uk/apps/token/privacy",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/3a5baa69-8292-4a67-a612-6ce08d35ba6d"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "8a508ace-aae1-4faf-aec1-aa2866e2d2f0",
+    "attributes" : {
+      "locale" : "ru",
+      "name" : "Token: Local AI Studio",
+      "subtitle" : "Локальный ИИ: чат, голос, фото",
+      "privacyPolicyUrl" : "https://mesut.uk/apps/token/privacy",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/8a508ace-aae1-4faf-aec1-aa2866e2d2f0"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "fb6ea440-13d2-4b10-a6ab-30389a61a5d0",
+    "attributes" : {
+      "locale" : "el",
+      "name" : "Token: Local AI Studio",
+      "subtitle" : "Τοπικό AI, συνομιλία και φωνή",
+      "privacyPolicyUrl" : "https://mesut.uk/apps/token/privacy",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/fb6ea440-13d2-4b10-a6ab-30389a61a5d0"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "e7787ec7-c9f9-472b-8154-aa9d809232d0",
+    "attributes" : {
+      "locale" : "ro",
+      "name" : "Token: Local AI Studio",
+      "subtitle" : "AI local: chat, voce, imagini",
+      "privacyPolicyUrl" : "https://mesut.uk/apps/token/privacy",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/e7787ec7-c9f9-472b-8154-aa9d809232d0"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "33c5c521-c9d9-42a3-9437-3af3ff4c3249",
+    "attributes" : {
+      "locale" : "ar-SA",
+      "name" : "Token: Local AI Studio",
+      "subtitle" : "ذكاء محلي، دردشة وصوت وصور",
+      "privacyPolicyUrl" : "https://mesut.uk/apps/token/privacy",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/33c5c521-c9d9-42a3-9437-3af3ff4c3249"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "92348f51-8566-4b3c-87b2-381b341c4856",
+    "attributes" : {
+      "locale" : "de-DE",
+      "name" : "Token: Local AI Studio",
+      "subtitle" : "Lokale KI: Chat, Stimme & Bild",
+      "privacyPolicyUrl" : "https://mesut.uk/apps/token/privacy",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/92348f51-8566-4b3c-87b2-381b341c4856"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "359dfcc9-9bba-4a23-9d79-1756ed992399",
+    "attributes" : {
+      "locale" : "tr",
+      "name" : "Token: Local AI Studio",
+      "subtitle" : "Yerel AI: sohbet, ses, görsel",
+      "privacyPolicyUrl" : "https://mesut.uk/apps/token/privacy",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/359dfcc9-9bba-4a23-9d79-1756ed992399"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "cc27bdae-cc30-4dbf-9f69-7559c0c8dce5",
+    "attributes" : {
+      "locale" : "hi",
+      "name" : "Token: Local AI Studio",
+      "subtitle" : "लोकल AI, चैट, आवाज़ व चित्र",
+      "privacyPolicyUrl" : "https://mesut.uk/apps/token/privacy",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/cc27bdae-cc30-4dbf-9f69-7559c0c8dce5"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "7521e15a-3f3e-428b-a4da-d2aba2a2ee69",
+    "attributes" : {
+      "locale" : "es-ES",
+      "name" : "Token: Local AI Studio",
+      "subtitle" : "IA local, chat, voz e imágenes",
+      "privacyPolicyUrl" : "https://mesut.uk/apps/token/privacy",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/7521e15a-3f3e-428b-a4da-d2aba2a2ee69"
+    }
+  }, {
+    "type" : "appInfoLocalizations",
+    "id" : "b54f5b49-7bb1-4440-878b-37016d795ce9",
+    "attributes" : {
+      "locale" : "ja",
+      "name" : "Token: Local AI Studio",
+      "subtitle" : "ローカルAI・チャット・音声・画像",
+      "privacyPolicyUrl" : "https://mesut.uk/apps/token/privacy",
+      "privacyChoicesUrl" : null,
+      "privacyPolicyText" : null
+    },
+    "links" : {
+      "self" : "https://api.appstoreconnect.apple.com/v1/appInfoLocalizations/b54f5b49-7bb1-4440-878b-37016d795ce9"
+    }
+  } ],
+  "links" : {
+    "self" : "https://api.appstoreconnect.apple.com/v1/appInfos/22c0ae3f-9858-4a67-9cf4-4fb327c8122a/appInfoLocalizations"
+  },
+  "meta" : {
+    "paging" : {
+      "total" : 11,
+      "limit" : 50
+    }
+  }
+}

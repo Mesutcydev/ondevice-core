@@ -10,6 +10,10 @@ struct AgentChatReview: View {
     @State private var startedAt = Date.now.addingTimeInterval(-36)
     @State private var completedSeconds = 36
     @State private var modelPresented = false
+    @State private var detailsPresented = ProcessInfo.processInfo.arguments.contains("-agent-details")
+    @State private var toolsExpanded = false
+    @State private var isPinned = false
+    @State private var imageTapped = false
     @State private var replyPhase: ReplyPhase = ProcessInfo.processInfo.arguments.contains("-agent-waiting") ? .waiting : .reasoning
 
     private enum ReplyPhase { case waiting, reasoning, answer }
@@ -38,12 +42,31 @@ struct AgentChatReview: View {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("UI fixture · no inference").font(.caption).foregroundStyle(.secondary)
                         .padding(.horizontal, ODLayout.pageInset)
-                    HStack {
-                        Spacer(minLength: 20)
-                        Text("Audit the project’s pages and keep the current scrolling.")
-                            .padding(12).background(ODPalette.input, in: RoundedRectangle(cornerRadius: 20))
-                    }.padding(.horizontal, ODLayout.pageInset)
-                    AssistantToolResultStrip(messages: results)
+                    if ProcessInfo.processInfo.arguments.contains("-agent-image"),
+                       let url = Bundle.main.url(forResource: "studio-example", withExtension: "png"),
+                       let image = try? Data(contentsOf: url) {
+                        ODUserBubbleLayout(displayScale: 3) {
+                            VStack(alignment: .leading, spacing: ODLayout.elementGap) {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    AssistantAttachedImage(data: image, identifier: "fixture-0") { imageTapped = true }
+                                }
+                                .frame(height: AssistantAttachedImage.side)
+                                Text("What's in this image? Describe it in detail.")
+                            }
+                            .padding(.horizontal, ODLayout.bubbleInsetH)
+                            .padding(.vertical, ODLayout.bubbleInsetV)
+                            .background(ODPalette.input, in: RoundedRectangle(cornerRadius: ODLayout.bubbleCorner))
+                        }
+                        .padding(.horizontal, ODLayout.pageInset)
+                        if imageTapped { Text("Image selected").accessibilityIdentifier("chat.fixture.imageSelected") }
+                    } else {
+                        HStack {
+                            Spacer(minLength: 20)
+                            Text("Audit the project’s pages and keep the current scrolling.")
+                                .padding(12).background(ODPalette.input, in: RoundedRectangle(cornerRadius: 20))
+                        }.padding(.horizontal, ODLayout.pageInset)
+                    }
+                    AssistantToolResultStrip(messages: results, isExpanded: $toolsExpanded)
                     VStack(alignment: .leading, spacing: 14) {
                         Text("The sitemap has several gaps I need to verify. Let me check a few remaining files before staging fixes.")
                             .font(.body).lineSpacing(4)
@@ -69,6 +92,7 @@ struct AgentChatReview: View {
             .scrollDismissesKeyboard(.interactively)
             .background { ODPageBackground().ignoresSafeArea() }
             .navigationTitle("Project audit").navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     ODAppMenuButton { focused = false; store.conversationsPresented = true }
@@ -76,9 +100,17 @@ struct AgentChatReview: View {
                 }
                 ToolbarItem(placement: .principal) {
                     Button { focused = false; modelPresented = true } label: {
-                        ODModelMenuLabel(displayName: "Qwen3 4B")
+                        ODModelMenuLabel(displayName: "Qwen3 4B", conversationTitle: "Project audit")
                     }.buttonStyle(.plain).accessibilityLabel("Choose chat model")
                         .accessibilityIdentifier("chat.modelPicker")
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Conversation details", systemImage: "ellipsis") {
+                        focused = false
+                        detailsPresented = true
+                    }
+                    .labelStyle(.iconOnly)
+                    .accessibilityIdentifier("chat.session.open")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     if responding && replyPhase != .answer {
@@ -93,7 +125,7 @@ struct AgentChatReview: View {
                 }
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                ODWorkspaceBottomBar(backgroundColor: ODPalette.background) {
+                ODWorkspaceBottomBar(backgroundColor: .clear) {
                     VStack(spacing: 0) {
                         ODComposer(text: $text, focus: $focused, attachments: [], isResponding: responding,
                             canSend: !responding && !text.isEmpty, canStop: true, canAdd: !responding, canRemove: true,
@@ -115,6 +147,12 @@ struct AgentChatReview: View {
                 NavigationStack {
                     Text("Qwen3 4B · UI fixture").navigationTitle("Models")
                         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { modelPresented = false } } }
+                }
+            }
+            .sheet(isPresented: $detailsPresented) {
+                ODConversationDetails(title: "Project audit", modelName: "Qwen3 4B", executionLabel: "On-device",
+                    isPinned: isPinned, hasConversation: true, hasTranscript: true) { action in
+                    if action == .pin { isPinned.toggle() }
                 }
             }
         }

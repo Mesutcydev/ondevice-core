@@ -26,6 +26,7 @@ struct ChatThreadEmptyState: View {
             if isFiltering {
                 ContentUnavailableView.search
             } else {
+                ODBrandMark(height: 22, motion: .drawOn).foregroundStyle(ODPalette.text)
                 Text("New chat").font(.title2.weight(.medium)).foregroundStyle(ODPalette.text)
                 Text(emptyHelper).font(.body).foregroundStyle(.secondary)
                 if let loadFailure {

@@ -74,6 +74,8 @@ final class AnalysisService: ObservableObject {
     @Published var analysisResults: [AnalysisResult] = []
     @Published var activeResult: AnalysisResult?
     @Published var isAnalyzing = false
+    @Published private(set) var analysisStartedAt: Date?
+    @Published private(set) var inferenceStage: VisionInferenceStage = .readingImage
     @Published var fps: Double = 0
     @Published var statusMessage: String = "Starting…"
     /// True only when the FULL pipeline (encoder + projector + decoder + tokenizer) is ready.
@@ -325,6 +327,8 @@ final class AnalysisService: ObservableObject {
     // MARK: - Analysis pipeline
 
     private func triggerAnalysis(detection: Detection, pixelBuffer: CVPixelBuffer, source: CaptureSource = .unknown) {
+        analysisStartedAt = .now
+        inferenceStage = .readingImage
         isAnalyzing = true
         statusMessage = "Analyzing…"
 
@@ -1152,6 +1156,7 @@ extension AnalysisService: CameraServiceDelegate {
                     acc.value += token
                     let snapshot = acc.value
                     Task { @MainActor [weak self] in
+                        if self?.ownsAnalysis(snapID) == true { self?.inferenceStage = .writingAnswer }
                         self?.updateResult(id: snapID) { r in
                             r.extractedCode = snapshot
                         }
@@ -1207,9 +1212,12 @@ extension AnalysisService: CameraServiceDelegate {
             return true
         }()
         if shouldSwitch {
+            inferenceStage = .loadingModel
             await llama.switchTo(repoID: desiredRepoID)
         }
+        guard ownsAnalysis(resultID), !Task.isCancelled else { return true }
         guard case .ready = llama.state else { return false }
+        inferenceStage = .readingImage
 
         // Same orientation logic as tryMLXVisionPath. Camera buffers
         // are portrait-locked by the connection; we apply the
@@ -1265,6 +1273,7 @@ extension AnalysisService: CameraServiceDelegate {
                     acc.value += token
                     let snapshot = acc.value
                     Task { @MainActor [weak self] in
+                        if self?.ownsAnalysis(snapID) == true { self?.inferenceStage = .writingAnswer }
                         self?.updateResult(id: snapID) { r in
                             r.extractedCode = snapshot
                         }
@@ -1295,6 +1304,12 @@ extension AnalysisService: CameraServiceDelegate {
                         self.isAnalyzing = false
                         self.statusMessage = "Analysis complete"
                         cont.resume()
+                    }
+                },
+                onStage: { [weak self] stage in
+                    Task { @MainActor [weak self] in
+                        guard let self, ownsAnalysis(snapID), isAnalyzing else { return }
+                        inferenceStage = stage
                     }
                 }
             )

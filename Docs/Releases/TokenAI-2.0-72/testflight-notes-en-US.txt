@@ -1,0 +1,9 @@
+• Added iPhone Duo support.
+• Token AI 2.0 brings chats, Lens, voice, models and Image Studio together in a new workspace.
+• Find saved conversations with search and pins, and manage compatible model downloads, imports and storage.
+• Choose voices for spoken conversations and work with photos or camera captures using supported vision models.
+• Create images with supported local models, with optional PIN-protected parental controls.
+• Connect compatible tools through the authenticated Local API Server on a trusted local network.
+• Optional iCloud conversation sync and separately controlled web tools.
+
+Please test model downloads, chat, Lens, voice, sharing, Live Activities and the local API. Physical inference, iCloud sync and upgrade retention need beta testing.

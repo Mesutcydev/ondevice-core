@@ -51,7 +51,7 @@ struct LocalModelImportFlow: ViewModifier {
                 Button("Choose model files in Files") { pickerKind = .modelFiles }
                 Button("Choose GGUF file in Files") { pickerKind = .file }
             } message: {
-                Text("For an MLX model, open its folder in Files, tap Select All, then Open. You can also pick a folder or one GGUF file. If Files won't open a folder, copy it to On My iPhone › OnDevice Max.")
+                Text("For an MLX model, open its folder in Files, tap Select All, then Open. You can also pick a folder or one GGUF file. If Files won't open a folder, copy it to On My iPhone › Token AI.")
             }
             .sheet(item: $pickerKind) { kind in
                 LocalModelDocumentPicker(kind: kind, onPick: { urls in

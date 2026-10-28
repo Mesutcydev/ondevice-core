@@ -17,10 +17,10 @@ struct ODConversationsHome: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .background { ODPageBackground().ignoresSafeArea() }
-            .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search chats")
+            .searchable(text: $search, placement: .navigationBarDrawer(displayMode: .always), prompt: Text("Search chats", bundle: .module))
             .searchFocused($searchFocused)
             .onSubmit(of: .search) { searchFocused = false }
-            .navigationTitle("Chats")
+            .odNavigationTitle("Chats")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 ODWorkspaceBottomBar { EmptyView() }
@@ -36,20 +36,20 @@ struct ODConversationsHome: View {
                     Menu {
                         Section {
                             Button { store.send(.showHistory) } label: {
-                                Label("Manage chats", systemImage: "square.stack")
-                                Text("Delete, export, or copy")
+                                Label(ODLocalizedString("Manage chats"), systemImage: "square.stack")
+                                Text("Delete, export, or copy", bundle: .module)
                             }
                             .disabled(!store.capabilities.canShowHistory)
                         }
                         Section {
-                            Button("Settings", systemImage: "gearshape") { store.secondaryRoute = .settings }
+                            Button(ODLocalizedString("Settings"), systemImage: "gearshape") { store.secondaryRoute = .settings }
                         }
                     } label: { Image(systemName: "ellipsis") }
                     .menuOrder(.fixed)
-                    .accessibilityLabel("Conversation options")
+                    .accessibilityLabel(Text("Conversation options", bundle: .module))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("New chat", systemImage: "square.and.pencil") {
+                    Button(ODLocalizedString("New chat"), systemImage: "square.and.pencil") {
                         store.selectedTab = .chat
                         store.send(.newConversation)
                     }
@@ -75,10 +75,11 @@ struct ODConversationGroups: Equatable {
     var pinned: [ODRecentConversation] = []
     var recent: [ODRecentConversation] = []
 
-    init(conversations: [ODRecentConversation] = [], query: String = "") {
+    init(conversations: [ODRecentConversation] = [], query: String = "", transcriptMatches: Set<String> = []) {
         let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
         for conversation in conversations {
-            guard query.isEmpty || "\(conversation.title) \(conversation.subtitle)".localizedCaseInsensitiveContains(query) else { continue }
+            guard query.isEmpty || transcriptMatches.contains(conversation.id)
+                || "\(conversation.title) \(conversation.subtitle)".localizedCaseInsensitiveContains(query) else { continue }
             if conversation.isPinned { pinned.append(conversation) }
             else { recent.append(conversation) }
         }
@@ -92,6 +93,7 @@ struct ODConversationListing: View {
     let sidebar: Bool
     @State private var groups = ODConversationGroups()
     @State private var pinnedExpanded = true
+    @ScaledMetric(relativeTo: .body) private var sidebarIconWidth = ODLayout.sidebarIconColumn
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -100,17 +102,19 @@ struct ODConversationListing: View {
 
     /// Drawer: one flat Recents list, pinned first, like the reference chat apps.
     private var sidebarBody: some View {
-        LazyVStack(alignment: .leading, spacing: 2) {
+        LazyVStack(alignment: .leading, spacing: ODLayout.sidebarRowGap) {
             if groups.pinned.isEmpty && groups.recent.isEmpty {
-                HStack(alignment: .top, spacing: 14) {
+                HStack(alignment: .top, spacing: ODLayout.labelGap) {
                     Image(systemName: "clock").font(.body).foregroundStyle(ODPalette.secondary)
+                        .frame(width: sidebarIconWidth)
                         .padding(.top, 2).accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("No recent chats").font(.body)
-                        Text("Start a new conversation").font(.subheadline).foregroundStyle(ODPalette.secondary)
+                    VStack(alignment: .leading, spacing: ODLayout.sidebarRowGap) {
+                        Text("No recent chats", bundle: .module).font(.body)
+                        Text("Start a new conversation", bundle: .module).font(.subheadline).foregroundStyle(ODPalette.secondary)
                     }
                 }
-                .padding(.vertical, 10)
+                .padding(.vertical, ODLayout.elementGap)
+                .padding(.horizontal, ODLayout.sidebarContentInset)
                 .accessibilityElement(children: .combine)
             }
             ForEach(groups.pinned + groups.recent) { conversation in
@@ -118,10 +122,16 @@ struct ODConversationListing: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, ODLayout.conversationRowInset)
         .onChange(of: store.recentConversations, initial: true) { _, conversations in
-            groups = ODConversationGroups(conversations: conversations, query: query)
+            groups = makeGroups(conversations, query)
         }
+    }
+
+    /// Messages are searched only while a query is active.
+    private func makeGroups(_ conversations: [ODRecentConversation], _ query: String) -> ODConversationGroups {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let matches = trimmed.isEmpty ? [] : store.transcriptMatches?(trimmed) ?? []
+        return ODConversationGroups(conversations: conversations, query: trimmed, transcriptMatches: matches)
     }
 
     private var homeBody: some View {
@@ -129,8 +139,8 @@ struct ODConversationListing: View {
             if groups.pinned.isEmpty && groups.recent.isEmpty {
                 if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Your conversations").font(.headline)
-                        Text("Start a chat to keep your ideas here.").font(.subheadline).foregroundStyle(.secondary)
+                        Text("Your conversations", bundle: .module).font(.headline)
+                        Text("Start a chat to keep your ideas here.", bundle: .module).font(.subheadline).foregroundStyle(.secondary)
                     }.padding(.vertical, 20)
                 } else {
                     ContentUnavailableView.search(text: query)
@@ -142,14 +152,14 @@ struct ODConversationListing: View {
                         withAnimation(ODMotion.resolve(ODMotion.standard, reduceMotion: reduceMotion)) { pinnedExpanded.toggle() }
                     } label: {
                         HStack(spacing: 6) {
-                            Text("Pinned").font(.subheadline.weight(.semibold))
+                            Text("Pinned", bundle: .module).font(.subheadline.weight(.semibold))
                             Image(systemName: "chevron.down").font(.caption2).foregroundStyle(.secondary)
                                 .rotationEffect(.degrees(pinnedExpanded ? 0 : -90))
                         }.frame(minHeight: 44).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier(sidebar ? "sidebar.pinned" : "home.pinned")
-                    .accessibilityValue(pinnedExpanded ? "Expanded" : "Collapsed")
+                    .accessibilityValue(Text(odKey: pinnedExpanded ? "Expanded" : "Collapsed"))
                     if pinnedExpanded {
                         ForEach(groups.pinned) { conversation in
                             ODConversationNavigationRow(conversation: conversation, sidebar: sidebar)
@@ -159,7 +169,7 @@ struct ODConversationListing: View {
             }
             if !groups.recent.isEmpty {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Recents").font(.subheadline.weight(.semibold))
+                    Text("Recents", bundle: .module).font(.subheadline.weight(.semibold))
                         .frame(minHeight: 44, alignment: .leading).accessibilityAddTraits(.isHeader)
                     ForEach(groups.recent) { conversation in
                         ODConversationNavigationRow(conversation: conversation, sidebar: sidebar)
@@ -172,10 +182,10 @@ struct ODConversationListing: View {
         // Only pin changes animate; streaming subtitle updates must not.
         .animation(ODMotion.resolve(ODMotion.standard, reduceMotion: reduceMotion), value: groups.pinned.map(\.id))
         .onChange(of: store.recentConversations, initial: true) { _, conversations in
-            groups = ODConversationGroups(conversations: conversations, query: query)
+            groups = makeGroups(conversations, query)
         }
         .onChange(of: query) { _, value in
-            groups = ODConversationGroups(conversations: store.recentConversations, query: value)
+            groups = makeGroups(store.recentConversations, value)
             if !value.isEmpty { pinnedExpanded = true }
         }
     }
@@ -203,10 +213,10 @@ struct ODConversationNavigationRow: View {
         .disabled(!store.canPerformActions || (store.isResponding && store.selectedConversationID != conversation.id))
         .accessibilityIdentifier("\(sidebar ? "sidebar" : "home").conversation.\(conversation.id)")
         .accessibilityAddTraits(sidebar && isOpen ? .isSelected : [])
-        .accessibilityHint("Open conversation. More actions are available.")
+        .accessibilityHint(Text("Open conversation. More actions are available.", bundle: .module))
         .contextMenu {
             if store.capabilities.canPinConversations {
-                Button(conversation.isPinned ? "Unpin conversation" : "Pin conversation",
+                Button(ODLocalizedString(key: conversation.isPinned ? "Unpin conversation" : "Pin conversation"),
                        systemImage: conversation.isPinned ? "pin.slash" : "pin") {
                     store.send(.setConversationPinned(conversation.id, !conversation.isPinned))
                 }
@@ -214,7 +224,7 @@ struct ODConversationNavigationRow: View {
         }
         .accessibilityActions {
             if store.capabilities.canPinConversations {
-                Button(conversation.isPinned ? "Unpin conversation" : "Pin conversation") {
+                Button(ODLocalizedString(key: conversation.isPinned ? "Unpin conversation" : "Pin conversation")) {
                     store.send(.setConversationPinned(conversation.id, !conversation.isPinned))
                 }
             }
@@ -222,13 +232,9 @@ struct ODConversationNavigationRow: View {
     }
 
     private var sidebarLabel: some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    if conversation.isPinned {
-                        Image(systemName: "pin.fill").font(.caption2).foregroundStyle(ODPalette.secondary)
-                            .accessibilityLabel("Pinned")
-                    }
+        HStack(spacing: ODLayout.labelGap) {
+            VStack(alignment: .leading, spacing: ODLayout.smallGap) {
+                HStack(spacing: ODLayout.elementGap) {
                     Text(conversation.title).font(.body)
                         .lineLimit(typeSize.isAccessibilitySize ? 3 : 1)
                 }
@@ -238,15 +244,20 @@ struct ODConversationNavigationRow: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            if conversation.isPinned {
+                Image(systemName: "pin.fill").font(.caption2).foregroundStyle(ODPalette.secondary)
+                    .accessibilityLabel(Text("Pinned", bundle: .module))
+            }
             if store.isResponding && store.selectedConversationID == conversation.id {
-                ProgressView().controlSize(.small).accessibilityLabel("Responding")
+                ODBrandMark(height: 9, motion: .live).foregroundStyle(ODPalette.text)
+                    .accessibilityElement(children: .ignore).accessibilityLabel(Text("Responding", bundle: .module))
             }
         }
         .foregroundStyle(ODPalette.text)
-        .padding(.horizontal, 12).padding(.vertical, 9)
-        .frame(minHeight: 52)
+        .padding(.horizontal, ODLayout.sidebarContentInset).padding(.vertical, ODLayout.elementGap)
+        .frame(minHeight: ODLayout.sidebarRowHeight)
         .background(isOpen ? Color(uiColor: .secondarySystemGroupedBackground) : .clear,
-                    in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .contentShape(Rectangle())
     }
 
@@ -261,7 +272,7 @@ struct ODConversationNavigationRow: View {
                             .lineLimit(typeSize.isAccessibilitySize ? nil : 1)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         if !conversation.dateLabel.isEmpty {
-                            Text(conversation.dateLabel).font(.caption).foregroundStyle(.secondary)
+                            Text(odKey: conversation.dateLabel).font(.caption).foregroundStyle(.secondary)
                                 .fixedSize(horizontal: !typeSize.isAccessibilitySize, vertical: true)
                         }
                     }
@@ -272,7 +283,8 @@ struct ODConversationNavigationRow: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 if store.isResponding && store.selectedConversationID == conversation.id {
-                    ProgressView().accessibilityLabel("Responding")
+                    ODBrandMark(height: 9, motion: .live).foregroundStyle(ODPalette.text)
+                    .accessibilityElement(children: .ignore).accessibilityLabel(Text("Responding", bundle: .module))
                 }
             }
             .foregroundStyle(ODPalette.text)

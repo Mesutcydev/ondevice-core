@@ -36,9 +36,9 @@ struct ODVoiceLibraryView: View {
                 Section {
                     if filteredVoices.isEmpty {
                         ContentUnavailableView {
-                            Label(store.voices.isEmpty ? "No voices yet" : "No matching voices", systemImage: "waveform")
+                            Label(ODLocalizedString(key: store.voices.isEmpty ? "No voices yet" : "No matching voices"), systemImage: "waveform")
                         } description: {
-                            Text(store.voices.isEmpty ? "Your available voices will appear here." : "Try another name, language, or filter.")
+                            Text(odKey: store.voices.isEmpty ? "Your available voices will appear here." : "Try another name, language, or filter.")
                         }
                         .listRowSeparator(.hidden)
                     } else {
@@ -50,12 +50,12 @@ struct ODVoiceLibraryView: View {
                 } header: {
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: 12) {
-                            Text("Voices · \(filteredVoices.count)").font(.subheadline.weight(.semibold))
+                            Text("Voices · \(filteredVoices.count)", bundle: .module).font(.subheadline.weight(.semibold))
                             Spacer(minLength: 8)
                             filters
                         }
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Voices · \(filteredVoices.count)").font(.subheadline.weight(.semibold))
+                            Text("Voices · \(filteredVoices.count)", bundle: .module).font(.subheadline.weight(.semibold))
                             filters
                         }
                     }
@@ -68,7 +68,7 @@ struct ODVoiceLibraryView: View {
             .scrollContentBackground(.hidden)
             .background { ODPageBackground().ignoresSafeArea() }
             .scrollDismissesKeyboard(.interactively)
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search voices")
+            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always), prompt: Text("Search voices", bundle: .module))
             .searchFocused($searchFocused)
             .onSubmit(of: .search) { searchFocused = false }
             .onChange(of: store.conversationsPresented) { _, open in
@@ -77,7 +77,7 @@ struct ODVoiceLibraryView: View {
             .onChange(of: store.selectedTab) { _, destination in
                 if destination != .voice { searchFocused = false }
             }
-            .navigationTitle("Voices")
+            .odNavigationTitle("Voices")
             .navigationBarTitleDisplayMode(.inline)
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 ODWorkspaceBottomBar {
@@ -95,16 +95,16 @@ struct ODVoiceLibraryView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu("Voice options", systemImage: "slider.horizontal.3") {
+                    Menu(ODLocalizedString("Voice options"), systemImage: "slider.horizontal.3") {
                         Section {
                             Button { store.send(.selectEngine) } label: {
-                                Label("Speech engine", systemImage: "waveform")
+                                Label(ODLocalizedString("Speech engine"), systemImage: "waveform")
                                 Text(store.voiceEngineName)
                             }
                             .disabled(!store.capabilities.canSelectEngine)
                         }
                         Section {
-                            Button("Settings", systemImage: "gearshape") { store.secondaryRoute = .settings }
+                            Button(ODLocalizedString("Settings"), systemImage: "gearshape") { store.secondaryRoute = .settings }
                         }
                     }
                     .menuOrder(.fixed)
@@ -125,7 +125,7 @@ struct ODVoiceLibraryView: View {
     private var selectedVoiceSummary: some View {
         HStack(alignment: .center, spacing: 4 * ODLayout.unit) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Speaking as")
+                Text("Speaking as", bundle: .module)
                     .font(.caption)
                     .foregroundStyle(ODPalette.secondary)
                 if let voice = store.selectedVoice {
@@ -135,14 +135,14 @@ struct ODVoiceLibraryView: View {
                             .foregroundStyle(.primary)
                             .fixedSize()
                             .accessibilityIdentifier("voice.current.name")
-                        Text("\(voice.language) · \(voice.locale)")
+                        Text("\(voice.language) · \(voice.locale)", bundle: .module)
                             .font(.caption)
                             .foregroundStyle(ODPalette.secondary)
                             .lineLimit(1)
                             .truncationMode(.tail)
                     }
                 } else {
-                    Text("Choose a voice below")
+                    Text("Choose a voice below", bundle: .module)
                         .font(.subheadline)
                         .foregroundStyle(ODPalette.secondary)
                         .accessibilityIdentifier("voice.current.name")
@@ -166,8 +166,8 @@ struct ODVoiceLibraryView: View {
     }
 
     private var languagePicker: some View {
-        Picker("Language", selection: $language) {
-            Text("All languages").tag(String?.none)
+        Picker(ODLocalizedString("Language"), selection: $language) {
+            Text("All languages", bundle: .module).tag(String?.none)
             ForEach(Array(Set(store.voices.map(\.language))).sorted(), id: \.self) { name in
                 Text(name).tag(Optional(name))
             }
@@ -178,8 +178,8 @@ struct ODVoiceLibraryView: View {
 
     @ViewBuilder private var sourcePicker: some View {
         if store.voices.contains(where: \.isCloned) {
-            Picker("Voice source", selection: $source) {
-                ForEach(VoiceSource.allCases) { option in Text(option.rawValue).tag(option) }
+            Picker(ODLocalizedString("Voice source"), selection: $source) {
+                ForEach(VoiceSource.allCases) { option in Text(odKey: option.rawValue).tag(option) }
             }
             .pickerStyle(.menu).frame(minHeight: ODLayout.minimumHit)
             .accessibilityIdentifier("voice.source")
@@ -197,16 +197,16 @@ struct ODVoiceLibraryView: View {
                         Text(voice.name)
                             .font(.body.weight(selected ? .semibold : .regular))
                             .foregroundStyle(ODPalette.text)
-                        Text("\(voice.language) · \(voice.locale)")
+                        Text("\(voice.language) · \(voice.locale)", bundle: .module)
                             .font(.subheadline)
                             .foregroundStyle(ODPalette.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                         if voice.isCloned {
-                            Text("Cloned voice")
+                            Text("Cloned voice", bundle: .module)
                                 .font(.caption)
                                 .foregroundStyle(ODPalette.secondary)
                         } else if voice.isMultilingual {
-                            Text("Multilingual")
+                            Text("Multilingual", bundle: .module)
                                 .font(.caption)
                                 .foregroundStyle(ODPalette.secondary)
                         }
@@ -224,8 +224,8 @@ struct ODVoiceLibraryView: View {
             }
             .buttonStyle(.plain)
             .disabled(!store.canPerformActions)
-            .accessibilityLabel("\(voice.name), \(voice.language), \(voice.locale)")
-            .accessibilityHint("Select this voice")
+            .accessibilityLabel(Text("\(voice.name), \(voice.language), \(voice.locale)", bundle: .module))
+            .accessibilityHint(Text("Select this voice", bundle: .module))
             .accessibilityAddTraits(selected ? .isSelected : [])
 
             previewButton(for: voice, showsTitle: false)
@@ -248,11 +248,11 @@ struct ODVoiceLibraryView: View {
             }
             .buttonStyle(.plain)
             .disabled(!enabled)
-            .accessibilityLabel(playing ? "Stop \(voice.name) preview" : "Preview \(voice.name)")
-            .accessibilityValue(playing ? "Playing" : "Stopped")
-            .accessibilityHint("Plays a sample without starting a conversation")
+            .accessibilityLabel(Text(playing ? ODLocalizedString("Stop \(voice.name) preview") : ODLocalizedString("Preview \(voice.name)")))
+            .accessibilityValue(Text(odKey: playing ? "Playing" : "Stopped"))
+            .accessibilityHint(Text("Plays a sample without starting a conversation", bundle: .module))
             if showsTitle {
-                Text(playing ? "Stop" : "Preview")
+                Text(odKey: playing ? "Stop" : "Preview")
                     .font(.caption)
                     .foregroundStyle(ODPalette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -270,19 +270,19 @@ struct ODVoiceLibraryView: View {
                 }
             } else {
                 if let message = store.voiceAvailabilityMessage, !message.isEmpty {
-                    Button("Voice setup", systemImage: "slider.horizontal.3") { store.send(.selectEngine) }
+                    Button(ODLocalizedString("Voice setup"), systemImage: "slider.horizontal.3") { store.send(.selectEngine) }
                         .frame(minHeight: ODLayout.minimumHit)
                         .disabled(!store.capabilities.canSelectEngine)
-                    Text(message)
+                    Text(odKey: message)
                         .font(.footnote)
                         .foregroundStyle(ODPalette.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 } else if store.selectedVoice == nil {
-                    Text("Choose a voice to begin.")
+                    Text("Choose a voice to begin.", bundle: .module)
                         .font(.footnote)
                         .foregroundStyle(ODPalette.secondary)
                 } else if !store.capabilities.canStartVoice || !store.canPerformActions {
-                    Text("Voice conversation is unavailable.")
+                    Text("Voice conversation is unavailable.", bundle: .module)
                         .font(.footnote)
                         .foregroundStyle(ODPalette.secondary)
                         .fixedSize(horizontal: false, vertical: true)

@@ -93,8 +93,9 @@ final class PersonaStore: ObservableObject {
             subtitle: "Write, review and debug code",
             systemPrompt: """
             You are a senior software engineer and pair programmer. Give \
-            working code in fenced blocks with a language tag, then a brief \
-            explanation. When reviewing, list bugs and security issues first, \
+            working code in fenced blocks with a language tag by default. \
+            Follow the user's requested format and explanation length. \
+            When reviewing, list bugs and security issues first, \
             most severe first, citing the line. Prefer small, safe changes, \
             and never invent APIs, files or errors you have not seen.
             """,

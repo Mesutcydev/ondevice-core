@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import UIKit
 
 // MARK: - Persistent conversation storage
 // Saves to ~/Documents/conversations.json via Codable.
@@ -7,6 +8,7 @@ import Combine
 
 final class ConversationStore: ObservableObject {
     static let shared = ConversationStore()
+    static let unreadableCopyPrefix = "conversations-unreadable-"
 
     @Published private(set) var conversations: [StoredConversation] = []
 
@@ -16,6 +18,16 @@ final class ConversationStore: ObservableObject {
     private let decoder = JSONDecoder()
     private var saveTask: Task<Void, Never>?
     private var persistRetryCount = 0
+    private var unlockObservers: [NSObjectProtocol] = []
+
+    /// Saves run off-main. The lock orders them against a wipe and against
+    /// a file that exists but can't be read yet; both outrank any save.
+    private let writeLock = NSLock()
+    /// Bumped by a wipe. Guarded by `writeLock`.
+    private var writeGeneration = 0
+    /// The file is still protected (a background launch before unlock).
+    /// It isn't empty, so nothing may replace it. Guarded by `writeLock`.
+    private var fileIsUnreadable = false
 
     init(fileURL: URL? = nil) {
         self.fileURL = fileURL ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -47,9 +59,6 @@ final class ConversationStore: ObservableObject {
 
     func delete(id: UUID) {
         conversations.removeAll { $0.id == id }
-        // Tombstone the id so an enabled iCloud sync propagates the deletion
-        // to CloudKit instead of pulling the remote record back next sync.
-        CloudSyncTombstones.mark(id)
         scheduleSave()
     }
 
@@ -99,12 +108,6 @@ final class ConversationStore: ObservableObject {
         offsets.map { conversations[$0].id }.forEach { delete(id: $0) }
     }
 
-    /// Used by CloudSyncService to overwrite the local set after a pull.
-    func replaceAll(with newSet: [StoredConversation]) {
-        conversations = newSet.sorted { $0.updatedAt > $1.updatedAt }
-        scheduleSave()
-    }
-
     /// UI restoration belongs to the same protected, atomically saved conversation file.
     /// It never changes message history or the model's context.
     func savePresentation(id: UUID, presentation: ConversationPresentation) {
@@ -136,22 +139,67 @@ final class ConversationStore: ObservableObject {
 
     private func load() {
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
-        let stored: [StoredConversation]
+        let data: Data
         do {
-            let data = try Data(contentsOf: fileURL)
-            stored = try decoder.decode([StoredConversation].self, from: data)
+            data = try Data(contentsOf: fileURL)
+        } catch let error where Self.isLockedFileError(error) {
+            // `completeUnlessOpen` keeps the file closed until the device
+            // unlocks, e.g. during a background download relaunch. Starting
+            // empty here let the next save replace every saved chat.
+            Diagnostics.shared.breadcrumb("conversation load deferred until unlock", category: "conversations")
+            writeLock.withLock { fileIsUnreadable = true }
+            let center = NotificationCenter.default
+            unlockObservers = [UIApplication.protectedDataDidBecomeAvailableNotification,
+                               UIApplication.didBecomeActiveNotification].map { name in
+                center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                    self?.retryDeferredLoad()
+                }
+            }
+            return
         } catch {
+            setAsideUnreadableFile(error)
+            return
+        }
+        apply(data)
+    }
+
+    private func retryDeferredLoad() {
+        guard writeLock.withLock({ fileIsUnreadable }) else { return }
+        let data: Data?
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            guard let readable = try? Data(contentsOf: fileURL) else { return }
+            data = readable
+        } else {
+            data = nil
+        }
+        writeLock.withLock { fileIsUnreadable = false }
+        unlockObservers.forEach(NotificationCenter.default.removeObserver)
+        unlockObservers = []
+        if let data { apply(data) } else if !conversations.isEmpty { scheduleSave() }
+    }
+
+    private func apply(_ data: Data) {
+        let decoded: [LossyConversation]
+        do {
+            decoded = try decoder.decode([LossyConversation].self, from: data)
+        } catch {
+            setAsideUnreadableFile(error)
+            return
+        }
+        let stored = decoded.compactMap(\.value)
+        if stored.count < decoded.count {
+            // One bad record no longer hides the rest; keep the original.
             Diagnostics.shared.error(
-                "conversation load failed: \(error.localizedDescription)",
+                "conversation load skipped \(decoded.count - stored.count) unreadable records",
                 category: "conversations"
             )
-            return
+            try? FileManager.default.copyItem(at: fileURL, to: unreadableCopyURL())
         }
         // One-time cleanup: older builds let a thinking model's raw "<think>…"
         // output become the conversation title (visible in History / Home).
         // Strip any reasoning so the list reads cleanly.
-        var changed = false
-        conversations = stored.map { conv in
+        var changed = stored.count < decoded.count
+        let restored = stored.map { conv in
             if conv.gitHubWorkspace?.changes.contains(where: \.needsEncryptionMigration) == true { changed = true }
             guard conv.title.contains("<think>") else { return conv }
             var c = conv
@@ -159,7 +207,50 @@ final class ConversationStore: ObservableObject {
             changed = true
             return c
         }
-        if changed { scheduleSave() }
+        // Chats started while the file was unreadable stay alongside it.
+        let restoredIDs = Set(restored.map(\.id))
+        let created = conversations.filter { !restoredIDs.contains($0.id) }
+        conversations = created + restored
+        if changed || !created.isEmpty { scheduleSave() }
+    }
+
+    /// An undecodable file is moved aside, never overwritten by the next save.
+    private func setAsideUnreadableFile(_ error: Error) {
+        Diagnostics.shared.error(
+            "conversation load failed: \(error.localizedDescription)",
+            category: "conversations"
+        )
+        do {
+            try FileManager.default.moveItem(at: fileURL, to: unreadableCopyURL())
+        } catch {
+            // Can't move it either: keep it intact for this session.
+            writeLock.withLock { fileIsUnreadable = true }
+        }
+        DispatchQueue.main.async {
+            ToastCenter.shared.error(
+                "Couldn't read saved conversations",
+                detail: "The original file was kept, so nothing in it is overwritten."
+            )
+        }
+    }
+
+    /// Data protection surfaces as a permission error, never as missing data.
+    static func isLockedFileError(_ error: Error) -> Bool {
+        let error = error as NSError
+        if error.domain == NSCocoaErrorDomain, error.code == NSFileReadNoPermissionError { return true }
+        guard let posix = error.userInfo[NSUnderlyingErrorKey] as? NSError else { return false }
+        return posix.domain == NSPOSIXErrorDomain && (posix.code == Int(EPERM) || posix.code == Int(EACCES))
+    }
+
+    private func unreadableCopyURL() -> URL {
+        let stamp = ISO8601DateFormatter().string(from: .now).replacingOccurrences(of: ":", with: "-")
+        return fileURL.deletingLastPathComponent()
+            .appendingPathComponent("\(Self.unreadableCopyPrefix)\(stamp).json")
+    }
+
+    private struct LossyConversation: Decodable {
+        let value: StoredConversation?
+        init(from decoder: Decoder) throws { value = try? StoredConversation(from: decoder) }
     }
 
     /// Removes a `<think>…</think>` (or unclosed `<think>…`) block from a
@@ -185,23 +276,33 @@ final class ConversationStore: ObservableObject {
         // can corrupt the COW buffer / crash). Each new mutation re-snapshots
         // and cancels the prior task, so the latest state still wins.
         let snapshot = conversations
+        let generation = writeLock.withLock { writeGeneration }
         saveTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(500))
             guard !Task.isCancelled else { return }
-            self?.persist(snapshot)
+            self?.persist(snapshot, generation: generation)
         }
     }
 
-    private func persist(_ snapshot: [StoredConversation]) {
+    private func isCurrent(_ generation: Int) -> Bool {
+        writeLock.withLock { generation == writeGeneration }
+    }
+
+    private func persist(_ snapshot: [StoredConversation], generation: Int) {
         do {
             let data = try encoder.encode(snapshot)
-            // At-rest encryption: .completeUnlessOpen means the file is encrypted
-            // until first unlock after boot, then stays accessible while the
-            // device is unlocked. Best compromise between background access
-            // (we need to read at launch even from sleep) and protection.
-            try data.write(to: fileURL, options: [.atomic, .completeFileProtectionUnlessOpen])
+            // At-rest encryption: `completeUnlessOpen` lets a locked device
+            // create the file, but reopening it needs an unlocked device;
+            // `load()` defers until then instead of starting empty.
+            let written = try writeLock.withLock { () throws -> Bool in
+                // A wipe, or a file not yet readable, outranks this snapshot.
+                guard generation == writeGeneration, !fileIsUnreadable else { return false }
+                try data.write(to: fileURL, options: [.atomic, .completeFileProtectionUnlessOpen])
+                return true
+            }
+            guard written else { return }
             persistRetryCount = 0
-            SpotlightIndexer.reindexAll(snapshot)
+            SpotlightIndexer.reindexAll(snapshot) { [weak self] in self?.isCurrent(generation) ?? false }
         } catch {
             Diagnostics.shared.error(
                 "conversation persist failed: \(error.localizedDescription)",
@@ -212,7 +313,7 @@ final class ConversationStore: ObservableObject {
                 saveTask = Task { [weak self] in
                     try? await Task.sleep(for: .milliseconds(750))
                     guard !Task.isCancelled else { return }
-                    self?.persist(snapshot)
+                    self?.persist(snapshot, generation: generation)
                 }
             } else {
                 persistRetryCount = 0
@@ -231,16 +332,22 @@ final class ConversationStore: ObservableObject {
     /// suspended/terminated within the 500 ms save window.
     func flush() {
         saveTask?.cancel()
-        persist(conversations)
+        persist(conversations, generation: writeLock.withLock { writeGeneration })
     }
 
-    /// Clear all in-memory conversations for a privacy wipe. Cancels any
-    /// pending debounced save so a stray flush()/scheduleSave can't rewrite
-    /// conversations.json — or rebuild the Spotlight index — from memory after
-    /// WipeAllDataService has deleted the file and the index on disk.
+    /// Clear all in-memory conversations for a privacy wipe. Call before
+    /// deleting the file: it waits for a write already in progress and
+    /// retires every earlier snapshot, so no save or Spotlight reindex can
+    /// restore wiped chats afterwards.
     func clearAllForWipe() {
         saveTask?.cancel()
         saveTask = nil
+        writeLock.withLock {
+            writeGeneration += 1
+            fileIsUnreadable = false
+        }
+        unlockObservers.forEach(NotificationCenter.default.removeObserver)
+        unlockObservers = []
         conversations = []
     }
 
@@ -372,6 +479,9 @@ struct ConversationPresentation: Codable, Equatable {
     var legacyImageID: UUID = UUID()
     var readingMessageID: UUID?
     var followsLatest: Bool = true
+    /// Local disclosure choices, keyed by the first durable message in each group.
+    /// Optional keeps presentation records written by earlier builds decodable.
+    var expandedToolGroupIDs: Set<UUID>?
 
     var hasDraft: Bool { !text.isEmpty || !files.isEmpty || !images.isEmpty || legacyImage != nil }
 }
@@ -499,7 +609,8 @@ enum ConversationContextCompactor {
         messages: [ChatMessage],
         existingMemory: ConversationContextMemory?,
         maxTokens: Int,
-        modelDisplayName: String? = nil
+        modelDisplayName: String? = nil,
+        retainingRecentSource: Bool = false
     ) -> ConversationContextPreparation {
         guard maxTokens > 0 else {
             return .init(messages: messages, memory: existingMemory, didCompact: false)
@@ -507,6 +618,13 @@ enum ConversationContextCompactor {
 
         let systemMessages = messages.filter { $0.role == .system }
         let fullDialog = messages.filter { $0.role != .system }
+
+        // The caller supplies the complete stored transcript. A source-aware
+        // runtime can recover it after moving to a larger input budget, rather
+        // than continuing to hide code behind an old compaction cursor.
+        if retainingRecentSource, estimateTokens(messages) <= maxTokens {
+            return .init(messages: messages, memory: nil, didCompact: false)
+        }
 
         // If the stored boundary disappeared (for example after importing or
         // editing a transcript), discard the stale memory instead of hiding
@@ -529,7 +647,8 @@ enum ConversationContextCompactor {
             memory: validMemory,
             dialog: activeDialog
         )
-        let triggerTokens = max(1, Int(Double(maxTokens) * triggerFraction))
+        let threshold = retainingRecentSource ? 1.0 : triggerFraction
+        let triggerTokens = max(1, Int(Double(maxTokens) * threshold))
         guard estimateTokens(current) > triggerTokens else {
             return .init(messages: current, memory: validMemory, didCompact: false)
         }

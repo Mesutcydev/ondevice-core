@@ -1,0 +1,10 @@
+{
+  "data" : {
+    "type" : "builds",
+    "id" : "21cf7239-3fbd-49d7-8f24-37b2d9ed15b3"
+  },
+  "links" : {
+    "self" : "https://api.appstoreconnect.apple.com/v1/appStoreVersions/2d111ea6-2fa5-4774-9f20-a511a067573f/relationships/build",
+    "related" : "https://api.appstoreconnect.apple.com/v1/appStoreVersions/2d111ea6-2fa5-4774-9f20-a511a067573f/build"
+  }
+}

@@ -237,6 +237,7 @@ final class LifecycleController: Sendable {
         // The local API's opt-in load follows lifecycle recovery so a
         // background cleanup cannot immediately unload the selected model.
         await LocalAPIManager.shared.autoLoadModelIfEnabled()
+        await BackgroundModelDownloadRecovery.restore()
         Diagnostics.shared.breadcrumb("scene active complete · epoch=\(epoch)", category: "lifecycle")
     }
 

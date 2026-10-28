@@ -17,6 +17,14 @@ claim complete compatibility with every option in the upstream APIs.
 
 Open **API server** from the app’s leading sidebar and enable the server there. The default port is
 `11434`, and the UI displays the reachable LAN address and generated API key.
+The page also offers setup previews while stopped, copyable model IDs and
+OpenAI/Anthropic/Ollama commands, and an expandable catalog including the
+classifier routes. Start/Stop and Restart report the listener state separately
+from the shared model runtime. The server model picker includes installed local
+models only; cloud chat selections cannot serve this API. Revealed keys are
+hidden again when leaving the workspace or backgrounding the app.
+Loading from this workspace uses installed model files; a missing selection
+opens Models for an explicit download.
 
 Every request requires either:
 
@@ -102,6 +110,10 @@ download weights or route to a remote provider. Activating a classifier releases
 the other heavy model; it refuses while voice, chat generation or image work
 is active. The native UI's classifier form and these functions use the same
 host adapter. Classifiers remain separate from `/v1/models` chat selections.
+Installed portable Julia/Laya decision models use `classifier:` IDs, such as
+`classifier:julia-1-q8`; raw curated IDs also resolve to that namespace. FastViT
+image classification is available in the native classifier workspace and is
+excluded from these text-only routes. See [the classifier audit](CLASSIFIER_APP_AUDIT_2026-10-12.md).
 
 ```bash
 curl "http://IPHONE_IP:11434/v1/classifiers" \

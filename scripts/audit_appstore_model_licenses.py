@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def read_url(url):
-    request = urllib.request.Request(url, headers={"User-Agent": "OnDeviceMax-license-audit/1.0"})
+    request = urllib.request.Request(url, headers={"User-Agent": "TokenAI-license-audit/1.0"})
     with urllib.request.urlopen(request, timeout=25) as response:
         return response.read(2_000_000)
 
@@ -22,6 +22,7 @@ def read_url(url):
 def inventory():
     repos = {}
     for name in ("IOSLocalLLM/Models/AssistantModelCatalog.swift",
+                 "IOSLocalLLM/Models/LFM3Catalog.swift",
                  "IOSLocalLLM/Services/ModelDownloadCenter.swift",
                  "IOSLocalLLM/Models/KittenVariant.swift",
                  "IOSLocalLLM/Services/ImageGenerationService.swift"):

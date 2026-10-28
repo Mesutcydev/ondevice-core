@@ -32,6 +32,7 @@ enum LlamaCppError: Error, LocalizedError {
     case noOutput
     case cancelled
     case samplerInitFailed
+    case unsupportedModel(String)
 
     var errorDescription: String? {
         switch self {
@@ -49,6 +50,7 @@ enum LlamaCppError: Error, LocalizedError {
         case .generationInProgress:        return "A GGUF generation is already in progress"
         case .noOutput:                    return "Inference produced no output tokens"
         case .cancelled:                   return "Inference cancelled"
+        case .unsupportedModel(let reason): return reason
         }
     }
 }
@@ -71,6 +73,7 @@ extension LlamaCppError: Equatable {
         case (.invalidToken(let a), .invalidToken(let b)):           return a == b
         case (.decodeFailed(let a), .decodeFailed(let b)):           return a == b
         case (.promptTooLong(let a), .promptTooLong(let b)):         return a == b
+        case (.unsupportedModel(let a), .unsupportedModel(let b)): return a == b
         default: return false
         }
     }
@@ -84,6 +87,9 @@ final class LlamaCppVLM: @unchecked Sendable {
     private var model: OpaquePointer?      // llama_model *
     private var ctx: OpaquePointer?        // llama_context *
     private var mtmdCtx: OpaquePointer?    // mtmd_context *
+    private var miniCPMText: MiniCPMV47StreamingVLM?
+    var usesMiniCPMStreamingText: Bool { miniCPMText != nil }
+    var miniCPMStreamingCacheSlots: UInt32 { miniCPMText?.cacheSlots ?? 16 }
     // Swift bridges `llama_sampler` as a named C struct, so the
     // pointer type Swift expects is `UnsafeMutablePointer<llama_sampler>`,
     // not `OpaquePointer`. Same applies to llama_batch (handled
@@ -91,6 +97,8 @@ final class LlamaCppVLM: @unchecked Sendable {
     private var sampler: UnsafeMutablePointer<llama_sampler>?
     private let configuredThreads: Int32
     private let configuredContextSize: UInt32
+    private let usesMiniCPMInstructTemplate: Bool
+    private let usesLFM3VisionTemplate: Bool
     private let textGenerationActive = OSAllocatedUnfairLock(initialState: false)
     private var cachedSequence: [llama_token] = []
     private var cacheUsableForContinue = false
@@ -110,7 +118,7 @@ final class LlamaCppVLM: @unchecked Sendable {
 
     /// Request the in-flight `describe` call to exit at the next
     /// token boundary. Safe from any thread.
-    func cancelCurrent() { cancelFlag.withLock { $0 = true } }
+    func cancelCurrent() { cancelFlag.withLock { $0 = true }; miniCPMText?.cancelCurrent() }
 
     // MARK: - Backend init (one-shot per process)
 
@@ -120,6 +128,11 @@ final class LlamaCppVLM: @unchecked Sendable {
     private static func ensureBackendInit() {
         backendInitLock.lock(); defer { backendInitLock.unlock() }
         if !backendInitDone {
+            // Native mtmd debug output can contain the full image prompt.
+            // Keep both native loggers silent; app diagnostics report only
+            // bounded operational state and errors without user content.
+            llama_log_set({ _, _, _ in }, nil)
+            mtmd_log_set({ _, _, _ in }, nil)
             llama_backend_init()
             backendInitDone = true
         }
@@ -136,7 +149,21 @@ final class LlamaCppVLM: @unchecked Sendable {
         var modelParams = llama_model_default_params()
         modelParams.load_mode = LLAMA_LOAD_MODE_MMAP
         modelParams.n_gpu_layers = gpuLayers
-        guard let m = llama_model_load_from_file(llmPath, modelParams) else {
+        let cpuOnlyLFM3 = gpuLayers == 0 && LFM3Catalog.isFamily(llmPath)
+        let loaded: OpaquePointer?
+        if cpuOnlyLFM3 {
+            // b11938 otherwise still initializes every available GPU even
+            // with zero offloaded layers. An empty device list makes the
+            // existing storage-backed and Metal-fallback paths truly CPU-only.
+            var devices: [ggml_backend_dev_t?] = [nil]
+            loaded = devices.withUnsafeMutableBufferPointer { list in
+                modelParams.devices = list.baseAddress
+                return llama_model_load_from_file(llmPath, modelParams)
+            }
+        } else {
+            loaded = llama_model_load_from_file(llmPath, modelParams)
+        }
+        guard let m = loaded else {
             throw LlamaCppError.modelLoadFailed(llmPath)
         }
         // n_batch is the max tokens per llama_decode call; image embeddings
@@ -148,6 +175,10 @@ final class LlamaCppVLM: @unchecked Sendable {
         ctxParams.n_ubatch = 512
         ctxParams.n_threads = nThreads
         ctxParams.n_threads_batch = nThreads
+        if cpuOnlyLFM3 {
+            ctxParams.offload_kqv = false
+            ctxParams.op_offload = false
+        }
         guard let c = llama_init_from_model(m, ctxParams) else {
             llama_model_free(m)
             throw LlamaCppError.contextInitFailed
@@ -180,10 +211,37 @@ final class LlamaCppVLM: @unchecked Sendable {
         mmprojPath: String? = nil,
         nThreads: Int32 = Int32(ProcessInfo.processInfo.activeProcessorCount),
         contextSize: UInt32 = 4096,
-        gpuLayers: Int32 = 999
+        gpuLayers: Int32 = 999,
+        allowMiniCPMStreamingText: Bool = false,
+        miniCPMTextCacheSlots: UInt32 = 16
     ) throws {
         self.configuredThreads = nThreads
         self.configuredContextSize = contextSize
+        self.usesMiniCPMInstructTemplate = MiniCPMV47Catalog.usesInstructVisionPrompt(for: llmPath)
+        self.usesLFM3VisionTemplate = LFM3Catalog.isVision(llmPath)
+        if MiniCPMV47Catalog.is35B(llmPath)
+            || MiniCPMV47Catalog.embeddedRuntimeIdentity(modelPath: llmPath) == MiniCPMV47Catalog.thirtyFiveBRepoID {
+            guard allowMiniCPMStreamingText else {
+                throw LlamaCppError.unsupportedModel(MiniCPMV47Catalog.streaming35BRequirement)
+            }
+            let directory = URL(fileURLWithPath: llmPath).deletingLastPathComponent()
+            let candidates = MiniCPM35BTextProfile.cacheFallbacks(from: miniCPMTextCacheSlots)
+            for (index, slots) in candidates.enumerated() {
+                do {
+                    // The failed native candidate is destroyed before returning.
+                    miniCPMText = try MiniCPMV47StreamingVLM(directory: directory, contextSize: contextSize,
+                                                           textOnly: true, cacheSlots: slots)
+                    if index > 0 {
+                        Diagnostics.shared.breadcrumb("MiniCPM text cache fallback · cache=\(slots)", category: "assistant")
+                    }
+                    break
+                } catch {
+                    guard index + 1 < candidates.count, !Task.isCancelled else { throw error }
+                }
+            }
+            usesGPU = true
+            return
+        }
         Self.ensureBackendInit()
 
         // 1–2. Load the text LLM (mmap: weights stay file-backed and are not
@@ -235,7 +293,7 @@ final class LlamaCppVLM: @unchecked Sendable {
         //    binds it to the LLM and returns a context that
         //    handles tokenization + image-to-embedding as one unit.
         var mtmdParams = mtmd_context_params_default()
-        mtmdParams.use_gpu = true
+        mtmdParams.use_gpu = usesLFM3VisionTemplate ? usesGPU : true
         mtmdParams.print_timings = false
         mtmdParams.n_threads = nThreads
         mtmdParams.image_marker = nil           // deprecated; use media_marker
@@ -273,8 +331,17 @@ final class LlamaCppVLM: @unchecked Sendable {
             self.mtmdCtx = nil; self.ctx = nil; self.model = nil
             throw LlamaCppError.samplerInitFailed
         }
-        llama_sampler_chain_add(chain, llama_sampler_init_temp(0.7))
-        llama_sampler_chain_add(chain, llama_sampler_init_top_p(0.9, 1))
+        if usesLFM3VisionTemplate {
+            llama_sampler_chain_add(chain, llama_sampler_init_penalties(
+                llama_vocab_n_tokens(llama_model_get_vocab(m)), 64, 1.1, 0, 0
+            ))
+            llama_sampler_chain_add(chain, llama_sampler_init_top_k(50))
+            llama_sampler_chain_add(chain, llama_sampler_init_top_p(1.0, 1))
+            llama_sampler_chain_add(chain, llama_sampler_init_temp(0.1))
+        } else {
+            llama_sampler_chain_add(chain, llama_sampler_init_temp(0.7))
+            llama_sampler_chain_add(chain, llama_sampler_init_top_p(0.9, 1))
+        }
         llama_sampler_chain_add(chain, llama_sampler_init_dist(UInt32.random(in: 1...UInt32.max)))
         self.sampler = chain
     }
@@ -323,8 +390,15 @@ final class LlamaCppVLM: @unchecked Sendable {
         maxTokens: Int,
         sampler spec: GGUFSamplerSpec = .init(),
         reuseContext: Bool = false,
+        miniCPMMaximumMicrobatch: UInt32 = 128,
+        miniCPMAllowPrefixCache: Bool = false,
         onToken: @escaping (String) -> Void
     ) throws -> GGUFTextResult {
+        if let miniCPMText {
+            return try miniCPMText.generateText(prompt: prompt, maxTokens: maxTokens, sampler: spec,
+                                               maximumMicrobatch: miniCPMMaximumMicrobatch,
+                                               allowPrefixCache: miniCPMAllowPrefixCache, onToken: onToken)
+        }
         guard mtmdCtx == nil, let m = model else {
             throw LlamaCppError.contextInitFailed
         }
@@ -345,7 +419,7 @@ final class LlamaCppVLM: @unchecked Sendable {
         defer { llama_sampler_free(samp) }
         if spec.repetitionPenalty != 1.0 {
             llama_sampler_chain_add(samp, llama_sampler_init_penalties(
-                -1, spec.repetitionPenalty, 0.0, 0.0
+                llama_vocab_n_tokens(llama_model_get_vocab(m)), -1, spec.repetitionPenalty, 0.0, 0.0
             ))
         }
         if spec.topK > 0 {
@@ -613,7 +687,7 @@ final class LlamaCppVLM: @unchecked Sendable {
         defer { llama_sampler_free(samp) }
         if spec.repetitionPenalty != 1.0 {
             llama_sampler_chain_add(samp, llama_sampler_init_penalties(
-                -1, spec.repetitionPenalty, 0.0, 0.0
+                llama_vocab_n_tokens(llama_model_get_vocab(m)), -1, spec.repetitionPenalty, 0.0, 0.0
             ))
         }
         if spec.topK > 0 {
@@ -751,11 +825,14 @@ final class LlamaCppVLM: @unchecked Sendable {
         //    Feeding only "<__media__>\n<prompt>" used to limp along, but
         //    newer mtmd/template handling expects the real role wrapper.
         let marker = String(cString: mtmd_get_marker(mc))
-        let fullPrompt = Self.formatPrompt(
-            prompt,
-            marker: marker,
-            model: m
-        )
+        let fullPrompt: String
+        if usesLFM3VisionTemplate {
+            fullPrompt = LFM3Catalog.visionPrompt(prompt, marker: marker)
+        } else if usesMiniCPMInstructTemplate {
+            fullPrompt = MiniCPMV47Catalog.instructVisionPrompt(prompt, marker: marker)
+        } else {
+            fullPrompt = Self.formatPrompt(prompt, marker: marker, model: m)
+        }
 
         // 3. Tokenize text + bitmap into a chunks list.
         let chunks = mtmd_input_chunks_init()

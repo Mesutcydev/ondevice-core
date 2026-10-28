@@ -641,6 +641,14 @@ enum CoreAIZooCatalog {
     /// iPhone download rather than hiding the classifier entirely.
     static let macOnlyClassifierModels: [CoreAIZooModel] = [
         CoreAIZooModel(
+            id: "zoo-julia-1-512", displayName: "Julia-1 · 512",
+            subtitle: "144M typed decisions · fp32 · Mac validation only",
+            hfRepo: "mlboydaisuke/Julia-1-CoreAI", revision: "d1e943545c64e20e73a88ae1f890227c349e22ba",
+            pathPrefix: "macos/fp32-s512", approxDownloadBytes: 623_850_816, contextWindow: 512,
+            supportsThinking: false, supportsTools: false, category: .classifier,
+            licenseNotice: "Apache-2.0 (Supersonic Labs); MIT mmBERT base. Mac export only."
+        ),
+        CoreAIZooModel(
             id: "zoo-julia-1",
             displayName: "Julia-1",
             subtitle: "144M typed decisions · fp32 · Mac validation only",

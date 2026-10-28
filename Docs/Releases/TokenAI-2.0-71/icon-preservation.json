@@ -1,0 +1,34 @@
+[
+  {
+    "path": "IOSLocalLLM/Assets.xcassets/AppIconPreview.imageset/Contents.json",
+    "sha256": "0abde5159afc5d80bfa6f34e3ddbdda9d6c21f11fa440bc156e1597fa8334342"
+  },
+  {
+    "path": "IOSLocalLLM/Assets.xcassets/AppIconPreview.imageset/AppIconPreview-256.png",
+    "sha256": "3186ec472af402b55bec5bbbe96ac6c0e81fce5f3cdfec5596315ab9b5c7c1c1"
+  },
+  {
+    "path": "IOSLocalLLM/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png",
+    "sha256": "6b68c053a1f69b174f46796d9830b5513842e3b43a70856bf7e341718ef749b9"
+  },
+  {
+    "path": "IOSLocalLLM/Assets.xcassets/AppIcon.appiconset/Contents.json",
+    "sha256": "9cf2928dad89427abd581b6852db081352417f400afb65e60c479228cdc4f4da"
+  },
+  {
+    "path": "IOSLocalLLM/Assets.xcassets/AppIconClassicPreview.imageset/Contents.json",
+    "sha256": "54096d0d82de50529030c3c59c0cb6cc8f96de59969fac28c304cf2296b85129"
+  },
+  {
+    "path": "IOSLocalLLM/Assets.xcassets/AppIconClassicPreview.imageset/AppIconClassicPreview-256.png",
+    "sha256": "4752d9e78c0b93eea06f9329b8d3321dc6a58d53528655e6c749b16c8dd68034"
+  },
+  {
+    "path": "IOSLocalLLM/Assets.xcassets/AppIconClassic.appiconset/AppIconClassic-1024.png",
+    "sha256": "e8af5a90fe9fdf45118cbe238d314696e64026f31d5e068f1a1f5e081611a749"
+  },
+  {
+    "path": "IOSLocalLLM/Assets.xcassets/AppIconClassic.appiconset/Contents.json",
+    "sha256": "e05c54fbab578b19369e7f48d6e86d3d5a414d8386049c0712e2ad388e4d2713"
+  }
+]

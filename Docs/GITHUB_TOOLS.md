@@ -70,7 +70,9 @@ repository operations, and requires unlocking/reconnecting on the original
 device or explicitly discarding that draft. Wipe app data deletes the key.
 
 Edits stay in a protected conversation draft until approval. Review shows the
-destination, base commit, changed files and full Before/After snapshots. Binary
+destination, base commit, a numbered unified diff and full Before/After snapshots.
+Each file can be included or excluded from a commit; excluded files remain staged
+against the new commit. The complete draft still participates in approval validation. Binary
 attachments show byte counts and SHA256. Publication creates blobs, a tree
 based on the original tree, one commit, then a non-force branch update.
 Executable modes are preserved; symlinks and submodules cannot be edited.
@@ -98,6 +100,47 @@ GitHub receives authentication, request metadata and approved writes. An API
 chat model also receives included repository excerpts under its disclosure.
 Conversation exports and optional iCloud sync use the existing sharing rules.
 
+## Code workspace
+
+The sidebar's **Code** destination uses the same per-conversation GitHub service
+as chat. It adds a folder browser, filename search, editable file tabs, a symbol
+outline, line numbers, and restored cursor/scroll position. Staged proposals made
+in chat also appear in the editor and can be revised before review. **Stage**
+compares the exact editor baseline with the shared draft; it never publishes.
+
+Select code and use Explain, Find and fix bugs, Refactor, or Add tests. Pin files
+to context or mention `@Sources/Counter.swift`, `@Sources/`, or
+`@"Docs/Getting started.md"`. Excerpts are bounded, marked as untrusted source,
+redacted for recognized credentials, and prefixed with file/line references and
+their base commit. Edited excerpts are labeled as working copies. The prompt is
+appended to the current chat's composer for inspection, using its existing model
+and inference policy. It is not sent automatically.
+
+Open-file caching is opt-in. Edited drafts and the latest five explicit
+checkpoints are AES-GCM encrypted locally using the existing device-only GitHub
+snapshot key; files are excluded from backup. A stable editor ID separates two
+conversations that select the same account/repository/branch. Closing edited
+files, restoring checkpoints, and branch updates preserve a checkpoint first.
+“Update from branch” requires a per-file Keep my edit / Use branch version choice
+when the remote source conflicts with a staged or independent editor edit.
+No refresh operation writes to GitHub, and an advanced branch still invalidates
+commit approval. Wipe app data removes the workspace cache, checkpoints and
+temporary exports along with the snapshot key.
+
+The reading guide puts README files first and tracks bookmarks, line references,
+and read/unread progress. HTML preview serves only opened workspace files from an
+in-memory origin in an ephemeral WKWebView. Relative CSS/JavaScript are supported;
+Fit, 390-point Phone and 768-point Tablet viewports, a bounded console and native
+Markdown preview are included. CSP and navigation rules block remote resources,
+requests, frames, forms and external navigation. ZIP and single-file export share
+the actual open file content through the system share sheet. ZIP uses an original
+STORE encoder; no dependency, template, or third-party UI was added.
+
+Editor bounds: 30 open files, 256 KiB per UTF-8 file, 2 MB combined snapshots,
+10 context files and at most 12,000 context characters (further reduced for the
+selected model). Inline diffs are bounded to 6,000 input lines; complete
+Before/After remains available for larger files. Listings disclose truncation.
+
 ## Validation and references
 
 `QA/NativeUI` compiles production models, client, stores, service and views.
@@ -106,6 +149,12 @@ exact edits, overlays, immutable approval, atomic commits, conflicts, cancellati
 reconnection, forward revert, device-flow responses and legacy histories. Native
 flows cover opt-in, secure token entry, repo/branch selection, draft retention,
 Before/After review, cancellation, commit confirmation and large text.
+`CodingWorkspaceTests` also covers chat-isolated editor storage, offline positions,
+encrypted/tampered snapshots, checkpoint recovery, manual request cancellation,
+working-copy context redaction, exact staging and partial commits. Coding UI flows
+exercise source editing, diff review, chat context, readable large text, checkpoint
+recovery, relative CSS/JavaScript, ZIP export and WebKit's actual CSP violation
+event for a blocked remote request.
 The shared production parser recognizes repository calls in fenced, plain,
 OpenAI-function and Hermes formats and excludes calls still inside reasoning.
 Final contracts include a parsed read → stage → review round trip with no

@@ -22,6 +22,12 @@ nonisolated enum AssistantToolCallParser {
         } else {
             text = normalized
         }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.contains("<function=") {
+            guard trimmed.hasPrefix("<tool_call>") else { return nil }
+            guard let call = LFM3ToolProtocol.parse(trimmed, allowedNames: knownToolNames) else { return nil }
+            return ToolCall(name: call.name, args: call.arguments)
+        }
         // Tolerate the closing fence on the same line as the JSON, and the JSON
         // on the same line as the opener — small models routinely emit
         // ```tool\n{json}``` or ```tool {json}``` without the newlines the old

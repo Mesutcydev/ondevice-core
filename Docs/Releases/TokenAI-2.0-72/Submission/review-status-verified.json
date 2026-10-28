@@ -1,0 +1,20 @@
+{
+  "appId": "6774354746",
+  "version": {
+    "id": "2d111ea6-2fa5-4774-9f20-a511a067573f",
+    "version": "2.0",
+    "platform": "IOS",
+    "state": "WAITING_FOR_REVIEW",
+    "createdDate": "2026-07-12T08:11:48-07:00"
+  },
+  "reviewDetailConfigured": true,
+  "reviewDetailId": "b5ee317c-593e-4df3-969b-03ddd63626bb",
+  "latestSubmission": {
+    "id": "2c9614b6-4fa7-4ddf-aade-5d66e607dd8f",
+    "state": "WAITING_FOR_REVIEW",
+    "platform": "IOS",
+    "submittedDate": "2026-10-24T17:36:59.586Z"
+  },
+  "reviewState": "WAITING_FOR_REVIEW",
+  "nextAction": "Wait for App Store review outcome."
+}

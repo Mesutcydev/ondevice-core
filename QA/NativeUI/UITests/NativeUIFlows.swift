@@ -89,7 +89,7 @@ final class NativeUIFlows: XCTestCase {
 
     @MainActor func testUnifiedModelAppearsInBothFiltersAndUseChoosesWorkspace() {
         let app = XCUIApplication()
-        app.launchArguments = ["-screen", "models", "-model-dual-role", "-action-probe"]
+        app.launchArguments = ["-screen", "models", "-model-dual-role", "-bonsai2-vision", "-action-probe"]
         app.launch()
 
         let use = app.buttons["model.use.review/dual-model"]
@@ -99,6 +99,7 @@ final class NativeUIFlows: XCTestCase {
         use.tap()
         let assistantChoice = app.buttons.matching(identifier: "model.use.assistant.review/dual-model").firstMatch
         XCTAssertTrue(assistantChoice.waitForExistence(timeout: 5))
+        capture("bonsai2-assistant-and-lens-choices")
         assistantChoice.tap()
         XCTAssertTrue(app.staticTexts.matching(NSPredicate(
             format: "identifier == %@ AND label CONTAINS %@", "fixture.action", "language"
@@ -326,6 +327,7 @@ final class NativeUIFlows: XCTestCase {
             .matching(identifier: "chat.response.tokensPerSecond").firstMatch
         XCTAssertTrue(generationRate.waitForExistence(timeout: 3))
         XCTAssertTrue(generationRate.label.contains("18.4"))
+        capture("brief-response-rate-precision")
         app.buttons["Copy"].tap()
         XCTAssertEqual(app.staticTexts["submission.status"].label, "Copied")
         app.buttons["More response actions"].tap()
@@ -507,6 +509,45 @@ final class NativeUIFlows: XCTestCase {
         capture("reference-composer-images-dark")
     }
 
+    @MainActor func testDrawerLayoutPersistsAcrossLaunches() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-screen", "home", "-short-history"]
+        app.launch()
+        openMenu(app)
+        let layout = app.buttons["sidebar.layout"]
+        XCTAssertTrue(layout.waitForExistence(timeout: 5))
+        // Normalize the fixture without overriding the persisted preference at launch.
+        if layout.value as? String == "List view" { layout.tap() }
+        XCTAssertEqual(layout.value as? String, "Grid view")
+        layout.tap()
+        XCTAssertEqual(layout.value as? String, "List view")
+        let rows = ["lens", "voice", "imageStudio", "models"].map { app.buttons["sidebar.\($0)"].frame }
+        for row in rows {
+            XCTAssertEqual(row.minX, rows[0].minX, accuracy: 0.5)
+            XCTAssertEqual(row.width, rows[0].width, accuracy: 0.5)
+            XCTAssertEqual(row.height, 52, accuracy: 0.5)
+        }
+        for index in 1..<rows.count {
+            XCTAssertEqual(rows[index].minY - rows[index - 1].maxY, 4, accuracy: 0.5)
+        }
+        capture("sidebar-list")
+        app.terminate()
+        app.launch()
+        openMenu(app)
+        XCTAssertEqual(layout.value as? String, "List view")
+        let models = app.buttons["sidebar.models"]
+        XCTAssertTrue(models.isHittable)
+        models.tap()
+        XCTAssertTrue(app.navigationBars["Models"].waitForExistence(timeout: 5))
+        openMenu(app)
+        layout.tap()
+        XCTAssertEqual(layout.value as? String, "Grid view")
+        app.terminate()
+        app.launch()
+        openMenu(app)
+        XCTAssertEqual(layout.value as? String, "Grid view")
+    }
+
     @MainActor func testChatsAndDrawerShowRecentsAndWorkspaces() {
         let app = XCUIApplication()
         app.launchArguments = ["-screen", "home", "-short-history"]
@@ -536,6 +577,11 @@ final class NativeUIFlows: XCTestCase {
             XCTAssertTrue(app.buttons["home.newChat"].waitForExistence(timeout: 5))
             capture("reference-home-\(name)")
             openMenu(app)
+            let layout = app.buttons["sidebar.layout"]
+            XCTAssertTrue(layout.isHittable)
+            let expectedLayout = name == "oled-large" ? "List view" : "Grid view"
+            if layout.value as? String != expectedLayout { layout.tap() }
+            XCTAssertEqual(layout.value as? String, expectedLayout)
             XCTAssertTrue(app.buttons["sidebar.newChat"].isHittable)
             XCTAssertTrue(app.buttons["sidebar.settings"].isHittable)
             XCTAssertLessThan(app.staticTexts["sidebar.title"].frame.height, 80, "The brand must not wrap into fragments")
@@ -741,8 +787,8 @@ final class NativeUIFlows: XCTestCase {
         let selectedChat = app.buttons["sidebar.conversation.reading"]
         XCTAssertTrue(selectedChat.waitForExistence(timeout: 3))
         XCTAssertTrue(drawer.exists)
-        XCTAssertGreaterThanOrEqual(selectedChat.frame.minX, drawer.frame.minX + 24,
-                                    "Recent chats need clear breathing room from the drawer edge")
+        XCTAssertGreaterThanOrEqual(selectedChat.frame.minX, drawer.frame.minX + 16,
+                                    "Recent chat hit regions share the 16-point drawer margin; labels add a 12-point inset")
         capture("sidebar-selected-chat-inset")
         dismissMenu(app)
         navigate(app, to: "home")
@@ -933,8 +979,18 @@ final class NativeUIFlows: XCTestCase {
         app.terminate()
         app.launchArguments = ["-screen", "onboarding"]
         app.launch()
-        XCTAssertTrue(app.buttons["Get started"].waitForExistence(timeout: 10))
-        capture("host-onboarding")
+        let primary = app.buttons["onboarding.primary"]
+        XCTAssertTrue(primary.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["onboarding.skip"].exists, "Every page before the last offers Skip")
+        // Welcome, runtimes, 35B models, studio: Continue advances to Get started.
+        for (index, page) in ["welcome", "runtimes", "large-models"].enumerated() {
+            capture("host-onboarding-\(index + 1)-\(page)")
+            XCTAssertEqual(primary.label, "Continue")
+            primary.tap()
+        }
+        XCTAssertTrue(app.buttons["Get started"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["onboarding.skip"].exists)
+        capture("host-onboarding-4-studio")
     }
 
     @MainActor func testAppearanceChoicesAndTrueOLED() {

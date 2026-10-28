@@ -3,7 +3,8 @@ import Foundation
 // MARK: - ConversationTitler
 // Uses the active assistant model to produce a short (3-5 word) title for
 // a conversation based on its first user message. Runs once per conversation
-// after the first reply finishes, so the cost is amortized.
+// after the first reply finishes. Streaming MiniCPM 35B keeps the existing
+// first-message title so cosmetic work cannot occupy its inference slot.
 //
 // Why not just take the first 40 chars? Because the first message is often
 // "Hi" or a long paste of code. The model gives titles that scan well in
@@ -33,8 +34,17 @@ enum ConversationTitler {
         // Must have a ready model. Skip silently otherwise so chat keeps
         // working even when the user is offline / model unloaded.
         guard case .ready = assistant.state else { return }
+        if assistant.usesMiniCPMStreamingText {
+            Diagnostics.shared.breadcrumb("Conversation title retained · MiniCPM streaming runtime", category: "assistant")
+            return
+        }
 
-        let prompt = "Summarize the following user request in 3 to 5 words. Lowercase, no punctuation, no quotes. Just the title.\n\nRequest:\n\(firstUserMessage)"
+        // The opening of a long paste names its topic; the whole paste only
+        // lengthens prefill while the composer waits on this request.
+        let request = String(firstUserMessage.prefix(Self.maximumRequestCharacters))
+        let prompt = "Summarize the following user request in 3 to 5 words. Lowercase, no punctuation, no quotes. Just the title.\n\nRequest:\n\(request)"
+        let originalTitle = conv.title
+        let stopEpoch = assistant.stopEpoch
         let messages: [ChatMessage] = [
             ChatMessage(role: .system, content: "You produce ultra-short conversation titles. Output only the title."),
             ChatMessage(role: .user, content: prompt)
@@ -57,7 +67,11 @@ enum ConversationTitler {
                 onComplete: { _ in
                     Task { @MainActor in
                         let title = cleanTitle(acc.value)
-                        guard !title.isEmpty else { cont.resume(); return }
+                        // Stop leaves a partial title; a rename during the
+                        // request is the user's choice. Keep both.
+                        guard !title.isEmpty, assistant.stopEpoch == stopEpoch,
+                              store.conversations.first(where: { $0.id == conversationID })?.title == originalTitle
+                        else { cont.resume(); return }
                         // Re-fetch in case the conversation was deleted mid-flight.
                         // ConversationStore.conversations is private(set), so we
                         // round-trip through saveConversation with the existing
@@ -69,6 +83,8 @@ enum ConversationTitler {
             )
         }
     }
+
+    static let maximumRequestCharacters = 600
 
     private static func cleanTitle(_ raw: String) -> String {
         var s = raw

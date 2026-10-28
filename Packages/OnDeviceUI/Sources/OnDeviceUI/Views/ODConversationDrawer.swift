@@ -1,19 +1,22 @@
 import SwiftUI
 
 /// The leading drawer: brand and Settings at the head, workspaces as a compact
-/// grid, recent chats as the body, Search and New chat at the foot.
+/// grid or list, recent chats as the body, Search and New chat at the foot.
 @MainActor
 struct ODConversationDrawer: View {
     @EnvironmentObject private var store: ODStore
+    @AppStorage("token.sidebar.listLayout") private var usesListLayout = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ODSidebarHeader()
+            ODSidebarHeader(usesListLayout: $usesListLayout)
             ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
-                    ODSidebarDestinations()
+                VStack(alignment: .leading, spacing: ODLayout.sidebarSectionGap) {
+                    ODSidebarDestinations(usesListLayout: usesListLayout)
+                    if usesListLayout { Divider().padding(.horizontal, ODLayout.sidebarContentInset) }
                     ODSidebarRecents()
                 }
-                .padding(.top, 20)
+                .padding(.top, ODLayout.groupGap)
                 .padding(.bottom, ODLayout.groupGap)
             }
             .scrollIndicators(.hidden)
@@ -21,13 +24,13 @@ struct ODConversationDrawer: View {
             ODVoiceSessionAccessory().padding(.horizontal, -ODLayout.pageInset)
             ODSidebarFooter()
         }
-        .padding(.horizontal, 20).padding(.bottom, 8)
+        .padding(.horizontal, ODLayout.sidebarInset).padding(.bottom, 8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         // Grouped background (black in dark, soft grey in light) so the
         // workspace reads as a lighter card resting on the drawer.
         .background { Color(uiColor: .systemGroupedBackground).ignoresSafeArea() }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("App navigation")
+        .accessibilityLabel(Text("App navigation", bundle: .module))
         .accessibilityIdentifier("navigation.sidebar")
         .accessibilityAction(.escape) { store.conversationsPresented = false }
     }
@@ -35,20 +38,46 @@ struct ODConversationDrawer: View {
 
 @MainActor
 private struct ODSidebarHeader: View {
+    @Binding var usesListLayout: Bool
     @EnvironmentObject private var store: ODStore
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Text("OnDevice")
-                .font(.title.weight(.bold))
-                .lineLimit(1).minimumScaleFactor(0.7)
-                .accessibilityAddTraits(.isHeader)
-                .accessibilityIdentifier("sidebar.title")
-                .frame(maxWidth: .infinity, alignment: .leading)
-            ODIconButton("gearshape", label: "Settings") {
-                store.conversationsPresented = false
-                store.secondaryRoute = .settings
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(spacing: 8))
+        layout {
+            HStack(spacing: ODLayout.labelGap) {
+                ODBrandTile(size: ODLayout.sidebarIconColumn)
+                Text("Token AI", bundle: .module)
+                    .font(.title2.weight(.bold))
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("sidebar.title")
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .accessibilityIdentifier("sidebar.settings")
+            .padding(.leading, ODLayout.sidebarContentInset)
+            HStack(spacing: 8) {
+                if typeSize.isAccessibilitySize { Spacer(minLength: 0) }
+                Button {
+                    usesListLayout.toggle()
+                } label: {
+                    Image(systemName: usesListLayout ? "square.grid.2x2" : "list.bullet")
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(ODPalette.secondary)
+                        .frame(width: ODLayout.minimumHit, height: ODLayout.minimumHit)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(ODPressButtonStyle())
+                .accessibilityLabel(Text(odKey: usesListLayout ? "Switch to grid view" : "Switch to list view"))
+                .accessibilityValue(Text(odKey: usesListLayout ? "List view" : "Grid view"))
+                .accessibilityIdentifier("sidebar.layout")
+                ODIconButton("gearshape", label: "Settings") {
+                    store.conversationsPresented = false
+                    store.secondaryRoute = .settings
+                }
+                .accessibilityIdentifier("sidebar.settings")
+            }
         }
     }
 }
@@ -57,6 +86,7 @@ private struct ODSidebarHeader: View {
 /// the conversation list below the fold.
 @MainActor
 private struct ODSidebarDestinations: View {
+    let usesListLayout: Bool
     @EnvironmentObject private var store: ODStore
     @Environment(\.dynamicTypeSize) private var typeSize
 
@@ -69,16 +99,19 @@ private struct ODSidebarDestinations: View {
             ("Classifiers", "checklist", .classifiers, "classifiers"),
             ("Device", "iphone", .device, "device"),
         ]
+        if store.capabilities.canOpenCodeWorkspace {
+            items.insert(("Code", "chevron.left.forwardslash.chevron.right", .code, "code"), at: 0)
+        }
         if store.capabilities.canOpenAPIServer { items.append(("API server", "network", .apiServer, "apiServer")) }
         return items
     }
 
     var body: some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: typeSize.isAccessibilitySize ? 1 : 3)
-        LazyVGrid(columns: columns, spacing: 8) {
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: usesListLayout || typeSize.isAccessibilitySize ? 1 : 3)
+        LazyVGrid(columns: columns, spacing: usesListLayout ? 4 : 8) {
             ForEach(destinations, id: \.id) { item in
                 ODSidebarTile(title: item.title, symbol: item.symbol,
-                              selected: store.selectedTab == item.tab, id: item.id) {
+                              selected: store.selectedTab == item.tab, id: item.id, usesListLayout: usesListLayout) {
                     store.conversationsPresented = false
                     store.selectedTab = item.tab
                 }
@@ -92,27 +125,30 @@ private struct ODSidebarTile: View {
     let symbol: String
     let selected: Bool
     let id: String
+    let usesListLayout: Bool
     let action: () -> Void
+    @ScaledMetric(relativeTo: .body) private var listIconWidth: CGFloat = ODLayout.sidebarIconColumn
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         Button(action: action) {
-            let layout = typeSize.isAccessibilitySize
+            let layout = usesListLayout || typeSize.isAccessibilitySize
                 ? AnyLayout(HStackLayout(spacing: 12))
-                : AnyLayout(VStackLayout(spacing: 6))
+                : AnyLayout(VStackLayout(spacing: ODLayout.elementGap))
             layout {
-                Image(systemName: symbol).font(.body.weight(.medium)).frame(height: 22).accessibilityHidden(true)
-                Text(title).font(.caption.weight(.medium))
+                Image(systemName: symbol).font(.body.weight(.medium)).frame(width: usesListLayout || typeSize.isAccessibilitySize ? listIconWidth : nil, height: typeSize.isAccessibilitySize ? nil : ODLayout.panelCorner).accessibilityHidden(true)
+                Text(odKey: title).font(usesListLayout ? .body.weight(.medium) : .caption.weight(.medium))
                     .lineLimit(typeSize.isAccessibilitySize ? nil : 1).minimumScaleFactor(0.8)
-                if typeSize.isAccessibilitySize { Spacer(minLength: 0) }
+                if usesListLayout || typeSize.isAccessibilitySize { Spacer(minLength: 0) }
             }
             .foregroundStyle(ODPalette.text)
-            .padding(.horizontal, 8)
-            .frame(maxWidth: .infinity, minHeight: 64)
-            .background(Color(uiColor: .secondarySystemGroupedBackground),
+            .padding(.horizontal, usesListLayout ? ODLayout.sidebarContentInset : ODLayout.elementGap)
+            .padding(.vertical, usesListLayout ? ODLayout.elementGap : 0)
+            .frame(maxWidth: .infinity, minHeight: usesListLayout ? ODLayout.sidebarRowHeight : 64)
+            .background(usesListLayout && !selected ? Color.clear : Color(uiColor: .secondarySystemGroupedBackground),
                         in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay {
-                if selected {
+                if selected && !usesListLayout {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .strokeBorder(ODPalette.text.opacity(0.35), lineWidth: 1)
                 }
@@ -129,25 +165,26 @@ private struct ODSidebarTile: View {
 private struct ODSidebarRecents: View {
     @EnvironmentObject private var store: ODStore
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: ODLayout.smallGap) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Recents").font(.headline).accessibilityAddTraits(.isHeader)
+                Text("Recents", bundle: .module).font(.headline).accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 8)
                 Button {
                     store.conversationsPresented = false
                     store.selectedTab = .home
                 } label: {
                     HStack(spacing: 4) {
-                        Text("All chats")
+                        Text("All chats", bundle: .module)
                         Image(systemName: "chevron.right").font(.caption.weight(.semibold)).accessibilityHidden(true)
                     }
                     .font(.subheadline).foregroundStyle(ODPalette.secondary)
                     .frame(minHeight: ODLayout.minimumHit).contentShape(Rectangle())
                 }
                 .buttonStyle(ODPressButtonStyle())
-                .accessibilityLabel("All chats")
+                .accessibilityLabel(Text("All chats", bundle: .module))
                 .accessibilityIdentifier("sidebar.home")
             }
+            .padding(.horizontal, ODLayout.sidebarContentInset)
             // A new chat is not in Recents until it is saved; keep a way back to it.
             if store.hasOpenChat,
                !store.recentConversations.contains(where: { $0.id == store.selectedConversationID }) {
@@ -156,20 +193,19 @@ private struct ODSidebarRecents: View {
                     store.selectedTab = .chat
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("New chat").font(.body).lineLimit(1)
-                        Text("Current chat").font(.subheadline).foregroundStyle(ODPalette.secondary)
+                        Text("New chat", bundle: .module).font(.body).lineLimit(1)
+                        Text("Current chat", bundle: .module).font(.subheadline).foregroundStyle(ODPalette.secondary)
                     }
                     .foregroundStyle(ODPalette.text)
-                    .padding(.horizontal, 12).padding(.vertical, 9)
+                    .padding(.horizontal, ODLayout.sidebarContentInset).padding(.vertical, ODLayout.elementGap)
                     .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
                     .background(store.selectedTab == .chat ? Color(uiColor: .secondarySystemGroupedBackground) : .clear,
-                                in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(ODPressButtonStyle())
                 .accessibilityAddTraits(store.selectedTab == .chat ? .isSelected : [])
                 .accessibilityIdentifier("sidebar.chat")
-                .padding(.horizontal, ODLayout.conversationRowInset)
             }
             ODConversationListing(query: "", sidebar: true)
         }
@@ -196,15 +232,13 @@ private struct ODSidebarFooter: View {
                 store.selectedTab = .chat
                 store.send(.newConversation)
             } label: {
-                Label("New chat", systemImage: "square.and.pencil").font(.body.weight(.semibold)).lineLimit(1)
+                Label(ODLocalizedString("New chat"), systemImage: "square.and.pencil").font(.body.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.7)
             }
             .buttonStyle(.glassProminent).buttonBorderShape(.capsule).controlSize(.large)
             .odInkProminent()
             .disabled(!store.canPerformActions || store.isResponding)
-            .accessibilityLabel("New chat").accessibilityIdentifier("sidebar.newChat")
+            .accessibilityLabel(Text("New chat", bundle: .module)).accessibilityIdentifier("sidebar.newChat")
         }
-        // The reference sets the foot controls further in than the header.
-        .padding(.horizontal, 8)
         .padding(.top, 8)
     }
 }

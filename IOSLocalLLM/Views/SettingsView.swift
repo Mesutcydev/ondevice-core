@@ -16,7 +16,7 @@ struct SettingsView: View {
 
     @State private var showingHFTokenSheet: Bool = false
     #if !targetEnvironment(macCatalyst)
-    /// nil = default "Max" wordmark; "AppIconClassic" = previous pink mark.
+    /// nil = default Token AI icon (original OnDeviceMax artwork); "AppIconClassic" = previous pink mark.
     @State private var activeIconName: String? = UIApplication.shared.alternateIconName
     #endif
     /// Presents the onboarding model picker as a sheet so existing
@@ -84,7 +84,7 @@ struct SettingsView: View {
             .listSectionSpacing(16)
             .scrollContentBackground(.hidden)
             .background { ODPageBackground().ignoresSafeArea() }
-            .navigationTitle("Settings")
+            .odNavigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(item: $selectedCategory) { category in
                 if category == .userGuide {
@@ -167,7 +167,7 @@ struct SettingsView: View {
 
         var subtitle: String {
             switch self {
-            case .userGuide:    return "learn how to use OnDevice & local models"
+            case .userGuide:    return "learn how to use Token AI & local models"
             case .capture:      return "analysis mode, camera, detection"
             case .modelsAI:     return AppStoreModelPolicy.isPublicDistribution
                 ? "assistant, API keys, model downloads" : "assistant, api keys, fastvlm pipeline"
@@ -241,10 +241,10 @@ struct SettingsView: View {
                                                      style: .continuous))
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(cat.title)
+                    Text(odKey: cat.title)
                         .font(S.sans(15, .medium))
                         .foregroundStyle(S.ink)
-                    Text(cat.subtitle)
+                    Text(odKey: cat.subtitle)
                         .font(S.sans(13))
                         .foregroundStyle(S.ink3)
                         .lineLimit(2)
@@ -264,10 +264,13 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func categoryDestination(_ cat: SettingsCategory) -> some View {
-        List {
+        if cat == .userGuide {
+            UserGuideView()
+        } else {
+            List {
                 switch cat {
                 case .userGuide:
-                    UserGuideView()
+                    EmptyView()
                 case .capture:
                     analysisModeSection
                 case .modelsAI:
@@ -289,14 +292,14 @@ struct SettingsView: View {
                 case .parentalControls:
                     EmptyView() // Dedicated Form destination above.
                 }
+            }
+            .listStyle(.plain)
+            .listSectionSpacing(16)
+            .scrollContentBackground(.hidden)
+            .background { ODPageBackground().ignoresSafeArea() }
+            .odNavigationTitle(cat.title)
+            .navigationBarTitleDisplayMode(.inline)
         }
-        .listStyle(.plain)
-        .listSectionSpacing(16)
-        .scrollContentBackground(.hidden)
-        .background { ODPageBackground().ignoresSafeArea() }
-        .navigationTitle(cat.title)
-        .navigationBarTitleDisplayMode(.inline)
-
     }
 
     // MARK: - Sections
@@ -1201,7 +1204,7 @@ struct SettingsView: View {
     private var appIconPickerRow: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 14) {
-                appIconOption(name: nil, title: "Max", preview: "AppIconPreview")
+                appIconOption(name: nil, title: "Token AI", preview: "AppIconPreview")
                 appIconOption(name: "AppIconClassic", title: "Classic", preview: "AppIconClassicPreview")
                 Spacer()
             }
@@ -1259,15 +1262,13 @@ struct SettingsView: View {
                 appIconPickerRow
                 #endif
             } languagePicker: {
-                Picker("Language", selection: Binding(
+                ODLanguagePicker(selection: Binding(
                     get: { AppLanguage(rawValue: settings.uiLanguage) ?? .system },
                     set: { newValue in
                         settings.uiLanguage = newValue.rawValue
                         loc.setLanguage(newValue)
                     }
-                )) {
-                    ForEach(AppLanguage.allCases) { lang in Text(lang.nativeName).tag(lang) }
-                }
+                ))
             } onResetTips: {
                 TipsManager.shared.resetAll()
                 HapticManager.impact(.light)
@@ -1620,7 +1621,7 @@ struct SettingsView: View {
     private var aboutSection: some View {
         Group {
             LabeledContent("Version", value: appVersionLabel)
-            Text("OnDevice combines local models with optional API providers, web access, Apple Private Cloud Compute, and paired Mac tools. Each network feature is controlled separately.")
+            Text("Token AI combines local models with optional API providers, web access, Apple Private Cloud Compute, and paired Mac tools. Each network feature is controlled separately.")
                 .font(.footnote).foregroundStyle(.secondary)
         }
     }

@@ -1,21 +1,19 @@
 import Foundation
 import Combine
 import CryptoKit
+import UIKit
 
 // Download requests identify the current app and marketing version.
 enum CoreAIDownloadUserAgent {
     static let value: String = {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
-        return "OnDeviceMax/\(version) (iOS; Core AI pack download)"
+        return "TokenAI/\(version) (iOS; Core AI pack download)"
     }()
 }
 
-/// Foreground-only Hugging Face pack downloader for Core AI.
-///
-/// Sideloaded builds often stall forever on `URLSessionConfiguration.background`
-/// (no delegate callbacks until a background relaunch). This manager uses a
-/// dedicated foreground session with byte progress, timeouts, and retries so
-/// multi-hundred-MB `ios/` packs actually finish while the app is open.
+/// App Store builds use the shared durable background queue. Sideloaded
+/// builds retain their tested foreground transport because some installers
+/// cannot establish an iOS background session correctly.
 @MainActor
 final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
     enum State: Equatable {
@@ -50,12 +48,34 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
 
     private var runTask: Task<Void, Never>?
     private var pauseRequested = false
+    private var resumeAfterDrain = false
+    private var clearAfterDrain = false
     private var files: [RemoteFile] = []
     private var stagingRoot: URL?
     private var lastSampleBytes: Int64 = 0
     private var lastSampleAt = Date()
     private var committedBytes: Int64 = 0
+    private var backgroundDrain: Task<Void, Never>?
+    private var usesBackgroundDownloads: Bool { AppStoreModelPolicy.isPublicDistribution }
+    private var backgroundRoot: URL {
+        Self.stagingRootURL(in: downloadDirectory, id: id).appendingPathComponent("resources", isDirectory: true)
+    }
+    var backgroundDownloadID: String { BackgroundDownloadJob.identifier(root: backgroundRoot, ownerID: id) }
+
+    func restoreBackgroundDownload(_ job: BackgroundDownloadJob) {
+        guard runTask == nil, job.id == backgroundDownloadID, job.owner.revision == revision else { return }
+        switch job.state {
+        case .transferring, .verifying: start()
+        case .paused: state = .paused; statusDetail = "Paused"
+        case .failed: state = .failed("Download interrupted. Resume or cancel in Downloads.")
+        }
+    }
+
     private var activeTransfer: CoreAIForegroundTransfer?
+    private var classifierModel: ClassifierCatalogModel?
+    private var downloadDirectory: URL {
+        classifierModel == nil ? CoreAIModelStore.shared.modelDirectory : ClassifierModelStore.shared.directory
+    }
 
     private struct RemoteFile: Sendable {
         let remotePath: String
@@ -63,6 +83,7 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
         var size: Int64
         /// Hugging Face LFS object id (`sha256:<hex>`), when provided.
         let sha256: String?
+        let gitSHA1: String?
     }
 
     init(
@@ -89,6 +110,11 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
         )
     }
 
+    convenience init(classifier: ClassifierCatalogModel) {
+        self.init(id: classifier.selectionID, repoID: classifier.repo, revision: classifier.revision, displayName: classifier.name)
+        classifierModel = classifier
+    }
+
     func start() {
         if let restriction = AppStoreModelPolicy.restriction(for: repoID) {
             state = .failed(restriction)
@@ -99,16 +125,18 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
             state = .failed(AppStoreModelPolicy.missingRevisionMessage)
             return
         }
-        guard runTask == nil else { return }
+        guard runTask == nil else {
+            if state == .paused || state == .idle { resumeAfterDrain = true }
+            return
+        }
         pauseRequested = false
+        _ = DownloadLiveActivityManager.shared.start(repoID: backgroundDownloadID, displayName: displayName)
         if state == .paused, stagingRoot != nil, !files.isEmpty {
             // Publish before scheduling the Task. The Models card reads this in
             // the same event turn as the tap; deferring it made Resume look dead.
             state = .downloading
             statusDetail = "Resuming…"
-            runTask = Task { [weak self] in
-                await self?.downloadRemaining()
-            }
+            scheduleRun(resuming: true)
             return
         }
         // Same immediate-feedback rule for a new transfer. `run()` repeats the
@@ -116,18 +144,21 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
         // makes the button visibly respond on the first frame.
         state = .enumerating
         statusDetail = "Listing Hub files…"
-        runTask = Task { [weak self] in
-            await self?.run()
-        }
+        scheduleRun(resuming: false)
     }
 
     func pause() {
         guard state == .downloading || state == .enumerating else { return }
         pauseRequested = true
+        if usesBackgroundDownloads {
+            BackgroundDownloadCoordinator.shared.markPaused(matching: backgroundRoot.path)
+            backgroundDrain = Task { await BackgroundDownloadCoordinator.shared.pauseTasks(matching: backgroundRoot.path) }
+        }
+        DownloadLiveActivityManager.shared.pause(repoID: backgroundDownloadID)
+        resumeAfterDrain = false
         activeTransfer?.cancel()
         activeTransfer = nil
         runTask?.cancel()
-        runTask = nil
         state = .paused
         statusDetail = "Paused"
         Diagnostics.shared.breadcrumb("Paused Core AI download · \(repoID)", category: "coreai")
@@ -144,11 +175,40 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
     }
 
     func cancel() {
+        if usesBackgroundDownloads {
+            BackgroundDownloadCoordinator.shared.abandon(matching: backgroundRoot.path)
+            backgroundDrain = Task {
+                await BackgroundDownloadCoordinator.shared.cancelTasks(matching: backgroundRoot.path)
+                if runTask == nil { clearStaging() }
+            }
+        }
+        DownloadLiveActivityManager.shared.cancel(repoID: backgroundDownloadID)
         pauseRequested = false
         activeTransfer?.cancel()
         activeTransfer = nil
         runTask?.cancel()
-        runTask = nil
+        resumeAfterDrain = false; clearAfterDrain = true
+        state = .idle
+        if runTask == nil, !usesBackgroundDownloads { clearStaging() }
+    }
+
+    private func scheduleRun(resuming: Bool) {
+        runTask = Task { [weak self] in
+            guard let self else { return }
+            await backgroundDrain?.value
+            if !Task.isCancelled {
+                if resuming { await downloadRemaining() } else { await run() }
+            }
+            await backgroundDrain?.value
+            let restart = resumeAfterDrain
+            runTask = nil; resumeAfterDrain = false
+            if clearAfterDrain { clearStaging() }
+            if restart { start() }
+        }
+    }
+
+    private func clearStaging() {
+        clearAfterDrain = false
         if let stagingRoot {
             try? FileManager.default.removeItem(at: stagingRoot)
         }
@@ -168,11 +228,9 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
 
     func cancelAndWaitForCleanup() async {
         let pending = runTask
-        pauseRequested = false
-        activeTransfer?.cancel()
-        pending?.cancel()
-        await pending?.value
         cancel()
+        await pending?.value
+        await backgroundDrain?.value
     }
 
     private func run() async {
@@ -187,8 +245,7 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
             try Task.checkCancellation()
             guard !pauseRequested else {
                 state = .paused
-                runTask = nil
-                return
+                        return
             }
             files = listed
             filesTotal = listed.count
@@ -198,14 +255,15 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
             // Credit a resumable partial tree already on disk; the remaining
             // transfer plus install headroom is the real requirement.
             let partialRoot = Self.stagingRootURL(
-                in: CoreAIModelStore.shared.modelDirectory,
+                in: downloadDirectory,
                 id: id
             ).appendingPathComponent("resources", isDirectory: true)
             let remainingBytes = max(
                 0,
                 totalBytes - Self.allocatedBytes(in: partialRoot)
             )
-            try Self.assertStorageAvailable(for: remainingBytes)
+            try Self.assertStorageAvailable(for: remainingBytes, in: downloadDirectory,
+                compilationHeadroom: classifierModel?.compilationHeadroom ?? 0)
             let staging = try prepareStaging()
             stagingRoot = staging
             state = .downloading
@@ -216,12 +274,15 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
             await downloadRemaining()
         } catch is CancellationError {
             if pauseRequested { state = .paused }
-            runTask = nil
-        } catch {
+            } catch {
+            if usesBackgroundDownloads {
+                await BackgroundDownloadCoordinator.shared.pauseTasks(matching: backgroundRoot.path)
+                BackgroundDownloadCoordinator.shared.fail(jobID: backgroundDownloadID)
+            }
+            DownloadLiveActivityManager.shared.fail(repoID: backgroundDownloadID, reason: error.localizedDescription)
             state = .failed(error.localizedDescription)
             statusDetail = error.localizedDescription
-            runTask = nil
-            Diagnostics.shared.error(
+                Diagnostics.shared.error(
                 "Core AI download failed · \(error.localizedDescription)",
                 category: "coreai"
             )
@@ -232,8 +293,7 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
     private func downloadRemaining() async {
         guard let stagingRoot else {
             state = .failed("Missing staging directory.")
-            runTask = nil
-            return
+                return
         }
         state = .downloading
         pauseRequested = false
@@ -256,12 +316,30 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
             downloadedBytes = committedBytes
             recalculateProgress()
 
+            _ = DownloadLiveActivityManager.shared.start(repoID: backgroundDownloadID, displayName: displayName)
+            if usesBackgroundDownloads {
+                let owner = BackgroundDownloadOwner(kind: classifierModel == nil ? .coreAI : .classifier,
+                    id: id, repoID: repoID, revision: revision, displayName: displayName, pathPrefix: pathPrefix)
+                let transfers = try files.map { file -> BackgroundDownloadFile in
+                    let encoded = file.remotePath.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? file.remotePath
+                    guard let source = URL(string: "https://huggingface.co/\(repoID)/resolve/\(revision)/\(encoded)") else { throw URLError(.badURL) }
+                    return .init(relativePath: file.localPath, source: source, expectedBytes: file.size)
+                }
+                let job = try BackgroundDownloadJob(owner: owner, root: resourcesRoot, files: transfers)
+                try await BackgroundDownloadCoordinator.shared.enqueue(job) { [weak self] update in
+                    guard let self, state == .downloading, !pauseRequested else { return }
+                    downloadedBytes = update.downloadedBytes; totalBytes = update.totalBytes
+                    filesDone = update.filesDone; progress = update.fraction
+                    if !update.currentFile.isEmpty { currentFile = update.currentFile }
+                    sampleSpeed()
+                }
+            }
+
             for (index, file) in files.enumerated() {
                 try Task.checkCancellation()
                 if pauseRequested {
                     state = .paused
-                    runTask = nil
-                    return
+                                return
                 }
                 let destination = try Self.destinationURL(
                     root: resourcesRoot,
@@ -279,6 +357,16 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
                 recalculateProgress()
             }
 
+            try Task.checkCancellation()
+            // Core ML validation/compilation and pack replacement run when the
+            // app is foregrounded; only the byte transfers belong to the OS.
+            guard UIApplication.shared.applicationState == .active else {
+                state = .paused; statusDetail = "Open app to finish installation"
+                return
+            }
+            DownloadLiveActivityManager.shared.update(repoID: backgroundDownloadID, progress: 0.99,
+                downloadedBytes: downloadedBytes, totalBytes: totalBytes, currentFile: "Verifying files",
+                filesDone: filesDone, filesTotal: filesTotal, phase: .verifying)
             // The tree API supplies the immutable Hugging Face LFS object id.
             // Verify every LFS-backed file before the pack can enter the model
             // store; size-only validation cannot detect same-length corruption
@@ -287,12 +375,12 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
             statusDetail = "Verifying downloaded files…"
             for file in files {
                 try Task.checkCancellation()
-                guard let expected = file.sha256 else { continue }
+                guard let expected = file.sha256 ?? file.gitSHA1 else { continue }
                 let destination = try Self.destinationURL(
                     root: resourcesRoot,
                     relativePath: file.localPath
                 )
-                let actual = try await Self.sha256(of: destination)
+                let actual = file.sha256 != nil ? try await Self.sha256(of: destination) : try await Self.gitBlobSHA1(of: destination)
                 guard actual == expected else {
                     try? FileManager.default.removeItem(at: destination)
                     throw CoreAIDownloadError.checksumMismatch(file.remotePath)
@@ -313,11 +401,11 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
             }
             try Task.checkCancellation()
             let resources = stagingRoot.appendingPathComponent("resources", isDirectory: true)
-            try CoreAIModelStore.shared.installDownloadedModel(
-                from: resources,
-                preferredID: id,
-                preferredDisplayName: displayName
-            )
+            if let classifierModel {
+                try await ClassifierModelStore.shared.install(classifierModel, from: resources)
+            } else {
+                try CoreAIModelStore.shared.installDownloadedModel(from: resources, preferredID: id, preferredDisplayName: displayName)
+            }
             if replacedActiveCoreAI,
                let installed = CoreAIModelStore.shared.installedModel(id: id),
                let newModel = installed.assistantModel {
@@ -326,30 +414,32 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
             try? FileManager.default.removeItem(at: stagingRoot)
             self.stagingRoot = nil
             state = .ready
+            BackgroundDownloadCoordinator.shared.finish(jobID: backgroundDownloadID)
             progress = 1
             statusDetail = "Installed"
             currentFile = ""
-            runTask = nil
-            Diagnostics.shared.breadcrumb("Core AI pack installed · \(displayName)", category: "coreai")
+                Diagnostics.shared.breadcrumb("Core AI pack installed · \(displayName)", category: "coreai")
             ToastCenter.shared.success(
                 "Installed \(displayName)",
-                detail: CoreAIModelStore.shared.installedModel(id: id)?.assistantModel != nil
+                detail: classifierModel != nil ? "Select it in Classifiers to run it on this device." : CoreAIModelStore.shared.installedModel(id: id)?.assistantModel != nil
                     ? "Select it from Assistant to use the Core AI runtime."
                     : "This pack is installed but is not a chat model."
             )
         } catch is CancellationError {
             if pauseRequested { state = .paused }
-            runTask = nil
-        } catch {
+            } catch {
             if Self.isUserCancellation(error) {
                 if pauseRequested { state = .paused }
-                runTask = nil
-                return
+                        return
             }
+            if usesBackgroundDownloads {
+                await BackgroundDownloadCoordinator.shared.pauseTasks(matching: backgroundRoot.path)
+                BackgroundDownloadCoordinator.shared.fail(jobID: backgroundDownloadID)
+            }
+            DownloadLiveActivityManager.shared.fail(repoID: backgroundDownloadID, reason: error.localizedDescription)
             state = .failed(error.localizedDescription)
             statusDetail = error.localizedDescription
-            runTask = nil
-            Diagnostics.shared.error(
+                Diagnostics.shared.error(
                 "Core AI download failed · \(error.localizedDescription)",
                 category: "coreai"
             )
@@ -359,7 +449,7 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
 
     private func prepareStaging() throws -> URL {
         let root = Self.stagingRootURL(
-            in: CoreAIModelStore.shared.modelDirectory,
+            in: downloadDirectory,
             id: id
         )
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
@@ -449,9 +539,8 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
         return total
     }
 
-    private static func assertStorageAvailable(for required: Int64) throws {
-        guard required > 0 else { return }
-        let dir = CoreAIModelStore.shared.modelDirectory
+    private static func assertStorageAvailable(for required: Int64, in dir: URL, compilationHeadroom: Int64) throws {
+        guard required > 0 || compilationHeadroom > 0 else { return }
         // `volumeAvailableCapacityForImportantUsage` is the value iOS will
         // actually let the app consume (it accounts for purgeable space),
         // unlike the raw free-byte count.
@@ -463,7 +552,7 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
         ))?.volumeAvailableCapacityForImportantUsage else {
             return  // Cannot measure — do not block the operator on a guess.
         }
-        let needed = required + storageHeadroom
+        let needed = required + compilationHeadroom + storageHeadroom
         guard available < needed else { return }
         throw CoreAIDownloadError.insufficientStorage(
             required: needed,
@@ -517,15 +606,29 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
                     guard entry.path == pathPrefix
                         || entry.path.hasPrefix(normalized) else { continue }
                 }
-                let lower = entry.path.lowercased()
-                if lower.hasSuffix(".md") || lower.hasSuffix(".gitattributes") { continue }
+                if let classifierModel {
+                    guard classifierModel.includes(remotePath: entry.path) else { continue }
+                } else {
+                    let lower = entry.path.lowercased()
+                    if lower.hasSuffix(".md") || lower.hasSuffix(".gitattributes") { continue }
+                }
                 let size = entry.lfs?.size ?? entry.size ?? 0
+                let sha256 = entry.lfs?.oid.flatMap(HFHubMetadata.normalizedSHA256)
+                let gitSHA1 = entry.lfs == nil ? entry.oid?.lowercased() : nil
+                if classifierModel != nil {
+                    guard sha256 != nil || (gitSHA1.map {
+                        $0.count == 40 && $0.allSatisfy { $0.isASCII && $0.isHexDigit }
+                    } ?? false) else {
+                        throw CoreAIInferenceError.unavailable("The Hub did not supply a valid integrity checksum for this classifier file. Retry the download later.")
+                    }
+                }
                 collected.append(
                     RemoteFile(
                         remotePath: entry.path,
                         localPath: try Self.validatedRelativePath(stripPrefix(entry.path)),
                         size: size,
-                        sha256: entry.lfs?.oid.flatMap(HFHubMetadata.normalizedSHA256)
+                        sha256: sha256,
+                        gitSHA1: classifierModel != nil ? gitSHA1 : nil
                     )
                 )
             }
@@ -571,24 +674,33 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
         var attempt = 0
         while true {
             do {
-                let transfer = CoreAIForegroundTransfer()
-                activeTransfer = transfer
-                defer { if activeTransfer === transfer { activeTransfer = nil } }
+                if usesBackgroundDownloads {
+                    _ = try await BackgroundDownloadCoordinator.shared.download(from: url, to: destination,
+                        expectedSize: file.size, jobID: backgroundDownloadID) { _, _ in }
+                } else {
+                    let transfer = CoreAIForegroundTransfer()
+                    activeTransfer = transfer
+                    defer { if activeTransfer === transfer { activeTransfer = nil } }
 
-                _ = try await transfer.download(from: url, to: destination) { [weak self] received, _ in
-                    Task { @MainActor [weak self] in
-                        guard let self else { return }
-                        self.downloadedBytes = self.committedBytes + max(0, received)
-                        self.recalculateProgress()
-                        self.sampleSpeed()
+                    _ = try await transfer.download(from: url, to: destination) { [weak self, weak transfer] received, _ in
+                        Task { @MainActor [weak self, weak transfer] in
+                            guard let self, let transfer, self.activeTransfer === transfer else { return }
+                            self.downloadedBytes = self.committedBytes + max(0, received)
+                            self.recalculateProgress()
+                            self.sampleSpeed()
+                        }
                     }
-                }
 
+                }
                 let onDisk = (try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize)
                     .map(Int64.init) ?? max(file.size, 0)
                 committedBytes += max(onDisk, 0)
-                downloadedBytes = committedBytes
-                sampleSpeed()
+                if !usesBackgroundDownloads {
+                    downloadedBytes = committedBytes; sampleSpeed()
+                    DownloadLiveActivityManager.shared.update(repoID: backgroundDownloadID, progress: progress,
+                        downloadedBytes: downloadedBytes, totalBytes: totalBytes, currentFile: currentFile,
+                        filesDone: filesDone, filesTotal: filesTotal)
+                }
                 return
             } catch {
                 attempt += 1
@@ -654,6 +766,21 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
         } else if filesTotal > 0 {
             progress = Double(filesDone) / Double(filesTotal)
         }
+    }
+
+    private static nonisolated func gitBlobSHA1(of url: URL) async throws -> String {
+        let work = Task.detached(priority: .utility) {
+            let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+            var hash = Insecure.SHA1()
+            hash.update(data: Data("blob \(size)\u{0}".utf8))
+            let handle = try FileHandle(forReadingFrom: url)
+            defer { try? handle.close() }
+            while let bytes = try handle.read(upToCount: 4 * 1_024 * 1_024), !bytes.isEmpty {
+                try Task.checkCancellation(); hash.update(data: bytes)
+            }
+            return hash.finalize().map { String(format: "%02x", $0) }.joined()
+        }
+        return try await withTaskCancellationHandler { try await work.value } onCancel: { work.cancel() }
     }
 
     private func sampleSpeed() {
@@ -851,11 +978,23 @@ final class CoreAIForegroundTransfer: NSObject, URLSessionDownloadDelegate, @unc
         progressHandler?(totalBytesWritten, expected)
     }
 
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse, newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void) {
+        var redirected = request
+        redirected.setValue(nil, forHTTPHeaderField: "Authorization")
+        if redirected.url?.scheme == "https", redirected.url?.host?.lowercased() == "huggingface.co" {
+            HFTokenStore.authorize(&redirected)
+        }
+        completionHandler(redirected)
+    }
+
     func urlSession(
         _ session: URLSession,
         downloadTask: URLSessionDownloadTask,
         didFinishDownloadingTo location: URL
     ) {
+        guard continuation != nil else { return }
         guard let destination else {
             finish(.failure(URLError(.cannotCreateFile)))
             return
@@ -910,6 +1049,7 @@ private struct HFTreeEntry: Decodable {
     let path: String
     let size: Int64?
     let lfs: LFS?
+    let oid: String?
 
     struct LFS: Decodable {
         let size: Int64?
@@ -998,6 +1138,20 @@ final class CoreAIDownloadCenter: ObservableObject {
     func start(model: CoreAIZooModel) {
         guard !removingIDs.contains(model.id) else { return }
         manager(for: model).start()
+    }
+
+    func restore(classifier: ClassifierCatalogModel, job: BackgroundDownloadJob) {
+        if let manager = existing(id: classifier.selectionID) { manager.restoreBackgroundDownload(job); return }
+        let manager = CoreAIHFDownloadManager(classifier: classifier)
+        observe(manager); downloads.insert(manager, at: 0); manager.restoreBackgroundDownload(job)
+    }
+
+    func start(classifier: ClassifierCatalogModel) {
+        guard !ClassifierModelStore.shared.removingIDs.contains(classifier.selectionID),
+              !ClassifierModelStore.shared.installedIDs.contains(classifier.selectionID) else { return }
+        if let existing = existing(id: classifier.selectionID) { existing.start(); return }
+        let created = CoreAIHFDownloadManager(classifier: classifier)
+        observe(created); downloads.insert(created, at: 0); created.start()
     }
 
     /// Both model-library details and the pack manager use this path. Never

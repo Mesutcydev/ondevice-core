@@ -1,5 +1,7 @@
 name: NativeUIReview
 options:
+  developmentLanguage: en
+  knownRegions: [en, hi, de, es, ar, tr, ja, fr, pt, it, el, ro, ru, zh-Hans, ko]
   deploymentTarget:
     iOS: '27.0'
 packages:
@@ -8,6 +10,8 @@ packages:
 settings:
   base:
     SWIFT_VERSION: '5.0'
+    CURRENT_PROJECT_VERSION: '8'
+    MARKETING_VERSION: '2.0'
     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
     GENERATE_INFOPLIST_FILE: YES
     CODE_SIGNING_ALLOWED: NO
@@ -19,15 +23,42 @@ targets:
     info:
       path: Info.plist
       properties:
-        CFBundleDisplayName: NativeUIReview
+        CFBundleDisplayName: Token AI QA
+        CFBundleShortVersionString: "2.0"
+        CFBundleVersion: "8"
+        NSSupportsLiveActivities: true
+        CFBundleURLTypes:
+          - CFBundleURLSchemes: [tokenai]
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
     sources:
       - path: ReviewApp.swift
+      - path: DownloadActivityReview.swift
+      - path: ../../Shared/DownloadActivityAttributes.swift
+      - path: ../../Shared/DownloadActivityContent.swift
+      - path: ../../IOSLocalLLM/Services/DownloadLiveActivity.swift
+      - path: ResponseRenderingReview.swift
+      - path: ../../IOSLocalLLM/Views/Assistant/AssistantStructuredAnswer.swift
+      - path: ../../IOSLocalLLM/Views/Assistant/CodeBlock.swift
+      - path: ../../IOSLocalLLM/Models/AssistantSourceFile.swift
+      - path: ../../IOSLocalLLM/Views/DiffView.swift
+      - path: ../../IOSLocalLLM/Models/KoduTheme.swift
+      - path: ../../IOSLocalLLM/Views/Studio/StudioTokens.swift
+      - path: ../../IOSLocalLLM/Services/LegalAcceptanceManager.swift
+      - path: ../../IOSLocalLLM/Utilities/HapticManager.swift
       - path: AgentChatReview.swift
       - path: APIProviderReview.swift
       - path: GitHubReview.swift
+      - path: CodingWorkspaceReview.swift
       - path: ../../IOSLocalLLM/Models/GitHubWorkspace.swift
+      - path: ../../IOSLocalLLM/Models/CodingWorkspaceModels.swift
+      - path: ../../IOSLocalLLM/Services/CodingWorkspaceVault.swift
+      - path: ../../IOSLocalLLM/Services/CodingWorkspaceController.swift
+      - path: ../../IOSLocalLLM/Services/CodingWorkspaceArchive.swift
+      - path: ../../IOSLocalLLM/Views/CodingWorkspaceView.swift
+      - path: ../../IOSLocalLLM/Views/CodingCodeEditor.swift
+      - path: ../../IOSLocalLLM/Views/CodingWorkspacePreview.swift
+      - path: ../../IOSLocalLLM/Views/CodingFileDiffView.swift
       - path: ../../IOSLocalLLM/Services/GitHubClient.swift
       - path: ../../IOSLocalLLM/Services/RepositorySecretScanner.swift
       - path: ../../IOSLocalLLM/Services/GitHubDraftProtection.swift
@@ -41,7 +72,9 @@ targets:
       - path: ../../IOSLocalLLM/Services/NetworkActivityMonitor.swift
       - path: ../../IOSLocalLLM/Views/APIProvidersView.swift
       - path: ../../IOSLocalLLM/Views/Assistant/AssistantActivity.swift
+      - path: ../../IOSLocalLLM/Views/Assistant/AssistantAttachedImage.swift
       - path: ../../IOSLocalLLM/Views/Assistant/AssistantToolPresentation.swift
+      - path: ../../IOSLocalLLM/Views/PhotoPickerView.swift
       - path: ../../IOSLocalLLM/Services/ParentalControlManager.swift
       - path: ../../IOSLocalLLM/Models/AppStoreModelPolicy.swift
       - path: ../../IOSLocalLLM/Models/AIContentPolicy.swift
@@ -53,22 +86,34 @@ targets:
       - path: ../../IOSLocalLLMShareExtension/ShareViewController.swift
       - path: HomeConcepts.swift
       - path: ../../IOSLocalLLM/Views/AppearanceSettingsContent.swift
+      - path: ../../IOSLocalLLM/Models/UserGuideContent.swift
+      - path: ../../IOSLocalLLM/Models/UserGuideChapters.swift
+      - path: ../../IOSLocalLLM/Views/UserGuideView.swift
       - path: ../../IOSLocalLLM/Views/ExperimentalKVCacheSettingsRow.swift
       - path: ../../IOSLocalLLM/Services/MLXAssistantKVCachePolicy.swift
       - path: ../../IOSLocalLLM/Views/LocalModelImportPicker.swift
       - path: ../../IOSLocalLLM/Assets.xcassets
+      - path: ../../Packages/OnDeviceUI/Sources/OnDeviceUI/Resources/Localizable.xcstrings
+      - path: ../../IOSLocalLLM/Services/LocalizationService.swift
       - path: HostStubs.swift
       - path: ClassifierCatalogStubs.swift
       - path: ClassifierFixture.swift
       - path: Fixtures/laya-metadata.json
+      - path: ../../IOSLocalLLM/Models/ClassifierCatalog.swift
+      - path: ../../IOSLocalLLM/Models/MiniCPMV47Catalog.swift
+      - path: ../../IOSLocalLLM/Services/HFDownloadScope.swift
+      - path: ../../IOSLocalLLM/Models/SavedClassifierTask.swift
+      - path: ../../IOSLocalLLM/Services/ClassifierModelLibrary.swift
       - path: ../../IOSLocalLLM/Services/CoreAIClassifierAdapter.swift
       - path: ../../IOSLocalLLM/Services/CoreAIClassifierWorkbench.swift
       - path: ../../IOSLocalLLM/Services/CoreAIInferenceError.swift
       - path: ../../IOSLocalLLM/Services/ClassifierResultExport.swift
       - path: ../../IOSLocalLLM/Views/CoreAIClassifierWorkbenchView.swift
+      - path: ../../IOSLocalLLM/Views/Classifiers
       - path: ../../IOSLocalLLM/Models/CoreAIZooCatalog.swift
       - path: ../../IOSLocalLLM/Services/CoreAIModelLibrary.swift
       - path: ../../IOSLocalLLM/Views/Bridge/LocalAPIServerView.swift
+      - path: ../../IOSLocalLLM/Models/LocalAPIClientSetup.swift
       - path: ../../IOSLocalLLM/Views/HomeView.swift
       - path: ../../IOSLocalLLM/Views/ChatResponseActions.swift
       - path: ../../IOSLocalLLM/Views/WorkbenchSelectionObserver.swift
@@ -80,6 +125,8 @@ targets:
       - path: ../../IOSLocalLLM/Models/PresentationRequestLifetime.swift
       - path: ../../IOSLocalLLM/Models/CaptureSessionDemand.swift
       - path: ../../IOSLocalLLM/Models/ChatMessage.swift
+      - path: ../../IOSLocalLLM/Models/ChatTemplate.swift
+      - path: ../../IOSLocalLLM/Models/LFM3ToolProtocol.swift
       - path: ../../IOSLocalLLM/Models/AssistantOutputSanitizer.swift
       - path: ../../IOSLocalLLM/Models/AssistantReplyPresentation.swift
       - path: ../../IOSLocalLLM/Models/StudioTextBlocks.swift
@@ -90,12 +137,35 @@ targets:
       - path: ../../Packages/OnDeviceUI/Example/OnDeviceUIDemo/Resources/studio-example.png
     dependencies:
       - package: OnDeviceUI
+      - target: DownloadActivityReviewExtension
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.OnDeviceNativeUIReview
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIFileSharingEnabled: YES
         INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace: YES
+  DownloadActivityReviewExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ../../Packages/OnDeviceUI/Sources/OnDeviceUI/Resources/Localizable.xcstrings
+      - path: ../../DownloadActivityExtension/DownloadActivityWidget.swift
+      - path: ../../Shared/DownloadActivityAttributes.swift
+      - path: ../../Shared/DownloadActivityContent.swift
+    info:
+      path: DownloadActivityReview-Info.plist
+      properties:
+        CFBundleDisplayName: Download Activity Review
+        CFBundleShortVersionString: "2.0"
+        CFBundleVersion: "8"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.OnDeviceNativeUIReview.downloads
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
   HostContracts:
     type: bundle.unit-test
     platform: iOS

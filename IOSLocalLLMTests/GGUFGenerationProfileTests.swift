@@ -95,7 +95,8 @@ final class GGUFGenerationProfileTests: XCTestCase {
         let profile = GGUFGenerationProfile.compact
         XCTAssertEqual(profile.contextTokens, 512)
         XCTAssertEqual(profile.inputBudget(requestedOutputTokens: 2_048), 320)
-        XCTAssertEqual(profile.clampedOutputTokens(2_048), 128)
+        XCTAssertEqual(profile.clampedOutputTokens(2_048), 2_048)
+        XCTAssertEqual(profile.clampedOutputTokens(8_192), 4_096)
     }
 
     func test_standardProfile_allowsFullUserOutputSetting() {
@@ -108,13 +109,13 @@ final class GGUFGenerationProfileTests: XCTestCase {
         let profile = GGUFGenerationProfile.standard
         // Default 2048-token reply setting: prompt gets the other half.
         XCTAssertEqual(profile.inputBudget(requestedOutputTokens: 2_048), 2_032)
-        // Output reserve never exceeds half the window.
-        XCTAssertEqual(profile.inputBudget(requestedOutputTokens: 8_192), 2_032)
+        // A large request leaves the standard reserved input space.
+        XCTAssertEqual(profile.inputBudget(requestedOutputTokens: 8_192), 512)
         // Small requests leave more room for the prompt.
         XCTAssertEqual(profile.inputBudget(requestedOutputTokens: 512), 3_568)
     }
 
-    func test_outputTokenCap_compactWinsOverUserSetting() {
+    func test_outputTokenCap_compactPreservesUserSettingWithinRunawayBound() {
         XCTAssertEqual(
             GGUFGenerationProfile.outputTokenCap(
                 isGGUF: true,
@@ -122,8 +123,21 @@ final class GGUFGenerationProfileTests: XCTestCase {
                 requested: 2_048,
                 thermalCap: 4_096
             ),
-            128
+            2_048
         )
+    }
+
+    func test_sourceRetentionKeepsContextWithoutLoweringRequestedOutput() {
+        let profile = GGUFGenerationProfile.standard
+        XCTAssertEqual(profile.inputBudget(requestedOutputTokens: 3_072), 1_008)
+        XCTAssertEqual(profile.inputBudget(requestedOutputTokens: 3_072,
+                                           retainingRecentSource: true), 2_032)
+        XCTAssertEqual(profile.clampedOutputTokens(3_072), 3_072)
+        XCTAssertEqual(profile.inputBudget(requestedOutputTokens: 512,
+                                           retainingRecentSource: true), 3_568)
+        // The recurrent Gemma workaround is unrelated to MiniCPM source retention.
+        XCTAssertEqual(GGUFGenerationProfile.compact.inputBudget(
+            requestedOutputTokens: 3_072, retainingRecentSource: true), 320)
     }
 
     func test_outputTokenCap_standardHonorsThermalCap() {

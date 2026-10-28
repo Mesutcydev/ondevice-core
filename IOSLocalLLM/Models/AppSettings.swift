@@ -123,8 +123,6 @@ final class AppSettings: ObservableObject {
     @AppStorage("voiceConversationModelID") var voiceConversationModelID: String = ""
     /// Enable tool / function calling (calculator, datetime, unit convert).
     @AppStorage("toolsEnabled")            var toolsEnabled: Bool = true
-    /// Sync conversation history to user's private CloudKit database.
-    @AppStorage("iCloudSyncEnabled")       var iCloudSyncEnabled: Bool = false
 
     /// Send the user's HF token (stored in Keychain via HFTokenStore)
     /// with downloads + search. Token presence is necessary but not
@@ -238,7 +236,7 @@ final class AppSettings: ObservableObject {
         default: return nil
         }
     }
-    /// UI language override: "system" (follow device), "en", or "tr".
+    /// UI language override: "system" or a supported ODAppLanguage code.
     /// Live-switchable via LocalizationService — see Settings → INTERFACE
     /// → language picker.
     @AppStorage("uiLanguage")              var uiLanguage: String = "system"

@@ -78,7 +78,7 @@ struct ImageGenerationView: View {
             .background { ODPageBackground().ignoresSafeArea() }
             .scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom, spacing: 0) { ODWorkspaceBottomBar { nextImageDock } }
-            .navigationTitle("Image studio")
+            .odNavigationTitle("Image studio")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 if let onOpenMenu {
@@ -129,7 +129,7 @@ struct ImageGenerationView: View {
                 Button("Cancel", role: .cancel) {}
                     .accessibilityIdentifier("image.delete-result.cancel")
             } message: {
-                Text("This removes the image from OnDevice. Copies you exported to Photos or another app remain there.")
+                Text("This removes the image from Token AI. Copies you exported to Photos or another app remain there.")
             }
         }
     }
@@ -276,7 +276,7 @@ struct ImageGenerationView: View {
                 }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("Image models")
+            .odNavigationTitle("Image models")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showsModels = false } } }
             .confirmationDialog("Delete image model?", isPresented: Binding(get: { deletingModel != nil }, set: { if !$0 { deletingModel = nil } })) {
                 Button("Delete", role: .destructive) {
@@ -301,7 +301,7 @@ struct ImageGenerationView: View {
                     Text("More steps take longer. Turbo models usually need only a few.").font(.footnote).foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Generation options")
+            .odNavigationTitle("Generation options")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showsOptions = false } } }
         }
     }

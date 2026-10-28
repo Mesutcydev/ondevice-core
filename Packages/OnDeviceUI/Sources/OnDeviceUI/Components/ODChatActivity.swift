@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Shared chat activity surfaces. The host supplies real events and timestamps.
 public struct ODToolEvent: Identifiable, Equatable {
@@ -13,6 +14,179 @@ public struct ODToolEvent: Identifiable, Equatable {
         self.title = title
         self.detail = detail
         self.status = status
+    }
+}
+
+private extension ODToolEvent.Status {
+    var label: LocalizedStringResource {
+        switch self {
+        case .running: ODLocalizedString("Running")
+        case .success: ODLocalizedString("Completed")
+        case .failure: ODLocalizedString("Failed")
+        case .cancelled: ODLocalizedString("Cancelled")
+        }
+    }
+}
+
+/// Replayed updates replace an attempt's state without increasing its count.
+public struct ODToolActivitySummary: Equatable {
+    public let events: [ODToolEvent]
+    public var completedCount: Int { events.filter { $0.status != .running }.count }
+    public var runningCount: Int { events.filter { $0.status == .running }.count }
+    public var failureCount: Int { events.filter { $0.status == .failure }.count }
+
+    public init(events: [ODToolEvent]) {
+        var indices: [UUID: Int] = [:]
+        var unique: [ODToolEvent] = []
+        for event in events {
+            if let index = indices[event.id] { unique[index] = event }
+            else { indices[event.id] = unique.count; unique.append(event) }
+        }
+        self.events = unique
+    }
+}
+
+/// Retains the existing compact pills and adds an optional full-width activity log.
+/// The host owns disclosure state so recycling a row cannot reset the choice.
+public struct ODToolActivityGroup: View {
+    public let events: [ODToolEvent]
+    @Binding public var isExpanded: Bool
+    @State private var selectedEvent: ODToolEvent?
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    public init(events: [ODToolEvent], isExpanded: Binding<Bool>) {
+        self.events = events
+        _isExpanded = isExpanded
+    }
+
+    public var body: some View {
+        let summary = ODToolActivitySummary(events: events)
+        VStack(alignment: .leading, spacing: ODLayout.elementGap) {
+            Button { isExpanded.toggle() } label: {
+                HStack(alignment: .firstTextBaseline, spacing: ODLayout.elementGap) {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.forward")
+                        .font(.caption.weight(.semibold)).accessibilityHidden(true)
+                    let summaryLayout = typeSize.isAccessibilitySize
+                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: ODLayout.unit))
+                        : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: ODLayout.elementGap))
+                    summaryLayout {
+                        if summary.runningCount > 0 {
+                            Text("Using tools · \(summary.completedCount) complete · \(summary.runningCount) running", bundle: .module)
+                        } else if summary.completedCount == 1 {
+                            Text("Used 1 tool", bundle: .module)
+                        } else {
+                            Text("Used \(summary.completedCount) tools", bundle: .module)
+                        }
+                        if summary.failureCount > 0 {
+                            Label { Text("\(summary.failureCount) failed", bundle: .module) } icon: {
+                                Image(systemName: "exclamationmark.circle").accessibilityHidden(true)
+                            }
+                            .foregroundStyle(.red)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .font(.footnote)
+                .foregroundStyle(ODPalette.text)
+                .frame(maxWidth: .infinity, minHeight: ODLayout.minimumHit, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(Text(isExpanded ? ODLocalizedString("Expanded") : ODLocalizedString("Collapsed")))
+            .accessibilityIdentifier("chat.tools.summary")
+
+            if isExpanded {
+                LazyVStack(spacing: 0) {
+                    ForEach(summary.events) { event in
+                        Button { selectedEvent = event } label: {
+                            HStack(alignment: .firstTextBaseline, spacing: ODLayout.elementGap) {
+                                ODToolStatusIcon(status: event.status)
+                                Text(event.title).foregroundStyle(ODPalette.text)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Spacer(minLength: 0)
+                                Text(event.status.label).font(.caption2).foregroundStyle(ODPalette.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .font(.system(.footnote, design: .monospaced))
+                            .padding(ODLayout.elementGap)
+                            .frame(maxWidth: .infinity, minHeight: ODLayout.minimumHit, alignment: .leading)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint(Text("Shows tool details", bundle: .module))
+                        .accessibilityIdentifier("chat.tool.\(event.id.uuidString)")
+                    }
+                }
+                .background(ODPalette.input, in: RoundedRectangle(cornerRadius: 12))
+            } else {
+                ODToolPillStrip(events: summary.events)
+            }
+        }
+        .sheet(item: $selectedEvent) { event in
+            ODToolDetailView(event: event)
+        }
+    }
+}
+
+private struct ODToolStatusIcon: View {
+    let status: ODToolEvent.Status
+    var body: some View {
+        switch status {
+        case .running: ProgressView().controlSize(.mini).accessibilityHidden(true)
+        case .success: Image(systemName: "checkmark.circle").foregroundStyle(ODPalette.secondary).accessibilityHidden(true)
+        case .failure: Image(systemName: "xmark.circle.fill").foregroundStyle(.red).accessibilityHidden(true)
+        case .cancelled: Image(systemName: "minus.circle").foregroundStyle(ODPalette.secondary).accessibilityHidden(true)
+        }
+    }
+}
+
+private struct ODToolDetailView: View {
+    let event: ODToolEvent
+    @Environment(\.dismiss) private var dismiss
+    @State private var visibleCharacters = 8_192
+    @State private var copied = false
+    private var output: String { event.detail.isEmpty ? event.title : event.detail }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: ODLayout.elementGap) {
+                    Text(event.title).font(.headline).textSelection(.enabled)
+                    Label { Text(event.status.label) } icon: { ODToolStatusIcon(status: event.status) }
+                        .font(.footnote).foregroundStyle(ODPalette.secondary)
+                    Text(String(output.prefix(visibleCharacters)))
+                        .font(.system(.footnote, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("chat.tool.details")
+                    if output.count > visibleCharacters {
+                        Button { visibleCharacters += 8_192 } label: { Text("Show more output", bundle: .module) }
+                            .frame(minHeight: ODLayout.minimumHit)
+                            .accessibilityIdentifier("chat.tool.more")
+                    }
+                }
+                .padding()
+            }
+            .navigationTitle(Text("Tool details", bundle: .module))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        UIPasteboard.general.string = output
+                        copied = true
+                    } label: {
+                        Text(copied ? ODLocalizedString("Copied") : ODLocalizedString("Copy"))
+                    }
+                    .accessibilityIdentifier("chat.tool.copy")
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button { dismiss() } label: { Text("Done", bundle: .module) }
+                }
+            }
+        }
+        .tint(ODPalette.text)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 }
 
@@ -111,7 +285,7 @@ public struct ODToolPillStrip: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(event.title)
-                    .accessibilityValue(event.status.rawValue)
+                    .accessibilityValue(Text(event.status.label))
                     .accessibilityHint(Text("Shows tool details", bundle: .module))
                     .accessibilityIdentifier("chat.tool.\(event.id.uuidString)")
                 }
@@ -120,24 +294,7 @@ public struct ODToolPillStrip: View {
         .frame(minHeight: ODLayout.minimumHit)
         .accessibilityIdentifier("chat.tools")
         .sheet(item: $selectedEvent) { event in
-            NavigationStack {
-                ScrollView {
-                    Text(event.detail.isEmpty ? event.title : event.detail)
-                        .font(.system(.footnote, design: .monospaced))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                        .accessibilityIdentifier("chat.tool.details")
-                }
-                .navigationTitle(event.title)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button { selectedEvent = nil } label: { Text("Done", bundle: .module) }
-                    }
-                }
-            }
-            .presentationDetents([.medium, .large])
+            ODToolDetailView(event: event)
         }
     }
 
@@ -155,30 +312,15 @@ public struct ODToolPillStrip: View {
     }
 }
 
-/// Only this small view redraws for the dots; transcript text is not re-laid out.
+/// The model-activity indicator: tokens streaming along the brand mark.
+/// Only this small view redraws; transcript text is not re-laid out.
 public struct ODActivityDots: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.odWorkspaceVisible) private var workspaceVisible
     public init() {}
 
     public var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30,
-                                paused: reduceMotion || !workspaceVisible || scenePhase != .active)) { context in
-            let time = context.date.timeIntervalSinceReferenceDate
-            HStack(spacing: 4) {
-                ForEach(0..<3) { index in
-                    let wave = reduceMotion ? 0 : max(0, sin(time * .pi * 2 - Double(index) * 0.9))
-                    Circle()
-                        .fill(ODPalette.secondary)
-                        .frame(width: 6, height: 6)
-                        .offset(y: -3 * wave)
-                        .opacity(reduceMotion ? 0.7 : 0.55 + 0.45 * wave)
-                }
-            }
+        ODBrandMark(height: 10, motion: .live)
+            .foregroundStyle(ODPalette.text)
             .frame(height: 12)
-        }
-        .accessibilityHidden(true)
     }
 }
 
@@ -198,7 +340,7 @@ public struct ODTimedActivityLabel: View {
             ODActivityDots()
             TimelineView(.animation(minimumInterval: 1, paused: !workspaceVisible || scenePhase != .active)) { context in
                 let seconds = max(0, Int(context.date.timeIntervalSince(startedAt)))
-                Text("\(title) · \(seconds)s")
+                Text("\(Text(odKey: title)) · \(seconds)s", bundle: .module)
                     .font(.footnote.weight(.medium))
                     .monospacedDigit()
                     .foregroundStyle(ODPalette.secondary)

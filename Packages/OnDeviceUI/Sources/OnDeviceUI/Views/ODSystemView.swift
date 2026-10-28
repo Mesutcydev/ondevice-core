@@ -11,7 +11,7 @@ struct ODSystemView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Current model") {
+                Section(ODLocalizedString("Current model")) {
                     if let model = store.selectedModel {
                         Button { detailModel = model } label: {
                             HStack(alignment: .top, spacing: ODLayout.labelGap) {
@@ -31,28 +31,28 @@ struct ODSystemView: View {
                         }
                         .buttonStyle(.plain)
                     } else {
-                        Text("No model selected").foregroundStyle(.secondary)
+                        Text("No model selected", bundle: .module).foregroundStyle(.secondary)
                     }
                 }
-                Section("Runtime") {
-                    LabeledContent("Execution", value: store.executionLabel ?? "—")
-                    LabeledContent("Memory", value: store.metrics.memoryLabel ?? "—")
-                    LabeledContent("Thermal state", value: store.metrics.thermalLabel ?? "—")
+                Section(ODLocalizedString("Runtime")) {
+                    LabeledContent(ODLocalizedString("Execution"), value: store.executionLabel ?? "—")
+                    LabeledContent(ODLocalizedString("Memory"), value: store.metrics.memoryLabel ?? "—")
+                    LabeledContent(ODLocalizedString("Thermal state"), value: store.metrics.thermalLabel ?? "—")
                 }
                 Section {
-                    LabeledContent("Installed models", value: String(store.models.filter(\.isInstalled).count))
-                    LabeledContent("Model files", value: store.metrics.modelStorageBytes.map(ODFormat.bytes) ?? "—")
-                    LabeledContent("Available", value: store.metrics.diskFreeBytes.map(ODFormat.bytes) ?? "—")
-                    LabeledContent("Device capacity", value: store.metrics.diskTotalBytes.map(ODFormat.bytes) ?? "—")
-                    Button("Manage storage", systemImage: "internaldrive") { store.send(.manageStorage) }
+                    LabeledContent(ODLocalizedString("Installed models"), value: String(store.models.filter(\.isInstalled).count))
+                    LabeledContent(ODLocalizedString("Model files"), value: store.metrics.modelStorageBytes.map(ODFormat.bytes) ?? "—")
+                    LabeledContent(ODLocalizedString("Available"), value: store.metrics.diskFreeBytes.map(ODFormat.bytes) ?? "—")
+                    LabeledContent(ODLocalizedString("Device capacity"), value: store.metrics.diskTotalBytes.map(ODFormat.bytes) ?? "—")
+                    Button(ODLocalizedString("Manage storage"), systemImage: "internaldrive") { store.send(.manageStorage) }
                         .disabled(!store.canPerformActions || !store.capabilities.canManageStorage)
                 } header: {
-                    Text("Storage")
+                    Text("Storage", bundle: .module)
                 } footer: {
-                    Text("A dash means the measurement is unavailable.")
+                    Text("A dash means the measurement is unavailable.", bundle: .module)
                 }
                 Section {
-                    Button("Manage models", systemImage: "cube") {
+                    Button(ODLocalizedString("Manage models"), systemImage: "cube") {
                         store.selectedTab = .models
                         store.secondaryRoute = nil
                         dismiss()
@@ -62,11 +62,11 @@ struct ODSystemView: View {
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background { ODPageBackground().ignoresSafeArea() }
-            .navigationTitle("Device")
+            .odNavigationTitle("Device")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(ODLocalizedString("Done")) { dismiss() }
                 }
             }
             .sheet(item: $detailModel, onDismiss: {
@@ -87,15 +87,15 @@ struct ODSystemView: View {
         switch store.phase(for: model) {
         case .preparing(let step):
             HStack(spacing: ODLayout.elementGap) {
-                ProgressView().controlSize(.mini).accessibilityHidden(true)
-                Text(step.isEmpty ? "Preparing" : step).font(.caption).foregroundStyle(.secondary)
+                ODBrandMark(height: 8, motion: .live)
+                Text(odKey: step.isEmpty ? "Preparing" : step).font(.caption).foregroundStyle(.secondary)
             }
         case .ready:
-            Label("Ready", systemImage: "checkmark.circle").font(.caption).foregroundStyle(.secondary)
+            Label(ODLocalizedString("Ready"), systemImage: "checkmark.circle").font(.caption).foregroundStyle(.secondary)
         case .failed(let message):
-            Label(message, systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(.secondary)
+            Label(ODLocalizedString(key: message), systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(.secondary)
         case .unloaded:
-            Text("Not loaded").font(.caption).foregroundStyle(.secondary)
+            Text("Not loaded", bundle: .module).font(.caption).foregroundStyle(.secondary)
         }
     }
 }

@@ -1,0 +1,61 @@
+{
+  "result": [
+    {
+      "id": "158a20145769468f835ea4dead3871da",
+      "pattern": "mesut.uk/privacy",
+      "script": "boo-player-pairing",
+      "request_limit_fail_open": false
+    },
+    {
+      "id": "376a40d9e8d340228e42596fa46ca100",
+      "pattern": "mesut.uk/support",
+      "script": "boo-player-pairing",
+      "request_limit_fail_open": false
+    },
+    {
+      "id": "df499f3ca4664312bda61e3c78fbd9fb",
+      "pattern": "mesut.uk/health",
+      "script": "boo-player-pairing",
+      "request_limit_fail_open": false
+    },
+    {
+      "id": "007a8f5282da4ce28865a22669c7993e",
+      "pattern": "mesut.uk/pair/*",
+      "script": "boo-player-pairing",
+      "request_limit_fail_open": false
+    },
+    {
+      "id": "40885d3b7bdb41c4920bda6d4ae7f430",
+      "pattern": "mesut.uk/v1/*",
+      "script": "boo-player-pairing",
+      "request_limit_fail_open": false
+    },
+    {
+      "id": "6a4a220674a8491e8100a897df59b6d5",
+      "pattern": "mesut.uk/connect*",
+      "script": "boo-player-pairing",
+      "request_limit_fail_open": false
+    },
+    {
+      "id": "0a0cf2ab938a4529a6185ffd7bf3212e",
+      "pattern": "mesut.uk/apps/token*",
+      "script": "token-ai-pages",
+      "request_limit_fail_open": false
+    },
+    {
+      "id": "96886d55d51246ce9f3aa0eb48c04613",
+      "pattern": "mesut.uk/assets/token-icon.png",
+      "script": "token-ai-pages",
+      "request_limit_fail_open": false
+    },
+    {
+      "id": "f7862398dae74a869ec2dcbb3dcbba7f",
+      "pattern": "mesut.uk/apps/repo-manager*",
+      "script": "mesut-repo-manager",
+      "request_limit_fail_open": false
+    }
+  ],
+  "success": true,
+  "errors": [],
+  "messages": []
+}

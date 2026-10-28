@@ -7,6 +7,17 @@ struct ClassifierModelInfo: Identifiable, Equatable, Sendable {
     let window: Int
     var supportsCalibration = false
     var hasDirectAnswerHead = false
+    var isImage = false
+}
+
+/// Captures the completed run independently of the next input/model draft.
+/// Each successful run gets its own identity, even when its scores are identical.
+struct ClassifierPrintedResult: Identifiable, Sendable {
+    let id = UUID()
+    let answer: CoreAIClassifierAnswer
+    let model: ClassifierModelInfo
+    let type: ClassifierRequest.Kind
+    let elapsedSeconds: Double
 }
 
 /// One strict request shape shared by the UI and the authenticated local API.
@@ -26,6 +37,7 @@ struct ClassifierRequest: Codable, Sendable {
     var falseCriterion: String? = nil
     var trueCriterion: String? = nil
     var calibrated: Bool? = nil
+    var imageData: Data? = nil
 
     var question: CoreAIClassifierQuestion {
         get throws {
@@ -34,12 +46,18 @@ struct ClassifierRequest: Codable, Sendable {
             switch type {
             case .choice:
                 guard rubric == nil, falseCriterion == nil, trueCriterion == nil, let options else { throw CoreAIClassifierError.invalidQuestion }
+                guard (2...20).contains(options.count), Set(options.map(\.id)).count == options.count,
+                      options.allSatisfy({ !$0.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !$0.description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else { throw CoreAIClassifierError.invalidQuestion }
                 return .choice(instructions: instructions, options: options.map { .init(id: $0.id, description: $0.description) })
             case .score:
                 guard options == nil, falseCriterion == nil, trueCriterion == nil, let rubric else { throw CoreAIClassifierError.invalidQuestion }
+                guard (2...20).contains(rubric.count), rubric.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else { throw CoreAIClassifierError.invalidQuestion }
                 return .score(instructions: instructions, rubric: rubric)
             case .boolean:
                 guard options == nil, rubric == nil else { throw CoreAIClassifierError.invalidQuestion }
+                guard (falseCriterion == nil) == (trueCriterion == nil),
+                      falseCriterion.map({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) ?? true,
+                      trueCriterion.map({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) ?? true else { throw CoreAIClassifierError.invalidQuestion }
                 return .boolean(instructions: instructions, falseCriterion: falseCriterion, trueCriterion: trueCriterion)
             }
         }
@@ -83,21 +101,38 @@ final class CoreAIClassifierWorkbench: ObservableObject {
     @Published var falseCriterion = "The input does not satisfy the instruction."
     @Published var trueCriterion = "The input satisfies the instruction."
     @Published var calibrated = false
+    @Published var imageData: Data?
     @Published private(set) var phase: Phase = .inactive
     @Published private(set) var activeModel: ClassifierModelInfo?
     @Published private(set) var answer: CoreAIClassifierAnswer?
     @Published private(set) var answerType: ClassifierRequest.Kind?
     @Published private(set) var validationMessage: String?
     @Published private(set) var usedTokens: Int?
+    @Published private(set) var savedTasks: [SavedClassifierTask] = []
+    @Published private(set) var elapsedSeconds: Double?
+    @Published private(set) var printedResult: ClassifierPrintedResult?
+    @Published private(set) var isResultStale = false
     private let backend: Backend
+    private let defaults: UserDefaults
+    private static let savedTasksKey = "Classifier.savedTasks.v1"
     private var operation: Task<Void, Never>?
     private var preview: Task<Void, Never>?
     private var epoch: UInt64 = 0
 
-    init(backend: Backend) { self.backend = backend }
+    init(backend: Backend, defaults: UserDefaults = .standard) {
+        self.backend = backend; self.defaults = defaults
+        if let data = defaults.data(forKey: Self.savedTasksKey),
+           let tasks = try? JSONDecoder().decode([SavedClassifierTask].self, from: data) { savedTasks = Array(tasks.prefix(40)) }
+    }
     var isActiveSelection: Bool { activeModel?.id == selectedModelID }
+    var selectedIsImage: Bool { (isActiveSelection && activeModel?.isImage == true) || ClassifierCatalog.model(id: selectedModelID)?.isImage == true }
+    var hasInput: Bool { selectedIsImage ? imageData != nil : !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     func request() throws -> ClassifierRequest {
+        if selectedIsImage {
+            guard let imageData, !imageData.isEmpty, imageData.count <= 20 * 1_024 * 1_024 else { throw CoreAIInferenceError.invalidImage("Choose an image under 20 MB.") }
+            return ClassifierRequest(model: selectedModelID, input: "", instructions: "", type: .choice, imageData: imageData)
+        }
         let options: [ClassifierRequest.Option]? = type == .choice ? try optionsText.split(separator: "\n", omittingEmptySubsequences: true).map { line in
             let pieces = line.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
             guard pieces.count == 2 else { throw CoreAIClassifierError.invalidQuestion }
@@ -123,8 +158,9 @@ final class CoreAIClassifierWorkbench: ObservableObject {
     }
     func activate(id: String) async throws {
         guard !phase.busy else { throw CoreAIClassifierError.busy }
+        preview?.cancel()
         epoch &+= 1; let ticket = epoch
-        phase = .loading; answer = nil; validationMessage = nil
+        phase = .loading; answer = nil; printedResult = nil; validationMessage = nil
         do {
             let info = try await backend.activate(id)
             try Task.checkCancellation()
@@ -140,15 +176,25 @@ final class CoreAIClassifierWorkbench: ObservableObject {
     }
     @discardableResult func run(_ request: ClassifierRequest) async throws -> CoreAIClassifierAnswer {
         guard !phase.busy else { throw CoreAIClassifierError.busy }
-        guard activeModel?.id == request.model else { throw CoreAIInferenceError.unavailable("Activate this classifier before running it.") }
-        _ = try request.question
+        preview?.cancel()
+        guard let model = activeModel, model.id == request.model else { throw CoreAIInferenceError.unavailable("Activate this classifier before running it.") }
+        if activeModel?.isImage == true {
+            guard request.imageData != nil else { throw CoreAIInferenceError.invalidImage("Choose an image to classify.") }
+        } else { _ = try request.question }
         epoch &+= 1; let ticket = epoch
-        phase = .running; answer = nil
+        phase = .running; answer = nil; printedResult = nil; elapsedSeconds = nil
+        let started = ContinuousClock.now
         do {
             let result = try await backend.run(request)
             try Task.checkCancellation()
             guard ticket == epoch else { throw CancellationError() }
             answer = result; answerType = request.type; phase = .ready
+            let duration = started.duration(to: .now).components
+            let seconds = Double(duration.seconds) + Double(duration.attoseconds) / 1e18
+            elapsedSeconds = seconds
+            isResultStale = false
+            printedResult = ClassifierPrintedResult(answer: result, model: model, type: request.type,
+                elapsedSeconds: seconds)
             return result
         } catch {
             if ticket == epoch { phase = error is CancellationError ? (activeModel == nil ? .inactive : .ready) : .failed(error.localizedDescription) }
@@ -158,7 +204,7 @@ final class CoreAIClassifierWorkbench: ObservableObject {
     }
     func stop() {
         guard phase.busy else { return }
-        epoch &+= 1; phase = .stopping; answer = nil
+        epoch &+= 1; phase = .stopping; answer = nil; printedResult = nil
         operation?.cancel(); backend.cancel()
     }
     func unload() {
@@ -170,13 +216,17 @@ final class CoreAIClassifierWorkbench: ObservableObject {
         await operation?.value
     }
     func runtimeDidUnload() {
+        preview?.cancel()
         activeModel = nil; answer = nil; usedTokens = nil
+        isResultStale = printedResult != nil
         if phase != .loading { epoch &+= 1; phase = .inactive }
     }
     func refreshValidation() {
         preview?.cancel(); usedTokens = nil; validationMessage = nil
+        elapsedSeconds = nil
         answer = nil; answerType = nil
-        guard isActiveSelection, !phase.busy, !input.isEmpty else { return }
+        isResultStale = printedResult != nil
+        guard isActiveSelection, !phase.busy, hasInput else { return }
         preview = Task {
             do {
                 try await Task.sleep(for: .milliseconds(250))
@@ -206,5 +256,34 @@ final class CoreAIClassifierWorkbench: ObservableObject {
             falseCriterion = "There is no request for help."; trueCriterion = "There is a request for help."
         }
         refreshValidation()
+    }
+
+    func saveTask(named rawName: String) throws {
+        guard !phase.busy, !selectedIsImage else { throw CoreAIClassifierError.busy }
+        let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name.count <= 80, savedTasks.count < 40 else { throw CoreAIInferenceError.unavailable("Use a name under 80 characters. You can save up to 40 classifiers.") }
+        // Validate task structure without requiring the user to provide input.
+        let draft = try request()
+        _ = try ClassifierRequest(model: draft.model, input: "Task validation", instructions: draft.instructions, type: draft.type,
+            options: draft.options, rubric: draft.rubric, falseCriterion: draft.falseCriterion, trueCriterion: draft.trueCriterion).question
+        let task = SavedClassifierTask(id: UUID(), name: name, type: type, instructions: instructions,
+            options: optionsText, rubric: rubricText, falseCriterion: falseCriterion, trueCriterion: trueCriterion)
+        try persist(savedTasks + [task])
+    }
+    func apply(_ task: SavedClassifierTask) {
+        guard !phase.busy, !selectedIsImage else { return }
+        type = task.type; instructions = task.instructions; optionsText = task.options; rubricText = task.rubric
+        falseCriterion = task.falseCriterion; trueCriterion = task.trueCriterion
+        refreshValidation()
+    }
+    func deleteTask(id: UUID) throws { try persist(savedTasks.filter { $0.id != id }) }
+    /// Data wipe: saved instructions are user content.
+    func clearSavedTasks() {
+        defaults.removeObject(forKey: Self.savedTasksKey)
+        savedTasks = []
+    }
+    private func persist(_ tasks: [SavedClassifierTask]) throws {
+        defaults.set(try JSONEncoder().encode(tasks), forKey: Self.savedTasksKey)
+        savedTasks = tasks
     }
 }

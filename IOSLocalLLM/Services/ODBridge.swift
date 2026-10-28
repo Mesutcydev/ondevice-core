@@ -112,6 +112,14 @@ final class ODBridge: ObservableObject {
                 self.store.requestExclusiveOperation(self.store.interruptionReason, perform: operation)
             }
         }
+        // Searching chats reads every visible turn, not just the preview.
+        store.transcriptMatches = { query in
+            Set(ConversationStore.shared.conversations.lazy.filter { conversation in
+                conversation.messages.contains {
+                    ($0.role == "user" || $0.role == "assistant") && $0.content.localizedCaseInsensitiveContains(query)
+                }
+            }.map(\.id.uuidString))
+        }
         observeServices()
         refresh()
     }
@@ -127,6 +135,7 @@ final class ODBridge: ObservableObject {
             APIProviderStore.shared.objectWillChange,
             ModelDownloadCenter.shared.objectWillChange,
             CoreAIModelStore.shared.objectWillChange,
+            ClassifierModelStore.shared.objectWillChange,
             CoreAIInferenceService.shared.objectWillChange,
             CoreAIDownloadCenter.shared.objectWillChange,
             ConversationStore.shared.objectWillChange,
@@ -176,11 +185,12 @@ final class ODBridge: ObservableObject {
 
         // ── Models ───────────────────────────────────────────────────────
         let modelsSig = center.models
-            .map { "\($0.id):\($0.state):\($0.progress):\($0.currentFile):\($0.downloader?.isPreparingModel ?? false):\($0.totalBytes):\($0.declaredCategories.contains(.assistant)):\($0.declaredCategories.contains(.vlm)):\($0.supportsCategory(.assistant)):\($0.supportsCategory(.vlm))" }
+            .map { "\($0.id):\($0.state):\($0.progress):\($0.currentFile):\($0.downloader?.isPreparingModel ?? false):\($0.totalBytes):\($0.declaredCategories.contains(.assistant)):\($0.declaredCategories.contains(.vlm)):\($0.supportsCategory(.assistant)):\($0.supportsCategory(.vlm)):\($0.downloader?.hasResumableDownloadReceipt ?? false):\($0.downloader?.isCancellingDownload ?? false)" }
             .joined(separator: "|") + "#" + coreAIInstallations
             .map { "\($0.assistantSelectionID):\($0.manifest.version):\($0.manifest.totalDownloadBytes)" }
             .joined(separator: "|") + "#" + coreAIDownloads
             .map { "\($0.id):\($0.state):\($0.progress)" }.joined(separator: "|")
+            + "#" + ClassifierModelStore.shared.installedIDs.sorted().joined(separator: "|")
             + "#\(assistant.activeSelectionID)#\(AppSettings.shared.assistantModelID)#\(assistant.canGenerateSelectedTarget)"
             + "#" + ImageGenerationService.catalog
             .map { "\($0.id):\(imageService.isInstalled($0)):\(imageService.directDownloadProgress[$0.id] ?? -1):\(imageService.directDownloadErrors[$0.id] != nil)" }
@@ -190,6 +200,7 @@ final class ODBridge: ObservableObject {
             store.models = center.models.map { model in
                 let interrupted = model.state == .idle
                     && model.downloader?.hasResumableDownloadReceipt == true
+                let failed: Bool = { if case .failed = model.state { return true }; return false }()
                 let supportedKinds = Self.supportedKinds(for: model)
                 let unsupported = model.isReady && supportedKinds.isEmpty
                     ? model.downloader.flatMap {
@@ -212,12 +223,14 @@ final class ODBridge: ObservableObject {
                         && LocalModelRegistry.assistantSelectionID(for: model) == AppSettings.shared.assistantModelID,
                     isSelectable: unavailable == nil && !supportedKinds.isEmpty,
                     unavailableReason: unavailable,
-                    availableCommands: [.details, .configure] + (model.isReady ? [.delete] : [])
+                    availableCommands: model.downloader?.isCancellingDownload == true ? [.details] : [.details, .configure] + (model.isReady ? [.delete] : [])
                         + (model.isReady && model.downloader?.destination != nil ? [.export] : [])
                         + (model.state.isActive ? [.pauseDownload, .cancelDownload] : [])
                         + (model.state == .paused ? [.download, .cancelDownload] : [])
+                        + (interrupted || failed ? [.cancelDownload] : [])
                         + (!model.isReady && !model.state.isActive && model.state != .paused && model.downloader != nil ? [.download] : []),
                     downloadStatus: {
+                        if model.downloader?.isCancellingDownload == true { return String(localized: "Canceling download") }
                         if model.downloader?.isPreparingModel == true {
                             return model.state.isActive ? "Preparing model" : "Preparation paused"
                         }
@@ -252,6 +265,11 @@ final class ODBridge: ObservableObject {
                     isDefault: pack.assistantSelectionID == AppSettings.shared.assistantModelID,
                     transfer: coreAIDownloads.first { $0.id == pack.id }.flatMap(Self.coreAITransfer)
                 )
+            }
+            store.models += ClassifierCatalog.models.map { pack in
+                ClassifierModelLibrary.entry(for: pack,
+                    installed: ClassifierModelStore.shared.installedIDs.contains(pack.selectionID),
+                    transfer: coreAIDownloads.first { $0.id == pack.selectionID }.flatMap(Self.coreAITransfer))
             }
             // Imported packs have no curated catalog identity. Keep them visible
             // and preserve the classification flag recorded by validation.
@@ -327,7 +345,8 @@ final class ODBridge: ObservableObject {
         store.metrics = ODDeviceMetrics(
             memoryLabel: Self.memoryLabel(),
             thermalLabel: Self.thermalLabel(loc),
-            modelStorageBytes: center.totalStorageUsed + coreAIInstallations.reduce(0) { $0 + max(0, $1.manifest.totalDownloadBytes) },
+            modelStorageBytes: center.totalStorageUsed + coreAIInstallations.reduce(0) { $0 + max(0, $1.manifest.totalDownloadBytes) }
+                + ClassifierModelStore.shared.storageBytes,
             diskFreeBytes: cachedDiskFree(),
             diskTotalBytes: Self.totalDiskBytes
         )
@@ -488,6 +507,7 @@ final class ODBridge: ObservableObject {
         caps.canPinConversations = routesInstalled
         caps.canOpenMacBridge = false
         caps.canOpenAPIServer = routesInstalled
+        caps.canOpenCodeWorkspace = routesInstalled
         caps.modelCommands = [.details, .configure, .export, .delete]
         store.capabilities = caps
     }
@@ -715,6 +735,17 @@ final class ODBridge: ObservableObject {
     }
 
     private func loadModel(_ id: String, in requestedKind: ODModelKind?) {
+        if let classifier = ClassifierCatalog.model(id: id) {
+            guard ClassifierModelStore.shared.installedIDs.contains(classifier.selectionID) else {
+                CoreAIDownloadCenter.shared.start(classifier: classifier); return
+            }
+            let controller = CoreAIClassifierHost.workbench
+            guard !controller.phase.busy else { return }
+            controller.selectedModelID = classifier.selectionID
+            store.secondaryRoute = nil; store.selectedTab = .classifiers
+            controller.startActivation()
+            return
+        }
         if let image = ImageGenerationService.model(forID: id) {
             let service = ImageGenerationService.shared
             if !service.isInstalled(image) { service.startDownload(image) }

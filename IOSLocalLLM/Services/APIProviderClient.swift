@@ -209,7 +209,7 @@ nonisolated final class APIProviderClient: APIProviderModelFetching, @unchecked 
         guard APIProviderEndpoint.isValidKey(key) else { throw APIProviderError.invalidKey }
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 240)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("OnDeviceMax/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("TokenAI/2.0", forHTTPHeaderField: "User-Agent")
         if provider.requiresAPIKey && !key.isEmpty {
             switch format {
             case .anthropic:

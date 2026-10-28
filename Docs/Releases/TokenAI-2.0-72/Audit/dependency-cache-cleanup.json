@@ -1,0 +1,47 @@
+[
+  {
+    "path": "/private/tmp/TokenAI-UIRefresh-DD/SourcePackages/repositories",
+    "logicalBytes": 223005194,
+    "note": "Completed build dependency mirror/prebuilt cache; reviewed checkouts and current pinned package cache retained."
+  },
+  {
+    "path": "/private/tmp/TokenAI-UIRefresh-DD/SourcePackages/prebuilts",
+    "logicalBytes": 119645462,
+    "note": "Completed build dependency mirror/prebuilt cache; reviewed checkouts and current pinned package cache retained."
+  },
+  {
+    "path": "/private/tmp/TokenAI-1.5-69-Archive/SourcePackages/repositories",
+    "logicalBytes": 222239181,
+    "note": "Completed build dependency mirror/prebuilt cache; reviewed checkouts and current pinned package cache retained."
+  },
+  {
+    "path": "/private/tmp/TokenAI-1.5-69-Archive/SourcePackages/prebuilts",
+    "logicalBytes": 119645462,
+    "note": "Completed build dependency mirror/prebuilt cache; reviewed checkouts and current pinned package cache retained."
+  },
+  {
+    "path": "/private/tmp/tokenai-validation/SourcePackages/repositories",
+    "logicalBytes": 227092135,
+    "note": "Completed build dependency mirror/prebuilt cache; reviewed checkouts and current pinned package cache retained."
+  },
+  {
+    "path": "/private/tmp/tokenai-validation/SourcePackages/prebuilts",
+    "logicalBytes": 239257585,
+    "note": "Completed build dependency mirror/prebuilt cache; reviewed checkouts and current pinned package cache retained."
+  },
+  {
+    "path": "/Users/m/Library/Developer/Xcode/DerivedData/TokenAI-aktidbtjbiudnmewkzwqklyhkrvl/SourcePackages/repositories",
+    "logicalBytes": 223005194,
+    "note": "Completed build dependency mirror/prebuilt cache; reviewed checkouts and current pinned package cache retained."
+  },
+  {
+    "path": "/Users/m/Library/Developer/Xcode/DerivedData/TokenAI-aktidbtjbiudnmewkzwqklyhkrvl/SourcePackages/prebuilts",
+    "logicalBytes": 239257585,
+    "note": "Completed build dependency mirror/prebuilt cache; reviewed checkouts and current pinned package cache retained."
+  },
+  {
+    "path": "/Users/m/.npm/_npx/32026684e21afda6",
+    "logicalBytes": 358773034,
+    "note": "Completed build dependency mirror/prebuilt cache; reviewed checkouts and current pinned package cache retained."
+  }
+]

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check OnDevice Max source or a built bundle before App Store export."""
+"""Check Token AI source or a built bundle before App Store export."""
 import argparse
 import json
 import re
@@ -10,9 +10,10 @@ import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parent.parent
-APP_ID = "com.mesutcydev.ondevicemax"
-GROUP = "group.com.mesutcydev.ondevicemax.shared"
+APP_ID = "com.token.TokenAI"
+GROUP = "group.com.token.TokenAI"
 DEBUG_MEMORY = "com.apple.developer.kernel.increased-debugging-memory-limit"
+ICLOUD_PREFIXES = ("com.apple.developer.icloud", "com.apple.developer.ubiquity")
 
 
 def read_plist(path):
@@ -32,7 +33,7 @@ def check_review_funnel(source):
     covers the known rejected implementation, not every conceivable funnel.
     """
     for marker in ("ReviewPromptService", "ReviewPromptSheet", "review.didRequestReview",
-                   "Love it — rate on App Store", "Enjoying OnDevice?"):
+                   "Love it — rate on App Store", "Enjoying Token AI?"):
         require(marker not in source, "Custom App Store review funnel was reintroduced: " + marker)
 
 
@@ -63,6 +64,28 @@ def check_candidate_metadata(info, expected_version=None, expected_build=None, e
     require(str(info.get("DTSDKName", "")).startswith("iphoneos"), "Candidate must use the iPhoneOS SDK")
 
 
+def check_framework_metadata(info, name, app_minimum_os):
+    """Framework plists must pass the same required-field checks as the app."""
+    for key in ("CFBundleShortVersionString", "CFBundleVersion"):
+        value = info.get(key)
+        require(isinstance(value, str) and bool(value.strip()), f"{name}: {key} is missing or blank")
+    minimum = info.get("MinimumOSVersion")
+    require(isinstance(minimum, str) and re.fullmatch(r"[0-9]+(?:\.[0-9]+){0,2}", minimum),
+            f"{name}: MinimumOSVersion is missing or invalid")
+    def version(value):
+        parts = [int(part) for part in value.split(".")]
+        return tuple(parts + [0] * (3 - len(parts)))
+    require(version(minimum) >= (8, 0, 0), f"{name}: MinimumOSVersion must support 64-bit iOS")
+    require(version(minimum) <= version(app_minimum_os),
+            f"{name}: MinimumOSVersion exceeds the app deployment target")
+
+
+def check_embedded_frameworks(app, app_minimum_os):
+    for framework in sorted(app.rglob("*.framework")):
+        check_framework_metadata(read_plist(framework / "Info.plist"),
+                                 str(framework.relative_to(app)), app_minimum_os)
+
+
 def check_distribution_profile(profile, entitlements, bundle_id, team_id, now=None):
     """Validate final export; a development-signed archive must be re-signed."""
     now = now or datetime.now(timezone.utc)
@@ -83,20 +106,16 @@ def check_distribution_profile(profile, entitlements, bundle_id, team_id, now=No
     require(granted.get("application-identifier") == app_identifier, "Profile does not match the explicit App ID")
     require(entitlements.get("application-identifier") == app_identifier, "Signed App ID does not match its profile")
     require(entitlements.get("com.apple.developer.team-identifier") == team_id, "Signed team does not match")
-    require(entitlements.get("com.apple.security.application-groups") == [GROUP], "Signed App Group does not match")
+    if bundle_id == APP_ID + ".Downloads":
+        require(not entitlements.get("com.apple.security.application-groups"), "Download widget must not claim model storage access")
+    else:
+        require(entitlements.get("com.apple.security.application-groups") == [GROUP], "Signed App Group does not match")
     for key, value in entitlements.items():
         if key.startswith("com.apple.") and key != "com.apple.developer.team-identifier":
             permission = granted.get(key)
             # A profile is an authorization allowlist, not a copy of the
-            # signature (Apple TN3125). Xcode's CloudKit profiles authorize a
-            # scalar environment with an array and services with "*". Keep
-            # these exceptions narrow; the signed app must still claim only
-            # CloudKit in Production below.
-            if key == "com.apple.developer.icloud-container-environment" and isinstance(permission, list):
-                require(isinstance(value, str) and value in permission, f"Profile does not grant {key}")
-            elif key == "com.apple.developer.icloud-services" and permission == "*":
-                require(value == ["CloudKit"], f"Profile does not grant the required CloudKit service")
-            elif isinstance(value, list) and isinstance(permission, list):
+            # signature (Apple TN3125): it may grant more than the app claims.
+            if isinstance(value, list) and isinstance(permission, list):
                 require(all(item in permission for item in value), f"Profile does not grant {key}")
             else:
                 require(permission == value, f"Profile does not grant {key}")
@@ -104,10 +123,9 @@ def check_distribution_profile(profile, entitlements, bundle_id, team_id, now=No
         for key in ("com.apple.developer.kernel.increased-memory-limit",
                     "com.apple.developer.kernel.extended-virtual-addressing"):
             require(entitlements.get(key) is True, f"Required runtime entitlement missing: {key}")
-        require(entitlements.get("com.apple.developer.icloud-container-identifiers") ==
-                ["iCloud." + APP_ID], "CloudKit container does not match")
-        require(entitlements.get("com.apple.developer.icloud-services") == ["CloudKit"], "CloudKit capability missing")
-        require(entitlements.get("com.apple.developer.icloud-container-environment") == "Production", "CloudKit must use Production")
+    # The app has no iCloud feature; profiles may still grant the capability.
+    require(not any(key.startswith(ICLOUD_PREFIXES) for key in entitlements),
+            "iCloud entitlements must not ship: the app has no iCloud feature")
 
 
 def check_manifest(path, required_categories):
@@ -128,10 +146,12 @@ def check_source():
         require(entitlements["com.apple.security.application-groups"] == [GROUP], "Distribution App Group mismatch")
         require(entitlements["com.apple.developer.kernel.increased-memory-limit"] is True, "Runtime memory capability missing")
         require(entitlements["com.apple.developer.kernel.extended-virtual-addressing"] is True, "Runtime addressing capability missing")
+        require(not any(key.startswith(ICLOUD_PREFIXES) for key in entitlements), "Distribution source claims iCloud")
     expected = dict(local, **{"com.apple.developer.private-cloud-compute": True})
     require(pcc == expected, "PCC variant must differ only by the managed PCC entitlement")
     check_manifest(ROOT / "IOSLocalLLM/PrivacyInfo.xcprivacy", ["UserDefaults", "FileTimestamp", "DiskSpace", "SystemBootTime"])
     check_manifest(ROOT / "IOSLocalLLMShareExtension/PrivacyInfo.xcprivacy", ["FileTimestamp"])
+    check_manifest(ROOT / "DownloadActivityExtension/PrivacyInfo.xcprivacy", [])
     config = (ROOT / "project.yml").read_text()
     require('ONDEVICE_MODEL_POLICY: APP_STORE' in config, "Public model policy is not the default")
     require('$(ONDEVICE_MODEL_POLICY)' in config, "Release does not compile the public model policy")
@@ -158,7 +178,7 @@ def check_bundle(app, team_id, distribution, expected_version=None, expected_bui
     info = read_plist(app / "Info.plist")
     check_candidate_metadata(info, expected_version, expected_build, expected_xcode_build)
     require(info["CFBundleIdentifier"] == APP_ID, "Wrong app bundle ID")
-    require(info.get("CFBundleDisplayName") == "OnDevice Max", "Wrong display name")
+    require(info.get("CFBundleDisplayName") == "Token AI", "Wrong display name")
     require(info.get("MinimumOSVersion") == "27.0", "Unexpected minimum OS")
     require(info.get("ITSAppUsesNonExemptEncryption") is False, "Export-compliance declaration missing")
     require(info.get("UIFileSharingEnabled") and info.get("LSSupportsOpeningDocumentsInPlace"), "Files access flags missing")
@@ -174,14 +194,24 @@ def check_bundle(app, team_id, distribution, expected_version=None, expected_bui
                 "Research-only FastVLM artifacts cannot ship in the App Store build")
         require(path.suffix.lower() not in (".p8", ".p12", ".pem", ".key", ".pkg", ".ipa"),
                 f"Unexpected credential/installer artifact: {path.name}")
-    extension = app / "PlugIns/OnDeviceMaxShare.appex"
+    check_embedded_frameworks(app, info["MinimumOSVersion"])
+    extension = app / "PlugIns/TokenAIShare.appex"
     ext_info = read_plist(extension / "Info.plist")
     check_candidate_metadata(ext_info, expected_version, expected_build, expected_xcode_build)
-    require(ext_info["CFBundleIdentifier"] == APP_ID + ".share", "Wrong extension bundle ID")
+    require(ext_info["CFBundleIdentifier"] == APP_ID + ".Share", "Wrong extension bundle ID")
     for key in ("CFBundleShortVersionString", "CFBundleVersion"):
         require(info[key] == ext_info[key], f"App/extension mismatch: {key}")
+    widget = app / "PlugIns/TokenAIDownloads.appex"
+    widget_info = read_plist(widget / "Info.plist")
+    check_candidate_metadata(widget_info, expected_version, expected_build, expected_xcode_build)
+    require(widget_info["CFBundleIdentifier"] == APP_ID + ".Downloads", "Wrong download widget bundle ID")
+    require(widget_info.get("NSExtension", {}).get("NSExtensionPointIdentifier") == "com.apple.widgetkit-extension",
+            "Download widget extension is not configured for WidgetKit")
+    require(info.get("NSSupportsLiveActivities") is True, "Live Activities are not enabled")
+    for key in ("CFBundleShortVersionString", "CFBundleVersion", "MinimumOSVersion"):
+        require(info[key] == widget_info[key], f"App/widget mismatch: {key}")
     for bundle, categories in ((app, ["UserDefaults", "FileTimestamp", "DiskSpace", "SystemBootTime"]),
-                               (extension, ["FileTimestamp"])):
+                               (extension, ["FileTimestamp"]), (widget, [])):
         check_manifest(bundle / "PrivacyInfo.xcprivacy", categories)
         if distribution:
             require(bool(team_id), "Team ID required for signed distribution verification")

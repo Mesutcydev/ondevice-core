@@ -54,7 +54,7 @@ final class ShareInboxTests: XCTestCase {
 
     private func handoff(_ text: String) throws -> URL {
         var url = URLComponents()
-        url.scheme = "ondevice-max"
+        url.scheme = "tokenai"
         url.host = "share"
         url.queryItems = [URLQueryItem(name: "text", value: text)]
         return try XCTUnwrap(url.url)

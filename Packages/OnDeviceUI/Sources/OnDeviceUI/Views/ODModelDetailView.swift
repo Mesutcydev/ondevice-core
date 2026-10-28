@@ -33,7 +33,7 @@ struct ODModelDetailView: View {
                                 Text(model.metadata).font(.body).foregroundStyle(ODPalette.secondary)
                             }
                             if model.isDefault {
-                                Text("Default \(model.kind.title.lowercased()) model")
+                                Text("Default \(model.kind.title.lowercased()) model", bundle: .module)
                                     .font(.caption).foregroundStyle(ODPalette.secondary)
                             }
                         }
@@ -53,34 +53,34 @@ struct ODModelDetailView: View {
                                 .fixedSize(horizontal: false, vertical: true)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        Text("Download size measures storage. Runtime memory varies with context and workload; the app checks availability before loading.")
+                        Text("Download size measures storage. Runtime memory varies with context and workload; the app checks availability before loading.", bundle: .module)
                             .font(.footnote).foregroundStyle(.secondary)
                         availableActions(model)
                     }
                     .padding(ODLayout.pageInset)
                 } else {
-                    ContentUnavailableView("Model unavailable", systemImage: "cube",
-                                           description: Text("This model is no longer in your library."))
+                    ContentUnavailableView(ODLocalizedString("Model unavailable"), systemImage: "cube",
+                                           description: Text("This model is no longer in your library.", bundle: .module))
                         .padding(.top, ODLayout.pageInset * 2)
                 }
             }
             .background { ODPageBackground().ignoresSafeArea() }
-            .navigationTitle("Model details")
+            .odNavigationTitle("Model details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }.tint(ODPalette.text)
+                    Button(ODLocalizedString("Done")) { dismiss() }.tint(ODPalette.text)
                 }
             }
-            .confirmationDialog("Delete this model?", isPresented: $deletionPresented, titleVisibility: .visible) {
+            .confirmationDialog(ODLocalizedString("Delete this model?"), isPresented: $deletionPresented, titleVisibility: .visible) {
                 if let model {
-                    Button("Delete \(model.name)", role: .destructive) {
+                    Button(ODLocalizedString("Delete \(model.name)"), role: .destructive) {
                         performAfterDismiss(.modelAction(modelID: model.id, command: .delete))
                     }
                 }
-                Button("Cancel", role: .cancel) {}
+                Button(ODLocalizedString("Cancel"), role: .cancel) {}
             } message: {
-                Text("Remove \(model?.name ?? "this model") from your device?")
+                Text("Remove \(model?.name ?? "this model") from your device?", bundle: .module)
             }
         }
         .tint(ODPalette.text)
@@ -88,13 +88,13 @@ struct ODModelDetailView: View {
 
     @ViewBuilder private func stateSection(_ model: ODModel) -> some View {
         if !model.isInstalled, let reason = model.unavailableReason {
-            Text(reason).font(.subheadline).foregroundStyle(ODPalette.secondary)
+            Text(odKey: reason).font(.subheadline).foregroundStyle(ODPalette.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         } else if model.isInstalled && model.kind == .classifier {
             VStack(alignment: .leading, spacing: ODLayout.labelGap) {
-                Label("Installed for typed decisions", systemImage: "checklist")
+                Label(ODLocalizedString("Installed for typed decisions"), systemImage: "checklist")
                     .font(.headline)
-                Text("Choose options, score against a rubric, or ask a yes/no question in the Classifiers workspace.")
+                Text("Choose options, score against a rubric, or ask a yes/no question in the Classifiers workspace.", bundle: .module)
                     .font(.subheadline).foregroundStyle(ODPalette.secondary)
                 ODPrimaryButton("Use classifier", symbol: "checklist") {
                     performAfterDismiss(.loadModelInWorkspace(model.id, .classifier))
@@ -106,13 +106,13 @@ struct ODModelDetailView: View {
         } else if model.isInstalled && !model.isSelectable {
             VStack(alignment: .leading, spacing: ODLayout.labelGap) {
                 if let reason = model.unavailableReason {
-                    Label("Installed, but unavailable", systemImage: "exclamationmark.circle")
+                    Label(ODLocalizedString("Installed, but unavailable"), systemImage: "exclamationmark.circle")
                         .font(.headline).foregroundStyle(ODPalette.text)
-                    Text(reason)
+                    Text(odKey: reason)
                         .font(.subheadline).foregroundStyle(ODPalette.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 } else {
-                    Text("Installed on this device")
+                    Text("Installed on this device", bundle: .module)
                         .font(.subheadline).foregroundStyle(ODPalette.secondary)
                     ODPrimaryButton("Manage Core AI pack", symbol: "cpu") {
                         performAfterDismiss(.openCoreAIPacks)
@@ -121,14 +121,14 @@ struct ODModelDetailView: View {
             }
         } else if let status = model.downloadStatus {
             VStack(alignment: .leading, spacing: ODLayout.elementGap) {
-                Text(status).font(.headline)
+                Text(odKey: status).font(.headline)
                 if let detail = model.downloadDetail {
                     Text(detail).font(.subheadline).foregroundStyle(ODPalette.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if status != "Download failed" {
                     ProgressView(value: model.downloadProgress)
-                        .accessibilityLabel(model.downloadDetail == nil ? "Model download progress" : "Model preparation progress")
+                        .accessibilityLabel(Text(odKey: model.downloadDetail == nil ? "Model download progress" : "Model preparation progress"))
                 }
                 if model.isDownloadPaused || status == "Download failed" {
                     ODPrimaryButton(model.downloadDetail == nil ? "Resume download" : "Resume preparation", symbol: "arrow.clockwise") {
@@ -142,9 +142,9 @@ struct ODModelDetailView: View {
             VStack(alignment: .leading, spacing: ODLayout.labelGap) {
                 HStack(spacing: ODLayout.elementGap) {
                     ProgressView().tint(ODPalette.text).accessibilityHidden(true)
-                    Text("Preparing model").font(.headline).foregroundStyle(ODPalette.text)
+                    Text("Preparing model", bundle: .module).font(.headline).foregroundStyle(ODPalette.text)
                 }
-                Text(step.isEmpty ? "Getting the model ready to use." : step)
+                Text(odKey: step.isEmpty ? "Getting the model ready to use." : step)
                     .font(.subheadline).foregroundStyle(ODPalette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -152,9 +152,9 @@ struct ODModelDetailView: View {
             .accessibilityElement(children: .combine)
         case .failed(let message):
             VStack(alignment: .leading, spacing: ODLayout.labelGap) {
-                Label("The model couldn’t load", systemImage: "exclamationmark.circle")
+                Label(ODLocalizedString("The model couldn’t load"), systemImage: "exclamationmark.circle")
                     .font(.headline).foregroundStyle(ODPalette.text)
-                Text(message)
+                Text(odKey: message)
                     .font(.subheadline).foregroundStyle(ODPalette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 ODPrimaryButton("Try again", symbol: "arrow.clockwise") { performAfterDismiss(.loadModel(model.id)) }
@@ -162,7 +162,7 @@ struct ODModelDetailView: View {
             }
         case .ready:
             VStack(alignment: .leading, spacing: ODLayout.labelGap) {
-                Label("Loaded", systemImage: "checkmark.circle.fill")
+                Label(ODLocalizedString("Loaded"), systemImage: "checkmark.circle.fill")
                     .font(.subheadline).foregroundStyle(ODPalette.secondary)
                 if model.supportedKinds.contains(.language)
                     && model.supportedKinds.contains(.vision) {
@@ -178,7 +178,7 @@ struct ODModelDetailView: View {
             }
         case .unloaded:
             VStack(alignment: .leading, spacing: ODLayout.labelGap) {
-                Text(model.isInstalled ? "Load this model when you’re ready to use it." : "Install this model from your catalog to use it on this device.")
+                Text(odKey: model.isInstalled ? "Load this model when you’re ready to use it." : "Install this model from your catalog to use it on this device.")
                     .font(.subheadline).foregroundStyle(ODPalette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if model.isInstalled {
@@ -190,7 +190,7 @@ struct ODModelDetailView: View {
                             .disabled(!canLoad)
                     }
                     if !store.canPerformActions || !store.capabilities.canLoadModels {
-                        Text("Model loading is currently unavailable.")
+                        Text("Model loading is currently unavailable.", bundle: .module)
                             .font(.caption).foregroundStyle(ODPalette.secondary)
                     }
                 } else {
@@ -200,7 +200,7 @@ struct ODModelDetailView: View {
                         }
                         .disabled(!store.canPerformActions)
                     } else {
-                        Text("This model is not available for download.")
+                        Text("This model is not available for download.", bundle: .module)
                             .font(.footnote).foregroundStyle(ODPalette.secondary)
                     }
                 }
@@ -230,7 +230,7 @@ struct ODModelDetailView: View {
                 ForEach(commands) { command in
                     if command == .delete {
                         Button(role: .destructive) { deletionPresented = true } label: {
-                            Label("Delete model", systemImage: "trash")
+                            Label(ODLocalizedString("Delete model"), systemImage: "trash")
                                 .font(.body).foregroundStyle(ODPalette.red)
                                 .frame(maxWidth: .infinity, minHeight: ODLayout.rowMinimumHeight, alignment: .leading)
                                 .contentShape(Rectangle())
@@ -298,13 +298,13 @@ struct ODDetailRow: View {
         Group {
             if dynamicType.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: ODLayout.elementGap) {
-                    Text(title).foregroundStyle(ODPalette.secondary)
+                    Text(odKey: title).foregroundStyle(ODPalette.secondary)
                     Text(value).foregroundStyle(ODPalette.text).monospacedDigit()
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: ODLayout.labelGap) {
-                    Text(title).foregroundStyle(ODPalette.secondary)
+                    Text(odKey: title).foregroundStyle(ODPalette.secondary)
                     Spacer(minLength: 0)
                     Text(value)
                         .foregroundStyle(ODPalette.text)

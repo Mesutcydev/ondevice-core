@@ -1,0 +1,83 @@
+{
+  "version": "2.0",
+  "build": "72",
+  "buildId": "3c3c1886-a0c9-4407-9fec-92510b9d6489",
+  "ipa": "/Users/m/Desktop/OnDeviceMax/build/appstore/2.0-72/signed-export/TokenAI.ipa",
+  "sha256": "253304ab5c43c069e957d8e2cb3448313a61b1966c236e357d816a95849a512d",
+  "bytes": 93492413,
+  "signedDistributionVerification": "passed",
+  "deepStrictCodeSignatureVerification": "passed",
+  "toolchain": "Xcode 27.1 / 27A9275",
+  "verifiedAtUTC": "2026-10-24T17:30:20.312812+00:00",
+  "bundles": [
+    {
+      "path": "TokenAI.app",
+      "identity": {
+        "CFBundleIdentifier": "com.token.TokenAI",
+        "CFBundleDisplayName": "Token: Local AI Studio",
+        "CFBundleShortVersionString": "2.0",
+        "CFBundleVersion": "72",
+        "MinimumOSVersion": "27.0",
+        "DTXcodeBuild": "27A9275",
+        "DTSDKBuild": "24A94232"
+      },
+      "signedEntitlements": {
+        "application-identifier": "PUH4GMFV56.com.token.TokenAI",
+        "beta-reports-active": true,
+        "com.apple.developer.icloud-container-environment": "Production",
+        "com.apple.developer.icloud-container-identifiers": [
+          "iCloud.com.token.TokenAI"
+        ],
+        "com.apple.developer.icloud-services": [
+          "CloudKit"
+        ],
+        "com.apple.developer.kernel.extended-virtual-addressing": true,
+        "com.apple.developer.kernel.increased-memory-limit": true,
+        "com.apple.developer.team-identifier": "PUH4GMFV56",
+        "com.apple.security.application-groups": [
+          "group.com.token.TokenAI"
+        ],
+        "get-task-allow": false
+      }
+    },
+    {
+      "path": "TokenAI.app/PlugIns/TokenAIDownloads.appex",
+      "identity": {
+        "CFBundleIdentifier": "com.token.TokenAI.Downloads",
+        "CFBundleDisplayName": "Token AI Downloads",
+        "CFBundleShortVersionString": "2.0",
+        "CFBundleVersion": "72",
+        "MinimumOSVersion": "27.0",
+        "DTXcodeBuild": "27A9275",
+        "DTSDKBuild": "24A94232"
+      },
+      "signedEntitlements": {
+        "application-identifier": "PUH4GMFV56.com.token.TokenAI.Downloads",
+        "beta-reports-active": true,
+        "com.apple.developer.team-identifier": "PUH4GMFV56",
+        "get-task-allow": false
+      }
+    },
+    {
+      "path": "TokenAI.app/PlugIns/TokenAIShare.appex",
+      "identity": {
+        "CFBundleIdentifier": "com.token.TokenAI.Share",
+        "CFBundleDisplayName": "Token AI",
+        "CFBundleShortVersionString": "2.0",
+        "CFBundleVersion": "72",
+        "MinimumOSVersion": "27.0",
+        "DTXcodeBuild": "27A9275",
+        "DTSDKBuild": "24A94232"
+      },
+      "signedEntitlements": {
+        "application-identifier": "PUH4GMFV56.com.token.TokenAI.Share",
+        "beta-reports-active": true,
+        "com.apple.developer.team-identifier": "PUH4GMFV56",
+        "com.apple.security.application-groups": [
+          "group.com.token.TokenAI"
+        ],
+        "get-task-allow": false
+      }
+    }
+  ]
+}

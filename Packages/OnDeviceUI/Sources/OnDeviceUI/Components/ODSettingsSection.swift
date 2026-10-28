@@ -28,7 +28,7 @@ public struct ODSettingsSection<Content: View>: View {
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             if let footer {
-                Text(footer).font(.footnote).foregroundStyle(ODPalette.secondary)
+                Text(odKey: footer).font(.footnote).foregroundStyle(ODPalette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .listRowInsets(EdgeInsets(top: ODLayout.elementGap, leading: 2 * ODLayout.settingsPageInset,
@@ -38,7 +38,7 @@ public struct ODSettingsSection<Content: View>: View {
             }
         } header: {
             if !title.isEmpty {
-                Text(title.uppercased())
+                Text(odKey: title)
                     .font(.footnote.weight(.semibold)).tracking(1.1)
                     .foregroundStyle(ODPalette.secondary).textCase(nil)
                     .padding(.horizontal, ODLayout.settingsPageInset)

@@ -1,0 +1,333 @@
+{
+  "auditedAtUTC": "2026-10-24T16:57:51.548399+00:00",
+  "canonicalBrand": "Token: Local AI Studio",
+  "shortBrand": "Token AI",
+  "source": {
+    "filesScanned": 561,
+    "legacyAppBrandHits": [
+      {
+        "path": "IOSLocalLLM/Views/SettingsView.swift",
+        "line": 19,
+        "text": "/// nil = default Token AI icon (original OnDeviceMax artwork); \"AppIconClassic\" = previous pink mark.",
+        "classification": "source comment explaining original icon"
+      }
+    ],
+    "unresolvedAppOwnedBrandHits": []
+  },
+  "bundle": {
+    "resourcesDecoded": 137,
+    "legacyAppBrandHits": [
+      {
+        "path": "THIRD_PARTY_NOTICES.md",
+        "text": "# Third-party notices\n\nThe top-level MIT license covers original iOS Local LLM code and documentation. It\ndoes not replace the licenses of the components below.\n\n## Source included in this repository\n\n| Component | Location | License |\n| --- | --- | --- |\n| FastVLM sample implementation | `IOSLocalL"
+      },
+      {
+        "path": "THIRD-PARTY-NOTICES.txt",
+        "text": "Token AI — bundled third-party notices\n\n\n=== LICENSE ===\n\nMIT License\n\nCopyright (c) 2026 Mesut and iOS Local LLM contributors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software w"
+      }
+    ],
+    "signedBuildVerification": "passed"
+  },
+  "identities": [
+    {
+      "CFBundleDisplayName": "Token: Local AI Studio",
+      "CFBundleName": "TokenAI",
+      "CFBundleIdentifier": "com.token.TokenAI",
+      "CFBundleShortVersionString": "2.0",
+      "CFBundleVersion": "71",
+      "MinimumOSVersion": "27.0",
+      "UIDeviceFamily": [
+        1
+      ]
+    },
+    {
+      "CFBundleDisplayName": "Token AI Downloads",
+      "CFBundleName": "TokenAIDownloads",
+      "CFBundleIdentifier": "com.token.TokenAI.Downloads",
+      "CFBundleShortVersionString": "2.0",
+      "CFBundleVersion": "71",
+      "MinimumOSVersion": "27.0",
+      "UIDeviceFamily": [
+        1
+      ]
+    },
+    {
+      "CFBundleDisplayName": "Token AI",
+      "CFBundleName": "TokenAIShare",
+      "CFBundleIdentifier": "com.token.TokenAI.Share",
+      "CFBundleShortVersionString": "2.0",
+      "CFBundleVersion": "71",
+      "MinimumOSVersion": "27.0",
+      "UIDeviceFamily": [
+        1
+      ]
+    }
+  ],
+  "ascLocalizations": [
+    {
+      "locale": "ar-SA",
+      "matchesPreparedMetadata": true,
+      "nameCorrect": true,
+      "legacyBrandAbsent": true,
+      "duoSupportFirst": true,
+      "minimumIOS27Present": true
+    },
+    {
+      "locale": "de-DE",
+      "matchesPreparedMetadata": true,
+      "nameCorrect": true,
+      "legacyBrandAbsent": true,
+      "duoSupportFirst": true,
+      "minimumIOS27Present": true
+    },
+    {
+      "locale": "el",
+      "matchesPreparedMetadata": true,
+      "nameCorrect": true,
+      "legacyBrandAbsent": true,
+      "duoSupportFirst": true,
+      "minimumIOS27Present": true
+    },
+    {
+      "locale": "en-US",
+      "matchesPreparedMetadata": true,
+      "nameCorrect": true,
+      "legacyBrandAbsent": true,
+      "duoSupportFirst": true,
+      "minimumIOS27Present": true
+    },
+    {
+      "locale": "es-ES",
+      "matchesPreparedMetadata": true,
+      "nameCorrect": true,
+      "legacyBrandAbsent": true,
+      "duoSupportFirst": true,
+      "minimumIOS27Present": true
+    },
+    {
+      "locale": "hi",
+      "matchesPreparedMetadata": true,
+      "nameCorrect": true,
+      "legacyBrandAbsent": true,
+      "duoSupportFirst": true,
+      "minimumIOS27Present": true
+    },
+    {
+      "locale": "ja",
+      "matchesPreparedMetadata": true,
+      "nameCorrect": true,
+      "legacyBrandAbsent": true,
+      "duoSupportFirst": true,
+      "minimumIOS27Present": true
+    },
+    {
+      "locale": "pt-PT",
+      "matchesPreparedMetadata": true,
+      "nameCorrect": true,
+      "legacyBrandAbsent": true,
+      "duoSupportFirst": true,
+      "minimumIOS27Present": true
+    },
+    {
+      "locale": "ro",
+      "matchesPreparedMetadata": true,
+      "nameCorrect": true,
+      "legacyBrandAbsent": true,
+      "duoSupportFirst": true,
+      "minimumIOS27Present": true
+    },
+    {
+      "locale": "ru",
+      "matchesPreparedMetadata": true,
+      "nameCorrect": true,
+      "legacyBrandAbsent": true,
+      "duoSupportFirst": true,
+      "minimumIOS27Present": true
+    },
+    {
+      "locale": "tr",
+      "matchesPreparedMetadata": true,
+      "nameCorrect": true,
+      "legacyBrandAbsent": true,
+      "duoSupportFirst": true,
+      "minimumIOS27Present": true
+    }
+  ],
+  "ageDeclarationsMatchSource": true,
+  "assets": {
+    "verifiedAtUTC": "2026-10-24T16:41:46.879759+00:00",
+    "appId": "6774354746",
+    "version": "2.0",
+    "build": "71",
+    "buildId": "21cf7239-3fbd-49d7-8f24-37b2d9ed15b3",
+    "processingState": "VALID",
+    "internalBuildState": "IN_BETA_TESTING",
+    "group": "Test",
+    "groupId": "7879d475-100f-4c7c-bf49-5b5446be9b56",
+    "testNotesMatch": true,
+    "selectedForVersion": true,
+    "screenshots": [
+      {
+        "locale": "ar-SA",
+        "sets": []
+      },
+      {
+        "locale": "ro",
+        "sets": []
+      },
+      {
+        "locale": "ru",
+        "sets": []
+      },
+      {
+        "locale": "el",
+        "sets": []
+      },
+      {
+        "locale": "pt-PT",
+        "sets": []
+      },
+      {
+        "locale": "en-US",
+        "sets": [
+          {
+            "type": "APP_IPHONE_67",
+            "count": 6
+          },
+          {
+            "type": "APP_IPHONE_DUO",
+            "count": 5
+          }
+        ]
+      },
+      {
+        "locale": "tr",
+        "sets": []
+      },
+      {
+        "locale": "de-DE",
+        "sets": []
+      },
+      {
+        "locale": "es-ES",
+        "sets": []
+      },
+      {
+        "locale": "hi",
+        "sets": []
+      },
+      {
+        "locale": "ja",
+        "sets": []
+      }
+    ],
+    "headerAndSearchPlacementsVerified": true,
+    "allScreenshotChecksumsMatch": true,
+    "sourceScreenshotsUnmodifiedOutsideBrandNames": true,
+    "submittedForAppStoreReview": false,
+    "testflightURL": "https://appstoreconnect.apple.com/apps/6774354746/testflight/ios"
+  },
+  "pixelPreservation": [
+    {
+      "file": "/Users/m/Desktop/OnDeviceMax/AppStoreCreativeAssets/2026-10-24-TokenAI/en-US/token-ai-header-3840x1646.png",
+      "size": [
+        3840,
+        1646
+      ],
+      "brandRegion": [
+        300,
+        380,
+        1000,
+        180
+      ],
+      "outsideRegionIdentical": true,
+      "sha256": "d08d68533e935fa4a111b0bb73608acef49378115a9429dc4235863659d2f11a"
+    },
+    {
+      "file": "/Users/m/Desktop/OnDeviceMax/AppStoreCreativeAssets/2026-10-24-TokenAI/en-US/token-ai-search-3840x2560.png",
+      "size": [
+        3840,
+        2560
+      ],
+      "brandRegion": [
+        300,
+        470,
+        1150,
+        210
+      ],
+      "outsideRegionIdentical": true,
+      "sha256": "d6792533959a9e733e89ac23b1c1908fad5b059618c0f5b8b53be198212137fe"
+    },
+    {
+      "file": "/Users/m/Desktop/OnDeviceMax/AppStoreScreenshots/TokenAI-2.0/en-US/APP_IPHONE_67/03-sidebar.png",
+      "size": [
+        1320,
+        2868
+      ],
+      "brandRegion": [
+        35,
+        195,
+        600,
+        120
+      ],
+      "outsideRegionIdentical": true,
+      "sha256": "cbc6e45f496b95a2278a8beb53c308f124ddec83733efd1f96edc1d3c7b114d9"
+    },
+    {
+      "file": "/Users/m/Desktop/OnDeviceMax/AppStoreScreenshots/TokenAI-2.0/en-US/APP_IPHONE_DUO/03-sidebar.png",
+      "size": [
+        1398,
+        2034
+      ],
+      "brandRegion": [
+        40,
+        20,
+        490,
+        100
+      ],
+      "outsideRegionIdentical": true,
+      "sha256": "d37f29abd0968dd33141aad48e84bf6c6c6d354808e880d9a24e77b92f5299db"
+    }
+  ],
+  "remainingExceptions": [
+    {
+      "reference": "OnDeviceUI / IOSLocalLLM / OD* symbols",
+      "reason": "Internal modules and target imports; no displayed old app name. Renaming is unrelated to product branding and could break working dependencies."
+    },
+    {
+      "reference": "ondevice-code, model receipt formats, private cache/preference keys, _localllm._tcp",
+      "reason": "Internal protocol and persisted-format compatibility. Not a public product name."
+    },
+    {
+      "reference": "OnDevice Mac / OnDevice: AI Image Studio",
+      "reason": "Actual separate companion/cross-promoted products. Their names and destination remain accurate; they are not the Token app name."
+    },
+    {
+      "reference": "SiteAgent on GitHub authorization page",
+      "reason": "Existing shared OAuth registration. The app explicitly explains the provider display name and stores Token credentials separately."
+    },
+    {
+      "reference": "Historical releases, backups, original creative assets, source paths and upstream licensing",
+      "reason": "Retained provenance and attribution; not shipping Token display branding."
+    }
+  ],
+  "openFindings": [
+    {
+      "id": "PRIVACY-01",
+      "severity": "needs owner confirmation",
+      "summary": "Target published Data Not Collected differs from source: linked Search History, User ID and Other Data Types.",
+      "proposal": "proposed-privacy-source-match.json",
+      "applied": false
+    },
+    {
+      "id": "WEB-01",
+      "severity": "requires publication decision",
+      "summary": "Linked Token website still advertises iOS 17, old screenshots/icon and outdated network/privacy behavior.",
+      "proposal": "website-proposal/",
+      "applied": false
+    }
+  ],
+  "status": "HISTORICAL_BUILD_71_SUPERSEDED",
+  "supersededBy": "../../TokenAI-2.0-72/Audit/branding-audit.json",
+  "note": "Original findings preserved as audit history; resolved and reverified against build 72."
+}

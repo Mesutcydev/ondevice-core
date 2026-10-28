@@ -1,0 +1,23 @@
+[
+  {
+    "CFBundleIdentifier": "com.token.TokenAI",
+    "CFBundleDisplayName": "Token: Local AI Studio",
+    "CFBundleShortVersionString": "2.0",
+    "CFBundleVersion": "71",
+    "MinimumOSVersion": "27.0"
+  },
+  {
+    "CFBundleIdentifier": "com.token.TokenAI.Share",
+    "CFBundleDisplayName": "Token AI",
+    "CFBundleShortVersionString": "2.0",
+    "CFBundleVersion": "71",
+    "MinimumOSVersion": "27.0"
+  },
+  {
+    "CFBundleIdentifier": "com.token.TokenAI.Downloads",
+    "CFBundleDisplayName": "Token AI Downloads",
+    "CFBundleShortVersionString": "2.0",
+    "CFBundleVersion": "71",
+    "MinimumOSVersion": "27.0"
+  }
+]

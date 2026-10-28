@@ -218,7 +218,7 @@ nonisolated final class GitHubClient: @unchecked Sendable {
         guard try await head(selection, token: token) == plan.expectedSHA else { throw GitHubError.conflict }
         let base = try await commit(selection, sha: plan.expectedSHA, token: token)
         var entries: [[String: Any]] = []
-        for change in plan.draft.changes {
+        for change in plan.changesToCommit {
             try await validate()
             _ = try GitHubValidation.path(change.path)
             var entry: [String: Any] = ["path": change.path, "type": "blob", "mode": change.mode]
@@ -327,7 +327,7 @@ nonisolated final class GitHubClient: @unchecked Sendable {
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
         request.httpMethod = method
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("OnDeviceMax", forHTTPHeaderField: "User-Agent")
+        request.setValue("TokenAI", forHTTPHeaderField: "User-Agent")
         if host == "api.github.com" { request.setValue("2026-03-10", forHTTPHeaderField: "X-GitHub-Api-Version") }
         else { request.setValue("application/json", forHTTPHeaderField: "Accept") }
         if let token {

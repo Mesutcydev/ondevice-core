@@ -16,8 +16,8 @@ case "$framework_name" in
 esac
 
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-source_root="${repository_root}/ThirdParty/${framework_name}.cpp"
-xcframework="${source_root}/build-apple/${framework_name}.xcframework"
+source_root="${NATIVE_SOURCE_ROOT:-${repository_root}/ThirdParty/${framework_name}.cpp}"
+xcframework="${NATIVE_XCFRAMEWORK:-${source_root}/build-apple/${framework_name}.xcframework}"
 build_dir="${source_root}/build-maccatalyst"
 catalyst_min_os_version="${CATALYST_MIN_OS_VERSION:-14.0}"
 target_triple="arm64-apple-ios${catalyst_min_os_version}-macabi"
@@ -112,6 +112,10 @@ if [[ "$framework_name" == llama ]]; then
     "${build_dir}/ggml/src/ggml-blas/libggml-blas.a"
     "${build_dir}/tools/mtmd/libmtmd.a"
   )
+  # Newer mtmd releases share the SHA-256 helper with vendor-hash.
+  if [[ -f "${build_dir}/vendor/hash/libvendor-hash.a" ]]; then
+    static_libraries+=("${build_dir}/vendor/hash/libvendor-hash.a")
+  fi
 else
   header_sources=(
     include/whisper.h

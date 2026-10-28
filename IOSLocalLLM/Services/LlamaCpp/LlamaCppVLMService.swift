@@ -15,6 +15,16 @@ struct LlamaCppVLMExecutionProfile: Equatable, Sendable {
 
     static func resolve(repoID: String) -> Self {
         let id = repoID.lowercased()
+        if id == MiniCPMV47Catalog.oneB.repoID.lowercased() || MiniCPMV47Catalog.is35B(repoID)
+            || LFM3Catalog.isVision(repoID) {
+            // The 16x projector can expand a sliced image beyond 1K tokens.
+            // Retain a bounded 4K context and exclusive Lens residency.
+            return .init(
+                contextSize: 4_096,
+                maxOutputTokens: 256,
+                requiresSingleResidency: true
+            )
+        }
         if id.contains("gemma-3") || id.contains("gemma3") {
             // Gemma 3 expands one image to 256 soft tokens. A 1K context still
             // leaves ample room for the Lens prompt + 192-token answer while
@@ -46,7 +56,7 @@ struct LlamaCppVLMExecutionProfile: Equatable, Sendable {
 // in ContentView / ModelsManagerView can switch backends without
 // caring which one is active.
 //
-// Memory ownership: one `LlamaCppVLM` at a time. Switching to a
+// Memory ownership: one native vision backend at a time. Switching to a
 // different GGUF repo unloads the previous one before loading the
 // new one. Tab and backend switches always drain the inactive runtime;
 // static dual-residence estimates are not trusted for Metal handoffs.
@@ -89,13 +99,12 @@ final class LlamaCppVLMService: ObservableObject {
 
     // MARK: - Internal state
 
-    private var vlm: LlamaCppVLM?
+    private var vlm: LlamaCppVisionBackend?
     private var inferenceTask: Task<Void, Never>?
-    /// Native model construction is not cooperatively cancellable once
-    /// llama.cpp enters C++. Retain the task so a backend/tab handoff can wait
-    /// for construction to finish and release its result before starting a
-    /// different Metal runtime.
-    private var loadingTask: Task<LlamaCppVLM, Error>?
+    /// MiniCPM checks cancellation while loading; other native constructors
+    /// can take longer to return. Retain the task so a backend handoff can
+    /// drain construction before starting a different Metal runtime.
+    private var loadingTask: Task<LlamaCppVisionBackend, Error>?
     private var loadingTaskID: UUID?
     private var loadingRepoID: String?
     private var loadingTransitionID: UUID?
@@ -148,7 +157,11 @@ final class LlamaCppVLMService: ObservableObject {
     /// True when `dir` contains at least one `*.gguf` (the LLM) AND
     /// at least one `mmproj-*.gguf` (the projector).
     private nonisolated static func hasGGUFPair(in dir: URL) -> Bool {
-        LocalModelFileValidator.hasCompleteGGUFVLMPair(in: dir)
+        if MiniCPMV47Catalog.is35B(dir.lastPathComponent)
+            || FileManager.default.fileExists(atPath: dir.appendingPathComponent(MiniCPMV47Artifacts.receiptName).path) {
+            return MiniCPMV47Artifacts.isPrepared(in: dir)
+        }
+        return LocalModelFileValidator.hasCompleteGGUFVLMPair(in: dir)
     }
 
     /// Resolve the LLM .gguf path inside `dir`. Delegates to the validator's
@@ -194,6 +207,32 @@ final class LlamaCppVLMService: ObservableObject {
     /// first. Concurrent calls on the same repoID are guarded via
     /// `loadingRepoID` (same pattern as LensInferenceLoop.switchTo).
     func switchTo(repoID: String) async {
+        guard !Task.isCancelled else { return }
+        let candidateDirectory = Self.stagedDirectory(for: repoID)
+        let runtimeIdentity = MiniCPMV47Catalog.runtimeIdentity(
+            repoID: repoID,
+            modelPath: candidateDirectory.flatMap(Self.resolveLLMPath),
+            hasStreamingReceipt: candidateDirectory.map {
+                FileManager.default.fileExists(atPath: $0.appendingPathComponent(MiniCPMV47Artifacts.receiptName).path)
+            } ?? false
+        )
+        if let reason = LFM3Catalog.unavailableReason(for: repoID)
+            ?? candidateDirectory.flatMap(Self.resolveLLMPath).flatMap({ LFM3Catalog.unavailableReason(for: $0) }) {
+            ToastCenter.shared.error("Vision model not supported yet", detail: reason)
+            return
+        }
+        let usesMiniCPM35B = MiniCPMV47Catalog.is35B(runtimeIdentity)
+        if let reason = MiniCPMV47Catalog.unavailableReason(for: runtimeIdentity) {
+            ToastCenter.shared.error("Vision model not supported yet", detail: reason)
+            state = .failed(reason)
+            return
+        }
+        if usesMiniCPM35B, MemoryAdvisor.deviceTotalRAM < MiniCPMV47Catalog.minimum35BPhysicalMemory {
+            let reason = "MiniCPM 35B requires a device with at least 12 GB of physical memory. Choose the 1B model on this device."
+            ToastCenter.shared.error("Model needs more memory", detail: reason)
+            state = .failed(reason)
+            return
+        }
         if let restriction = AppStoreModelPolicy.restriction(for: repoID) {
             state = .failed(restriction)
             return
@@ -226,6 +265,7 @@ final class LlamaCppVLMService: ObservableObject {
             FastVLMService.shared.unload()
             await MLXGenerationGate.shared.clearCacheWhenIdle()
             guard loadingTransitionID == transitionID,
+                  !Task.isCancelled,
                   activeRepoID == repoID,
                   vlm != nil else { return }
             state = .ready
@@ -241,6 +281,9 @@ final class LlamaCppVLMService: ObservableObject {
         FastVLMService.shared.unload()
         await MLXGenerationGate.shared.clearCacheWhenIdle()
 
+        guard loadingTransitionID == transitionID else { return }
+        guard !Task.isCancelled else { return }
+
         guard let dir = Self.stagedDirectory(for: repoID) else {
             state = .failed("GGUF files not found on disk for \(repoID). Download from the Catalog first.")
             return
@@ -252,15 +295,18 @@ final class LlamaCppVLMService: ObservableObject {
         }
 
         let shortName = repoID.split(separator: "/").last.map(String.init) ?? repoID
-        let profile = LlamaCppVLMExecutionProfile.resolve(repoID: repoID)
+        let profile = LlamaCppVLMExecutionProfile.resolve(repoID: runtimeIdentity)
 
-        // Memory gate. Only the projector is materialized: the language
+        // Memory gate. Ordinary GGUFs materialize only the projector: the language
         // weights are mmap'd and not charged to the footprint (see
         // GGUFLoadPolicy), and the bridge falls back to CPU when Metal
         // cannot hold them. Recovery first: unload the chat LLM (the
-        // cross-tab model) and re-measure before giving up.
+        // cross-tab model) and re-measure before giving up. MiniCPM 35B also
+        // reserves headroom for its bounded expert bank and streaming buffers.
         let peak = Int64(Double(Self.fileBytes(mmprojPath)) * MemoryAdvisor.loadSpikeMultiplier)
-        let needed = peak + GGUFLoadPolicy.storageBackedHeadroom
+        let needed = usesMiniCPM35B
+            ? max(peak + GGUFLoadPolicy.storageBackedHeadroom, MiniCPMV47Catalog.thirtyFiveB.approxRAMBytes)
+            : peak + GGUFLoadPolicy.storageBackedHeadroom
 
         var available = MemoryAdvisor.availableMemoryForModel
         Diagnostics.shared.breadcrumb(
@@ -272,11 +318,13 @@ final class LlamaCppVLMService: ObservableObject {
             // The kernel's accounting can lag the teardown — poll briefly
             // instead of trusting one read.
             for _ in 0..<10 {
+                if Task.isCancelled { break }
                 available = MemoryAdvisor.availableMemoryForModel
                 if available >= needed { break }
                 try? await Task.sleep(nanoseconds: 100_000_000)
             }
         }
+        guard loadingTransitionID == transitionID, !Task.isCancelled else { return }
         if available < needed {
             state = .failed(String(format:
                 "Not enough memory to load this model. Need ~%.0f MB, have %.0f MB available. Close other apps and try again.",
@@ -287,15 +335,20 @@ final class LlamaCppVLMService: ObservableObject {
         state = .loading("Preparing \(shortName)…")
 
         // Off the MainActor — model load is heavy I/O + Metal warmup.
-        let loaded: LlamaCppVLM
+        let loaded: LlamaCppVisionBackend
         let taskID = transitionID
         do {
             let task = Task.detached(priority: .userInitiated) {
-                try LlamaCppVLM(
+                try Task.checkCancellation()
+                let backend = try LlamaCppVisionBackend(
+                    repoID: runtimeIdentity,
+                    directory: dir,
                     llmPath: llmPath,
-                    mmprojPath: mmprojPath,
+                    projectorPath: mmprojPath,
                     contextSize: profile.contextSize
                 )
+                try Task.checkCancellation()
+                return backend
             }
             loadingTask = task
             loadingTaskID = taskID
@@ -305,11 +358,17 @@ final class LlamaCppVLMService: ObservableObject {
                 loadingTaskID = nil
             }
         } catch {
+            let cancelled = Task.isCancelled || error is CancellationError
+                || (loadingTaskID == taskID && loadingTask?.isCancelled == true)
             if loadingTaskID == taskID {
                 loadingTask = nil
                 loadingTaskID = nil
             }
             guard loadingTransitionID == transitionID else {
+                return
+            }
+            if cancelled {
+                state = .unloaded
                 return
             }
             state = .failed(error.localizedDescription)
@@ -322,6 +381,10 @@ final class LlamaCppVLMService: ObservableObject {
         // expected repo) — drop this load instead of clobbering the newer
         // one; `loaded`'s deinit frees the weights.
         guard loadingTransitionID == transitionID else { return }
+        guard !Task.isCancelled else {
+            state = .unloaded
+            return
+        }
 
         self.vlm = loaded
         self.activeRepoID = repoID
@@ -393,8 +456,9 @@ final class LlamaCppVLMService: ObservableObject {
         autoreleasepool { }
     }
 
-    /// Cancel any in-flight inference without unloading.
+    /// Cancel the current load or inference, keeping an already resident model.
     func cancelCurrentInference() {
+        loadingTask?.cancel()
         inferenceTask?.cancel()
         vlm?.cancelCurrent()
         // Keep state/task latched until native decode really exits. Marking
@@ -413,7 +477,8 @@ final class LlamaCppVLMService: ObservableObject {
         prompt: String = "Describe what's in this image. Be concise.",
         maxTokens: Int = 256,
         onToken: @Sendable @escaping (String) -> Void,
-        onComplete: @Sendable @escaping (Double) -> Void
+        onComplete: @Sendable @escaping (Double) -> Void,
+        onStage: @Sendable @escaping (VisionInferenceStage) -> Void = { _ in }
     ) {
         guard case .ready = state, let vlm = vlm else {
             onComplete(0)
@@ -495,7 +560,8 @@ final class LlamaCppVLMService: ObservableObject {
                             )
                         }
                         completionGuard.fire(rate)
-                    }
+                    },
+                    onStage: onStage
                 )
             } catch is CancellationError {
                 Task { @MainActor in

@@ -24,6 +24,9 @@ public final class ODStore: ObservableObject {
     @Published public var modelPhase: ODModelPhase = .unloaded
     @Published public var metrics = ODDeviceMetrics()
     @Published public var recentConversations: [ODRecentConversation] = []
+    /// Host transcript search: ids of conversations whose messages contain the
+    /// query. Nil searches titles and previews only.
+    public var transcriptMatches: ((String) -> Set<String>)?
     @Published public var selectedConversationID: String?
     @Published public var messages: [ODMessage] = []
     @Published public var composerText = ""
@@ -69,6 +72,9 @@ public final class ODStore: ObservableObject {
     @Published public var lensResultPresented = false
     @Published public var lensResultText: String?
     @Published public var lensIsAnalyzing = false
+    @Published public var lensAnalysisStartedAt: Date?
+    @Published public var lensAnalysisStage: ODLensAnalysisStage = .readingImage
+    @Published public var lensUsesLargeModel = false
     @Published public var lensResultIsPartial = false
     @Published public var cameraNeedsSettings = false
     @Published public var capabilities = ODCapabilities()

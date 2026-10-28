@@ -3,11 +3,23 @@ import OnDeviceUI
 @testable import NativeUIReview
 
 struct ClassifierLibraryTests {
+    @Test func portableModelsHaveDownloadAndInstalledClassifierActionsOnly() {
+        for pack in ClassifierCatalog.models {
+            let row = ClassifierModelLibrary.entry(for: pack)
+            #expect(row.kind == .classifier && !row.isInstalled && !row.isSelectable)
+            #expect(row.availableCommands == [.details, .download])
+            #expect(row.declaredKinds == [.classifier] && row.supportedKinds.isEmpty)
+            let installed = ClassifierModelLibrary.entry(for: pack, installed: true)
+            #expect(installed.isSelectable && installed.supportedKinds == [.classifier])
+            #expect(installed.availableCommands == [.details, .delete])
+            #expect(ClassifierModelLibrary.entry(for: pack, transfer: .installing).availableCommands == [.details])
+        }
+    }
     @Test func classifiersAreVisibleBeforeInstallationAndNotAssistantSelections() throws {
         let rows = CoreAIModelLibrary.catalog.filter { $0.category == .classifier }.map {
             CoreAIModelLibrary.entry(for: $0)
         }
-        #expect(Set(rows.map(\.id)) == ["coreai:zoo-laya-multilingual", "coreai:zoo-julia-1"])
+        #expect(Set(rows.map(\.id)) == ["coreai:zoo-laya-multilingual", "coreai:zoo-julia-1", "coreai:zoo-julia-1-512"])
         #expect(rows.allSatisfy { $0.kind == .classifier && $0.isLibraryEntry && !$0.isInstalled && !$0.isSelectable })
         #expect(rows.allSatisfy { $0.declaredKinds == [.classifier] && !$0.supportedKinds.contains(.language) })
         let laya = try #require(rows.first { $0.id == "coreai:zoo-laya-multilingual" })

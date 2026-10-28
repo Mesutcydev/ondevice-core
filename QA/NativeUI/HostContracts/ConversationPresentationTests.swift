@@ -17,7 +17,8 @@ struct ConversationPresentationTests {
         let file = FileAttachmentService.Attachment(id: UUID(), url: directory.appendingPathComponent("notes.txt"),
             displayName: "notes.txt", byteSize: 5, extractedText: "notes", kind: .text, warning: nil)
         let draft = ConversationPresentation(text: "  draft\nsecond line  ", files: [file],
-            images: [.init(data: Data([1, 2, 3]))], imageIDs: [UUID()], readingMessageID: message.id, followsLatest: false)
+            images: [.init(data: Data([1, 2, 3]))], imageIDs: [UUID()], readingMessageID: message.id, followsLatest: false,
+            expandedToolGroupIDs: [message.id])
         store.savePresentation(id: a.id, presentation: draft)
         store.savePresentation(id: b.id, presentation: .init(text: "Different draft"))
         store.flush()
@@ -40,6 +41,16 @@ struct ConversationPresentationTests {
         #expect(restored.title == original.title)
         #expect(restored.presentation == nil)
         #expect(restored.isPinned == nil)
+    }
+
+    @Test func olderPresentationWithoutToolDisclosuresStillDecodes() throws {
+        let original = ConversationPresentation(text: "Keep this draft", followsLatest: false)
+        var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(original)) as? [String: Any])
+        object.removeValue(forKey: "expandedToolGroupIDs")
+        let restored = try JSONDecoder().decode(ConversationPresentation.self, from: JSONSerialization.data(withJSONObject: object))
+        #expect(restored.text == original.text)
+        #expect(!restored.followsLatest)
+        #expect(restored.expandedToolGroupIDs == nil)
     }
     @Test func pinningSurvivesReloadWithoutChangingDraftOrTranscript() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

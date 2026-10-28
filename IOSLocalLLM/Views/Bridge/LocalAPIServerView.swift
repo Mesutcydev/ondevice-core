@@ -4,12 +4,9 @@ import OnDeviceUI
 /// A retained workspace. Opening it never enables the listener or loads a model.
 /// All networking, authentication and lifecycle remain owned by LocalAPIManager.
 ///
-/// Composition follows the OnDevice LAS operator homepage, restated in this
-/// app's native language: a server summary with live runtime activity, device
-/// health, then — only while the listener runs — connection, quick start and
-/// the endpoint catalog, followed by configuration and notes. Listener state,
-/// model state and reachability stay separate facts; a stopped server never
-/// reads as ready.
+/// Uses OnDeviceLAS as a design reference: listener controls, model runtime,
+/// device health and copyable client setup. Listener state, model residency
+/// and LAN availability remain separate facts.
 struct LocalAPIServerView: View {
     let onOpenMenu: () -> Void
     @EnvironmentObject private var store: ODStore
@@ -25,7 +22,7 @@ struct LocalAPIServerView: View {
     @State private var showModels = false
     @State private var showPortEditor = false
     @State private var confirmsKeyRotation = false
-    @State private var format: ClientFormat = .openAI
+    @State private var format: LocalAPIClientSetup.Format = .openAI
     @AppStorage("localAPIToolCallingEnabled") private var toolCallingEnabled = true
     @AppStorage("localAPIParallelToolCallsEnabled") private var parallelToolCallsEnabled = true
     @AppStorage("localAPIReasoningEnabled") private var reasoningEnabled = true
@@ -38,28 +35,26 @@ struct LocalAPIServerView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     operatorHeader
-                    networkBanner
-                    parserBar
-                    modelCard
                     summary
+                    modelCard
+                    networkBanner
                     health
-                    if case .running(let port) = manager.state {
-                        connection(port: port)
-                        quickStart(port: port)
-                        endpoints(port: port)
-                    }
+                    connection(port: currentPort)
+                    quickStart(port: currentPort)
                     configuration
                     generation
+                    LocalAPIEndpointsView(setup: clientSetup)
                     diagnosticsLink
                     notes
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: 760, alignment: .leading)
+                .frame(maxWidth: .infinity)
                 .padding(.horizontal, ODLayout.pageInset)
                 .padding(.top, ODLayout.elementGap)
                 .padding(.bottom, ODLayout.groupGap)
             }
             .background { ODPageBackground().ignoresSafeArea() }
-            .navigationTitle("API server")
+            .odNavigationTitle("API server")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(store.selectedTab == .apiServer ? .visible : .hidden, for: .navigationBar)
             .toolbar {
@@ -75,7 +70,13 @@ struct LocalAPIServerView: View {
             .onChange(of: scenePhase) { _, phase in
                 if phase != .active { revealsKey = false }
             }
-            .sheet(isPresented: $showModels) { AssistantModelPickerView(downloadedOnly: true, allowsAPIProviders: false) }
+            .onChange(of: store.selectedTab) { _, selection in
+                if selection != .apiServer { revealsKey = false }
+            }
+            .onDisappear { revealsKey = false }
+            .sheet(isPresented: $showModels) {
+                AssistantModelPickerView(downloadedOnly: true, allowsAPIProviders: false, allowsApplePrivateCloud: false)
+            }
             .sheet(isPresented: $showPortEditor) {
                 LocalAPIPortSheet()
             }
@@ -96,7 +97,7 @@ struct LocalAPIServerView: View {
     private var operatorHeader: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("OnDevice Max")
+                Text("Token AI")
                     .font(.title3.weight(.bold))
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
                     .fixedSize(horizontal: false, vertical: true)
@@ -242,164 +243,67 @@ struct LocalAPIServerView: View {
         return LocalAPIValidation.validPort(settings.localAPIPort) ?? 11434
     }
 
-    private var parserBar: some View {
-        TimelineView(.animation(minimumInterval: isAnswering ? 1.0 / 30.0 : 1.0 / 15.0,
-                                paused: reduceMotion || scenePhase != .active || store.selectedTab != .apiServer)) { timeline in
-            let phase = reduceMotion ? 0 : timeline.date.timeIntervalSinceReferenceDate
-            Group {
-                if dynamicTypeSize.isAccessibilitySize {
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 12) {
-                            parserWave(phase: phase)
-                            parserTitle
-                            Spacer(minLength: 0)
-                            parserTokenRate
-                        }
-                        HStack(spacing: 12) {
-                            parserProgress(phase: phase)
-                            parserDots(phase: phase)
-                        }
-                    }
-                } else {
-                    HStack(spacing: 10) {
-                        parserWave(phase: phase)
-                        parserTitle
-                        parserTokenRate
-                        parserProgress(phase: phase)
-                        parserDots(phase: phase)
-                        Text(parserBadge)
-                            .font(.system(size: 9, weight: .semibold).monospaced())
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                    }
-                }
-            }
-            .frame(minHeight: 68)
-            .apiCard(padding: 12, radius: ODLayout.panelCorner)
-            .overlay(alignment: .bottomLeading) {
-                if isAnswering && !reduceMotion {
-                    GeometryReader { proxy in
-                        let width = max(24, proxy.size.width * 0.22)
-                        let unit = phase.truncatingRemainder(dividingBy: 1.15) / 1.15
-                        Capsule()
-                            .fill(ODPalette.text.opacity(0.55))
-                            .frame(width: width, height: 2)
-                            .offset(x: -width + (proxy.size.width + width) * unit)
-                    }
-                    .frame(height: 2)
-                    .clipShape(RoundedRectangle(cornerRadius: ODLayout.panelCorner,
-                                                style: .continuous))
-                }
+    private var liveActivity: LocalAPIServerActivity {
+        let listener: LocalAPIServerActivity.Listener
+        switch manager.state {
+        case .stopped: listener = .stopped
+        case .starting: listener = .starting
+        case .running: listener = .running
+        case .failed: listener = .failed
+        }
+        let model: LocalAPIServerActivity.Model
+        if assistant.activeExecutionLocation.isCloud {
+            model = .remote
+        } else {
+            switch assistant.state {
+            case .unloaded: model = .unloaded
+            case .loading: model = .loading
+            case .ready: model = assistant.isModelLoaded ? .ready : .unloaded
+            case .generating: model = assistant.isModelLoaded ? .generating : .unloaded
+            case .failed: model = .failed
             }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Live parser")
-        .accessibilityValue(parserAccessibilityValue)
-        .accessibilityIdentifier("api.parser")
+        return LocalAPIServerActivity(listener: listener, model: model, isStopping: isStopping)
     }
 
-    private var parserTitle: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("LIVE PARSER")
-                .font(.system(size: 9, weight: .semibold))
-                .tracking(2)
-                .foregroundStyle(isAnswering ? ODPalette.text : .secondary)
-            Text(parserStatus)
-                .font(.system(size: 15, weight: .semibold))
-                .lineLimit(1)
-        }
-        .fixedSize(horizontal: true, vertical: false)
-    }
-
-    @ViewBuilder private var parserTokenRate: some View {
-        if isAnswering, assistant.tokenRate > 0 {
-            Text("\(Int(assistant.tokenRate.rounded())) tok/s")
-                .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                .lineLimit(1)
-        }
-    }
-
-    private var parserAccessibilityValue: String {
-        if isAnswering, assistant.tokenRate > 0 {
-            return "\(parserStatus), \(Int(assistant.tokenRate.rounded())) tokens per second, \(parserBadge)"
-        }
-        return "\(parserStatus), \(parserBadge)"
-    }
-
-    private func parserWave(phase: TimeInterval) -> some View {
-        HStack(alignment: .center, spacing: 2) {
-            ForEach(0..<5, id: \.self) { index in
-                let base = [9.0, 17.0, 23.0, 15.0, 8.0][index]
-                let pulse = (sin(phase * (isAnswering ? 16 : 5) - Double(index) * 0.9) + 1) / 2
-                Capsule()
-                    .fill(ODPalette.text)
-                    .frame(width: 2.5,
-                           height: reduceMotion ? base : base * (isAnswering ? 0.55 + 0.45 * pulse : 0.85 + 0.15 * pulse))
-            }
-        }
-        .frame(width: 24, height: 24)
-        .accessibilityHidden(true)
-    }
-
-    private func parserProgress(phase: TimeInterval) -> some View {
-        let duration = isAnswering ? 0.8 : 3.0
-        let unit = phase.truncatingRemainder(dividingBy: duration) / duration
-        let triangle = unit < 0.5 ? unit * 2 : (1 - unit) * 2
-        let eased = triangle * triangle * (3 - 2 * triangle)
-        let fraction = reduceMotion ? (isAnswering ? 0.55 : 0.16)
-            : (isAnswering ? 0.15 + 0.60 * eased : 0.08 + 0.17 * eased)
-        return GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                Capsule().fill(ODPalette.line)
-                Capsule()
-                    .fill(ODPalette.text)
-                    .frame(width: max(0, proxy.size.width * fraction))
-            }
-        }
-        .frame(minWidth: 28, maxWidth: .infinity)
-        .frame(height: 4)
-        .accessibilityHidden(true)
-    }
-
-    private func parserDots(phase: TimeInterval) -> some View {
-        HStack(spacing: 3) {
-            ForEach(0..<3, id: \.self) { index in
-                let pulse = (sin(phase * (isAnswering ? 16 : 3) - Double(index) * 1.2) + 1) / 2
-                Circle()
-                    .fill(ODPalette.text)
-                    .frame(width: 4, height: 4)
-                    .scaleEffect(reduceMotion ? 0.8 : 0.55 + 0.65 * pulse)
-                    .opacity(reduceMotion ? 0.6 : 0.25 + 0.75 * pulse)
-            }
-        }
-        .frame(width: 22)
-        .accessibilityHidden(true)
-    }
-
-    private var parserStatus: String {
-        switch assistant.state {
-        case .generating: return "STREAMING"
-        case .ready: return "READY"
-        case .loading: return "LOADING"
-        case .failed: return "FAILED"
-        case .unloaded: return "IDLE"
-        }
-    }
-
-    private var parserBadge: String {
-        switch assistant.state {
-        case .generating: return "ON DEVICE"
-        case .ready: return "ON DEVICE"
-        default: return "WAITING"
-        }
+    private var clientSetup: LocalAPIClientSetup {
+        LocalAPIClientSetup(host: manager.addresses.first ?? "localhost", port: currentPort,
+                            modelID: assistant.activeExecutionLocation.isCloud ? "" : assistant.activeSelectionID)
     }
 
     // MARK: - Model and listener cards
 
     private var modelCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            operatorLabel("MODEL")
+            operatorLabel("MODEL RUNTIME")
             modelRow
+            if !assistant.activeDisplayName.isEmpty && !assistant.activeExecutionLocation.isCloud {
+                HStack(alignment: .top, spacing: 8) {
+                    Text(assistant.activeSelectionID)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("api.model.id")
+                    copyButton("Copy model ID", identifier: "api.model.id.copy") {
+                        copy(assistant.activeSelectionID, feedback: "Model ID copied")
+                    }
+                }
+            }
+            if assistant.activeExecutionLocation.isCloud {
+                Label("Choose a downloaded local model to serve API requests. The server does not use cloud models.",
+                      systemImage: "externaldrive")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if case .failed(let message) = assistant.state {
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("api.model.error")
+            }
             if case .running = manager.state { activityRow }
         }
         .apiCard(padding: 20, radius: ODLayout.panelCorner)
@@ -407,7 +311,7 @@ struct LocalAPIServerView: View {
 
     private var summary: some View {
         VStack(alignment: .leading, spacing: 16) {
-            operatorLabel("SERVER", trailing: statusTitle.uppercased())
+            operatorLabel("LOCAL API SERVER")
             HStack(alignment: .center, spacing: 12) {
                 statusGlyph
                 VStack(alignment: .leading, spacing: 2) {
@@ -433,7 +337,13 @@ struct LocalAPIServerView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            lifecycleButton
+            LocalAPIActivityView(activity: liveActivity, tokenRate: assistant.tokenRate,
+                                 isVisible: store.selectedTab == .apiServer)
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { lifecycleButton; restartButton }
+                VStack(spacing: 10) { lifecycleButton; restartButton }
+            }
 
             if case .running = manager.state, !modelReady {
                 Label("Requests return 503 until a model is loaded.",
@@ -441,6 +351,9 @@ struct LocalAPIServerView: View {
                     .font(.caption)
                     .foregroundStyle(.orange)
             }
+            Text("OpenAI · Anthropic · Ollama")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .apiCard(padding: 20, radius: ODLayout.panelCorner)
     }
@@ -471,9 +384,8 @@ struct LocalAPIServerView: View {
         .frame(width: 40, height: 40)
     }
 
-    /// The LAS "live parser": what the runtime behind the listener is doing
-    /// right now. Only shown while the listener runs; a stopped server has no
-    /// activity to report.
+    /// Runtime detail belongs to the running listener. Other workspaces can
+    /// share this model, so generation alone does not prove an API request.
     private var activityRow: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "waveform")
@@ -570,14 +482,27 @@ struct LocalAPIServerView: View {
     }
 
     @ViewBuilder private var modelAction: some View {
-        if assistant.activeDisplayName.isEmpty {
+        if assistant.activeDisplayName.isEmpty || assistant.activeExecutionLocation.isCloud {
             Button("Get a model") { store.selectedTab = .models }
                 .buttonStyle(APIActionButtonStyle(tone: .secondary, compact: true))
                 .accessibilityIdentifier("api.model.get")
         } else if canLoadModel {
-            Button("Load") { Task { await assistant.load() } }
+            Button("Load") {
+                guard assistant.selectedModelIsInstalled else {
+                    store.selectedTab = .models
+                    ToastCenter.shared.info("Download the model first", detail: "Choose a model in Models to download it, then return to the API server.")
+                    return
+                }
+                store.requestExclusiveOperation("Loading the API server model") {
+                    Task { await assistant.load(allowStorageFallback: false, reselectFromSettings: false) }
+                }
+            }
                 .buttonStyle(APIActionButtonStyle(tone: .secondary, compact: true))
                 .accessibilityIdentifier("api.model.load")
+        } else if modelIsLoading {
+            Button("Stop loading") { assistant.unload() }
+                .buttonStyle(APIActionButtonStyle(tone: .destructive, compact: true))
+                .accessibilityIdentifier("api.model.cancel")
         } else if case .ready = assistant.state {
             // Unloading frees the shared runtime, so it goes through the
             // same voice-conflict confirmation as changing the model.
@@ -613,13 +538,28 @@ struct LocalAPIServerView: View {
         }
     }
 
+    @ViewBuilder private var restartButton: some View {
+        if case .running = manager.state {
+            Button {
+                Task { await manager.restart() }
+            } label: {
+                Label("Restart", systemImage: "arrow.clockwise")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(APIActionButtonStyle(tone: .secondary))
+            .disabled(isStopping)
+            .accessibilityLabel("Restart server")
+            .accessibilityIdentifier("api.restart")
+        }
+    }
+
     private func actionButton(_ title: String, symbol: String?, tone: APIActionButtonStyle.Tone, identifier: String,
                               showsProgress: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 8) {
                 if showsProgress {
                     ProgressView().controlSize(.small)
-                        .tint(tone == .primary ? .white : ODPalette.text)
+                        .tint(tone == .primary ? ODPalette.onSend : ODPalette.text)
                         .accessibilityHidden(true)
                 } else if let symbol {
                     Image(systemName: symbol).font(.subheadline.weight(.semibold)).accessibilityHidden(true)
@@ -685,22 +625,25 @@ struct LocalAPIServerView: View {
             .accessibilityHidden(true)
     }
 
-    // MARK: - Connection (only while the listener runs)
+    // MARK: - Connection and setup
 
     private func connection(port: UInt16) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             sectionHeader("Connection") {
-                Button { Task { await manager.restart() } } label: {
-                    Label("Restart", systemImage: "arrow.clockwise")
-                        .font(.caption.weight(.semibold))
-                        .frame(minHeight: 36)
-                }
-                .buttonStyle(APIActionButtonStyle(tone: .secondary, compact: true))
-                .accessibilityLabel("Restart server")
-                .accessibilityIdentifier("api.restart")
+                Button("Refresh", systemImage: "arrow.clockwise") { manager.refreshAddresses() }
+                    .font(.caption.weight(.semibold))
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("api.addresses.refresh")
             }
 
             VStack(alignment: .leading, spacing: 12) {
+                if !listenerIsRunning {
+                    Label("Setup preview. Start the server before connecting a client.", systemImage: "info.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("api.connection.preview")
+                }
                 if manager.addresses.isEmpty {
                     Label("No local network address. Connect this iPhone to the same network as your client.",
                           systemImage: "wifi.exclamationmark")
@@ -732,7 +675,7 @@ struct LocalAPIServerView: View {
 
     private func shareConnection(host: String, port: UInt16, identifier: String) -> some View {
         ShareLink(item: connectionShareText(host: host, port: port),
-                  subject: Text("OnDevice Max local API")) {
+                  subject: Text("Token AI local API")) {
             Group {
                 if dynamicTypeSize.isAccessibilitySize {
                     HStack(alignment: .top, spacing: 12) {
@@ -890,13 +833,6 @@ struct LocalAPIServerView: View {
 
     // MARK: - Quick start
 
-    private enum ClientFormat: String, CaseIterable, Identifiable {
-        case openAI = "OpenAI"
-        case anthropic = "Anthropic"
-        case ollama = "Ollama"
-        var id: String { rawValue }
-    }
-
     /// Connection recipes built from the actual listener: real address, active
     /// port, served model identifier and API key. The key is masked on screen
     /// unless revealed; Copy always carries the working key.
@@ -905,21 +841,19 @@ struct LocalAPIServerView: View {
         return VStack(alignment: .leading, spacing: 12) {
             sectionHeader("Quick start")
             VStack(alignment: .leading, spacing: 12) {
-                Picker("Client format", selection: $format) {
-                    ForEach(ClientFormat.allCases) { Text($0.rawValue).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .accessibilityIdentifier("api.client.format")
+                LocalAPIClientFormatPicker(selection: $format)
 
-                Text(example(host: host, port: port, key: revealsKey ? manager.apiKey : "<API_KEY>"))
-                    .font(.footnote.monospaced())
-                    .foregroundStyle(ODPalette.text)
-                    .textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(12)
-                    .background(ODPalette.input, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .accessibilityIdentifier("api.client.example")
+                ScrollView(.horizontal) {
+                    Text(example(host: host, port: port, key: revealsKey ? manager.apiKey : "<API_KEY>"))
+                        .font(.footnote.monospaced())
+                        .foregroundStyle(ODPalette.text)
+                        .textSelection(.enabled)
+                        .fixedSize(horizontal: true, vertical: true)
+                        .padding(12)
+                        .accessibilityIdentifier("api.client.example")
+                        .privacySensitive()
+                }
+                .background(ODPalette.input, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 Button {
                     copy(example(host: host, port: port, key: manager.apiKey), feedback: "Example copied")
@@ -937,95 +871,20 @@ struct LocalAPIServerView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                if manager.addresses.isEmpty {
+                    Text("These commands use localhost for this device. Connect to Wi-Fi to get an address for another device.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .apiCard()
         }
     }
 
     private func example(host: String, port: UInt16, key: String) -> String {
-        switch format {
-        case .openAI:
-            return """
-            export OPENAI_BASE_URL=http://\(host):\(port)/v1
-            export OPENAI_API_KEY=\(key)
-            curl "$OPENAI_BASE_URL/models" -H "Authorization: Bearer $OPENAI_API_KEY"
-            """
-        case .anthropic:
-            return """
-            curl http://\(host):\(port)/v1/messages \\
-              -H "x-api-key: \(key)" \\
-              -H "content-type: application/json" \\
-              -d '{"model":"\(assistant.activeSelectionID)","max_tokens":128,"messages":[{"role":"user","content":"Hello"}]}'
-            """
-        case .ollama:
-            return """
-            curl http://\(host):\(port)/api/tags \\
-              -H "Authorization: Bearer \(key)"
-            """
-        }
-    }
-
-    // MARK: - Endpoints
-
-    /// Mirrors LocalAPIServer's route table exactly. Do not list a route here
-    /// that the server does not answer.
-    private static let routes: [(group: String, method: String, path: String)] = [
-        ("Discovery", "GET", "/"),
-        ("Discovery", "GET", "/v1"),
-        ("OpenAI", "GET", "/v1/models"),
-        ("OpenAI", "GET", "/v1/models/{model}"),
-        ("OpenAI", "GET", "/v1/aider/config"),
-        ("OpenAI", "POST", "/v1/chat/completions"),
-        ("OpenAI", "POST", "/v1/responses"),
-        ("Anthropic", "POST", "/v1/messages"),
-        ("Ollama", "GET", "/api/tags"),
-        ("Ollama", "GET", "/api/ps"),
-        ("Ollama", "GET", "/api/version"),
-        ("Ollama", "POST", "/api/show"),
-        ("Ollama", "POST", "/api/chat"),
-        ("Ollama", "POST", "/api/generate"),
-    ]
-
-    private func endpoints(port: UInt16) -> some View {
-        let origin = "http://\(manager.addresses.first ?? "localhost"):\(port)"
-        return VStack(alignment: .leading, spacing: 12) {
-            sectionHeader("Endpoints")
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(Array(Self.routes.enumerated()), id: \.offset) { index, route in
-                    if index == 0 || Self.routes[index - 1].group != route.group {
-                        Text(route.group)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .padding(.top, index == 0 ? 0 : 12)
-                            .accessibilityAddTraits(.isHeader)
-                    }
-                    HStack(spacing: 8) {
-                        Text(route.method)
-                            .font(.caption2.weight(.bold).monospaced())
-                            .foregroundStyle(.secondary)
-                            .frame(width: 36, alignment: .leading)
-                        Text(route.path)
-                            .font(.footnote.monospaced())
-                            .foregroundStyle(ODPalette.text)
-                            .lineLimit(1)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        copyButton("Copy \(route.method) \(route.path) URL", identifier: "api.endpoint.copy") {
-                            let path = route.path == "/v1/models/{model}"
-                                ? "/v1/models/" + (assistant.activeSelectionID.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? assistant.activeSelectionID)
-                                : route.path
-                            copy(origin + path, feedback: "Endpoint copied")
-                        }
-                    }
-                }
-                Label("Every route needs the API key as an Authorization bearer or x-api-key header.",
-                      systemImage: "key.horizontal")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 12)
-            }
-            .apiCard()
-        }
+        LocalAPIClientSetup(host: host, port: port, modelID: clientSetup.modelID)
+            .example(for: format, apiKey: key)
     }
 
     // MARK: - Configuration
@@ -1056,6 +915,7 @@ struct LocalAPIServerView: View {
                 .accessibilityLabel("Port, \(displayedPort)")
                 .accessibilityHint("Edit the server port")
                 .accessibilityIdentifier("api.port.row")
+                .disabled(isStopping || liveActivity == .starting)
                 Divider().overlay(ODPalette.line).padding(.leading, 16)
                 settingToggle("Keep screen awake", detail: "While the server is running",
                               identifier: "api.keepAwake",
@@ -1231,14 +1091,8 @@ struct LocalAPIServerView: View {
     }
 
     private func connectionShareText(host: String, port: UInt16) -> String {
-        """
-        OnDevice Max local API
-        OpenAI base URL: http://\(host):\(port)/v1
-        Ollama / Anthropic base URL: http://\(host):\(port)
-        API key: \(manager.apiKey)
-
-        curl http://\(host):\(port)/v1/models -H "Authorization: Bearer \(manager.apiKey)"
-        """
+        LocalAPIClientSetup(host: host, port: port, modelID: clientSetup.modelID)
+            .shareText(apiKey: manager.apiKey)
     }
 
     // MARK: - Presentation model
@@ -1300,23 +1154,25 @@ struct LocalAPIServerView: View {
     }
 
     private var isAnswering: Bool {
-        if case .generating = assistant.state { return true }
-        return false
+        liveActivity == .generating
     }
 
     private var activityTitle: String {
+        if assistant.activeExecutionLocation.isCloud { return "Local model required" }
         switch assistant.state {
-        case .generating: return "Answering a request"
-        case .ready: return "Waiting for requests"
+        case .generating: return "Model is generating"
+        case .ready: return modelReady ? "Waiting for requests" : "Can’t answer yet"
         case .loading: return "Loading the model"
         case .unloaded, .failed: return "Can’t answer yet"
         }
     }
 
     private var activityDetail: String {
+        if assistant.activeExecutionLocation.isCloud { return "Choose a downloaded model for local API requests." }
         switch assistant.state {
-        case .generating: return "Streaming a response from this iPhone."
-        case .ready: return "Requests are answered by the loaded model."
+        case .generating: return "The shared local runtime is producing a response."
+        case .ready: return modelReady ? "Requests are answered by the loaded model."
+                : "No model is loaded. Requests fail until a model loads."
         case .loading: return "Requests can be answered once the model finishes loading."
         case .failed: return "The model failed to load. Requests fail until a model loads."
         case .unloaded: return "No model is loaded. Requests fail until a model loads."
@@ -1330,11 +1186,12 @@ struct LocalAPIServerView: View {
 
     /// Model-scoped wording only. The server's own readiness lives in statusTitle.
     private var modelStatus: String {
+        if assistant.activeExecutionLocation.isCloud { return "Unavailable to the local API" }
         if assistant.activeDisplayName.isEmpty { return "Choose a model to serve" }
         switch assistant.state {
         case .unloaded: return "Not loaded"
         case .loading(let detail): return detail.isEmpty ? "Loading…" : "Loading · \(detail)"
-        case .ready: return "Model loaded"
+        case .ready: return modelReady ? "Model loaded" : "Not loaded"
         case .generating: return "Answering a request"
         case .failed: return "Load failed"
         }
@@ -1345,12 +1202,21 @@ struct LocalAPIServerView: View {
     }
 
     private var modelReady: Bool {
-        switch assistant.state { case .ready, .generating: true; default: false }
+        assistant.isModelLoaded
+    }
+
+    private var listenerIsRunning: Bool {
+        if case .running = manager.state { return true }
+        return false
     }
 
     private var canLoadModel: Bool {
         guard !assistant.activeDisplayName.isEmpty else { return false }
-        switch assistant.state { case .unloaded, .failed: return true; default: return false }
+        switch assistant.state {
+        case .unloaded, .failed: return true
+        case .ready: return !modelReady
+        default: return false
+        }
     }
 
     /// The port a client would use right now: the active binding while running,
@@ -1375,6 +1241,178 @@ struct LocalAPIServerView: View {
             await manager.stop()
             isStopping = false
         }
+    }
+}
+
+/// Only this small view ticks during runtime work. Idle/offline pages do not
+/// continuously animate or imply progress where there is none.
+private struct LocalAPIActivityView: View {
+    let activity: LocalAPIServerActivity
+    let tokenRate: Double
+    let isVisible: Bool
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 20.0,
+                                paused: !activity.isWorking || reduceMotion || !isVisible || scenePhase != .active)) { timeline in
+            let phase = activity.isWorking && !reduceMotion ? timeline.date.timeIntervalSinceReferenceDate : 0
+            HStack(spacing: 12) {
+                HStack(alignment: .center, spacing: 3) {
+                    ForEach(0..<5, id: \.self) { index in
+                        let base = [10.0, 18, 26, 18, 10][index]
+                        let pulse = phase == 0 ? 1 : 0.45 + 0.55 * (sin(phase * 12 - Double(index)) + 1) / 2
+                        Capsule().fill(tint)
+                            .frame(width: 3, height: base * pulse)
+                    }
+                }
+                .frame(width: 28, height: 28)
+                .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("LIVE RUNTIME")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(activity.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(ODPalette.text)
+                    Text(activity.badge)
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if activity == .generating, tokenRate.isFinite, tokenRate > 0 {
+                    Text("\(tokenRate, format: .number.precision(.fractionLength(1))) tok/s")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(tint)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(12)
+            .background(ODPalette.input, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Live parser")
+        .accessibilityValue(accessibilityValue)
+        .accessibilityIdentifier("api.parser")
+    }
+
+    private var accessibilityValue: String {
+        let title = String(localized: activity.title)
+        let badge = String(localized: activity.badge)
+        if activity == .generating, tokenRate.isFinite, tokenRate > 0 {
+            return String(localized: "\(title), \(Int(tokenRate.rounded())) tokens per second, \(badge)")
+        }
+        return "\(title), \(badge)"
+    }
+
+    private var tint: Color {
+        switch activity {
+        case .offline: .secondary
+        case .failed: .red
+        case .listening, .stopping: .orange
+        case .starting, .loading: ODPalette.accent
+        case .ready, .generating: .green
+        }
+    }
+}
+
+private struct LocalAPIClientFormatPicker: View {
+    @Binding var selection: LocalAPIClientSetup.Format
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            picker.pickerStyle(.menu)
+        } else {
+            picker.pickerStyle(.segmented)
+        }
+    }
+
+    private var picker: some View {
+        Picker("Client format", selection: $selection) {
+            ForEach(LocalAPIClientSetup.Format.allCases) { Text($0.rawValue).tag($0) }
+        }
+        .accessibilityIdentifier("api.client.format")
+    }
+}
+
+/// The route reference stays available before starting, without pushing the
+/// frequently used server configuration below seventeen endpoint rows.
+private struct LocalAPIEndpointsView: View {
+    let setup: LocalAPIClientSetup
+    @State private var expanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                expanded.toggle()
+            } label: {
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Endpoints").font(.headline)
+                        Text("\(LocalAPIClientSetup.routes.count) routes · includes classifiers")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                }
+                .frame(minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Endpoints")
+            .accessibilityValue(expanded ? "Expanded" : "Collapsed")
+            .accessibilityIdentifier("api.endpoints.toggle")
+
+            if expanded {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(LocalAPIClientSetup.routes) { route in
+                        if route.id == LocalAPIClientSetup.routes.first(where: { $0.group == route.group })?.id {
+                            Text(route.group.title)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .padding(.top, 12)
+                                .accessibilityAddTraits(.isHeader)
+                        }
+                        HStack(alignment: .center, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(route.method)
+                                    .font(.caption2.weight(.bold).monospaced())
+                                    .foregroundStyle(route.method == "POST" ? ODPalette.accent : .secondary)
+                                Text(route.path)
+                                    .font(.footnote.monospaced())
+                                    .foregroundStyle(ODPalette.text)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            Button {
+                                UIPasteboard.general.string = setup.url(for: route)
+                                ToastCenter.shared.success("Endpoint copied")
+                            } label: {
+                                Image(systemName: "doc.on.doc")
+                                    .frame(width: 44, height: 44)
+                            }
+                            .buttonStyle(APIConnectionPressStyle())
+                            .accessibilityLabel("Copy \(route.method) \(route.path) URL")
+                            .accessibilityIdentifier("api.endpoint.copy")
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    Label("Every route needs the API key as an Authorization bearer or x-api-key header.",
+                          systemImage: "key.horizontal")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 12)
+                }
+            }
+        }
+        .apiCard()
     }
 }
 
@@ -1403,7 +1441,7 @@ private struct APIActionButtonStyle: ButtonStyle {
 
     private var fill: Color {
         switch tone {
-        case .primary: ODPalette.accent
+        case .primary: ODPalette.send
         case .secondary: ODPalette.accentSoft
         case .destructive: ODPalette.input
         }
@@ -1411,7 +1449,7 @@ private struct APIActionButtonStyle: ButtonStyle {
 
     private var foreground: Color {
         switch tone {
-        case .primary: .white
+        case .primary: ODPalette.onSend
         case .secondary: ODPalette.accent
         case .destructive: ODPalette.text
         }
@@ -1419,7 +1457,7 @@ private struct APIActionButtonStyle: ButtonStyle {
 
     private var outline: Color {
         switch tone {
-        case .primary: ODPalette.accent.opacity(0.20)
+        case .primary: ODPalette.send.opacity(0.20)
         case .secondary: ODPalette.accent.opacity(0.12)
         case .destructive: ODPalette.line
         }
@@ -1502,7 +1540,7 @@ private struct LocalAPIPortSheet: View {
                     .font(.footnote)
                 }
             }
-            .navigationTitle("Port")
+            .odNavigationTitle("Port")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

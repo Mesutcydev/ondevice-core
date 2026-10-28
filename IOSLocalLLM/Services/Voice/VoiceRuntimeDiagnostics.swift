@@ -83,7 +83,7 @@ final class VoiceDiagnosticsCenter: ObservableObject {
         counters.captureMemory()
         syncLiveState()
         let report = """
-        OnDevice Voice Validation Report
+        Token AI Voice Validation Report
         -------------------------------
         Conversation model: \(conversationModel)
         TTS engine: \(ttsEngine)

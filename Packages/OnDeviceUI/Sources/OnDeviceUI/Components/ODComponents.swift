@@ -27,19 +27,6 @@ struct ODHairline: View {
     }
 }
 
-/// OnDevice's sole display-serif element. No external font dependency is required.
-struct ODWordmark: View {
-    private let style: Font.TextStyle
-    init(style: Font.TextStyle = .largeTitle) { self.style = style }
-    var body: some View {
-        Text("OnDevice")
-            .font(.system(style, design: .serif).weight(.bold))
-            .foregroundStyle(ODPalette.text)
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityLabel("OnDevice")
-    }
-}
-
 
 struct ODSectionHeader: View {
     private let title: String
@@ -54,7 +41,7 @@ struct ODSectionHeader: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: ODLayout.labelGap) {
-            Text(title.uppercased())
+            Text(odKey: title)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(ODPalette.secondary)
                 .accessibilityAddTraits(.isHeader)
@@ -64,7 +51,7 @@ struct ODSectionHeader: View {
                 if let action {
                     Button(action: action) {
                         HStack(spacing: ODLayout.unit) {
-                            Text(accessory).font(.subheadline)
+                            Text(odKey: accessory).font(.subheadline)
                             Image(systemName: "chevron.right").font(.caption.weight(.semibold))
                         }
                         .foregroundStyle(ODPalette.secondary)
@@ -73,7 +60,7 @@ struct ODSectionHeader: View {
                     }
                     .buttonStyle(ODPressButtonStyle())
                 } else {
-                    Text(accessory)
+                    Text(odKey: accessory)
                         .font(.subheadline)
                         .foregroundStyle(ODPalette.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -103,7 +90,7 @@ struct ODPrimaryButton: View {
                         .font(.body.weight(.medium))
                         .accessibilityHidden(true)
                 }
-                Text(title)
+                Text(odKey: title)
                     .font(.headline)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -146,7 +133,7 @@ struct ODIconButton: View {
         .buttonBorderShape(.circle)
         .controlSize(.regular)
         .frame(minWidth: ODLayout.minimumHit, minHeight: ODLayout.minimumHit)
-        .accessibilityLabel(label)
+        .accessibilityLabel(Text(odKey: label))
     }
 }
 
@@ -168,14 +155,14 @@ struct ODSearchField: View {
                 .font(.body)
                 .foregroundStyle(ODPalette.secondary)
                 .accessibilityHidden(true)
-            TextField(placeholder, text: $text)
+            TextField(ODLocalizedString(key: placeholder), text: $text)
                 .font(.body)
                 .foregroundStyle(ODPalette.text)
                 .tint(ODPalette.accent)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
-                .accessibilityLabel(placeholder)
+                .accessibilityLabel(Text(odKey: placeholder))
                 .focused($focused)
                 .frame(minHeight: ODLayout.minimumHit)
             if !text.isEmpty {
@@ -187,7 +174,7 @@ struct ODSearchField: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(ODPressButtonStyle())
-                .accessibilityLabel("Clear search")
+                .accessibilityLabel(Text("Clear search", bundle: .module))
             }
         }
         .frame(minHeight: ODLayout.rowMinimumHeight)
@@ -215,17 +202,17 @@ struct ODStatCell: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: ODLayout.elementGap) {
-            Label(title, systemImage: symbol)
+            Label(ODLocalizedString(key: title), systemImage: symbol)
                 .font(.caption)
                 .foregroundStyle(ODPalette.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(value)
+            Text(odKey: value)
                 .font(.subheadline.weight(.semibold))
                 .monospacedDigit()
                 .foregroundStyle(ODPalette.text)
                 .fixedSize(horizontal: false, vertical: true)
             if let detail {
-                Text(detail)
+                Text(odKey: detail)
                     .font(.caption2)
                     .foregroundStyle(ODPalette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -325,7 +312,7 @@ public struct ODAppMenuButton: View {
             .foregroundStyle(ODPalette.text)
         }
         .buttonBorderShape(.circle)
-        .accessibilityLabel("Open app menu")
+        .accessibilityLabel(Text("Open app menu", bundle: .module))
         .accessibilityIdentifier("navigation.menu")
     }
 }

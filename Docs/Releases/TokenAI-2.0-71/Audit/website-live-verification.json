@@ -1,0 +1,55 @@
+{
+  "verifiedAtUTC": "2026-10-24T17:22:12.030296+00:00",
+  "worker": "token-ai-pages",
+  "routes": [
+    "mesut.uk/apps/token*",
+    "mesut.uk/assets/token-icon.png"
+  ],
+  "checks": [
+    {
+      "path": "/apps/token",
+      "status": 200,
+      "websiteVersion": "2.0-72",
+      "bytes": 8669,
+      "sha256": "72a917d8c0cb43843e9d3de945522da1e75b1cc03d4cf9fc9fbb9e5933d7dbf7"
+    },
+    {
+      "path": "/apps/token/privacy",
+      "status": 200,
+      "websiteVersion": "2.0-72",
+      "bytes": 14168,
+      "sha256": "bf66d88a22e47172726193705aa73221c64f817b442efcc082b594b4206aaacf"
+    },
+    {
+      "path": "/apps/token/support",
+      "status": 200,
+      "websiteVersion": "2.0-72",
+      "bytes": 5807,
+      "sha256": "f28ac2097a71bf6252dad9ccd7bdc5379104160fd82a14868dd14e02fd7b095f"
+    },
+    {
+      "path": "/assets/token-icon.png",
+      "status": 200,
+      "websiteVersion": "2.0-72",
+      "bytes": 21798,
+      "sha256": "6b68c053a1f69b174f46796d9830b5513842e3b43a70856bf7e341718ef749b9",
+      "matchesProjectBytes": true
+    },
+    {
+      "path": "/apps/token/assets/token-ai-header.png",
+      "status": 200,
+      "websiteVersion": "2.0-72",
+      "bytes": 3454319,
+      "sha256": "d08d68533e935fa4a111b0bb73608acef49378115a9429dc4235863659d2f11a",
+      "matchesProjectBytes": true
+    },
+    {
+      "path": "/apps/token/assets/token-ai-search.png",
+      "status": 200,
+      "websiteVersion": "2.0-72",
+      "bytes": 4260011,
+      "sha256": "d6792533959a9e733e89ac23b1c1908fad5b059618c0f5b8b53be198212137fe",
+      "matchesProjectBytes": true
+    }
+  ]
+}

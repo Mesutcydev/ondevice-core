@@ -1,0 +1,208 @@
+{
+  "sourceApp": "6818199563",
+  "targetApp": "6774354746",
+  "targetInfo": "22c0ae3f-9858-4a67-9cf4-4fb327c8122a",
+  "targetVersion": "2d111ea6-2fa5-4774-9f20-a511a067573f",
+  "versionString": "2.0",
+  "locales": {
+    "ar-SA": {
+      "appInfoLocalizationId": "33c5c521-c9d9-42a3-9437-3af3ff4c3249",
+      "versionLocalizationId": "e2550d51-1468-4df3-b826-f13b8bd1b8fd",
+      "info": {
+        "name": "Token: Local AI Studio",
+        "subtitle": "ذكاء محلي، دردشة وصوت وصور",
+        "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+      },
+      "version": {
+        "description": "يوفّر Token AI مساحة عمل للذكاء الاصطناعي المحلي على iPhone. نزّل النماذج المتوافقة، واختر النموذج المناسب لمهمتك، ونظّم محادثاتك في مكان واحد.\n\nدردش وابتكر\nاطرح الأسئلة، واكتب المسودات، وراجع التعليمات البرمجية، واستكشف الأفكار. ابدأ محادثة جديدة أو عُد إلى دردشة محفوظة، مع البحث والمحادثات المثبّتة للوصول إلى عملك بسهولة.\n\nالصوت والرؤية\nاختر صوتًا للمحادثات المنطوقة. استخدم نماذج الرؤية المتوافقة للعمل مع الصور ولقطات الكاميرا في Lens.\n\nمكتبة نماذجك\nتصفّح النماذج المتاحة، ونزّل الحزم المتوافقة، واستورد ملفات النماذج المدعومة، وأدِر مساحة التخزين التي تستخدمها. يعتمد توفّر النماذج على جهاز iPhone ومتطلبات كل نموذج.\n\nاستوديو الصور\nأنشئ صورًا باستخدام نماذج الصور المحلية المدعومة. تُنزّل نماذج الصور بشكل منفصل. تتيح أدوات الرقابة الأبوية الاختيارية للوالدين تقييد إنشاء الصور برمز PIN.\n\nواجهة API محلية\nفعّل خادم API المحلي المحمي بالمصادقة لربط الأدوات المتوافقة عبر شبكتك المحلية الموثوقة.\n\nمحلي بشكل افتراضي\nلا يلزم إنشاء حساب Token AI. تُحفظ المحادثات على جهازك وتعمل النماذج المتوافقة محليًا. ترسل أدوات الويب الاختيارية الطلبات إلى المزوّد الذي تضبطه. وتستخدم مزامنة المحادثات الاختيارية عبر iCloud قاعدة بيانات CloudKit الخاصة بك.\n\nيتطلب iOS 27 أو أحدث. تُنزّل ملفات النماذج بشكل منفصل وقد تتطلب عدة غيغابايتات من مساحة التخزين. تعتمد الميزات المتاحة وتوافق النماذج وسرعة التوليد على ذاكرة iPhone ومساحة تخزينه وظروفه الحرارية. قد تكون نتائج الذكاء الاصطناعي غير دقيقة؛ راجعها قبل الاعتماد عليها.",
+        "keywords": "دردشة,مساعد,صوت,صور,نماذج,محلي,كتابة,llm",
+        "marketingUrl": "https://mesut.uk/apps/token",
+        "promotionalText": "أفسح المجال للذكاء الاصطناعي المحلي. دردش واكتب واستكشف الصور واستخدم الصوت على iPhone، مع نماذج قابلة للتنزيل وميزات شبكة اختيارية.",
+        "supportUrl": "https://mesut.uk/apps/token/support",
+        "whatsNew": "• تمت إضافة دعم iPhone Duo.\n• يجمع Token AI 2.0 الدردشات وLens والصوت والنماذج واستوديو الصور في مساحة عمل جديدة.\n• اعثر على المحادثات المحفوظة بالبحث والتثبيت، وأدِر تنزيل النماذج المتوافقة واستيرادها ومساحة تخزينها.\n• اختر أصواتًا للمحادثات الصوتية، واعمل على الصور ولقطات الكاميرا باستخدام نماذج الرؤية المدعومة.\n• أنشئ صورًا بنماذج محلية مدعومة مع أدوات رقابة أبوية اختيارية محمية برمز PIN.\n• اربط الأدوات المتوافقة عبر خادم API محلي موثّق على شبكتك المحلية الموثوقة.\n• مزامنة اختيارية للمحادثات عبر iCloud وأدوات ويب يمكن التحكم فيها بشكل مستقل."
+      }
+    },
+    "de-DE": {
+      "appInfoLocalizationId": "92348f51-8566-4b3c-87b2-381b341c4856",
+      "versionLocalizationId": "8e8bc97e-df20-4cb1-8963-41f2c5a6048f",
+      "info": {
+        "name": "Token: Local AI Studio",
+        "subtitle": "Lokale KI: Chat, Stimme & Bild",
+        "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+      },
+      "version": {
+        "description": "Token AI bringt einen lokalen KI-Arbeitsbereich auf dein iPhone. Lade kompatible Modelle herunter, wähle das passende für deine Aufgabe und organisiere deine Unterhaltungen an einem Ort.\n\nCHATTEN UND GESTALTEN\nStelle Fragen, entwirf Texte, prüfe Code und entwickle Ideen. Beginne eine neue Unterhaltung oder öffne einen gespeicherten Chat. Mit der Suche und angehefteten Unterhaltungen findest du deine Arbeit schnell wieder.\n\nSPRACHE UND BILDER\nWähle eine Stimme für gesprochene Unterhaltungen. Mit kompatiblen Bildverständnismodellen kannst du in Lens mit Fotos und Kameraaufnahmen arbeiten.\n\nDEINE MODELLBIBLIOTHEK\nEntdecke verfügbare Modelle, lade kompatible Pakete herunter, importiere unterstützte Modelldateien und verwalte ihren Speicherplatz. Welche Modelle verfügbar sind, hängt von deinem iPhone und den Anforderungen des jeweiligen Modells ab.\n\nBILDSTUDIO\nErstelle Bilder mit unterstützten lokalen Bildmodellen. Bildmodelle werden separat heruntergeladen. Mit der optionalen Kindersicherung können Eltern die Bilderstellung durch eine PIN einschränken.\n\nLOKALE API\nAktiviere den authentifizierten lokalen API-Server, um kompatible Werkzeuge in deinem vertrauenswürdigen lokalen Netzwerk zu verbinden.\n\nSTANDARDMÄSSIG LOKAL\nDu brauchst kein Token AI-Konto. Unterhaltungen werden auf deinem Gerät gespeichert und kompatible Modelle laufen lokal. Optionale Web-Werkzeuge senden Anfragen an den von dir eingerichteten Anbieter. Die optionale iCloud-Synchronisierung von Unterhaltungen nutzt deine private CloudKit-Datenbank.\n\nErfordert iOS 27 oder neuer. Modelldateien werden separat heruntergeladen und können mehrere Gigabyte Speicherplatz benötigen. Verfügbare Funktionen, Modellkompatibilität und Generierungsgeschwindigkeit hängen vom Arbeitsspeicher, Speicherplatz und Temperaturzustand deines iPhone ab. KI-Ergebnisse können fehlerhaft sein. Prüfe sie, bevor du dich darauf verlässt.",
+        "keywords": "offline,assistent,llm,chatbot,stimme,bilder,schreiben,programmieren,modelle,privat,lokal",
+        "marketingUrl": "https://mesut.uk/apps/token",
+        "promotionalText": "Platz für lokale KI: Chatte, schreibe, erkunde Bilder und nutze Sprache auf deinem iPhone – mit herunterladbaren Modellen und optionalen Netzwerkfunktionen.",
+        "supportUrl": "https://mesut.uk/apps/token/support",
+        "whatsNew": "• Unterstützung für iPhone Duo hinzugefügt.\n• Token AI 2.0 vereint Chats, Lens, Sprache, Modelle und Image Studio in einem neuen Arbeitsbereich.\n• Finde gespeicherte Gespräche mit Suche und angehefteten Chats und verwalte Downloads, Importe und Speicher kompatibler Modelle.\n• Wähle Stimmen für Gespräche und arbeite mit Fotos oder Kameraaufnahmen in unterstützten Bildverarbeitungsmodellen.\n• Erstelle Bilder mit unterstützten lokalen Modellen und optionaler PIN-geschützter Kindersicherung.\n• Verbinde kompatible Werkzeuge über den authentifizierten lokalen API-Server in einem vertrauenswürdigen lokalen Netzwerk.\n• Optionale iCloud-Synchronisierung für Gespräche und separat gesteuerte Webwerkzeuge."
+      }
+    },
+    "el": {
+      "appInfoLocalizationId": "fb6ea440-13d2-4b10-a6ab-30389a61a5d0",
+      "versionLocalizationId": "e22551bb-3c1f-40c8-80cd-19c115bcbd5c",
+      "info": {
+        "name": "Token: Local AI Studio",
+        "subtitle": "Τοπικό AI, συνομιλία και φωνή",
+        "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+      },
+      "version": {
+        "description": "Το Token AI φέρνει έναν τοπικό χώρο εργασίας τεχνητής νοημοσύνης στο iPhone. Κατεβάστε συμβατά μοντέλα, επιλέξτε το κατάλληλο για κάθε εργασία και οργανώστε τις συνομιλίες σας σε ένα μέρος.\n\nΣΥΝΟΜΙΛΗΣΤΕ ΚΑΙ ΔΗΜΙΟΥΡΓΗΣΤΕ\nΚάντε ερωτήσεις, συντάξτε κείμενα, ελέγξτε κώδικα και εξερευνήστε ιδέες. Ξεκινήστε νέα συνομιλία ή επιστρέψτε σε αποθηκευμένη. Η αναζήτηση και το καρφίτσωμα βοηθούν να βρίσκετε ό,τι χρειάζεστε.\n\nΦΩΝΗ ΚΑΙ ΟΡΑΣΗ\nΕπιλέξτε φωνή για προφορικές συνομιλίες. Χρησιμοποιήστε συμβατά μοντέλα όρασης για φωτογραφίες και λήψεις κάμερας στο Lens.\n\nΒΙΒΛΙΟΘΗΚΗ ΜΟΝΤΕΛΩΝ\nΠεριηγηθείτε στα διαθέσιμα μοντέλα, κατεβάστε συμβατά πακέτα, εισαγάγετε υποστηριζόμενα αρχεία και διαχειριστείτε τον χώρο τους. Η διαθεσιμότητα εξαρτάται από το iPhone και τις απαιτήσεις του μοντέλου.\n\nIMAGE STUDIO\nΔημιουργήστε εικόνες με υποστηριζόμενα τοπικά μοντέλα εικόνας, τα οποία λαμβάνονται ξεχωριστά. Οι προαιρετικοί γονικοί έλεγχοι επιτρέπουν περιορισμό της δημιουργίας εικόνων με PIN.\n\nΤΟΠΙΚΟ API\nΕνεργοποιήστε τον τοπικό διακομιστή API με έλεγχο ταυτότητας για να συνδέσετε συμβατά εργαλεία στο έμπιστο τοπικό σας δίκτυο.\n\nΤΟΠΙΚΑ ΑΠΟ ΠΡΟΕΠΙΛΟΓΗ\nΔεν απαιτείται λογαριασμός Token AI. Οι συνομιλίες αποθηκεύονται στη συσκευή και τα συμβατά μοντέλα λειτουργούν τοπικά. Τα προαιρετικά εργαλεία ιστού στέλνουν αιτήματα στον πάροχο που ορίζετε. Ο προαιρετικός συγχρονισμός iCloud χρησιμοποιεί την ιδιωτική σας βάση CloudKit.\n\nΑπαιτείται iOS 27 ή νεότερο. Τα αρχεία μοντέλων λαμβάνονται ξεχωριστά και μπορεί να απαιτούν αρκετά gigabyte. Οι λειτουργίες, η συμβατότητα και η ταχύτητα εξαρτώνται από τη μνήμη, την αποθήκευση και τη θερμοκρασία του iPhone. Τα αποτελέσματα AI μπορεί να είναι ανακριβή· ελέγξτε τα πριν βασιστείτε σε αυτά.",
+        "promotionalText": "Χώρος για τοπική AI. Συνομιλήστε, γράψτε, εξερευνήστε εικόνες και χρησιμοποιήστε φωνή στο iPhone, με μοντέλα για λήψη και προαιρετικές λειτουργίες δικτύου.",
+        "keywords": "offline,βοηθός,llm,chatbot,φωνή,όραση,εικόνες,γραφή,κώδικας,μοντέλα,τοπικό,ai",
+        "marketingUrl": "https://mesut.uk/apps/token",
+        "supportUrl": "https://mesut.uk/apps/token/support",
+        "whatsNew": "• Προστέθηκε υποστήριξη για iPhone Duo.\n• Το Token AI 2.0 συγκεντρώνει συνομιλίες, Lens, φωνή, μοντέλα και Image Studio σε νέο χώρο εργασίας.\n• Βρείτε αποθηκευμένες συνομιλίες με αναζήτηση και καρφίτσωμα και διαχειριστείτε λήψεις, εισαγωγές και χώρο αποθήκευσης συμβατών μοντέλων.\n• Επιλέξτε φωνές για συνομιλίες και επεξεργαστείτε φωτογραφίες ή λήψεις κάμερας με υποστηριζόμενα μοντέλα όρασης.\n• Δημιουργήστε εικόνες με υποστηριζόμενα τοπικά μοντέλα και προαιρετικούς γονικούς ελέγχους με PIN.\n• Συνδέστε συμβατά εργαλεία μέσω του τοπικού διακομιστή API με έλεγχο ταυτότητας σε έμπιστο τοπικό δίκτυο.\n• Προαιρετικός συγχρονισμός συνομιλιών iCloud και ανεξάρτητα ελεγχόμενα εργαλεία ιστού."
+      }
+    },
+    "en-US": {
+      "appInfoLocalizationId": "2091826d-3ae3-4c6c-be81-58d8d438b98e",
+      "versionLocalizationId": "f3c860cb-5f6b-4647-8210-de798453c5d5",
+      "info": {
+        "name": "Token: Local AI Studio",
+        "subtitle": "Local AI, chat, voice & images",
+        "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+      },
+      "version": {
+        "description": "Token AI brings a local AI workspace to your iPhone. Download compatible models, choose the right one for your task, and keep your conversations organized in one place.\n\nCHAT AND CREATE\nAsk questions, draft writing, review code and explore ideas. Start a new conversation or return to a saved chat, with search and pinned conversations to help you find your work.\n\nVOICE AND VISION\nChoose a voice for spoken conversations. Use compatible vision models to work with photos and camera captures in Lens.\n\nYOUR MODEL LIBRARY\nBrowse available models, download compatible packs, import supported model files and manage the storage they use. Model availability depends on your iPhone and the model's requirements.\n\nIMAGE STUDIO\nCreate images using supported local image models. Image models are downloaded separately. Optional parental controls let a parent restrict image generation with a PIN.\n\nLOCAL API\nEnable the authenticated Local API Server to connect compatible tools on your trusted local network.\n\nLOCAL BY DEFAULT\nNo Token AI account is required. Conversations are stored on your device and compatible models run locally. Optional web tools send requests to the provider you configure. Optional iCloud conversation sync uses your private CloudKit database.\n\nRequires iOS 27 or later. Model files are downloaded separately and may require several gigabytes of storage. Available features, model compatibility and generation speed depend on your iPhone's memory, storage and thermal conditions. AI results can be inaccurate; review them before relying on them.",
+        "keywords": "offline,assistant,llm,chatbot,voice,vision,images,writing,coding,models,private,local,ai",
+        "marketingUrl": "https://mesut.uk/apps/token",
+        "promotionalText": "Make room for local AI. Chat, write, explore images and use voice on your iPhone, with downloadable models and optional network features.",
+        "supportUrl": "https://mesut.uk/apps/token/support",
+        "whatsNew": "• Added iPhone Duo support.\n• Token AI 2.0 brings chats, Lens, voice, models and Image Studio together in a new workspace.\n• Find saved conversations with search and pins, and manage compatible model downloads, imports and storage.\n• Choose voices for spoken conversations and work with photos or camera captures using supported vision models.\n• Create images with supported local models, with optional PIN-protected parental controls.\n• Connect compatible tools through the authenticated Local API Server on a trusted local network.\n• Optional iCloud conversation sync and separately controlled web tools."
+      }
+    },
+    "es-ES": {
+      "appInfoLocalizationId": "7521e15a-3f3e-428b-a4da-d2aba2a2ee69",
+      "versionLocalizationId": "f7da32b3-d36b-4357-b1c0-4cefb3e17f09",
+      "info": {
+        "name": "Token: Local AI Studio",
+        "subtitle": "IA local, chat, voz e imágenes",
+        "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+      },
+      "version": {
+        "description": "Token AI lleva un espacio de trabajo de IA local a tu iPhone. Descarga modelos compatibles, elige el adecuado para cada tarea y organiza tus conversaciones en un solo lugar.\n\nCONVERSA Y CREA\nHaz preguntas, redacta textos, revisa código y explora ideas. Inicia una conversación o retoma un chat guardado. La búsqueda y las conversaciones fijadas te ayudan a encontrar tu trabajo.\n\nVOZ Y VISIÓN\nElige una voz para las conversaciones habladas. Usa modelos de visión compatibles para trabajar con fotos y capturas de cámara en Lens.\n\nTU BIBLIOTECA DE MODELOS\nExplora los modelos disponibles, descarga paquetes compatibles, importa archivos de modelos admitidos y gestiona el espacio que ocupan. La disponibilidad depende de tu iPhone y de los requisitos de cada modelo.\n\nESTUDIO DE IMÁGENES\nCrea imágenes con modelos locales de imagen compatibles. Los modelos de imagen se descargan por separado. Los controles parentales opcionales permiten restringir la generación de imágenes con un PIN.\n\nAPI LOCAL\nActiva el servidor de API local con autenticación para conectar herramientas compatibles en tu red local de confianza.\n\nLOCAL POR DEFECTO\nNo necesitas una cuenta de Token AI. Las conversaciones se guardan en tu dispositivo y los modelos compatibles se ejecutan localmente. Las herramientas web opcionales envían solicitudes al proveedor que configures. La sincronización opcional de conversaciones con iCloud utiliza tu base de datos privada de CloudKit.\n\nRequiere iOS 27 o posterior. Los archivos de los modelos se descargan por separado y pueden necesitar varios gigabytes de almacenamiento. Las funciones disponibles, la compatibilidad de los modelos y la velocidad de generación dependen de la memoria, el almacenamiento y las condiciones térmicas de tu iPhone. Los resultados de la IA pueden ser incorrectos; revísalos antes de basarte en ellos.",
+        "keywords": "offline,asistente,llm,chatbot,voz,visión,imágenes,escritura,código,modelos,privado,local",
+        "marketingUrl": "https://mesut.uk/apps/token",
+        "promotionalText": "Haz sitio a la IA local. Chatea, escribe, explora imágenes y usa la voz en tu iPhone, con modelos descargables y funciones de red opcionales.",
+        "supportUrl": "https://mesut.uk/apps/token/support",
+        "whatsNew": "• Añadida compatibilidad con iPhone Duo.\n• Token AI 2.0 reúne chats, Lens, voz, modelos e Image Studio en un nuevo espacio de trabajo.\n• Encuentra conversaciones guardadas con búsqueda y fijación, y gestiona descargas, importaciones y almacenamiento de modelos compatibles.\n• Elige voces para conversar y trabaja con fotos o capturas de cámara mediante modelos de visión compatibles.\n• Crea imágenes con modelos locales compatibles y controles parentales opcionales protegidos por PIN.\n• Conecta herramientas compatibles mediante el servidor de API local autenticado en una red local de confianza.\n• Sincronización opcional de conversaciones con iCloud y herramientas web con controles independientes."
+      }
+    },
+    "hi": {
+      "appInfoLocalizationId": "cc27bdae-cc30-4dbf-9f69-7559c0c8dce5",
+      "versionLocalizationId": "e52db6d3-0d58-47de-8b02-9b50e1333674",
+      "info": {
+        "name": "Token: Local AI Studio",
+        "subtitle": "लोकल AI, चैट, आवाज़ व चित्र",
+        "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+      },
+      "version": {
+        "description": "Token AI आपके iPhone पर लोकल AI का कार्यक्षेत्र लाता है। संगत मॉडल डाउनलोड करें, अपने काम के लिए सही मॉडल चुनें और अपनी बातचीत एक ही जगह व्यवस्थित रखें।\n\nचैट करें और रचें\nसवाल पूछें, लेखन के मसौदे तैयार करें, कोड की समीक्षा करें और नए विचार खोजें। नई बातचीत शुरू करें या सहेजी गई चैट पर लौटें। खोज और पिन की गई बातचीत से अपना काम आसानी से ढूँढें।\n\nआवाज़ और दृश्य\nबोलकर बातचीत करने के लिए एक आवाज़ चुनें। Lens में फ़ोटो और कैमरे से ली गई तस्वीरों के साथ काम करने के लिए संगत विज़न मॉडल इस्तेमाल करें।\n\nआपकी मॉडल लाइब्रेरी\nउपलब्ध मॉडल देखें, संगत पैक डाउनलोड करें, समर्थित मॉडल फ़ाइलें इंपोर्ट करें और उनके स्टोरेज का प्रबंधन करें। मॉडल की उपलब्धता आपके iPhone और मॉडल की ज़रूरतों पर निर्भर करती है।\n\nइमेज स्टूडियो\nसमर्थित लोकल इमेज मॉडल से तस्वीरें बनाएँ। इमेज मॉडल अलग से डाउनलोड किए जाते हैं। वैकल्पिक अभिभावकीय नियंत्रण से माता-पिता PIN लगाकर तस्वीरें बनाने पर रोक लगा सकते हैं।\n\nलोकल API\nअपने भरोसेमंद लोकल नेटवर्क पर संगत टूल जोड़ने के लिए प्रमाणीकरण वाला लोकल API सर्वर चालू करें।\n\nडिफ़ॉल्ट रूप से लोकल\nToken AI खाते की ज़रूरत नहीं है। बातचीत आपके डिवाइस पर सहेजी जाती है और संगत मॉडल लोकल रूप से चलते हैं। वैकल्पिक वेब टूल आपके कॉन्फ़िगर किए गए प्रदाता को अनुरोध भेजते हैं। वैकल्पिक iCloud बातचीत सिंक आपके निजी CloudKit डेटाबेस का उपयोग करता है।\n\niOS 27 या उसके बाद का संस्करण ज़रूरी है। मॉडल फ़ाइलें अलग से डाउनलोड की जाती हैं और इनके लिए कई गीगाबाइट स्टोरेज की ज़रूरत हो सकती है। उपलब्ध सुविधाएँ, मॉडल की संगतता और जनरेशन की गति आपके iPhone की मेमोरी, स्टोरेज और तापमान की स्थिति पर निर्भर करती हैं। AI के नतीजे गलत हो सकते हैं; उन पर भरोसा करने से पहले उनकी समीक्षा करें।",
+        "keywords": "चैट,सहायक,आवाज़,चित्र,लेखन,मॉडल,llm,offline",
+        "marketingUrl": "https://mesut.uk/apps/token",
+        "promotionalText": "अपने iPhone पर लोकल AI अपनाएँ। डाउनलोड किए जा सकने वाले मॉडल और वैकल्पिक नेटवर्क सुविधाओं के साथ चैट करें, लिखें, तस्वीरों पर काम करें और आवाज़ का उपयोग करें।",
+        "supportUrl": "https://mesut.uk/apps/token/support",
+        "whatsNew": "• iPhone Duo का समर्थन जोड़ा गया।\n• Token AI 2.0 चैट, Lens, आवाज़, मॉडल और Image Studio को एक नए कार्यक्षेत्र में लाता है।\n• खोज और पिन से सहेजी गई बातचीत ढूँढें तथा संगत मॉडलों के डाउनलोड, इंपोर्ट और स्टोरेज का प्रबंधन करें।\n• बोलकर बातचीत के लिए आवाज़ चुनें और समर्थित विज़न मॉडलों से फ़ोटो या कैमरा चित्रों पर काम करें।\n• समर्थित लोकल मॉडलों से चित्र बनाएँ और वैकल्पिक PIN-सुरक्षित अभिभावकीय नियंत्रण इस्तेमाल करें।\n• भरोसेमंद लोकल नेटवर्क पर प्रमाणित लोकल API सर्वर से संगत टूल जोड़ें।\n• वैकल्पिक iCloud बातचीत सिंक और अलग-अलग नियंत्रित वेब टूल।"
+      }
+    },
+    "ja": {
+      "appInfoLocalizationId": "b54f5b49-7bb1-4440-878b-37016d795ce9",
+      "versionLocalizationId": "854c0b60-88cb-461a-845f-9a2b9653441e",
+      "info": {
+        "name": "Token: Local AI Studio",
+        "subtitle": "ローカルAI・チャット・音声・画像",
+        "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+      },
+      "version": {
+        "description": "Token AIは、iPhoneで使えるローカルAIのワークスペースです。対応モデルをダウンロードし、目的に合ったモデルを選んで、会話をひとつの場所に整理できます。\n\nチャットで考え、つくる\n質問、文章の下書き、コードのレビュー、アイデアの検討に。新しい会話を始めたり、保存したチャットを再開したりできます。検索や会話のピン留めで、必要な内容を見つけやすくなります。\n\n音声と画像認識\n音声での会話に使う声を選べます。対応する画像認識モデルを使えば、Lensで写真やカメラで撮影した画像を扱えます。\n\nモデルライブラリ\n利用可能なモデルを探し、対応パックのダウンロード、対応モデルファイルの読み込み、使用ストレージの管理ができます。利用できるモデルは、iPhoneの仕様と各モデルの要件によって異なります。\n\n画像スタジオ\n対応するローカル画像モデルで画像を生成できます。画像モデルは別途ダウンロードが必要です。任意のペアレンタルコントロールで、保護者がPINによって画像生成を制限できます。\n\nローカルAPI\n認証付きのローカルAPIサーバーを有効にすると、信頼できるローカルネットワーク上で対応ツールを接続できます。\n\n標準でローカル処理\nToken AIアカウントは不要です。会話はデバイスに保存され、対応モデルはローカルで動作します。任意のWebツールは、設定したプロバイダにリクエストを送信します。任意のiCloud会話同期では、自分専用のCloudKitプライベートデータベースを使用します。\n\niOS 27以降が必要です。モデルファイルは別途ダウンロードが必要で、数GBのストレージを使用する場合があります。利用できる機能、モデルの互換性、生成速度は、iPhoneのメモリ、ストレージ、温度条件によって異なります。AIの結果には誤りが含まれる場合があります。利用する際は内容を確認してください。",
+        "keywords": "オフライン,アシスタント,チャット,モデル,ローカル,llm",
+        "marketingUrl": "https://mesut.uk/apps/token",
+        "promotionalText": "iPhoneにローカルAIを。ダウンロード可能なモデルで、チャット、文章作成、画像の活用、音声でのやり取りをひとつに。任意のネットワーク機能も利用できます。",
+        "supportUrl": "https://mesut.uk/apps/token/support",
+        "whatsNew": "• iPhone Duoに対応しました。\n• Token AI 2.0は、チャット、Lens、音声、モデル、Image Studioを新しいワークスペースにまとめます。\n• 検索とピン留めで保存した会話を見つけ、対応モデルのダウンロード、読み込み、ストレージを管理できます。\n• 会話に使う声を選び、対応する視覚モデルで写真やカメラ画像を扱えます。\n• 対応するローカルモデルで画像を生成。PINで保護するペアレンタルコントロールも任意で設定できます。\n• 認証付きローカルAPIサーバーで、信頼できるローカルネットワーク上の対応ツールを接続できます。\n• 任意のiCloud会話同期と、個別に管理できるWebツールに対応しました。"
+      }
+    },
+    "pt-PT": {
+      "appInfoLocalizationId": "3a5baa69-8292-4a67-a612-6ce08d35ba6d",
+      "versionLocalizationId": "806a5f14-a1c3-4f75-a275-377335deea8c",
+      "info": {
+        "name": "Token: Local AI Studio",
+        "subtitle": "IA local, chat, voz e imagens",
+        "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+      },
+      "version": {
+        "description": "O Token AI traz um espaço de trabalho de IA local para o iPhone. Transfira modelos compatíveis, escolha o mais adequado para cada tarefa e mantenha as conversas organizadas num só lugar.\n\nCONVERSE E CRIE\nFaça perguntas, escreva rascunhos, reveja código e explore ideias. Inicie uma conversa ou retome uma conversa guardada. A pesquisa e as conversas fixadas ajudam a encontrar o seu trabalho.\n\nVOZ E VISÃO\nEscolha uma voz para conversas faladas. Use modelos de visão compatíveis para trabalhar com fotografias e capturas da câmara no Lens.\n\nA SUA BIBLIOTECA DE MODELOS\nExplore os modelos disponíveis, transfira pacotes compatíveis, importe ficheiros de modelos suportados e faça a gestão do armazenamento utilizado. A disponibilidade depende do iPhone e dos requisitos de cada modelo.\n\nIMAGE STUDIO\nCrie imagens com modelos de imagem locais compatíveis. Estes modelos são transferidos separadamente. Os controlos parentais opcionais permitem restringir a criação de imagens com um PIN.\n\nAPI LOCAL\nAtive o servidor de API local autenticado para ligar ferramentas compatíveis na sua rede local de confiança.\n\nLOCAL POR PREDEFINIÇÃO\nNão é necessária uma conta Token AI. As conversas são guardadas no dispositivo e os modelos compatíveis são executados localmente. As ferramentas Web opcionais enviam pedidos ao fornecedor configurado. A sincronização opcional de conversas com iCloud utiliza a sua base de dados CloudKit privada.\n\nRequer iOS 27 ou posterior. Os ficheiros dos modelos são transferidos separadamente e podem ocupar vários gigabytes. As funcionalidades disponíveis, a compatibilidade e a velocidade dependem da memória, armazenamento e condições térmicas do iPhone. A IA pode produzir resultados incorretos; reveja-os antes de confiar neles.",
+        "promotionalText": "Dê espaço à IA local. Converse, escreva, explore imagens e use voz no iPhone, com modelos transferíveis e funcionalidades de rede opcionais.",
+        "keywords": "offline,assistente,llm,chatbot,voz,visão,imagens,escrita,código,modelos,privado,local,ia",
+        "marketingUrl": "https://mesut.uk/apps/token",
+        "supportUrl": "https://mesut.uk/apps/token/support",
+        "whatsNew": "• Adicionado suporte para iPhone Duo.\n• O Token AI 2.0 reúne conversas, Lens, voz, modelos e Image Studio num novo espaço de trabalho.\n• Encontre conversas guardadas com pesquisa e fixação e faça a gestão de transferências, importações e armazenamento de modelos compatíveis.\n• Escolha vozes para conversar e trabalhe com fotografias ou capturas da câmara usando modelos de visão compatíveis.\n• Crie imagens com modelos locais compatíveis e controlos parentais opcionais protegidos por PIN.\n• Ligue ferramentas compatíveis através do servidor de API local autenticado numa rede local de confiança.\n• Sincronização opcional de conversas com iCloud e ferramentas Web com controlos independentes."
+      }
+    },
+    "ro": {
+      "appInfoLocalizationId": "e7787ec7-c9f9-472b-8154-aa9d809232d0",
+      "versionLocalizationId": "d0c9d280-f16d-499f-a374-6bc68d627f5a",
+      "info": {
+        "name": "Token: Local AI Studio",
+        "subtitle": "AI local: chat, voce, imagini",
+        "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+      },
+      "version": {
+        "description": "Token AI aduce un spațiu de lucru AI local pe iPhone. Descărcați modele compatibile, alegeți modelul potrivit pentru fiecare sarcină și organizați conversațiile într-un singur loc.\n\nCONVERSAȚI ȘI CREAȚI\nPuneți întrebări, redactați texte, revizuiți cod și explorați idei. Începeți o conversație sau reveniți la una salvată. Căutarea și fixarea conversațiilor vă ajută să găsiți ce vă trebuie.\n\nVOCE ȘI VEDERE\nAlegeți o voce pentru conversații vorbite. Folosiți modele de vedere compatibile pentru fotografii și capturi ale camerei în Lens.\n\nBIBLIOTECA DE MODELE\nExplorați modelele disponibile, descărcați pachete compatibile, importați fișiere acceptate și gestionați spațiul ocupat. Disponibilitatea depinde de iPhone și de cerințele modelului.\n\nIMAGE STUDIO\nCreați imagini folosind modele locale compatibile. Modelele de imagini se descarcă separat. Controalele parentale opționale permit restricționarea generării imaginilor prin PIN.\n\nAPI LOCAL\nActivați serverul API local autentificat pentru a conecta instrumente compatibile în rețeaua locală de încredere.\n\nLOCAL ÎN MOD IMPLICIT\nNu este necesar un cont Token AI. Conversațiile sunt stocate pe dispozitiv, iar modelele compatibile rulează local. Instrumentele web opționale trimit cereri furnizorului configurat. Sincronizarea opțională a conversațiilor cu iCloud folosește baza dvs. de date CloudKit privată.\n\nNecesită iOS 27 sau o versiune ulterioară. Fișierele modelelor se descarcă separat și pot necesita mai mulți gigabyți. Funcțiile, compatibilitatea și viteza depind de memoria, stocarea și condițiile termice ale iPhone-ului. Rezultatele AI pot fi inexacte; verificați-le înainte de a vă baza pe ele.",
+        "promotionalText": "Faceți loc pentru AI local. Conversați, scrieți, explorați imagini și folosiți vocea pe iPhone, cu modele descărcabile și funcții de rețea opționale.",
+        "keywords": "offline,asistent,llm,chatbot,voce,vedere,imagini,scris,cod,modele,privat,local,ai",
+        "marketingUrl": "https://mesut.uk/apps/token",
+        "supportUrl": "https://mesut.uk/apps/token/support",
+        "whatsNew": "• A fost adăugat suport pentru iPhone Duo.\n• Token AI 2.0 reunește conversațiile, Lens, vocea, modelele și Image Studio într-un spațiu de lucru nou.\n• Găsiți conversațiile salvate prin căutare și fixare și gestionați descărcările, importurile și spațiul ocupat de modelele compatibile.\n• Alegeți voci pentru conversații și lucrați cu fotografii sau capturi ale camerei folosind modele de vedere compatibile.\n• Creați imagini cu modele locale compatibile și controale parentale opționale protejate prin PIN.\n• Conectați instrumente compatibile prin serverul API local autentificat într-o rețea locală de încredere.\n• Sincronizare opțională a conversațiilor prin iCloud și instrumente web controlate separat."
+      }
+    },
+    "ru": {
+      "appInfoLocalizationId": "8a508ace-aae1-4faf-aec1-aa2866e2d2f0",
+      "versionLocalizationId": "065bee7d-2296-46d3-b36a-ae883323e0f4",
+      "info": {
+        "name": "Token: Local AI Studio",
+        "subtitle": "Локальный ИИ: чат, голос, фото",
+        "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+      },
+      "version": {
+        "description": "Token AI — локальное рабочее пространство ИИ на вашем iPhone. Загружайте совместимые модели, выбирайте подходящую для каждой задачи и храните беседы в одном месте.\n\nОБЩАЙТЕСЬ И СОЗДАВАЙТЕ\nЗадавайте вопросы, создавайте черновики, проверяйте код и исследуйте идеи. Начните новую беседу или вернитесь к сохранённой. Поиск и закреплённые беседы помогут найти нужное.\n\nГОЛОС И ЗРЕНИЕ\nВыберите голос для разговоров. Работайте с фотографиями и снимками камеры в Lens с помощью совместимых моделей зрения.\n\nБИБЛИОТЕКА МОДЕЛЕЙ\nПросматривайте доступные модели, загружайте совместимые пакеты, импортируйте поддерживаемые файлы и управляйте занимаемым местом. Доступность зависит от iPhone и требований модели.\n\nIMAGE STUDIO\nСоздавайте изображения с поддерживаемыми локальными моделями. Модели изображений загружаются отдельно. Необязательный родительский контроль позволяет ограничить создание изображений PIN-кодом.\n\nЛОКАЛЬНЫЙ API\nВключите локальный API-сервер с аутентификацией для подключения совместимых инструментов в доверенной локальной сети.\n\nЛОКАЛЬНО ПО УМОЛЧАНИЮ\nУчётная запись Token AI не требуется. Беседы сохраняются на устройстве, а совместимые модели работают локально. Дополнительные веб-инструменты отправляют запросы выбранному провайдеру. Необязательная синхронизация бесед через iCloud использует вашу личную базу CloudKit.\n\nТребуется iOS 27 или новее. Файлы моделей загружаются отдельно и могут занимать несколько гигабайт. Возможности, совместимость и скорость зависят от памяти, хранилища и температуры iPhone. Результаты ИИ могут быть неточными; проверяйте их перед использованием.",
+        "promotionalText": "Место для локального ИИ. Общайтесь, пишите, работайте с изображениями и голосом на iPhone с загружаемыми моделями и дополнительными сетевыми функциями.",
+        "keywords": "офлайн,помощник,llm,чатбот,голос,зрение,изображения,тексты,код,модели,локально,ии",
+        "marketingUrl": "https://mesut.uk/apps/token",
+        "supportUrl": "https://mesut.uk/apps/token/support",
+        "whatsNew": "• Добавлена поддержка iPhone Duo.\n• Token AI 2.0 объединяет чаты, Lens, голос, модели и Image Studio в новом рабочем пространстве.\n• Находите сохранённые беседы с помощью поиска и закрепления, управляйте загрузкой, импортом и хранилищем совместимых моделей.\n• Выбирайте голоса для разговоров и работайте с фотографиями или снимками камеры с помощью поддерживаемых моделей зрения.\n• Создавайте изображения с поддерживаемыми локальными моделями и используйте необязательный родительский контроль с PIN-кодом.\n• Подключайте совместимые инструменты через локальный API-сервер с аутентификацией в доверенной локальной сети.\n• Необязательная синхронизация бесед через iCloud и отдельные настройки веб-инструментов."
+      }
+    },
+    "tr": {
+      "appInfoLocalizationId": "359dfcc9-9bba-4a23-9d79-1756ed992399",
+      "versionLocalizationId": "31ac4dcf-852d-44aa-8489-7a27c28c0643",
+      "info": {
+        "name": "Token: Local AI Studio",
+        "subtitle": "Yerel AI: sohbet, ses, görsel",
+        "privacyPolicyUrl": "https://mesut.uk/apps/token/privacy"
+      },
+      "version": {
+        "description": "Token AI, iPhone'unuza yerel bir yapay zekâ çalışma alanı getirir. Uyumlu modelleri indirin, işinize uygun olanı seçin ve konuşmalarınızı tek bir yerde düzenleyin.\n\nSOHBET EDİN VE ÜRETİN\nSorular sorun, yazı taslakları oluşturun, kod inceleyin ve fikirleri keşfedin. Yeni bir konuşma başlatın veya kayıtlı bir sohbete dönün. Arama ve sabitlenmiş konuşmalar, çalışmalarınızı bulmanızı kolaylaştırır.\n\nSES VE GÖRÜNTÜ\nSesli konuşmalar için bir ses seçin. Lens'te fotoğraflar ve kamera çekimleriyle çalışmak için uyumlu görsel anlama modellerini kullanın.\n\nMODEL KİTAPLIĞINIZ\nMevcut modellere göz atın, uyumlu paketleri indirin, desteklenen model dosyalarını içe aktarın ve kullandıkları depolama alanını yönetin. Modellerin kullanılabilirliği iPhone'unuza ve modelin gereksinimlerine bağlıdır.\n\nGÖRSEL STÜDYOSU\nDesteklenen yerel görüntü modelleriyle görseller oluşturun. Görüntü modelleri ayrıca indirilir. İsteğe bağlı ebeveyn denetimleri, ebeveynlerin görsel oluşturmayı bir PIN ile kısıtlamasına olanak tanır.\n\nYEREL API\nGüvenilir yerel ağınızdaki uyumlu araçları bağlamak için kimlik doğrulamalı Yerel API Sunucusu'nu etkinleştirin.\n\nVARSAYILAN OLARAK YEREL\nToken AI hesabı gerekmez. Konuşmalar cihazınızda saklanır ve uyumlu modeller yerel olarak çalışır. İsteğe bağlı web araçları, yapılandırdığınız sağlayıcıya istek gönderir. İsteğe bağlı iCloud konuşma eşzamanlaması, özel CloudKit veritabanınızı kullanır.\n\niOS 27 veya üzeri gerekir. Model dosyaları ayrıca indirilir ve birkaç gigabayt depolama alanı gerektirebilir. Kullanılabilir özellikler, model uyumluluğu ve üretim hızı; iPhone'unuzun belleğine, depolama alanına ve sıcaklık koşullarına bağlıdır. Yapay zekâ sonuçları hatalı olabilir; bunlara güvenmeden önce sonuçları gözden geçirin.",
+        "keywords": "çevrimdışı,asistan,llm,sohbet,ses,görsel,yazma,kodlama,model,özel,yerel,yapayzeka",
+        "marketingUrl": "https://mesut.uk/apps/token",
+        "promotionalText": "Yerel yapay zekâya yer açın. İndirilebilir modeller ve isteğe bağlı ağ özellikleriyle iPhone'unuzda sohbet edin, yazın, görselleri keşfedin ve sesi kullanın.",
+        "supportUrl": "https://mesut.uk/apps/token/support",
+        "whatsNew": "• iPhone Duo desteği eklendi.\n• Token AI 2.0; sohbetleri, Lens'i, sesi, modelleri ve Görsel Stüdyosu'nu yeni bir çalışma alanında birleştirir.\n• Arama ve sabitlemeyle kayıtlı sohbetleri bulun; uyumlu modellerin indirmelerini, içe aktarmalarını ve depolamasını yönetin.\n• Sesli sohbetler için ses seçin ve desteklenen görsel anlama modelleriyle fotoğraf veya kamera çekimleri üzerinde çalışın.\n• Desteklenen yerel modellerle görseller oluşturun; isteğe bağlı PIN korumalı ebeveyn denetimlerini kullanın.\n• Güvenilir yerel ağınızdaki uyumlu araçları kimlik doğrulamalı Yerel API Sunucusu ile bağlayın.\n• İsteğe bağlı iCloud sohbet eşzamanlaması ve ayrı ayrı denetlenen web araçları."
+      }
+    }
+  },
+  "removePlacements": [
+    {
+      "id": "0ac00019-3c87-833a-8f25-b66b95e97566",
+      "type": "PRODUCT_PAGE_HEADER_ASSET",
+      "locale": "en-US"
+    },
+    {
+      "id": "53c00019-3c87-833a-8f24-af100f28c4b1",
+      "type": "APP_STORE_SEARCH_RESULTS_ASSET",
+      "locale": "en-US"
+    }
+  ]
+}

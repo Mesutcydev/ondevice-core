@@ -1,0 +1,9 @@
+_od_mini47_create
+_od_mini47_free
+_od_mini47_cancel
+_od_mini47_describe
+_od_mini47_routed_experts
+_od_mini47_text
+_od_mini47_get_metrics
+_od_mini47_text_optimized
+_od_mini47_text_cached

@@ -596,30 +596,27 @@ final class DeviceTierAdvisorTests: XCTestCase {
 
     func test_dualRoleRuntimeIsSharedOnlyWhenVisionEnvelopeFits() {
         XCTAssertFalse(
-            DualRoleModelPolicy.shouldShareRuntime(
-                isDualRole: true,
-                selectionsMatch: true,
+            AssistantVisionPolicy.shouldLoadSharedRuntime(
+                isSupportedMultimodal: true,
                 requiredVisionBytes: 8_700_000_000,
                 availableBytes: 6_080_000_000
             ),
             "Matching picker selections must not force an unsafe VLM runtime onto Assistant"
         )
         XCTAssertTrue(
-            DualRoleModelPolicy.shouldShareRuntime(
-                isDualRole: true,
-                selectionsMatch: true,
+            AssistantVisionPolicy.shouldLoadSharedRuntime(
+                isSupportedMultimodal: true,
                 requiredVisionBytes: 5_100_000_000,
                 availableBytes: 6_080_000_000
             )
         )
         XCTAssertFalse(
-            DualRoleModelPolicy.shouldShareRuntime(
-                isDualRole: true,
-                selectionsMatch: false,
+            AssistantVisionPolicy.shouldLoadSharedRuntime(
+                isSupportedMultimodal: false,
                 requiredVisionBytes: 5_100_000_000,
                 availableBytes: 6_080_000_000
             ),
-            "Different Assistant and Lens selections should keep independent runtimes"
+            "Text-only models must not load a vision runtime"
         )
     }
 

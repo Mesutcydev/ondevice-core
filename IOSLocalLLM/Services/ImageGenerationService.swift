@@ -280,12 +280,24 @@ final class ImageGenerationService: ObservableObject {
     func startDownload(_ model: Model) {
         guard !isInstalled(model), directDownloadProgress[model.id] == nil else { return }
 
+        _ = DownloadLiveActivityManager.shared.start(
+            repoID: BackgroundDownloadJob.identifier(root: repoDirectory(model.id), ownerID: model.id), displayName: model.displayName)
         directDownloadErrors[model.id] = nil
         directDownloadProgress[model.id] = 0
         directDownloadTasks[model.id] = Task { [weak self] in
             guard let self else { return }
             await self.downloadOnly(model)
             self.directDownloadTasks[model.id] = nil
+        }
+    }
+
+    func restoreBackgroundDownload(_ model: Model, job: BackgroundDownloadJob) {
+        guard directDownloadTasks[model.id] == nil else { return }
+        if isInstalled(model) { BackgroundDownloadCoordinator.shared.finish(jobID: job.id); return }
+        switch job.state {
+        case .transferring, .verifying: startDownload(model)
+        case .paused: directDownloadErrors[model.id] = "Download paused. Download again to resume."
+        case .failed: directDownloadErrors[model.id] = "Download interrupted. Download again to resume."
         }
     }
 
@@ -320,7 +332,7 @@ final class ImageGenerationService: ObservableObject {
 
     func deleteModel(_ model: Model) {
         // Delete is reachable from the Models page while Image studio works.
-        guard !isWorking else {
+        guard !isWorking, !isDownloading(model) else {
             ToastCenter.shared.error("Model in use", detail: "Wait for the image to finish, then delete the model.")
             return
         }
@@ -821,10 +833,17 @@ final class ImageGenerationService: ObservableObject {
             progress(floor.value)
         }
 
+        let activityID = BackgroundDownloadJob.identifier(root: dir, ownerID: model.id)
+        let transfers = try relPaths.map { rel -> BackgroundDownloadFile in
+            let encoded = rel.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? rel
+            guard let source = URL(string: "https://huggingface.co/\(model.id)/resolve/\(revision)/\(encoded)") else { throw URLError(.badURL) }
+            return .init(relativePath: rel, source: source, expectedBytes: 0)
+        }
+        let job = try BackgroundDownloadJob(owner: .init(kind: .image, id: model.id, repoID: model.id,
+            revision: revision, displayName: model.displayName), root: dir, files: transfers)
+        do {
+        try await BackgroundDownloadCoordinator.shared.enqueue(job) { update in report(update.fraction) }
         for rel in relPaths {
-            // A user cancel returns between files (the in-flight URLSession
-            // transfer keeps going in the background and is reused next time);
-            // the caller's `Task.isCancelled` check then takes the cancel path.
             if Task.isCancelled { throw CancellationError() }
 
             let dest = dir.appendingPathComponent(rel)
@@ -843,17 +862,13 @@ final class ImageGenerationService: ObservableObject {
                 throw URLError(.badURL)
             }
 
-            let fileIndex = done   // immutable copy for the @escaping progress closure
             let maxAttempts = 4
             var attempt = 0
             while true {
                 do {
                     _ = try await BackgroundDownloadCoordinator.shared.download(
-                        from: url, to: dest, expectedSize: 0
-                    ) { written, expected in
-                        let inFile = expected > 0 ? min(Double(written) / Double(expected), 1) : 0
-                        report((Double(fileIndex) + inFile) / Double(total))
-                    }
+                        from: url, to: dest, expectedSize: 0, jobID: activityID
+                    ) { _, _ in }
                     break
                 } catch {
                     if Task.isCancelled { throw CancellationError() }
@@ -867,6 +882,17 @@ final class ImageGenerationService: ObservableObject {
             }
             done += 1
             report(Double(done) / Double(total))
+        }
+        try Task.checkCancellation()
+        BackgroundDownloadCoordinator.shared.finish(jobID: activityID)
+        } catch {
+            await BackgroundDownloadCoordinator.shared.pauseTasks(matching: dir.path)
+            if Task.isCancelled || error is CancellationError {
+                DownloadLiveActivityManager.shared.pause(repoID: activityID)
+            } else {
+                BackgroundDownloadCoordinator.shared.fail(jobID: activityID)
+            }
+            throw error
         }
     }
 

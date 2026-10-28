@@ -3,9 +3,16 @@ import SwiftUI
 import Combine
 import OnDeviceUI
 
-final class Diagnostics { static let shared = Diagnostics(); func error(_ message: String, category: String) {} }
-enum CloudSyncTombstones { static func mark(_ id: UUID) {} }
-enum SpotlightIndexer { static func reindexAll(_ records: [StoredConversation]) {} }
+extension Notification.Name {
+    static let onDeviceDataWiped = Notification.Name("onDeviceDataWiped")
+}
+
+final class Diagnostics { static let shared = Diagnostics(); func breadcrumb(_ message: String, category: String) {}
+    func error(_ message: String, category: String) {} }
+enum SpotlightIndexer {
+    static func reindexAll(_ records: [StoredConversation],
+                           isCurrent: @escaping @Sendable () -> Bool = { true }) {}
+}
 /// Stand-in for the production Documents scan: top-level folders holding config.json.
 enum LocalModelImportService {
     static func documentsCandidates() -> [URL] {
@@ -70,7 +77,13 @@ final class CodingAssistantService: ObservableObject {
     static let shared = CodingAssistantService()
     @Published var state: State = .ready
     @Published var tokenRate: Double = 0
-    func load() async { state = .ready }
+    var activeExecutionLocation: ModelExecutionLocation = .localDownloaded
+    var selectedModelIsInstalled = true
+    var isModelLoaded: Bool {
+        guard !activeExecutionLocation.isCloud else { return false }
+        switch state { case .ready, .generating: return true; default: return false }
+    }
+    func load(allowStorageFallback: Bool = true, reselectFromSettings: Bool = true) async { state = .ready }
     func unload() { state = .unloaded }
     var activeDisplayName = "local_Ornith-1.5-9B-Q5_K_M"
     var activeSelectionID = "local/local_Ornith-1.5-9B-Q5_K_M"
@@ -88,6 +101,7 @@ struct BridgePairingView: View { var body: some View { Text("Review destination:
 
 // Explicit review fixtures for the production API-server view. No sockets or real keys.
 final class AppSettings: ObservableObject {
+    var hapticsEnabled = false
     static let shared = AppSettings()
     @Published var localAPIEnabled = false
     @Published var localAPIPort = 11434
@@ -114,6 +128,7 @@ enum LocalAPIValidation {
 struct AssistantModelPickerView: View {
     var downloadedOnly = false
     var allowsAPIProviders = true
+    var allowsApplePrivateCloud = true
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         // Mirror the production picker's dismissal affordance: a navigation

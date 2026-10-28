@@ -5,11 +5,15 @@ repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 test_directory="$(mktemp -d)"
 trap 'rm -rf "$test_directory"' EXIT
 mkdir -p "$test_directory/Sources/IOSLocalLLM" "$test_directory/Tests/PolicyTests"
-cp "$repository_root/IOSLocalLLM/Services/MLXAssistantKVCachePolicy.swift" \
+cp "$repository_root/IOSLocalLLM/Services/AssistantVisionPolicy.swift" \
+   "$repository_root/IOSLocalLLM/Models/Bonsai2Compatibility.swift" \
+   "$repository_root/IOSLocalLLM/Services/MLXAssistantKVCachePolicy.swift" \
    "$repository_root/IOSLocalLLM/Services/ModelCheckpointCompatibility.swift" \
    "$repository_root/IOSLocalLLM/Services/ModelMemoryBudget.swift" \
    "$test_directory/Sources/IOSLocalLLM/"
-cp "$repository_root/IOSLocalLLMTests/MLXQuantizationPolicyTests.swift" \
+cp "$repository_root/IOSLocalLLMTests/AssistantVisionPolicyTests.swift" \
+   "$repository_root/IOSLocalLLMTests/Bonsai2CompatibilityTests.swift" \
+   "$repository_root/IOSLocalLLMTests/MLXQuantizationPolicyTests.swift" \
    "$test_directory/Tests/PolicyTests/"
 cat > "$test_directory/Package.swift" <<'SWIFT'
 // swift-tools-version: 5.10

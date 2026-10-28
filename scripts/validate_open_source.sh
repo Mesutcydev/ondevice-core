@@ -86,12 +86,13 @@ if [[ -n "$secret_matches" ]]; then
 fi
 
 if ! cmp -s \
-  OnDeviceMax.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved \
-  OnDeviceMax.xcworkspace/xcshareddata/swiftpm/Package.resolved; then
+  TokenAI.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved \
+  TokenAI.xcworkspace/xcshareddata/swiftpm/Package.resolved; then
   echo "error: committed Swift package lockfiles differ" >&2
   exit 1
 fi
 
+python3 scripts/validate_localizations.py
 python3 -m json.tool codemeta.json >/dev/null
 python3 -m json.tool SBOM.spdx.json >/dev/null
 

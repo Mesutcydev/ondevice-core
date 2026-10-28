@@ -110,6 +110,8 @@ nonisolated struct GitHubWorkspaceDraft: Codable, Equatable, Sendable {
     var baseSHA: String?
     var changes: [GitHubFileChange] = []
     var revision = UUID()
+    /// Stable across staging/commits; different chats must not share editor drafts.
+    var editorID: UUID? = UUID()
 }
 
 nonisolated enum GitHubReviewAction: Equatable, Sendable {
@@ -134,6 +136,11 @@ nonisolated struct GitHubReviewPlan: Identifiable, Equatable, Sendable {
     let draft: GitHubWorkspaceDraft
     let expectedSHA: String
     let action: GitHubReviewAction
+    var includedPaths: Set<String>? = nil
+    var changesToCommit: [GitHubFileChange] {
+        guard let includedPaths else { return draft.changes }
+        return draft.changes.filter { includedPaths.contains($0.path) }
+    }
 }
 
 nonisolated enum GitHubToolOutcome: Sendable {

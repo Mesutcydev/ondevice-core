@@ -1810,7 +1810,7 @@ actor LocalAPIServer {
             await listOpenAIModels(connection, corsOrigin: corsOrigin)
         case ("GET", "/v1/classifiers"):
             let payload = await MainActor.run {
-                LocalAPIResponse.json(["object": "list", "data": CoreAIClassifierHost.models.map { model in
+                LocalAPIResponse.json(["object": "list", "data": CoreAIClassifierHost.models.filter { !$0.isImage }.map { model in
                     ["id": model.id, "name": model.name, "context_length": model.window,
                      "loaded": CoreAIInferenceService.shared.loadedClassifierID == model.id,
                      "tasks": ["choice", "score", "boolean"]] as [String: Any]
@@ -2594,7 +2594,7 @@ actor LocalAPIServer {
 
     private func describeAPI(_ connection: NWConnection, corsOrigin: String?) async {
         let payload = LocalAPIResponse.json([
-            "name": "OnDevice Max",
+            "name": "Token AI",
             "status": "ok",
             "authentication": ["bearer", "x-api-key"],
             "openai_base_url": "/v1",
@@ -3145,7 +3145,7 @@ final class LocalAPIManager: ObservableObject {
 
     private let server = LocalAPIServer()
     private let pathMonitor = NWPathMonitor()
-    private let pathQueue = DispatchQueue(label: "com.mesutcydev.ondevicemax.local-api-network")
+    private let pathQueue = DispatchQueue(label: "com.token.TokenAI.local-api-network")
 
     private var startEpoch: UInt64 = 0
 

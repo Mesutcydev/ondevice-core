@@ -26,8 +26,15 @@ enum StudioTextBlocks {
             remaining = remaining[range.upperBound...]
             if marker == "```" {
                 guard let newline = remaining.firstIndex(of: "\n") else {
-                    // Incomplete opening fence: preserve it until a language/body arrives.
-                    blocks.append(.text("```" + remaining))
+                    // Mount the card as soon as its opening fence arrives. A
+                    // fence followed by prose ("wrap it in ``` fences") is text.
+                    let language = String(remaining).trimmingCharacters(in: .whitespaces)
+                    if language.count <= 32, !language.contains(where: \.isWhitespace),
+                       remaining.first?.isWhitespace != true {
+                        blocks.append(.code(language, ""))
+                    } else {
+                        blocks.append(.text("```" + remaining))
+                    }
                     break
                 }
                 let language = String(remaining[..<newline]).trimmingCharacters(in: .whitespaces)

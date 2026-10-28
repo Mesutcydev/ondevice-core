@@ -52,6 +52,18 @@ tokens, local-network addresses, notifications, or downloaded model weights.
 Apple's simulated iPhone chrome and SF Symbols appear only as necessary
 interface context; Apple does not sponsor or endorse this project.
 
+## In-app visual user guide — October 12, 2026
+
+The UserGuide asset catalog reuses eleven existing project UI captures for
+the guide in Settings. Screenshot identities, original hashes, and app-asset
+hashes are recorded in Docs/Images/UserGuideSourceManifest.json. They contain
+synthetic QA content, not private user content, credentials, or model weights.
+Images are resized JPEG copies with their original interface content preserved;
+highlights are drawn by the guide at runtime. Original guide text and presentation
+were created with AI assistance for the project owner under the repository MIT
+license. Native iPhone chrome appears as interface context. These captures
+illustrate controls, not hardware inference, camera, or audio performance.
+
 ## Excluded assets
 
 AI model weights, compiled Core ML models, generated XCFrameworks, installers,

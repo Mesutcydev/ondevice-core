@@ -1,0 +1,26 @@
+{
+  "data": {
+    "type": "reviewSubmissions",
+    "id": "2c9614b6-4fa7-4ddf-aade-5d66e607dd8f",
+    "attributes": {
+      "platform": "IOS",
+      "state": "WAITING_FOR_REVIEW",
+      "submittedDate": "2026-10-24T17:36:59.586Z"
+    },
+    "relationships": {
+      "items": {
+        "data": null,
+        "links": {
+          "self": "https://api.appstoreconnect.apple.com/v1/reviewSubmissions/2c9614b6-4fa7-4ddf-aade-5d66e607dd8f/relationships/items",
+          "related": "https://api.appstoreconnect.apple.com/v1/reviewSubmissions/2c9614b6-4fa7-4ddf-aade-5d66e607dd8f/items"
+        }
+      }
+    },
+    "links": {
+      "self": "https://api.appstoreconnect.apple.com/v1/reviewSubmissions/2c9614b6-4fa7-4ddf-aade-5d66e607dd8f"
+    }
+  },
+  "links": {
+    "self": "https://api.appstoreconnect.apple.com/v1/reviewSubmissions/2c9614b6-4fa7-4ddf-aade-5d66e607dd8f"
+  }
+}

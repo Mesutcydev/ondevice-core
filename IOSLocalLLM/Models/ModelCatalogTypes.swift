@@ -355,41 +355,18 @@ enum LocalModelRole: String, CaseIterable, Codable, Hashable {
 /// Lens. A fitting VLM runtime may be shared, while oversized vision models
 /// remain usable through an independently bounded Assistant text runtime.
 enum DualRoleModelPolicy {
-    static func isTextAndVision(repoID: String) -> Bool {
-        AssistantModelCatalog.presets.contains {
+    static func isTextAndVision(repoID: String, directory: URL? = nil) -> Bool {
+        if AssistantModelCatalog.presets.contains(where: {
             $0.repoID.caseInsensitiveCompare(repoID) == .orderedSame
-                && $0.runtime == .mlx
-                && $0.capabilities.contains(.vision)
-        }
-    }
-
-    @MainActor
-    static func selectionsMatch(repoID: String) -> Bool {
-        let assistantRepo = AssistantModelCatalog.currentSelection().repoID
-        let visionSelection = LocalModelRegistry.storedVisionSelectionID(
-            AppSettings.shared.cameraVisualModelID
-        )
-        return isTextAndVision(repoID: repoID)
-            && assistantRepo.caseInsensitiveCompare(repoID) == .orderedSame
-            && visionSelection.caseInsensitiveCompare(repoID) == .orderedSame
-    }
-
-    /// A unified package should own both roles only when the user selected the
-    /// same package for each role *and* its vision runtime fits the live
-    /// process budget. Text-only execution can be substantially smaller than
-    /// image execution, so a dual-role catalog flag alone is not sufficient.
-    /// Kept injectable for regression tests and for non-iOS hosts where live
-    /// process-memory APIs may not be available.
-    static nonisolated func shouldShareRuntime(
-        isDualRole: Bool,
-        selectionsMatch: Bool,
-        requiredVisionBytes: UInt64,
-        availableBytes: UInt64
-    ) -> Bool {
-        isDualRole
-            && selectionsMatch
-            && requiredVisionBytes > 0
-            && availableBytes >= requiredVisionBytes
+                && $0.runtime == .mlx && $0.capabilities.contains(.vision)
+        }) { return true }
+        // Imported packs must have a type registered in both pinned factories.
+        // A name or a vision badge alone is not an executable chat contract.
+        guard let directory,
+              LocalModelRegistry.isUnifiedTextVisionPack(in: directory),
+              LocalModelRegistry.unsupportedTextRuntimeReason(in: directory) == nil,
+              LocalModelRegistry.unsupportedVisionRuntimeReason(in: directory) == nil else { return false }
+        return true
     }
 }
 
@@ -720,6 +697,7 @@ enum LocalModelRegistry {
     /// category is vision, but a supported text component can also make them
     /// eligible for the Assistant picker.
     static func hasDeclaredTextComponent(in directory: URL) -> Bool {
+        if MiniCPMV47Artifacts.isPrepared(in: directory) { return true }
         let config = directory.appendingPathComponent("config.json")
         guard let data = try? Data(contentsOf: config),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -821,17 +799,19 @@ enum LocalModelRegistry {
         guard let data = try? Data(contentsOf: config),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let modelType = json["model_type"] as? String else { return nil }
-        if modelType == "prism_hadamard_qwen35" {
-            return "Bonsai 2 needs a Hadamard-aware Swift model loader. This build cannot produce verified text output from this pack yet."
+        if modelType == "prism_hadamard_qwen35", !Bonsai2Compatibility.supportsText(json) {
+            return "This Bonsai 2 pack is not supported. Choose the verified Ternary Bonsai 2 9B MLX 2-bit pack."
         }
         return nil
     }
 
     /// Lens also lacks the pack's custom vision model integration.
     static func unsupportedVisionRuntimeReason(in directory: URL) -> String? {
-        unsupportedTextRuntimeReason(in: directory).map { _ in
-            "Bonsai 2 image input needs a Hadamard-aware Lens loader that is not available yet."
-        }
+        guard let data = try? Data(contentsOf: directory.appendingPathComponent("config.json")),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              json["model_type"] as? String == "prism_hadamard_qwen35" else { return nil }
+        return Bonsai2Compatibility.supportsVision(json) ? nil
+            : "This Bonsai 2 vision pack is not supported. Choose Ternary Bonsai 2 9B MLX 2-bit with its complete image encoder."
     }
 
     /// Prism's published language-weight size for the current MLX pack.
@@ -923,7 +903,7 @@ enum LocalModelRegistry {
             }
         }()
         var caps = model.capabilities
-        if role == .vision { caps.insert(.vision) }
+        if role == .vision || (role == .assistant && model.supportsCategory(.vlm)) { caps.insert(.vision) }
         if role == .assistant && supportsThinking(repoID: repoID) { caps.insert(.thinking) }
         if KnownGatedRepos.isGated(repoID: repoID) { caps.insert(.gated) }
         // Identity-inferred markers (tools/coder/fast/multilingual) so the

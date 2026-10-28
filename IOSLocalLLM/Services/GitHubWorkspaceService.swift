@@ -39,7 +39,9 @@ final class GitHubWorkspaceService: ObservableObject {
 
     func restore(_ draft: GitHubWorkspaceDraft?) {
         cancel(); lastReceipt = nil
-        self.draft = draft
+        var restored = draft
+        if restored?.editorID == nil { restored?.editorID = UUID() }
+        self.draft = restored
     }
 
     func select(_ selection: GitHubRepositorySelection?) throws {
@@ -55,7 +57,10 @@ final class GitHubWorkspaceService: ObservableObject {
 
     func discardChanges() {
         cancel()
-        if let selection = draft?.selection { draft = GitHubWorkspaceDraft(selection: selection) }
+        if let saved = draft {
+            var next = GitHubWorkspaceDraft(selection: saved.selection)
+            next.editorID = saved.editorID; draft = next
+        }
     }
 
     /// Explicitly re-authorize a saved scope after reconnecting, preserving its draft.
@@ -140,10 +145,119 @@ final class GitHubWorkspaceService: ObservableObject {
         return result
     }
 
-    func review(message: String = "Update files with OnDevice Max") async throws -> GitHubReviewPlan {
+    func review(message: String = "Update files with Token AI") async throws -> GitHubReviewPlan {
         let draft = try activeDraft()
         guard !draft.changes.isEmpty, let sha = draft.baseSHA else { throw GitHubError.emptyChanges }
         return GitHubReviewPlan(id: UUID(), draft: draft, expectedSHA: sha, action: .commit(message: try commitMessage(message)))
+    }
+
+    /// Manual workspace reads share the same account, branch, cancellation and draft overlay.
+    func workspaceListing() async throws -> (entries: [CodingWorkspaceEntry], commit: String, truncated: Bool) {
+        let saved = try activeDraft(), scope = lifetime
+        let token = try connection.credential(for: saved.selection.accountID)
+        let head = try await client.head(saved.selection, token: token)
+        let sha = saved.baseSHA ?? head
+        let commit = try await client.commit(saved.selection, sha: sha, token: token)
+        let tree = try await client.tree(saved.selection, sha: commit.tree.sha, recursive: true, token: token)
+        try validateCurrent(scope, accountID: saved.selection.accountID)
+        guard draft == saved else { throw GitHubError.staleReview }
+        var entries: [String: CodingWorkspaceEntry] = [:]
+        for entry in tree.tree.prefix(2_000) where entry.type == "tree" || (entry.type == "blob" && ["100644", "100755"].contains(entry.mode)) {
+            guard (try? GitHubValidation.path(entry.path)) != nil else { continue }
+            entries[entry.path] = .init(path: entry.path, isDirectory: entry.type == "tree")
+        }
+        for change in saved.changes {
+            if change.updated == nil { entries.removeValue(forKey: change.path) }
+            else {
+                entries[change.path] = .init(path: change.path, isDirectory: false)
+                let components = change.path.split(separator: "/")
+                for count in 1..<components.count {
+                    let folder = components.prefix(count).joined(separator: "/")
+                    entries[folder] = .init(path: folder, isDirectory: true)
+                }
+            }
+        }
+        return (entries.values.sorted { $0.path.localizedStandardCompare($1.path) == .orderedAscending }, sha,
+                tree.truncated == true || tree.tree.count > 2_000)
+    }
+
+    func workspaceFile(path: String, commit: String) async throws -> CodingWorkspaceFile {
+        let path = try GitHubValidation.path(path)
+        guard GitHubValidation.sha(commit) else { throw GitHubError.invalidResponse }
+        let saved = try activeDraft(), scope = lifetime
+        let token = try connection.credential(for: saved.selection.accountID)
+        if let change = saved.changes.first(where: { $0.path == path }) {
+            guard let text = change.updatedText else { throw GitHubError.unsupportedFile }
+            return .init(path: path, base: change.originalText, text: text, commit: saved.baseSHA ?? commit,
+                         mode: change.mode, stagedText: text)
+        }
+        let file = try await client.file(saved.selection, path: path, ref: commit, token: token)
+        let mode = try await client.fileMode(saved.selection, path: path, commitSHA: commit, token: token)
+        try validateCurrent(scope, accountID: saved.selection.accountID)
+        guard draft == saved, let text = String(data: file.data, encoding: .utf8), !file.data.contains(0),
+              let mode else { throw GitHubError.unsupportedFile }
+        return .init(path: path, base: text, text: text, commit: commit, mode: mode)
+    }
+
+    func stageWorkspaceFile(_ file: CodingWorkspaceFile) async throws {
+        let saved = try activeDraft(), scope = lifetime
+        let token = try connection.credential(for: saved.selection.accountID)
+        let head = try await client.head(saved.selection, token: token)
+        try validateCurrent(scope, accountID: saved.selection.accountID)
+        guard draft == saved, head == file.commit, saved.baseSHA == nil || saved.baseSHA == file.commit else { throw GitHubError.conflict }
+        let prior = file.stagedText ?? file.base
+        let hash = prior.map { fileHash(Data($0.utf8)) } ?? "absent"
+        let outcome = await run(name: "write_file", args: ["path": file.path, "content": file.text, "expectedFileHash": hash])
+        guard case .result(let result) = outcome else { throw GitHubError.staleReview }
+        if result.hasPrefix("Error:") {
+            if result.contains("Potential credentials") { throw GitHubError.detectedSecrets }
+            if result.contains("size limit") { throw GitHubError.tooLarge }
+            throw GitHubError.staleReview
+        }
+    }
+
+    /// Rebase only after explicit conflict decisions; never writes to GitHub.
+    func refreshWorkspaceDraft(keepLocal: Set<String> = [], useRemote: Set<String> = [],
+                               editorFiles: [CodingWorkspaceFile] = []) async throws -> [String] {
+        let saved = try activeDraft(), scope = lifetime
+        let token = try connection.credential(for: saved.selection.accountID)
+        let head = try await client.head(saved.selection, token: token)
+        var next = GitHubWorkspaceDraft(selection: saved.selection)
+        next.editorID = saved.editorID
+        next.baseSHA = head
+        var conflicts: [String] = []
+        var remoteFiles: [String: GitHubFile] = [:]
+        var missing: Set<String> = []
+        for change in saved.changes {
+            let remote: GitHubFile?
+            do { remote = try await client.file(saved.selection, path: change.path, ref: head, token: token) }
+            catch GitHubError.notFound { remote = nil }
+            if let remote { remoteFiles[change.path] = remote } else { missing.insert(change.path) }
+            if useRemote.contains(change.path) || remote?.data == change.updated { continue }
+            if remote?.data != change.original && !keepLocal.contains(change.path) {
+                conflicts.append(change.path); continue
+            }
+            let mode = try await client.fileMode(saved.selection, path: change.path, commitSHA: head, token: token) ?? change.mode
+            next.changes.append(.init(path: change.path, original: remote?.data, updated: change.updated, mode: mode))
+        }
+        for file in editorFiles where file.hasUnstagedChanges && file.commit != head {
+            guard !keepLocal.contains(file.path), !useRemote.contains(file.path), !conflicts.contains(file.path) else { continue }
+            let remote: GitHubFile?
+            if let cached = remoteFiles[file.path] { remote = cached }
+            else if missing.contains(file.path) { remote = nil }
+            else {
+                do { remote = try await client.file(saved.selection, path: file.path, ref: head, token: token) }
+                catch GitHubError.notFound { remote = nil }
+            }
+            let baseline = file.base.map { Data($0.utf8) }
+            if remote?.data != baseline && remote?.data != Data(file.text.utf8) { conflicts.append(file.path) }
+        }
+        try validateCurrent(scope, accountID: saved.selection.accountID)
+        guard draft == saved else { throw GitHubError.staleReview }
+        guard conflicts.isEmpty else { return conflicts }
+        if next.changes.isEmpty { next.baseSHA = nil }
+        draft = next
+        return []
     }
 
     func approve(_ plan: GitHubReviewPlan) async -> String {
@@ -163,9 +277,14 @@ final class GitHubWorkspaceService: ObservableObject {
                 switch plan.action {
                 case .commit(let message):
                     let sha = try await client.commitChanges(plan, message: message, token: token, validate: checkApproval)
-                    result = "Committed \(plan.draft.changes.count) reviewed \(plan.draft.changes.count == 1 ? "file" : "files") to \(selection.label). Commit: \(sha)."
+                    result = "Committed \(plan.changesToCommit.count) reviewed \(plan.changesToCommit.count == 1 ? "file" : "files") to \(selection.label). Commit: \(sha)."
                     try validateCurrent(scope, accountID: selection.accountID)
-                    draft = GitHubWorkspaceDraft(selection: selection)
+                    var remaining = GitHubWorkspaceDraft(selection: selection)
+                    remaining.editorID = plan.draft.editorID
+                    let published = Set(plan.changesToCommit.map(\.path))
+                    remaining.changes = plan.draft.changes.filter { !published.contains($0.path) }
+                    remaining.baseSHA = remaining.changes.isEmpty ? nil : sha
+                    draft = remaining
                 case .createBranch(let name):
                     try await checkApproval()
                     try await client.createBranch(selection, name: name, expectedSHA: plan.expectedSHA, token: token)
@@ -200,6 +319,8 @@ final class GitHubWorkspaceService: ObservableObject {
         guard draft == plan.draft else { throw GitHubError.staleReview }
         guard GitHubValidation.sha(plan.expectedSHA), plan.draft.changes.count <= 30 else { throw GitHubError.invalidResponse }
         if case .commit = plan.action {
+            guard !plan.changesToCommit.isEmpty,
+                  plan.includedPaths == nil || plan.includedPaths!.isSubset(of: Set(plan.draft.changes.map(\.path))) else { throw GitHubError.emptyChanges }
             guard plan.draft.baseSHA == plan.expectedSHA, !plan.draft.changes.isEmpty,
                   Set(plan.draft.changes.map(\.path)).count == plan.draft.changes.count,
                   plan.draft.changes.reduce(0, { $0 + ($1.original?.count ?? 0) + ($1.updated?.count ?? 0) }) <= 2_097_152 else { throw GitHubError.invalidResponse }
@@ -360,6 +481,9 @@ final class GitHubWorkspaceService: ObservableObject {
                 }
             }
             let current = existing == nil ? original : existing?.updated
+            if let expected = args["expectedFileHash"] as? String {
+                guard expected == (current.map(fileHash) ?? "absent") else { throw GitHubError.staleReview }
+            }
             let updated: Data?
             if name == "delete_file" {
                 guard current != nil else { throw GitHubError.notFound }
@@ -420,7 +544,7 @@ final class GitHubWorkspaceService: ObservableObject {
             result = try await client.checks(selection, sha: sha, token: token)
         case "workflow_status": result = try await client.workflowStatus(selection, token: token)
         case "request_user_approval":
-            return .review(try await review(message: args["message"] as? String ?? "Update files with OnDevice Max"))
+            return .review(try await review(message: args["message"] as? String ?? "Update files with Token AI"))
         case "create_branch", "open_pull_request", "revert_last_commit":
             guard workspace.changes.isEmpty else { return .result("Error: commit or discard staged changes before this action.") }
             let head = try await client.head(selection, token: token)

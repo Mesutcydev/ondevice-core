@@ -2,6 +2,7 @@
 import copy
 from datetime import datetime, timedelta, timezone
 import importlib.util
+import plistlib
 from pathlib import Path
 import unittest
 import tempfile
@@ -14,7 +15,7 @@ spec.loader.exec_module(verification)
 class ReviewFunnelTests(unittest.TestCase):
     def testRetiredFunnelRejectedRegardlessOfFilename(self):
         with self.assertRaisesRegex(ValueError, "review funnel"):
-            verification.check_review_funnel('struct RenamedView { let title = "Enjoying OnDevice?" }')
+            verification.check_review_funnel('struct RenamedView { let title = "Enjoying Token AI?" }')
 
     def testNativeReviewRequestIsAllowed(self):
         verification.check_review_funnel('AppStore.requestReview(in: scene)')
@@ -84,6 +85,51 @@ class CandidateMetadataTests(unittest.TestCase):
             self.verify()
 
 
+class EmbeddedFrameworkTests(unittest.TestCase):
+    def setUp(self):
+        self.info = {"CFBundleShortVersionString": "1.0.0", "CFBundleVersion": "1", "MinimumOSVersion": "27.0"}
+
+    def testValidFrameworkAndOlderSupportedDeploymentTarget(self):
+        for minimum in ("8.0", "16.4", "27.0"):
+            self.info["MinimumOSVersion"] = minimum
+            verification.check_framework_metadata(self.info, "ODMiniCPM.framework", "27.0")
+
+    def testMissingAndBlankFrameworkVersionsAreRejected(self):
+        for key in ("CFBundleShortVersionString", "CFBundleVersion"):
+            for value in (None, "", " ", 1):
+                with self.subTest(key=key, value=value):
+                    info = dict(self.info, **{key: value})
+                    with self.assertRaisesRegex(ValueError, key):
+                        verification.check_framework_metadata(info, "ODMiniCPM.framework", "27.0")
+
+    def testMissingBlankAndMalformedMinimumOSAreRejected(self):
+        for value in (None, "", " ", "27.x", 27):
+            with self.subTest(value=value):
+                info = dict(self.info, MinimumOSVersion=value)
+                with self.assertRaisesRegex(ValueError, "MinimumOSVersion"):
+                    verification.check_framework_metadata(info, "ODMiniCPM.framework", "27.0")
+
+    def testDeploymentTargetBefore64BitIOSIsRejected(self):
+        self.info["MinimumOSVersion"] = "7.0"
+        with self.assertRaisesRegex(ValueError, "64-bit"):
+            verification.check_framework_metadata(self.info, "ODMiniCPM.framework", "27.0")
+
+    def testFrameworkRequiringANewerOSThanTheAppIsRejected(self):
+        self.info["MinimumOSVersion"] = "27.1"
+        with self.assertRaisesRegex(ValueError, "exceeds"):
+            verification.check_framework_metadata(self.info, "ODMiniCPM.framework", "27.0")
+
+    def testNestedShareExtensionFrameworkIsAlsoChecked(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app = Path(directory)
+            framework = app / "PlugIns/Share.appex/Frameworks/ODMiniCPM.framework"
+            framework.mkdir(parents=True)
+            with (framework / "Info.plist").open("wb") as stream:
+                plistlib.dump(dict(self.info, CFBundleVersion=""), stream)
+            with self.assertRaisesRegex(ValueError, "CFBundleVersion"):
+                verification.check_embedded_frameworks(app, "27.0")
+
+
 class DistributionProfileTests(unittest.TestCase):
     def setUp(self):
         self.now = datetime.now(timezone.utc)
@@ -92,7 +138,6 @@ class DistributionProfileTests(unittest.TestCase):
         self.entitlements = verification.read_plist(verification.ROOT / "IOSLocalLLM/IOSLocalLLM-AppStore.entitlements")
         self.entitlements.update({"application-identifier": "LEGACY1234." + self.bundle,
                                   "com.apple.developer.team-identifier": self.team,
-                                  "com.apple.developer.icloud-container-environment": "Production",
                                   "get-task-allow": False})
         self.profile = {"TeamIdentifier": [self.team], "ApplicationIdentifierPrefix": ["LEGACY1234"],
                         "ExpirationDate": self.now + timedelta(days=30),
@@ -104,38 +149,40 @@ class DistributionProfileTests(unittest.TestCase):
     def testExplicitAppStoreProfileWithLegacyAppIDPrefix(self):
         self.verify()
 
-    def testAppleCloudKitProfileAllowlistAndServiceWildcard(self):
+    def testDownloadWidgetProfileNeedsNoSharedModelStorage(self):
+        self.bundle = verification.APP_ID + ".Downloads"
+        self.entitlements = {"application-identifier": "LEGACY1234." + self.bundle,
+                             "com.apple.developer.team-identifier": self.team, "get-task-allow": False}
+        self.profile["Entitlements"] = copy.deepcopy(self.entitlements)
+        self.verify()
+        self.entitlements["com.apple.security.application-groups"] = [verification.GROUP]
+        with self.assertRaisesRegex(ValueError, "storage access"):
+            self.verify()
+
+    def testShareExtensionStillRequiresItsAppGroup(self):
+        self.bundle = verification.APP_ID + ".Share"
+        self.entitlements["application-identifier"] = "LEGACY1234." + self.bundle
+        self.profile["Entitlements"]["application-identifier"] = "LEGACY1234." + self.bundle
+        self.entitlements.pop("com.apple.security.application-groups")
+        with self.assertRaisesRegex(ValueError, "App Group"):
+            self.verify()
+
+    def testProfileMayStillGrantCloudKit(self):
         self.profile["Entitlements"]["com.apple.developer.icloud-container-environment"] = ["Production", "Development"]
         self.profile["Entitlements"]["com.apple.developer.icloud-services"] = "*"
         self.verify()
 
-    def testCloudKitAllowlistMustAuthorizeProduction(self):
-        self.profile["Entitlements"]["com.apple.developer.icloud-container-environment"] = ["Development"]
-        with self.assertRaisesRegex(ValueError, "Profile does not grant"):
-            self.verify()
-
-    def testWildcardServiceDoesNotAllowOtherSignedServices(self):
-        self.profile["Entitlements"]["com.apple.developer.icloud-services"] = "*"
-        for value in (["CloudDocuments"], ["CloudKit", "CloudDocuments"], ["*"], "*"):
-            with self.subTest(value=value):
-                self.entitlements["com.apple.developer.icloud-services"] = value
-                with self.assertRaisesRegex(ValueError, "CloudKit"):
-                    self.verify()
-
-    def testMissingOrUnrelatedCloudKitGrantRejected(self):
-        key = "com.apple.developer.icloud-services"
-        for value in (None, ["CloudDocuments"], "CloudDocuments"):
-            with self.subTest(value=value):
+    def testSignedICloudEntitlementsRejected(self):
+        for key, value in (("com.apple.developer.icloud-services", ["CloudKit"]),
+                           ("com.apple.developer.icloud-container-identifiers", ["iCloud." + verification.APP_ID]),
+                           ("com.apple.developer.icloud-container-environment", "Production"),
+                           ("com.apple.developer.ubiquity-kvstore-identifier", "TEAM.store")):
+            with self.subTest(key=key):
+                self.entitlements[key] = value
                 self.profile["Entitlements"][key] = value
-                with self.assertRaisesRegex(ValueError, "Profile does not grant"):
+                with self.assertRaisesRegex(ValueError, "iCloud"):
                     self.verify()
-
-    def testDevelopmentSignatureRejectedDespiteProfileAllowlist(self):
-        key = "com.apple.developer.icloud-container-environment"
-        self.profile["Entitlements"][key] = ["Production", "Development"]
-        self.entitlements[key] = "Development"
-        with self.assertRaisesRegex(ValueError, "Production"):
-            self.verify()
+                self.entitlements.pop(key)
 
     def testRejectsExpiredProfile(self):
         self.profile["ExpirationDate"] = self.now - timedelta(seconds=1)
@@ -174,14 +221,9 @@ class DistributionProfileTests(unittest.TestCase):
         self.profile["Entitlements"]["com.apple.developer.private-cloud-compute"] = True
         self.verify()
 
-    def testRejectsWrongAppGroupAndDevelopmentCloudKit(self):
+    def testRejectsWrongAppGroup(self):
         self.entitlements["com.apple.security.application-groups"] = ["group.wrong"]
         with self.assertRaisesRegex(ValueError, "App Group"):
-            self.verify()
-        self.entitlements["com.apple.security.application-groups"] = [verification.GROUP]
-        self.entitlements["com.apple.developer.icloud-container-environment"] = "Development"
-        self.profile["Entitlements"]["com.apple.developer.icloud-container-environment"] = "Development"
-        with self.assertRaisesRegex(ValueError, "Production"):
             self.verify()
 
 

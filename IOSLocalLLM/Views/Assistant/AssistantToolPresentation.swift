@@ -3,10 +3,11 @@ import OnDeviceUI
 
 struct AssistantToolResultStrip: View {
     let messages: [ChatMessage]
+    @Binding var isExpanded: Bool
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             ODAgentLabel()
-            ODToolPillStrip(events: messages.compactMap { message in
+            ODToolActivityGroup(events: messages.compactMap { message in
                 guard let payload = AssistantActivity.parseToolResult(message.content) else { return nil }
                 let status: ODToolEvent.Status
                 switch AssistantActivity.toolStatus(result: payload.result) {
@@ -17,7 +18,7 @@ struct AssistantToolResultStrip: View {
                 return ODToolEvent(id: message.id,
                     title: AssistantActivity.toolPillTitle(name: payload.name, result: payload.result),
                     detail: payload.result, status: status)
-            })
+            }, isExpanded: $isExpanded)
         }
         .padding(.horizontal, ODLayout.pageInset)
     }

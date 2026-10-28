@@ -24,8 +24,8 @@ public struct ODAppearanceChoices: View {
                 selection = followsSystem ? .system : (colorScheme == .dark ? .dark : .light)
             })) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Use device appearance").font(.body)
-                    Text("Change with your system settings.").font(.footnote).foregroundStyle(.secondary)
+                    Text("Use device appearance", bundle: .module).font(.body)
+                    Text("Change with your system settings.", bundle: .module).font(.footnote).foregroundStyle(.secondary)
                 }
             }
             .tint(ODPalette.text)
@@ -59,8 +59,8 @@ private struct ODAppearanceOption: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(preference.title)
-        .accessibilityValue(selected ? "Selected" : "Not selected")
+        .accessibilityLabel(Text(odKey: preference.title))
+        .accessibilityValue(Text(odKey: selected ? "Selected" : "Not selected"))
         .accessibilityAddTraits(selected ? .isSelected : [])
         .accessibilityIdentifier("appearance.\(preference.rawValue)")
     }
@@ -76,7 +76,7 @@ private struct ODAppearanceOption: View {
 
     private var selectionLabel: some View {
         HStack(spacing: 6) {
-            Text(preference.title).font(.subheadline.weight(.medium))
+            Text(odKey: preference.title).font(.subheadline.weight(.medium))
                 .fixedSize(horizontal: false, vertical: true)
             Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                 .font(.subheadline).foregroundStyle(selected ? ODPalette.text : ODPalette.secondary)
@@ -100,7 +100,7 @@ private struct ODAppearancePreview: View {
                 Spacer()
                 Circle().fill(ink.opacity(0.5)).frame(width: 4, height: 4)
             }.font(.system(size: 8))
-            Text("Aa").font(.system(size: 23, design: .serif))
+            Text("Aa", bundle: .module).font(.system(size: 23, design: .serif))
             VStack(alignment: .leading, spacing: 3) {
                 Capsule().fill(ink.opacity(0.55)).frame(height: 2)
                 Capsule().fill(ink.opacity(0.3)).frame(width: 35, height: 2)

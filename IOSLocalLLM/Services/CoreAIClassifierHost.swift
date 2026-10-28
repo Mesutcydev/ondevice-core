@@ -23,5 +23,8 @@ enum CoreAIClassifierHost {
         CoreAIModelStore.shared.installations.filter {
             $0.manifest.capabilities.classification == true || CoreAIZooCatalog.model(forSelectionID: $0.assistantSelectionID)?.category == .classifier
         }.map { ClassifierModelInfo(id: $0.assistantSelectionID, name: $0.manifest.displayName, window: $0.manifest.contextWindow) }
+        + ClassifierCatalog.models.filter { ClassifierModelStore.shared.installedIDs.contains($0.selectionID) }.map {
+            ClassifierModelInfo(id: $0.selectionID, name: $0.name, window: $0.window, isImage: $0.isImage)
+        }
     }
 }

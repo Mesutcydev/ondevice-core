@@ -6,18 +6,21 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 usage() {
-  echo "Usage: $0 [--preflight] [--enable-pcc] TEAM_ID"
+  echo "Usage: $0 [--preflight] [--enable-pcc] [--lfm3] TEAM_ID"
   echo "Select shipping Xcode with DEVELOPER_DIR; set ONDEVICE_DERIVED_DATA to reuse a cache."
   echo "Set ONDEVICE_SOURCE_PACKAGES to reuse the reviewed package checkout cache."
   echo "Optional API signing: ONDEVICE_ASC_KEY_PATH, ONDEVICE_ASC_KEY_ID, ONDEVICE_ASC_ISSUER_ID."
+  echo "--lfm3 selects the separately bootstrapped experimental LFM3 runtime."
 }
 PREFLIGHT=NO
 PCC=NO
+LFM3=NO
 TEAM=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --preflight) PREFLIGHT=YES ;;
     --enable-pcc) PCC=YES ;;
+    --lfm3) LFM3=YES ;;
     --help|-h) usage; exit 0 ;;
     --*) usage; exit 2 ;;
     *) [[ -z "$TEAM" ]] || { usage; exit 2; }; TEAM="$1" ;;
@@ -26,6 +29,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 python3 scripts/verify_appstore.py --source
+if [[ "$LFM3" == YES ]]; then
+  python3 scripts/bootstrap_lfm3_runtime.py --check
+fi
 export DEVELOPER_DIR="${DEVELOPER_DIR:-$(xcode-select -p)}"
 # Verified against Apple's release page on 2026-10-09. Override only with a
 # shipping/accepted RC build verified at developer.apple.com/news/releases/.
@@ -69,7 +75,7 @@ FREE_KB="$(df -k "$ROOT" | awk 'END {print $4}')"
 DERIVED="${ONDEVICE_DERIVED_DATA:-$ROOT/build/appstore/DerivedData}"
 SOURCE_PACKAGES="${ONDEVICE_SOURCE_PACKAGES:-$DERIVED/SourcePackages}"
 MIN_FREE_KB=15728640
-WARM_APP="$DERIVED/Build/Products/Release-iphoneos/OnDeviceMax.app"
+WARM_APP="$DERIVED/Build/Products/Release-iphoneos/TokenAI.app"
 if [[ -f "$WARM_APP/Info.plist" ]]; then
   WARM_BUILD="$(/usr/libexec/PlistBuddy -c 'Print :DTXcodeBuild' "$WARM_APP/Info.plist" 2>/dev/null || true)"
   WARM_SDK="$(/usr/libexec/PlistBuddy -c 'Print :DTSDKName' "$WARM_APP/Info.plist" 2>/dev/null || true)"
@@ -97,7 +103,7 @@ fi
 VERSION="$(awk -F'"' '/CFBundleShortVersionString:/ {print $2; exit}' project.yml)"
 BUILD="$(awk -F'"' '/CURRENT_PROJECT_VERSION:/ {print $2; exit}' project.yml)"
 OUT="$ROOT/build/appstore/$VERSION-$BUILD"
-ARCHIVE="$OUT/OnDeviceMax.xcarchive"
+ARCHIVE="$OUT/TokenAI.xcarchive"
 ENTITLEMENTS="IOSLocalLLM/IOSLocalLLM-AppStore.entitlements"
 [[ "$PCC" == NO ]] || ENTITLEMENTS="IOSLocalLLM/IOSLocalLLM-AppStore-PCC.entitlements"
 [[ ! -e "$OUT" ]] || { echo "error: $OUT exists; preserve the previous artifact and choose a new build number." >&2; exit 1; }
@@ -108,7 +114,8 @@ pod install > "$OUT/pods.log" 2>&1
 ./scripts/verify_zoo_catalog.sh --appstore > "$OUT/catalog.log" 2>&1
 python3 scripts/verify_zoo_downloads.py > "$OUT/model-downloads.log" 2>&1
 
-xcodebuild archive -workspace OnDeviceMax.xcworkspace -scheme OnDeviceMax \
+archive_with_runtime() {
+xcodebuild archive -workspace TokenAI.xcworkspace -scheme TokenAI \
   -configuration Release -destination 'generic/platform=iOS' \
   -archivePath "$ARCHIVE" -derivedDataPath "$DERIVED" \
   -clonedSourcePackagesDirPath "$SOURCE_PACKAGES" \
@@ -117,9 +124,19 @@ xcodebuild archive -workspace OnDeviceMax.xcworkspace -scheme OnDeviceMax \
   ONDEVICE_APPSTORE=YES ONDEVICE_DISTRIBUTION_ENTITLEMENTS="$ENTITLEMENTS" \
   ONDEVICE_MODEL_POLICY=APP_STORE ONDEVICE_RESEARCH_BUILD=NO \
   ONDEVICE_PACKAGE_CHECKOUTS="$SOURCE_PACKAGES/checkouts" \
+  "$@" \
   > "$OUT/archive.log" 2>&1 \
   || { tail -60 "$OUT/archive.log"; exit 1; }
-APP="$ARCHIVE/Products/Applications/OnDeviceMax.app"
+}
+if [[ "$LFM3" == YES ]]; then
+  archive_with_runtime -jobs 4 SWIFT_COMPILATION_MODE=singlefile \
+    ONDEVICE_LFM3_SWIFT_FLAG=LFM3_EXPERIMENTAL \
+    "ONDEVICE_LLAMA_FRAMEWORK_DIR=$ROOT/build/LFM3Native" \
+    "ONDEVICE_LLAMA_SOURCE=$ROOT/build/LFM3Native/cache/llama.cpp-19cce6919992fdffd92e0ac152caaf1e2b8f254e"
+else
+  archive_with_runtime
+fi
+APP="$ARCHIVE/Products/Applications/TokenAI.app"
 python3 scripts/verify_appstore.py --app "$APP" \
   --expected-version "$VERSION" --expected-build "$BUILD" --expected-xcode-build "$SELECTED_BUILD"
 ./scripts/verify_foundationmodels_symbols.sh "$APP" FoundationModels "$SDK"
@@ -130,19 +147,19 @@ with open(sys.argv[1], 'wb') as output:
     plistlib.dump({"method": "app-store-connect", "destination": "export",
                   "teamID": sys.argv[2], "signingStyle": "automatic",
                   "manageAppVersionAndBuildNumber": False, "stripSwiftSymbols": True,
-                  "uploadSymbols": True, "iCloudContainerEnvironment": "Production"}, output)
+                  "uploadSymbols": True}, output)
 PY
 xcodebuild -exportArchive -archivePath "$ARCHIVE" \
   -exportOptionsPlist "$OUT/ExportOptions.plist" -exportPath "$OUT/export" \
   "${SIGNING_ARGS[@]}" > "$OUT/export.log" 2>&1 \
   || { tail -60 "$OUT/export.log"; exit 1; }
-IPA="$OUT/export/OnDeviceMax.ipa"
+IPA="$OUT/export/TokenAI.ipa"
 [[ -f "$IPA" ]] || { echo "error: App Store export produced no IPA" >&2; exit 1; }
 VERIFY="$(mktemp -d "${TMPDIR:-/tmp}/ondevice-appstore.XXXXXX")"
 trap 'rm -rf "$VERIFY"' EXIT
 unzip -tq "$IPA" >/dev/null
 unzip -q "$IPA" -d "$VERIFY"
-python3 scripts/verify_appstore.py --app "$VERIFY/Payload/OnDeviceMax.app" --team-id "$TEAM" --distribution \
+python3 scripts/verify_appstore.py --app "$VERIFY/Payload/TokenAI.app" --team-id "$TEAM" --distribution \
   --expected-version "$VERSION" --expected-build "$BUILD" --expected-xcode-build "$SELECTED_BUILD"
 shasum -a 256 "$IPA" > "$OUT/sha256.txt"
 echo "Signed local App Store export: $IPA"

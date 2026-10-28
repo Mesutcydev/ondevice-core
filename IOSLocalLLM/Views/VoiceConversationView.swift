@@ -162,7 +162,7 @@ private struct VoiceModelPickerSheet: View {
                 }
                 Button("Keep current model", role: .cancel) { pendingModelID = nil }
             }
-            .navigationTitle("Conversation model")
+            .odNavigationTitle("Conversation model")
             .background(StudioPageBackground())
             .navigationBarTitleDisplayMode(.inline)
 

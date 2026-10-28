@@ -2,6 +2,7 @@ import SwiftUI
 import PhotosUI
 import Vision
 import CoreImage
+import ImageIO
 
 // MARK: - PhotoPickerView
 // PHPickerViewController wrapper that returns both the picked image
@@ -13,7 +14,35 @@ import CoreImage
 
 struct PickedPhoto {
     let image: UIImage
+    let attachmentData: Data
     let ocrText: String
+}
+
+/// One bounded image is used for display and inference. Do the resize before
+/// returning from the picker so JPEG work does not block the chat's main actor.
+enum AssistantImageEncoder {
+    nonisolated static let maximumPixelEdge: CGFloat = 1_600
+
+    nonisolated static func jpeg(_ image: UIImage) -> Data? {
+        let raw = image.cgImage.map { CGSize(width: $0.width, height: $0.height) }
+            ?? CGSize(width: image.size.width * image.scale, height: image.size.height * image.scale)
+        let sideways: Bool
+        switch image.imageOrientation {
+        case .left, .leftMirrored, .right, .rightMirrored: sideways = true
+        default: sideways = false
+        }
+        let pixels = sideways ? CGSize(width: raw.height, height: raw.width) : raw
+        guard pixels.width > 0, pixels.height > 0 else { return nil }
+        let scale = min(1, maximumPixelEdge / max(pixels.width, pixels.height))
+        let target = CGSize(width: max(1, (pixels.width * scale).rounded()),
+                            height: max(1, (pixels.height * scale).rounded()))
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        let rendered = UIGraphicsImageRenderer(size: target, format: format).image { _ in
+            image.draw(in: CGRect(origin: .zero, size: target))
+        }
+        return rendered.jpegData(compressionQuality: 0.82)
+    }
 }
 
 struct PhotoPickerView: UIViewControllerRepresentable {
@@ -47,32 +76,51 @@ struct PhotoPickerView: UIViewControllerRepresentable {
             picker.dismiss(animated: true)
             guard let result = results.first else { return }
 
-            result.itemProvider.loadDataRepresentation(forTypeIdentifier: "public.image") { [weak self] data, _ in
-                guard let data, let image = UIImage(data: data),
-                      let cgImage = image.cgImage else { return }
-                self?.runOCR(on: cgImage, with: image)
+            let onResult = onResult
+            result.itemProvider.loadDataRepresentation(forTypeIdentifier: "public.image") { data, _ in
+                guard let data else { return }
+                DispatchQueue.global(qos: .userInitiated).async {
+                    guard let image = UIImage(data: data), let cgImage = image.cgImage,
+                          let attachmentData = AssistantImageEncoder.jpeg(image) else { return }
+                    Self.runOCR(on: cgImage, with: image, attachmentData: attachmentData, onResult: onResult)
+                }
             }
         }
 
-        private func runOCR(on cgImage: CGImage, with image: UIImage) {
-            let request = VNRecognizeTextRequest { [weak self] req, _ in
-                let observations = req.results as? [VNRecognizedTextObservation] ?? []
-                let sorted = observations.sorted {
-                    if abs($0.boundingBox.minY - $1.boundingBox.minY) > 0.01 {
-                        return $0.boundingBox.minY > $1.boundingBox.minY
-                    }
-                    return $0.boundingBox.minX < $1.boundingBox.minX
-                }
-                let text = sorted.compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n")
-                DispatchQueue.main.async {
-                    self?.onResult(PickedPhoto(image: image, ocrText: text))
-                }
-            }
+        nonisolated private static func runOCR(on cgImage: CGImage, with image: UIImage,
+                                               attachmentData: Data, onResult: @escaping (PickedPhoto) -> Void) {
+            let request = VNRecognizeTextRequest()
             request.recognitionLevel = .accurate
             request.usesLanguageCorrection = false
-
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            let handler = VNImageRequestHandler(cgImage: cgImage,
+                orientation: CGImagePropertyOrientation(image.imageOrientation), options: [:])
             try? handler.perform([request])
+            let sorted = (request.results ?? []).sorted {
+                if abs($0.boundingBox.minY - $1.boundingBox.minY) > 0.01 {
+                    return $0.boundingBox.minY > $1.boundingBox.minY
+                }
+                return $0.boundingBox.minX < $1.boundingBox.minX
+            }
+            let text = sorted.compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n")
+            DispatchQueue.main.async {
+                onResult(PickedPhoto(image: image, attachmentData: attachmentData, ocrText: text))
+            }
+        }
+    }
+}
+
+private extension CGImagePropertyOrientation {
+    nonisolated init(_ orientation: UIImage.Orientation) {
+        switch orientation {
+        case .up: self = .up
+        case .down: self = .down
+        case .left: self = .left
+        case .right: self = .right
+        case .upMirrored: self = .upMirrored
+        case .downMirrored: self = .downMirrored
+        case .leftMirrored: self = .leftMirrored
+        case .rightMirrored: self = .rightMirrored
+        @unknown default: self = .up
         }
     }
 }

@@ -1,0 +1,22 @@
+{
+  "requestedVersion": "2.0",
+  "requestedBuild": "71",
+  "appId": "6774354746",
+  "teamId": "PUH4GMFV56",
+  "certificateResourceId": "GBCR326X75",
+  "distributionIdentitySHA1": "3DC821494C4038952A712EB1F5F4CFB93059C6C9",
+  "mainBundleIdResource": "YR8S6A2JZ2",
+  "shareBundleIdResource": "C6NU2NRD47",
+  "downloadsBundleIdResource": "NWUDVF3STY",
+  "downloadsAppStoreProfileId": "NNNZVUHP72",
+  "latestExistingBuild": "70",
+  "selectedReleaseEntitlements": "IOSLocalLLM/IOSLocalLLM-AppStore.entitlements",
+  "privateCloudComputeEnabled": false,
+  "remainingSigningSetup": [],
+  "uploadAuthorized": true,
+  "testflightGroup": "7879d475-100f-4c7c-bf49-5b5446be9b56",
+  "mainAppStoreProfileId": "C6LM5XB997",
+  "shareAppStoreProfileId": "U8X5RG94FR",
+  "iCloudContainerResource": "SNTBHKL2TU",
+  "distributionProfilesVerified": true
+}

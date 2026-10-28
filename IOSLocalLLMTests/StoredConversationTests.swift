@@ -402,3 +402,70 @@ final class StoredConversationTests: XCTestCase {
     }
 
 }
+
+// MARK: - File safety
+
+/// A file the store can't read must survive the next save, and a wipe must
+/// win over a save that was already scheduled.
+final class ConversationStoreFileSafetyTests: XCTestCase {
+    private var directory: URL!
+
+    override func setUpWithError() throws {
+        directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ConversationStoreFileSafety-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: directory)
+    }
+
+    private var fileURL: URL { directory.appendingPathComponent("conversations.json") }
+
+    private func setAsideCopies() throws -> [URL] {
+        try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            .filter { $0.lastPathComponent.hasPrefix(ConversationStore.unreadableCopyPrefix) }
+    }
+
+    func test_undecodableFileIsSetAsideNotOverwritten() throws {
+        let original = Data("{ not a conversation list".utf8)
+        try original.write(to: fileURL)
+        let store = ConversationStore(fileURL: fileURL)
+        XCTAssertTrue(store.conversations.isEmpty)
+        _ = store.create(title: "After")
+        store.flush()
+        let copies = try setAsideCopies()
+        XCTAssertEqual(copies.count, 1)
+        XCTAssertEqual(try Data(contentsOf: copies[0]), original)
+    }
+
+    func test_oneBadRecordKeepsTheOthersAndTheOriginal() throws {
+        let good = StoredConversation(title: "Kept")
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let goodJSON = try XCTUnwrap(String(data: encoder.encode(good), encoding: .utf8))
+        let original = Data("[\(goodJSON), {\"id\": \"broken\"}]".utf8)
+        try original.write(to: fileURL)
+        let store = ConversationStore(fileURL: fileURL)
+        XCTAssertEqual(store.conversations.map(\.title), ["Kept"])
+        XCTAssertEqual(try setAsideCopies().count, 1)
+    }
+
+    func test_lockedFileErrorsAreRecognized() {
+        XCTAssertTrue(ConversationStore.isLockedFileError(
+            NSError(domain: NSCocoaErrorDomain, code: NSFileReadNoPermissionError)))
+        XCTAssertTrue(ConversationStore.isLockedFileError(NSError(
+            domain: NSCocoaErrorDomain, code: NSFileReadUnknownError,
+            userInfo: [NSUnderlyingErrorKey: NSError(domain: NSPOSIXErrorDomain, code: Int(EPERM))])))
+        XCTAssertFalse(ConversationStore.isLockedFileError(
+            NSError(domain: NSCocoaErrorDomain, code: NSFileReadCorruptFileError)))
+    }
+
+    func test_wipeRetiresAScheduledSave() async throws {
+        let store = ConversationStore(fileURL: fileURL)
+        store.saveConversation(id: UUID(), messages: [ChatMessage(role: .user, content: "private")])
+        store.clearAllForWipe()
+        try await Task.sleep(for: .milliseconds(900))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fileURL.path))
+    }
+}

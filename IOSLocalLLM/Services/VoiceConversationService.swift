@@ -61,7 +61,7 @@ final class VoiceConversationService: ObservableObject {
     private func owns(_ operation: UUID) -> Bool { sessionOperationID == operation }
     private func event(_ name: String, operation: UUID) {
         #if DEBUG
-        Logger(subsystem: "com.mesutcydev.ondevicemax", category: "sensor-ownership")
+        Logger(subsystem: "com.token.TokenAI", category: "sensor-ownership")
             .debug("voice operation=\(operation.uuidString, privacy: .public) event=\(name, privacy: .public)")
         #endif
     }
@@ -268,7 +268,8 @@ final class VoiceConversationService: ObservableObject {
         // override path) may already have it loading; load() is a no-op then.
         switch assistant.state {
         case .ready, .loading, .generating: break
-        default: modelLoadTask = Task { [assistant] in await assistant.load() }
+        // The model on screen, which may be the open chat's own choice.
+        default: modelLoadTask = Task { [assistant] in await assistant.load(reselectFromSettings: false) }
         }
 
         // Same builder as chat, in spoken mode: replies are read aloud, so
@@ -754,7 +755,7 @@ final class VoiceConversationService: ObservableObject {
         // .failed and stranding the mic on a dead orb.
         if assistant.state != .ready {
             switch assistant.state {
-            case .unloaded, .failed: await assistant.load()
+            case .unloaded, .failed: await assistant.load(reselectFromSettings: false)
             default: break   // .loading already in progress
             }
             var waited = 0

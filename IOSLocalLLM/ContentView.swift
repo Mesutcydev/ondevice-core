@@ -8,6 +8,7 @@ struct ContentView: View {
     // App opens on the Home dashboard. Assistant / Lens are one tap away.
     @State private var selectedTab: Tab = .home
     @StateObject private var bridge = AppBridge.shared
+    @StateObject private var gitHubWorkspace = GitHubWorkspaceService()
     @ObservedObject private var odBridge = ODBridge.shared
     @ObservedObject private var settings = AppSettings.shared
     @ObservedObject private var legal = LegalAcceptanceManager.shared
@@ -84,6 +85,7 @@ struct ContentView: View {
             chatContent: AnyView(
                 CodingAssistantView(
                     isActive: selectedTab == .assistant,
+                    gitHub: gitHubWorkspace,
                     onClose: { odBridge.store.conversationsPresented = true }
                 )
             ),
@@ -92,7 +94,12 @@ struct ContentView: View {
             deviceContent: AnyView(NativeDeviceView(onOpenMenu: { odBridge.store.conversationsPresented = true })),
             voiceContent: AnyView(VoiceConversationView(startOnAppear: false)),
             apiServerContent: AnyView(LocalAPIServerView(onOpenMenu: { odBridge.store.conversationsPresented = true })),
-            classifierContent: AnyView(CoreAIClassifierHostView(onOpenMenu: { odBridge.store.conversationsPresented = true })),
+            classifierContent: AnyView(CoreAIClassifierHostView(onOpenMenu: { odBridge.store.conversationsPresented = true },
+                onOpenModels: { odBridge.store.selectedTab = .models })),
+            codingContent: AnyView(CodingWorkspaceView(workspace: gitHubWorkspace,
+                onOpenMenu: { odBridge.store.conversationsPresented = true },
+                onAsk: { prompt in bridge.askAssistant(prompt, autoSend: false, appendToDraft: true) },
+                contextLimit: { min(CodingWorkspaceLimits.contextCharacters, max(512, (CodingAssistantService.shared.currentInputBudget - 1_024) * 2)) })),
             lensResultContent: { presented in
                 AnyView(Group {
                     if let result = analysis.activeResult {
@@ -132,6 +139,16 @@ struct ContentView: View {
         .onChange(of: lensHostSheetPresented) { _, _ in updateLensCaptureVisibility() }
         .onChange(of: analysis.isAnalyzing) { _, busy in
             odBridge.store.lensIsAnalyzing = busy
+            odBridge.store.lensAnalysisStartedAt = busy ? analysis.analysisStartedAt : nil
+            odBridge.store.lensUsesLargeModel = MiniCPMV47Catalog.is35B(settings.cameraVisualModelID)
+        }
+        .onChange(of: analysis.inferenceStage) { _, stage in
+            switch stage {
+            case .loadingModel: odBridge.store.lensAnalysisStage = .loadingModel
+            case .readingImage: odBridge.store.lensAnalysisStage = .readingImage
+            case .preparingAnswer: odBridge.store.lensAnalysisStage = .preparingAnswer
+            case .writingAnswer: odBridge.store.lensAnalysisStage = .writingAnswer
+            }
         }
         // A camera that cannot run (access denied, no device, failed
         // configuration) is only visible to the host. Push it into the
@@ -316,6 +333,12 @@ struct ContentView: View {
         .localModelImportFlow(isPresented: $showModelImport) { urls in
             Task { await importModel(from: urls) }
         }
+        .onChange(of: bridge.requestedDownloads, initial: true) { _, requested in
+            guard requested else { return }
+            bridge.requestedDownloads = false
+            odBridge.store.selectedTab = .models
+            showModelDownloads = true
+        }
         .sheet(isPresented: $showModelDownloads) {
             ModelDownloadCenterView()
         }
@@ -416,7 +439,7 @@ struct ContentView: View {
     /// app's drives memory lifecycle and predates the redesign.
     private static func hostTab(for tab: ODTab) -> Tab {
         switch tab {
-        case .home, .imageStudio, .device, .apiServer, .classifiers: return .home
+        case .home, .imageStudio, .device, .apiServer, .classifiers, .code: return .home
         case .chat:   return .assistant
         case .lens:   return .camera
         case .voice:  return .voice
@@ -546,6 +569,16 @@ struct ContentView: View {
         // made every one of them a dead end — including the destructive one the
         // user had already confirmed.
         routes.modelCommand = { modelID, command in
+            if let classifier = ClassifierCatalog.model(id: modelID) {
+                switch command {
+                case .download: CoreAIDownloadCenter.shared.start(classifier: classifier)
+                case .pauseDownload: CoreAIDownloadCenter.shared.existing(id: classifier.selectionID)?.pause()
+                case .cancelDownload: CoreAIDownloadCenter.shared.existing(id: classifier.selectionID)?.cancel()
+                case .delete: ClassifierModelStore.shared.remove(classifier)
+                default: odBridge.store.selectedTab = .models
+                }
+                return
+            }
             // Curated Core AI packs use their own validated pack downloader.
             // Forward the explicit user intent without routing into MLX/GGUF.
             if let pack = CoreAIZooCatalog.model(forSelectionID: modelID) {

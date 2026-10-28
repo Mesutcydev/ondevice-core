@@ -14,10 +14,11 @@ final class CoreAIInferenceService: ObservableObject {
     /// this runtime still holds pack A.
     @Published private(set) var loadedSelectionID: String?
     @Published private(set) var loadedClassifierID: String?
-    private var classifier: CoreAIClassifierAdapter?
-    private var classifierLoadTask: Task<CoreAIClassifierAdapter, Error>?
+    private var classifier: ClassifierRuntimeSession?
+    private var classifierLoadTask: Task<ClassifierRuntimeSession, Error>?
     private var loadingClassifierID: String?
     private var classifierOperation: Task<CoreAIClassifierAnswer, Error>?
+    private var classifierValidations: [UUID: Task<Int, Error>] = [:]
     private var textLoadTask: Task<CoreAIRuntime, Error>?
     private var loadingSelectionID: String?
     private var lifetime: UInt64 = 0
@@ -150,29 +151,38 @@ final class CoreAIInferenceService: ObservableObject {
     }
 
     func loadClassifier(id: String) async throws -> ClassifierModelInfo {
-        guard let installed = CoreAIModelStore.shared.installedModel(id: id),
-              installed.manifest.capabilities.classification == true || CoreAIZooCatalog.model(forSelectionID: id)?.category == .classifier else {
+        let portable = ClassifierCatalog.model(id: id)
+        let installed = CoreAIModelStore.shared.installedModel(id: id)
+        guard (portable.map { ClassifierModelStore.shared.installedIDs.contains($0.selectionID) } ?? false)
+            || (installed != nil && (installed?.manifest.capabilities.classification == true || CoreAIZooCatalog.model(forSelectionID: id)?.category == .classifier)) else {
             throw CoreAIInferenceError.unavailable("Install a supported classifier from Models first.")
         }
-        let selection = installed.assistantSelectionID
+        let selection = portable?.selectionID ?? installed!.assistantSelectionID
+        let name = portable?.name ?? installed!.manifest.displayName
         if loadedClassifierID == selection, let classifier {
-            return await classifierInfo(classifier, installed: installed)
+            return await classifier.info(id: selection, name: name)
         }
         // Uses the same drain-before-load path as Assistant, Lens and Image.
         try await ModelResidency.shared.prepareForClassifier()
         try Task.checkCancellation()
-        if let reason = MemoryAdvisor.safetyBlocker(for: selection, runtime: .coreAI) {
+        if let reason = MemoryAdvisor.safetyBlocker(for: selection, runtime: portable?.runtime == .gguf ? .llamaCpp : .coreAI, estimatedPeakBytes: portable?.estimatedPeak) {
             throw CoreAIInferenceError.unavailable(reason)
         }
         try Self.checkClassifierSafety()
         let ticket = lifetime
         let pending = Task { @MainActor in
+            if let portable {
+                return try await PortableClassifierRuntime.loadAdmitted(portable,
+                    root: ClassifierModelStore.shared.root(for: portable), checkSafety: {
+                        try await MainActor.run { try Self.checkClassifierSafety() }
+                    })
+            }
             #if canImport(CoreAI)
-            let adapter = try await CoreAIClassifierRuntime.loadAdmittedAdapter(resourcesAt: installed.resourcesURL, checkSafety: {
+            let adapter = try await CoreAIClassifierRuntime.loadAdmittedAdapter(resourcesAt: installed!.resourcesURL, checkSafety: {
                 try await MainActor.run { try Self.checkClassifierSafety() }
             })
             try Task.checkCancellation()
-            return adapter
+            return ClassifierRuntimeSession.decision(adapter)
             #else
             throw CoreAIInferenceError.unavailable("Core AI classifiers require the iOS 27 device runtime.")
             #endif
@@ -187,7 +197,7 @@ final class CoreAIInferenceService: ObservableObject {
             guard ticket == lifetime else { throw CancellationError() }
             classifierLoadTask = nil; loadingClassifierID = nil
             classifier = adapter; loadedClassifierID = selection
-            return await classifierInfo(adapter, installed: installed)
+            return await adapter.info(id: selection, name: name)
         } catch {
             if ticket == lifetime { classifierLoadTask = nil; loadingClassifierID = nil }
             throw error
@@ -195,17 +205,19 @@ final class CoreAIInferenceService: ObservableObject {
     }
 
     func classify(_ request: ClassifierRequest) async throws -> CoreAIClassifierAnswer {
+        let previews = Array(classifierValidations.values)
+        previews.forEach { $0.cancel() }
+        for preview in previews { _ = try? await preview.value }
+        try Task.checkCancellation()
         guard loadedClassifierID == request.model, let classifier else {
             throw CoreAIInferenceError.unavailable("Activate this classifier before running it.")
         }
         guard classifierOperation == nil else { throw CoreAIClassifierError.busy }
         try Self.checkClassifierSafety()
-        let question = try request.question
         let ticket = lifetime
         ModelResidency.shared.cancelPrefetch()
         let pending = Task {
-            try await classifier.classify(state: request.input, question: question,
-                calibration: request.calibrated == true ? .published : .source)
+            try await classifier.classify(request)
         }
         classifierOperation = pending
         defer { if lifetime == ticket { classifierOperation = nil } }
@@ -221,20 +233,28 @@ final class CoreAIInferenceService: ObservableObject {
     }
 
     func validateClassifier(_ request: ClassifierRequest) async throws -> Int {
-        guard loadedClassifierID == request.model, let classifier else { throw CoreAIInferenceError.modelMissing }
-        return try await classifier.validate(state: request.input, question: request.question)
+        guard loadedClassifierID == request.model, classifier != nil else { throw CoreAIInferenceError.modelMissing }
+        guard classifierOperation == nil else { throw CoreAIClassifierError.busy }
+        let id = UUID(), ticket = lifetime
+        let pending = Task { [classifier] in
+            guard let classifier else { throw CoreAIInferenceError.modelMissing }
+            try Task.checkCancellation()
+            return try await classifier.validate(request)
+        }
+        classifierValidations[id] = pending
+        defer { classifierValidations.removeValue(forKey: id) }
+        return try await withTaskCancellationHandler {
+            let count = try await pending.value
+            try Task.checkCancellation()
+            guard ticket == lifetime else { throw CancellationError() }
+            return count
+        } onCancel: { pending.cancel() }
     }
 
     func cancelClassifier() {
         classifierLoadTask?.cancel(); classifierOperation?.cancel()
+        classifierValidations.values.forEach { $0.cancel() }
         if let classifier { Task { await classifier.cancel() } }
-    }
-
-    private func classifierInfo(_ adapter: CoreAIClassifierAdapter, installed: CoreAIInstalledModel) async -> ClassifierModelInfo {
-        let contract = adapter.contract
-        return ClassifierModelInfo(id: installed.assistantSelectionID, name: installed.manifest.displayName,
-            window: contract.window, supportsCalibration: contract.calibratedTemperatures != nil,
-            hasDirectAnswerHead: contract.actFunction != nil)
     }
 
     private static func checkClassifierSafety() throws {
@@ -255,12 +275,15 @@ final class CoreAIInferenceService: ObservableObject {
         isReady = false; loadedSelectionID = nil; loadedClassifierID = nil
         runtime?.cancel(); textLoadTask?.cancel(); cancelClassifier()
         let textLoad = textLoadTask, load = classifierLoadTask, operation = classifierOperation
+        let validations = Array(classifierValidations.values)
         let pending = Task { @MainActor in
             if let textLoad { _ = try? await textLoad.value }
             if let load { _ = try? await load.value }
             if let operation { _ = try? await operation.value }
+            for validation in validations { _ = try? await validation.value }
             self.runtime = nil; self.classifier = nil
             self.textLoadTask = nil; self.classifierLoadTask = nil; self.classifierOperation = nil
+            self.classifierValidations.removeAll()
             self.loadingSelectionID = nil; self.loadingClassifierID = nil
         }
         unloadTask = pending

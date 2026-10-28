@@ -4,6 +4,111 @@ import XCTest
 
 @MainActor
 final class CoreAIClassifierWorkbenchTests: XCTestCase {
+    func testPrintedResultKeepsCompletedModelAndScoresWhenTheDraftChanges() async throws {
+        let controller = makeController()
+        controller.input = "First input"
+        try await controller.activate(id: "coreai:first")
+        let answer = try await controller.run(controller.request())
+        let printed = try XCTUnwrap(controller.printedResult)
+        XCTAssertEqual(printed.answer.choice, answer.choice)
+        XCTAssertEqual(printed.model.id, "coreai:first")
+        XCTAssertEqual(printed.type, .choice)
+        XCTAssertEqual(printed.elapsedSeconds, controller.elapsedSeconds)
+        XCTAssertFalse(controller.isResultStale)
+
+        controller.input = "Next input"
+        controller.selectedModelID = "coreai:second"
+        controller.refreshValidation()
+        XCTAssertNil(controller.answer)
+        XCTAssertTrue(controller.isResultStale)
+        XCTAssertEqual(controller.printedResult?.id, printed.id)
+        XCTAssertEqual(controller.printedResult?.model.id, "coreai:first")
+        XCTAssertEqual(controller.printedResult?.answer.probabilities, answer.probabilities)
+        controller.runtimeDidUnload()
+        XCTAssertEqual(controller.printedResult?.id, printed.id)
+        XCTAssertNil(controller.activeModel)
+    }
+
+    func testEverySuccessfulRunGetsANewPrintIdentityAndLoadingRetractsOldTicket() async throws {
+        let controller = makeController()
+        controller.input = "Same input"
+        try await controller.activate(id: "coreai:first")
+        _ = try await controller.run(controller.request())
+        let first = try XCTUnwrap(controller.printedResult)
+        _ = try await controller.run(controller.request())
+        let second = try XCTUnwrap(controller.printedResult)
+        XCTAssertNotEqual(second.id, first.id)
+        XCTAssertEqual(second.answer.probabilities, first.answer.probabilities)
+        XCTAssertFalse(controller.isResultStale)
+        try await controller.activate(id: "coreai:second")
+        XCTAssertNil(controller.printedResult)
+    }
+
+    func testRuntimeUnloadCancelsValidationAndDropsLateTokenCounts() async throws {
+        let controller = CoreAIClassifierWorkbench(backend: .init(
+            activate: { .init(id: $0, name: "Fixture", window: 128) },
+            run: { _ in throw CoreAIClassifierError.invalidOutput },
+            validate: { _ in try await Task.sleep(for: .milliseconds(500)); return 9 }, cancel: {}, unload: {}
+        ))
+        controller.input = "Validation draft"
+        try await controller.activate(id: "fixture")
+        try await Task.sleep(for: .milliseconds(300))
+        controller.runtimeDidUnload()
+        try await Task.sleep(for: .milliseconds(600))
+        XCTAssertNil(controller.usedTokens)
+        XCTAssertNil(controller.validationMessage)
+    }
+    func testSavedTasksPersistConfigurationWithoutInputOrModelAndKeepDrafts() throws {
+        let suite = "classifier-test-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let backend = CoreAIClassifierWorkbench.Backend(activate: { .init(id: $0, name: "Fixture", window: 128) },
+            run: { _ in throw CoreAIClassifierError.invalidOutput }, validate: { _ in 0 }, cancel: {}, unload: {})
+        let controller = CoreAIClassifierWorkbench(backend: backend, defaults: defaults)
+        controller.input = "Private input draft"
+        controller.imageData = Data([1, 2, 3])
+        controller.apply(.sentiment)
+        try controller.saveTask(named: " My sentiment ")
+        let saved = try XCTUnwrap(controller.savedTasks.first)
+        XCTAssertEqual(saved.name, "My sentiment")
+        let restored = CoreAIClassifierWorkbench(backend: backend, defaults: defaults)
+        XCTAssertEqual(restored.savedTasks, [saved])
+        XCTAssertEqual(restored.input, "")
+        XCTAssertNil(restored.imageData)
+        controller.apply(.yesNo)
+        controller.apply(saved)
+        XCTAssertEqual(controller.type, .choice)
+        XCTAssertEqual(controller.input, "Private input draft")
+        XCTAssertEqual(controller.imageData, Data([1, 2, 3]))
+        try controller.deleteTask(id: saved.id)
+        XCTAssertTrue(CoreAIClassifierWorkbench(backend: backend, defaults: defaults).savedTasks.isEmpty)
+        controller.optionsText = "same: A\nsame: B"
+        XCTAssertThrowsError(try controller.saveTask(named: "Invalid"))
+    }
+
+    func testImageModelRequestPreservesTextTaskAndDoesNotSendIt() throws {
+        let controller = makeController()
+        controller.input = "Text to keep"
+        let instructions = controller.instructions
+        let options = controller.optionsText
+        controller.selectedModelID = "classifier:fastvit-t8"
+        XCTAssertThrowsError(try controller.request())
+        controller.imageData = Data([1, 2, 3])
+        let image = try controller.request()
+        XCTAssertEqual(image.input, "")
+        XCTAssertNil(image.options)
+        XCTAssertEqual(image.imageData, controller.imageData)
+        controller.selectedModelID = "coreai:fixture"
+        XCTAssertEqual(try controller.request().input, "Text to keep")
+        XCTAssertEqual(controller.instructions, instructions)
+        XCTAssertEqual(controller.optionsText, options)
+    }
+
+    func testPortableAPIIdentityIsPreserved() throws {
+        XCTAssertEqual(try LocalClassifierAPI.decodeActivation(Data("{\"model\":\"classifier:julia-1-q8\"}".utf8)), "classifier:julia-1-q8")
+        XCTAssertEqual(try LocalClassifierAPI.decodeActivation(Data("{\"model\":\"julia-1-q8\"}".utf8)), "classifier:julia-1-q8")
+    }
+
     func testActivationChoiceScoreBooleanAndExportUseTypedAdapter() async throws {
         let contract = try CoreAIClassifierContract(juliaCoreMLWindow: 128, headBudget: 64)
         let adapter = try CoreAIClassifierAdapter(contract: contract, encode: { text in Array(repeating: 5, count: min(10, text.count)) }, runMain: { row in
@@ -74,6 +179,7 @@ final class CoreAIClassifierWorkbenchTests: XCTestCase {
         await gate.finish()
         do { _ = try await run.value; XCTFail("Late output must be discarded") } catch is CancellationError {} catch { XCTFail("Unexpected error") }
         XCTAssertNil(controller.answer)
+        XCTAssertNil(controller.printedResult)
         XCTAssertEqual(controller.phase, .ready)
     }
 

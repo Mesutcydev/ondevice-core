@@ -78,7 +78,7 @@ struct AttributionsView: View {
                 KMono(text: "thank you to the open-source community",
                        size: 12, weight: .semibold, color: T.ink)
             }
-            Text("OnDevice uses models, frameworks, and tools from many researchers and engineers. Selected components are listed below. The app also includes license texts in its third-party notices, and model details link to the selected source repository.")
+            Text("Token AI uses models, frameworks, and tools from many researchers and engineers. Selected components are listed below. The app also includes license texts in its third-party notices, and model details link to the selected source repository.")
                 .font(T.sans(11))
                 .foregroundColor(T.ink2)
                 .fixedSize(horizontal: false, vertical: true)

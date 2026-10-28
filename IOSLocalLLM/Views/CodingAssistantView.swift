@@ -46,10 +46,17 @@ struct CodingAssistantView: View {
     let isActive: Bool
     var onClose: () -> Void = {}
 
+    @MainActor
+    init(isActive: Bool, gitHub: GitHubWorkspaceService? = nil, onClose: @escaping () -> Void = {}) {
+        self.isActive = isActive
+        self.onClose = onClose
+        _gitHub = StateObject(wrappedValue: gitHub ?? GitHubWorkspaceService())
+    }
+
     @StateObject private var assistant = CodingAssistantService.shared
     @StateObject private var store = ConversationStore.shared
     @StateObject private var bridge = AppBridge.shared
-    @StateObject private var gitHub = GitHubWorkspaceService()
+    @StateObject private var gitHub: GitHubWorkspaceService
     @ObservedObject private var gitHubConnection = GitHubConnectionStore.shared
     @ObservedObject private var personaStore = PersonaStore.shared
     @ObservedObject private var legal = LegalAcceptanceManager.shared
@@ -87,6 +94,9 @@ struct CodingAssistantView: View {
     @State private var scrollProxy: ScrollViewProxy?
     @State private var showClearConfirm = false
     @State private var showConversationPicker = false
+    @State private var showConversationDetails = false
+    @State private var pendingConversationDetailAction: ODConversationDetailAction?
+    @State private var expandedToolGroupIDs: Set<UUID> = []
     @State private var showPhotoPicker = false
     @State private var showModelPicker = false
     @State private var showRuntimeDetails = false
@@ -138,7 +148,7 @@ struct CodingAssistantView: View {
     /// User-attached files for the next send. Cleared after send completes.
     @State private var pendingAttachments: [FileAttachmentService.Attachment] = []
     @State private var showFilePicker = false
-    /// JPEG thumbnail (~480 px) of the most-recently-attached photo.
+    /// Bounded JPEG of the most-recently-attached photo.
     /// Travels with the next user message as `imageThumbnailData` so the
     /// chat bubble renders the actual picture instead of pretending the
     /// user typed a code block of OCR'd text. Cleared after send.
@@ -149,6 +159,9 @@ struct CodingAssistantView: View {
     /// Text-only chat models temporarily hand attached images to the selected
     /// visual model, then resume with the resulting on-device description.
     @State private var isPreparingImageContext = false
+    /// The visual model a text-only Assistant needs to read images, offered
+    /// for download when it isn't installed. Nothing downloads until tapped.
+    @State private var visualModelOffer: DownloadableModel?
     @State private var imageGroundingTask: Task<Void, Never>?
     @State private var imageGroundingPrompt: String?
     @State private var emptyVisualRecoveryMessageIDs: Set<UUID> = []
@@ -229,7 +242,8 @@ struct CodingAssistantView: View {
     @State private var documentSearchID: UUID?
     @State private var documentSearchPrompt: String?
     @State private var completionScrollTask: Task<Void, Never>?
-    @State private var lastStreamScrollTime = 0.0
+    @State private var streamScrollTask: Task<Void, Never>?
+    @State private var userIsScrolling = false
     @Environment(\.accessibilityReduceMotion) private var chatReduceMotion
     @Environment(\.koduTheme) private var T
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -287,7 +301,13 @@ struct CodingAssistantView: View {
                                 ForEach(AssistantActivity.transcriptRows(filteredMessages)) { row in
                                     Group {
                                         if row.isToolGroup {
-                                            AssistantToolResultStrip(messages: row.messages)
+                                            AssistantToolResultStrip(messages: row.messages, isExpanded: Binding(
+                                                get: { expandedToolGroupIDs.contains(row.id) },
+                                                set: { expanded in
+                                                    if expanded { expandedToolGroupIDs.insert(row.id) }
+                                                    else { expandedToolGroupIDs.remove(row.id) }
+                                                    schedulePresentationSave()
+                                                }))
                                         } else if let message = row.messages.first {
                                             transcriptRow(message)
                                         }
@@ -306,29 +326,44 @@ struct CodingAssistantView: View {
                                 .id(conversationBottomAnchorID)
                         }
                     }
-                    .scrollPosition(id: $readingMessageID, anchor: .top)
+                    // Observe the reading position without asking SwiftUI to
+                    // keep a second, top-anchored scroll position while the
+                    // streaming reply is following the bottom.
+                    .onScrollTargetVisibilityChange(idType: UUID.self, threshold: 0.01) { visibleIDs in
+                        let visible = Set(visibleIDs)
+                        if let first = AssistantActivity.transcriptRows(filteredMessages).first(where: { visible.contains($0.id) }) {
+                            readingMessageID = first.id
+                        }
+                    }
                     .scrollDismissesKeyboard(.interactively)
                     // Tap empty space in the chat area to dismiss the keyboard
                     .simultaneousGesture(
                         TapGesture().onEnded { inputFocused = false }
                     )
                     .onAppear { scrollProxy = proxy }
-                    // Coalesce streaming scroll work by elapsed time, independent of token size.
+                    // Wait for the next layout and coalesce bursts of tokens.
                     .onChange(of: messages.last?.content.utf8.count) { _, _ in
-                        let now = ProcessInfo.processInfo.systemUptime
-                        guard followsConversation, now - lastStreamScrollTime >= 0.08 else { return }
-                        lastStreamScrollTime = now
-                        var transaction = Transaction()
-                        transaction.disablesAnimations = true
-                        withTransaction(transaction) {
-                            proxy.scrollTo(conversationBottomAnchorID, anchor: .bottom)
+                        guard followsConversation, streamScrollTask == nil else { return }
+                        streamScrollTask = Task { @MainActor in
+                            do { try await Task.sleep(for: .milliseconds(100)) } catch { return }
+                            streamScrollTask = nil
+                            guard !Task.isCancelled, followsConversation else { return }
+                            var transaction = Transaction()
+                            transaction.disablesAnimations = true
+                            withTransaction(transaction) {
+                                proxy.scrollTo(conversationBottomAnchorID, anchor: .bottom)
+                            }
                         }
                     }
                     .onScrollPhaseChange { _, phase in
                         if phase == .interacting {
+                            userIsScrolling = true
                             followsConversation = false
+                            streamScrollTask?.cancel()
+                            streamScrollTask = nil
                             completionScrollTask?.cancel()
-                        } else if phase == .idle {
+                        } else if phase == .idle, userIsScrolling {
+                            userIsScrolling = false
                             followsConversation = isNearConversationBottom
                         }
                     }
@@ -345,7 +380,7 @@ struct CodingAssistantView: View {
                         }
                     }
                     .onChange(of: runningToolName) { _, _ in
-                        if isNearConversationBottom {
+                        if followsConversation {
                             withAnimation(reduceMotion ? nil : .easeOut(duration: 0.12)) {
                                 proxy.scrollTo(conversationBottomAnchorID, anchor: .bottom)
                             }
@@ -358,9 +393,9 @@ struct CodingAssistantView: View {
                         isNearConversationBottom = nearBottom
                     }
                     .onChange(of: inputFocused) { _, focused in
-                        // When focusing, scroll the last message to bottom so it
-                        // doesn't end up behind the composer
-                        if focused, !messages.isEmpty {
+                        // Focusing a draft must not discard a deliberately
+                        // detached reading position. The inset reserves room.
+                        if focused, followsConversation, !messages.isEmpty {
                             isNearConversationBottom = true
                             followsConversation = true
                             withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
@@ -410,7 +445,7 @@ struct CodingAssistantView: View {
                 // whole bar swapping out. The dismiss key shares this one
                 // bottom stack so iOS cannot insert a detached keyboard
                 // toolbar between the composer and the keys.
-                ODWorkspaceBottomBar(backgroundColor: T.studio.paper) {
+                ODWorkspaceBottomBar(backgroundColor: .clear) {
                     VStack(spacing: 0) {
                         inputBar
                         if inputFocused {
@@ -427,9 +462,12 @@ struct CodingAssistantView: View {
             // Leading chat apps dismiss entry focus when a request starts and
             // retain a dedicated Stop action. Our Stop remains in the top
             // toolbar, so the large composer can get out of the answer's way.
-            .animation(.easeOut(duration: 0.18), value: isGenerating)
             .onChange(of: isGenerating) { wasGenerating, generating in
                 completionScrollTask?.cancel()
+                if !generating {
+                    streamScrollTask?.cancel()
+                    streamScrollTask = nil
+                }
                 guard wasGenerating, !generating, followsConversation else { return }
                 let lastMessageID = messages.last?.id
                 completionScrollTask = Task { @MainActor in
@@ -439,11 +477,16 @@ struct CodingAssistantView: View {
                     scrollProxy?.scrollTo(conversationBottomAnchorID, anchor: .bottom)
                 }
             }
-            .onDisappear { completionScrollTask?.cancel(); cancelDocumentSearch(); savePresentation() }
-            .navigationTitle(currentConversationTitle ?? "OnDevice")
+            .onDisappear {
+                completionScrollTask?.cancel()
+                streamScrollTask?.cancel()
+                streamScrollTask = nil
+                cancelDocumentSearch()
+                savePresentation()
+            }
+            .navigationTitle(currentConversationTitle ?? "Token AI")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(T.studio.paper, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 if !sidebarPinned {
                     ToolbarItem(placement: .topBarLeading) {
@@ -466,7 +509,25 @@ struct CodingAssistantView: View {
             .confirmationDialog("Delete this conversation?", isPresented: $showClearConfirm, titleVisibility: .visible) {
                 Button("Delete conversation", role: .destructive) { deleteCurrentConversation() }
             } message: {
-                Text("Its messages are removed from this iPhone and, with iCloud sync on, from your other devices.")
+                Text("Its messages are removed from this iPhone.")
+            }
+            .sheet(isPresented: $showConversationDetails, onDismiss: performConversationDetailAction) {
+                ODConversationDetails(
+                    title: currentConversationTitle ?? loc.t("New chat"),
+                    modelName: assistant.activeModelName,
+                    executionLabel: conversationExecutionLabel,
+                    workspace: gitHub.draft?.selection.label,
+                    isPinned: currentStoredConversation?.isPinned == true,
+                    hasConversation: currentConversationID != nil,
+                    hasTranscript: !messages.isEmpty
+                ) { action in
+                    if action == .pin, let id = currentConversationID {
+                        store.setPinned(!(currentStoredConversation?.isPinned ?? false), for: id)
+                    } else {
+                        pendingConversationDetailAction = action
+                        showConversationDetails = false
+                    }
+                }
             }
             .sheet(isPresented: $showConversationPicker) {
                 ConversationPickerView(
@@ -643,6 +704,16 @@ struct CodingAssistantView: View {
                     onSnippets: { handOffFromAddSheet { showSnippetPicker = true } }
                 )
             }
+            .alert(
+                "Download a visual model?",
+                isPresented: Binding(get: { visualModelOffer != nil }, set: { if !$0 { visualModelOffer = nil } }),
+                presenting: visualModelOffer
+            ) { model in
+                Button(model.sizeLabel.isEmpty ? "Download" : "Download (\(model.sizeLabel))") { model.start() }
+                Button("Not now", role: .cancel) {}
+            } message: { model in
+                Text("\(assistant.activeDisplayName) reads images through \(model.displayName), which runs on this device. The image stays attached; send it again when the download finishes.")
+            }
             .sheet(isPresented: $showSnippetPicker) {
                 SnippetPickerView { text in
                     if inputText.isEmpty {
@@ -803,9 +874,14 @@ struct CodingAssistantView: View {
     /// Filters `messages` by `conversationFilter`. When search is off or
     /// the query is empty, returns everything.
     private var filteredMessages: [ChatMessage] {
+        // Protocol-only tool calls stay in model history but have no visible
+        // assistant prose. Their associated result is shown as the tool chip.
+        let visibleMessages = messages.filter {
+            !($0.role == .assistant && $0.content.isEmpty && $0.modelContent != nil)
+        }
         let q = conversationFilter.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard showConversationSearch, !q.isEmpty else { return messages }
-        return messages.filter { $0.content.lowercased().contains(q) }
+        guard showConversationSearch, !q.isEmpty else { return visibleMessages }
+        return visibleMessages.filter { $0.content.lowercased().contains(q) }
     }
 
     private var conversationSearchBar: some View {
@@ -868,9 +944,10 @@ struct CodingAssistantView: View {
             prefill = "Help me with this link (I can't fetch it for you — just react to the URL itself):\n\n\(payload.body)"
         }
 
-        inputText = prefill
+        inputText = payload.appendToDraft && !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? inputText + "\n\n" + prefill : prefill
 
-        // "Ask OnDevice" App Intent path: fire the prompt automatically so a
+        // "Ask Token AI" App Intent path: fire the prompt automatically so a
         // Siri/Shortcuts request actually produces an answer. Defer one run
         // loop so the @State write above is committed before sendMessage()
         // reads `inputText`, and give ensureModelReady() a beat to kick in.
@@ -996,8 +1073,17 @@ struct CodingAssistantView: View {
         }
         let targetModel = storedModel ?? AssistantModelCatalog.currentSelection()
         guard targetModel.id != assistant.activeSelectionID else { return }
-        Task {
-            await assistant.switchTo(targetModel, persistAsDefault: false)
+        selectWithoutLoading(targetModel)
+    }
+
+    /// Reading a chat needs no weights: select its model now and let the next
+    /// send load it. A load or download already underway keeps the switch
+    /// path, which leaves it running instead of cancelling it.
+    private func selectWithoutLoading(_ model: AssistantModel) {
+        if case .loading = assistant.state {
+            Task { await assistant.switchTo(model, persistAsDefault: false) }
+        } else {
+            Task { await assistant.adoptSelectionWithoutLoading(model) }
         }
     }
 
@@ -1006,7 +1092,8 @@ struct CodingAssistantView: View {
             text: inputText, files: pendingAttachments, images: pendingImageThumbnails,
             imageIDs: draftImageIDs, legacyImage: pendingImageThumbnail,
             legacyImageID: legacyDraftImageID, readingMessageID: readingMessageID,
-            followsLatest: followsConversation
+            followsLatest: followsConversation,
+            expandedToolGroupIDs: expandedToolGroupIDs.isEmpty ? nil : expandedToolGroupIDs
         )
     }
 
@@ -1037,6 +1124,7 @@ struct CodingAssistantView: View {
         if currentDraft.hasDraft { store.preserveUnsentDraft(id: id, draft: currentDraft) }
         recovered.readingMessageID = readingMessageID
         recovered.followsLatest = followsConversation
+        recovered.expandedToolGroupIDs = expandedToolGroupIDs.isEmpty ? nil : expandedToolGroupIDs
         restorePresentation(recovered)
         savePresentation()
         inputFocused = true
@@ -1082,6 +1170,7 @@ struct CodingAssistantView: View {
         draftImageIDs = presentation.imageIDs
         legacyDraftImageID = presentation.legacyImageID
         followsConversation = presentation.followsLatest
+        expandedToolGroupIDs = presentation.expandedToolGroupIDs ?? []
         readingMessageID = presentation.readingMessageID.map {
             AssistantActivity.transcriptRowID(for: $0, in: filteredMessages)
         }
@@ -1114,9 +1203,7 @@ struct CodingAssistantView: View {
         }
         let defaultModel = AssistantModelCatalog.currentSelection()
         guard defaultModel.id != assistant.activeSelectionID else { return }
-        Task {
-            await assistant.switchTo(defaultModel, persistAsDefault: false)
-        }
+        selectWithoutLoading(defaultModel)
     }
 
     private func persistCurrentConversation() {
@@ -1164,7 +1251,8 @@ struct CodingAssistantView: View {
                 showModelPicker = true
                 HapticManager.impact(.light)
             } else if canLoadSelectedModel {
-                Task { await assistant.load() }
+                // Load the model this bar names, which may be the chat's own.
+                Task { await assistant.load(reselectFromSettings: false) }
                 HapticManager.impact(.medium)
             } else {
                 showRuntimeDetails = true
@@ -1173,10 +1261,7 @@ struct CodingAssistantView: View {
         } label: {
             HStack(spacing: AppSpacing.small) {
                 if isModelPreparing {
-                    ProgressView()
-                        .controlSize(.small)
-                        .tint(statusColor)
-                        .accessibilityHidden(true)
+                    ODBrandMark(height: 9, motion: .live).foregroundStyle(statusColor)
                 } else {
                     Image(systemName: modelStatusDescriptor.title == "Ready"
                           ? "checkmark.circle.fill"
@@ -1679,6 +1764,31 @@ struct CodingAssistantView: View {
         return title
     }
 
+    private var currentStoredConversation: StoredConversation? {
+        currentConversationID.flatMap { id in store.conversations.first { $0.id == id } }
+    }
+
+    private var conversationExecutionLabel: String {
+        switch assistant.activeExecutionLocation {
+        case .localDownloaded, .localCoreAI, .localSystem: return "On-device"
+        case .applePrivateCloud: return "Apple Private Cloud"
+        case .externalCloud: return "API provider"
+        }
+    }
+
+    private func performConversationDetailAction() {
+        guard let action = pendingConversationDetailAction else { return }
+        pendingConversationDetailAction = nil
+        switch action {
+        case .model:
+            ODBridge.shared.store.requestExclusiveOperation("Changing the active model") { showModelPicker = true }
+        case .search: showConversationSearch = true
+        case .share: shareCurrentConversation()
+        case .delete: showClearConfirm = true
+        case .pin: break
+        }
+    }
+
     /// "qwen3 · thinks first" — the machine facts under the nav title.
     private var navModeSummary: String {
         var parts = [assistant.activeDisplayName]
@@ -1956,6 +2066,12 @@ struct CodingAssistantView: View {
             .controlGroupStyle(.compactMenu)
 
             Section(loc.t("This chat")) {
+                Button(loc.t("Conversation details"), systemImage: "info.circle") {
+                    inputFocused = false
+                    savePresentation()
+                    showConversationDetails = true
+                }
+                .accessibilityIdentifier("chat.session.open")
                 Button {
                     if isGenerating { stopGeneration() }
                     inputFocused = false
@@ -2158,7 +2274,9 @@ struct CodingAssistantView: View {
             }
         } label: {
             ODModelMenuLabel(displayName: assistant.activeModelName,
-                             preservesName: assistant.activeExecutionLocation == .externalCloud)
+                             preservesName: assistant.activeExecutionLocation == .externalCloud,
+                             conversationTitle: currentConversationTitle,
+                             status: isGenerating ? .working : assistant.isModelLoaded ? .ready : .idle)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Choose chat model")
@@ -2453,6 +2571,8 @@ struct CodingAssistantView: View {
 
     private func stopGeneration() {
         preserveUnsentSubmission()
+        streamScrollTask?.cancel()
+        streamScrollTask = nil
         generationFailure = nil
         operationID = UUID()
         submissionPreparing = false
@@ -2695,7 +2815,7 @@ struct CodingAssistantView: View {
     /// Bonsai 27B from being loaded merely to inspect a small diagnostics log.
     private func diagnoseAppErrors() {
         inputFocused = false
-        let instructions = "You are analyzing diagnostics from OnDevice, an on-device iOS AI app that runs local models (MLX / Core ML). Identify the most likely root cause(s), ranked, and give concrete prioritized fixes or user actions. Be concise and specific. If nothing looks wrong, say the device looks healthy. Do not invent log lines that are not present."
+        let instructions = "You are analyzing diagnostics from Token AI, an on-device iOS AI app that runs local models (MLX / Core ML). Identify the most likely root cause(s), ranked, and give concrete prioritized fixes or user actions. Be concise and specific. If nothing looks wrong, say the device looks healthy. Do not invent log lines that are not present."
         let displayText = loc.t("Diagnose my app's recent errors and suggest fixes.")
         messages.append(ChatMessage(role: .user, content: displayText))
         let reply = ChatMessage(role: .assistant, content: "", isStreaming: true)
@@ -2770,7 +2890,8 @@ struct CodingAssistantView: View {
             messages: policyAdjustedSource,
             existingMemory: previous,
             maxTokens: assistant.currentInputBudget,
-            modelDisplayName: assistant.activeDisplayName
+            modelDisplayName: assistant.activeDisplayName,
+            retainingRecentSource: assistant.usesMiniCPMStreamingText
         )
         conversationContextMemory = prepared.memory
         if prepared.memory != previous, let id = currentConversationID {
@@ -2783,7 +2904,13 @@ struct CodingAssistantView: View {
     /// for this reply, so a persona switch, a new day, new memories or newly
     /// attached material take effect on the very next answer.
     private func withCurrentSystemPrompt(_ source: [ChatMessage]) -> [ChatMessage] {
-        let dialog = source.filter { $0.role != .system }
+        let dialog = source.filter { $0.role != .system }.map { message in
+            guard usesLFM3NativeTools, message.role == .user,
+                  let result = AssistantActivity.parseToolResult(message.content) else { return message }
+            return ChatMessage(id: message.id, role: .tool,
+                content: ToolRunner.resultForModelContext(name: result.name, result: result.result),
+                timestamp: message.timestamp)
+        }
         let persona = PersonaStore.shared.active
         let coreAI = assistant.activeExecutionLocation != .externalCloud && assistant.activeModel.runtime == .coreAI
         let budget = assistant.currentInputBudget
@@ -2798,7 +2925,17 @@ struct CodingAssistantView: View {
             inputBudget: budget
         ))
         if activeModelToolsEnabled {
-            let repositoryTools = gitHub.promptAddendum(compact: coreAI || budget <= 2_048)
+            if usesLFM3NativeTools {
+                prompt = prompt.replacingOccurrences(of: ToolRunner.systemPromptAddendum, with: "")
+                    .replacingOccurrences(of: ToolRunner.coreAISystemPromptAddendum, with: "")
+                prompt += LFM3ToolProtocol.systemPrompt(includeRepositoryTools: gitHub.isAvailable)
+            }
+            var repositoryTools = gitHub.promptAddendum(compact: coreAI || budget <= 2_048)
+            if usesLFM3NativeTools {
+                repositoryTools = repositoryTools.replacingOccurrences(
+                    of: "You may use the existing JSON tool format: {\"name\":\"read_file\",\"args\":{\"path\":\"README.md\"}}.",
+                    with: "Use the native tool-call format for the listed repository tools.")
+            }
             if !repositoryTools.isEmpty { prompt += "\n\n" + repositoryTools }
             let uploads = availableGitHubImageAttachments.map(\.name) + gitHubUploadFiles.map(\.displayName)
             if gitHub.isAvailable, !uploads.isEmpty {
@@ -2830,6 +2967,12 @@ struct CodingAssistantView: View {
             runtime: assistant.activeModel.runtime,
             modelSupportsTools: assistant.activeModel.supportsTools
         )
+    }
+
+    private var usesLFM3NativeTools: Bool {
+        assistant.activeExecutionLocation != .externalCloud
+            && assistant.activeModel.runtime == .llamaCpp
+            && LFM3Catalog.isEnabled && LFM3Catalog.isFamily(assistant.activeModel.repoID)
     }
 
     /// Common streaming path that drops fake citations after the model finishes.
@@ -3090,41 +3233,20 @@ struct CodingAssistantView: View {
     private func handlePickedPhoto(_ picked: PickedPhoto) {
         DispatchQueue.main.async {
             ToolBridge.shared.lastImage = picked.image
-            if let jpeg = Self.makeThumbnailJPEG(picked.image) {
-                // Multi-image: add to thumbnails array instead of replacing.
-                // First image also populates pendingImageThumbnail for backward compat.
-                if self.pendingImageThumbnail == nil {
-                    self.pendingImageThumbnail = jpeg
-                }
-                self.pendingImageThumbnails.append(
-                    ChatMessage.ImageAttachment(
-                        data: jpeg,
-                        caption: picked.ocrText.trimmingCharacters(in: .whitespacesAndNewlines)
-                    )
-                )
+            let jpeg = picked.attachmentData
+            // The first image also populates the legacy single-image field.
+            if self.pendingImageThumbnail == nil {
+                self.pendingImageThumbnail = jpeg
             }
+            self.pendingImageThumbnails.append(
+                ChatMessage.ImageAttachment(
+                    data: jpeg,
+                    caption: picked.ocrText.trimmingCharacters(in: .whitespacesAndNewlines)
+                )
+            )
             self.inputFocused = true
             HapticManager.impact(.light)
         }
-    }
-
-    /// Down-samples a UIImage to a ~480-pt-long-edge JPEG so the
-    /// thumbnail kept on every chat message stays well under 100 KB.
-    /// Returns nil only if the image is degenerate (zero size); the
-    /// caller skips the attachment in that case.
-    private static func makeThumbnailJPEG(_ image: UIImage) -> Data? {
-        let maxEdge: CGFloat = 480
-        let size = image.size
-        guard size.width > 0, size.height > 0 else { return nil }
-        let scale = min(1.0, maxEdge / max(size.width, size.height))
-        let target = CGSize(width: size.width * scale, height: size.height * scale)
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        let renderer = UIGraphicsImageRenderer(size: target, format: format)
-        let resized = renderer.image { _ in
-            image.draw(in: CGRect(origin: .zero, size: target))
-        }
-        return resized.jpegData(compressionQuality: 0.75)
     }
 
     private func sendMessage() {
@@ -3340,6 +3462,7 @@ struct CodingAssistantView: View {
             if let visualContext, !visualContext.isEmpty {
                 prefix += """
                 [ON-DEVICE IMAGE ANALYSIS]
+                \(ImageGroundingSanitizer.answerGuidance)
                 \(visualContext)
                 [END IMAGE ANALYSIS]
 
@@ -3669,7 +3792,7 @@ struct CodingAssistantView: View {
                 if let img = service.image, service.resultURL != baseline {
                     if case .generating = service.state {
                         // a later denoise step is still publishing — keep waiting
-                    } else if let data = Self.makeThumbnailJPEG(img) {
+                    } else if let data = AssistantImageEncoder.jpeg(img) {
                         self.messages.append(ChatMessage(role: .assistant,
                                                          content: "",
                                                          imageThumbnailData: data))
@@ -3888,7 +4011,13 @@ struct CodingAssistantView: View {
     private func retainReasoningBeforeTool(messageID: UUID) {
         guard let index = messages.firstIndex(where: { $0.id == messageID }) else { return }
         if !AssistantActivity.retainReasoningForTool(&messages[index]) {
-            messages.remove(at: index)
+            if usesLFM3NativeTools {
+                messages[index].modelContent = messages[index].content
+                messages[index].content = ""
+                messages[index].isStreaming = false
+            } else {
+                messages.remove(at: index)
+            }
         }
     }
 
@@ -3903,7 +4032,7 @@ struct CodingAssistantView: View {
         followID: UUID
     ) -> [ChatMessage] {
         var context = messages.filter { $0.id != followID }
-        if let idx = context.firstIndex(where: { $0.id == resultMessageID }) {
+        if !usesLFM3NativeTools, let idx = context.firstIndex(where: { $0.id == resultMessageID }) {
             context[idx].content = ToolRunner.resultForModelContext(name: name, result: result)
         }
         guard name == "web_search" else { return context }
@@ -4134,11 +4263,12 @@ struct CodingAssistantView: View {
         }
 
         let visualPrompt = """
-        Analyze this image for another assistant answering the user's request:
-        "\(displayText)"
-        Describe the important visual details and transcribe all relevant visible text. Be factual and concise.
+        Describe the visible objects and scene relevant to this question: "\(displayText)". \
+        Be concise and factual. Do not guess unreadable text, numbers, or details.
         """
         var grounded: [String] = []
+        let imageContextBudget = max(1_200, min(8_000, assistant.currentInputBudget * 2))
+        let perImageBudget = max(400, imageContextBudget / max(1, attachments.count))
 
         for (index, attachment) in attachments.enumerated() {
             guard !Task.isCancelled, accepts(request) else { return }
@@ -4148,19 +4278,20 @@ struct CodingAssistantView: View {
                 prompt: visualPrompt
             )
             guard !Task.isCancelled, accepts(request) else { return }
-            let description = ImageGroundingSanitizer.clean(rawDescription)
-            if !description.isEmpty {
-                grounded.append("Image \(index + 1):\n\(description)")
-            } else if let ocr = attachment.caption,
-                      !ocr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                grounded.append("Image \(index + 1) visible text:\n\(ocr)")
+            if let observation = ImageGroundingSanitizer.observation(
+                index: index, description: rawDescription, recognizedText: attachment.caption,
+                maximumCharacters: perImageBudget
+            ) {
+                grounded.append(observation)
             }
         }
 
         guard !Task.isCancelled, accepts(request) else { return }
         // A local assistant load drains whichever visual backend was selected.
         // PCC has no resident weights, so it only refreshes availability.
-        await assistant.load()
+        // Reload the request's own model: switching to the saved default
+        // failed `accepts` below and left the composer preparing forever.
+        await assistant.load(reselectFromSettings: false)
         guard !Task.isCancelled, accepts(request) else { return }
         guard assistant.canGenerateSelectedTarget else {
             preserveUnsentSubmission()
@@ -4179,10 +4310,14 @@ struct CodingAssistantView: View {
             submissionPreparing = false
             isPreparingImageContext = false
             if inputText.isEmpty { inputText = displayText }
-            ToastCenter.shared.error(
-                "Image analysis unavailable",
-                detail: "Download or select a visual model in Models, then try again. The image remains attached."
-            )
+            if let missing = missingVisualModel() {
+                visualModelOffer = missing
+            } else {
+                ToastCenter.shared.error(
+                    "Image analysis unavailable",
+                    detail: "Download or select a visual model in Models, then try again. The image remains attached."
+                )
+            }
             return
         }
 
@@ -4192,13 +4327,46 @@ struct CodingAssistantView: View {
         sendOffline(text: displayText, visualContext: grounded.joined(separator: "\n\n"))
     }
 
+    /// The selected Lens model, or the lightest catalog visual model, when
+    /// the selected one cannot run here.
+    private func missingVisualModel() -> DownloadableModel? {
+        let models = ModelDownloadCenter.shared.models
+        let selectedID = LocalModelRegistry.visualDescriptor(
+            forStoredSelectionID: AppSettings.shared.cameraVisualModelID, catalog: models
+        ).repoID
+        let selected = models.first {
+            !selectedID.isEmpty && ($0.id == selectedID || $0.sourceRepoID == selectedID)
+        }
+        if let selected, !selected.isReady { return selected }
+
+        // An installed model can still be refused by memory admission (for
+        // example a 9B VLM on a 12 GB phone) or fail transiently. Offer the
+        // lightest visual model instead of the dead-end message.
+        return models
+            .filter { $0.category == .vlm && !$0.isReady }
+            .sorted { ($0.approxRAMBytes ?? .max) < ($1.approxRAMBytes ?? .max) }
+            .first
+    }
+
     @MainActor
     private func describeForChatGrounding(image: UIImage, prompt: String) async -> String {
-        // SmolVLM2-500M Q8 is the smallest compatible visual runtime shipped
-        // by the app (~520 MB on disk / ~850 MB working set). Prefer it for
-        // text-model handoffs regardless of the heavier Lens model the user
-        // may have selected. The llama.cpp + mtmd path also avoids the known
-        // upstream MLX SmolVLM2 tiling crash.
+        let storedSelection = AppSettings.shared.cameraVisualModelID
+        let selectionID = LocalModelRegistry.storedVisionSelectionID(storedSelection)
+        let selectedIsInstalled = ModelDownloadCenter.shared.models.contains {
+            ($0.id == selectionID || $0.sourceRepoID == selectionID) && $0.isReady
+        }
+        // Honor an installed visual model the user selected. Its normal load
+        // and residency admission still apply; the compact model is a fallback.
+        let preferSelected = !LocalModelRegistry.isDefaultVisionSelection(selectionID)
+            && selectionID != BundledVLMInstaller.bundledRepoID && selectedIsInstalled
+        if preferSelected {
+            let selected = await describeWithSelectedVisualModel(image: image, prompt: prompt,
+                                                                  storedSelection: storedSelection)
+            guard !Task.isCancelled else { return "" }
+            if !selected.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return selected }
+        }
+
+        // SmolVLM2's llama.cpp + mtmd path avoids the upstream MLX tiling crash.
         if BundledVLMInstaller.isInstalled {
             let smol = LlamaCppVLMService.shared
             if smol.activeRepoID != BundledVLMInstaller.bundledRepoID {
@@ -4233,11 +4401,41 @@ struct CodingAssistantView: View {
             }
         }
 
-        // Compatibility fallbacks: FastVLM when it is the configured default,
-        // then the user's installed Lens model. Every backend still runs
-        // sequentially and is drained before the chat model reloads.
-        guard !Task.isCancelled else { return "" }
-        let storedSelection = AppSettings.shared.cameraVisualModelID
+        // A selected visual model can be installed yet refuse admission. Try
+        // the other installed visual models, smallest first, so a lighter
+        // companion (for example LFM3 VL 2B) can still read the image.
+        let alternatives = ModelDownloadCenter.shared.models
+            .filter {
+                $0.isReady && $0.category == .vlm
+                    && $0.id != selectionID && $0.sourceRepoID != selectionID
+                    && $0.id != BundledVLMInstaller.bundledRepoID
+            }
+            .sorted { ($0.approxRAMBytes ?? .max) < ($1.approxRAMBytes ?? .max) }
+        for model in alternatives {
+            guard !Task.isCancelled else { return "" }
+            let output = await describeWithSelectedVisualModel(
+                image: image, prompt: prompt, storedSelection: model.sourceRepoID
+            )
+            guard !Task.isCancelled else { return "" }
+            if !output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                Diagnostics.shared.breadcrumb(
+                    "chat image grounded with \(model.sourceRepoID)",
+                    category: "assistant"
+                )
+                return output
+            }
+        }
+
+        guard !Task.isCancelled, !preferSelected else { return "" }
+        return await describeWithSelectedVisualModel(image: image, prompt: prompt,
+                                                      storedSelection: storedSelection)
+    }
+
+    /// Every backend still runs sequentially and is drained before the chat
+    /// model reloads. A failed selected model can fall back to SmolVLM above.
+    @MainActor
+    private func describeWithSelectedVisualModel(image: UIImage, prompt: String,
+                                                  storedSelection: String) async -> String {
         let selectionID = LocalModelRegistry.storedVisionSelectionID(storedSelection)
 
         if LocalModelRegistry.isDefaultVisionSelection(selectionID) {
@@ -4559,7 +4757,7 @@ private struct UnsafeModelLoadConfirmationSheet: View {
                     VStack(alignment: .leading, spacing: 14) {
                         riskRow(
                             symbol: "xmark.app.fill",
-                            text: "iOS may terminate OnDevice while the model loads or generates."
+                            text: "iOS may terminate Token AI while the model loads or generates."
                         )
                         riskRow(
                             symbol: "doc.badge.clock",
@@ -4793,6 +4991,7 @@ struct ConversationPickerView: View {
 
 struct MessageBubble: View, Equatable {
     let message: ChatMessage
+    @State private var toolExpanded = false
     var onAnalyzeImage: ((Data) -> Void)? = nil
     @Environment(\.displayScale) private var displayScale
     @Environment(\.koduTheme) private var T
@@ -4841,7 +5040,7 @@ struct MessageBubble: View, Equatable {
     }
 
     private func toolResultChip(_ tr: (name: String, result: String)) -> some View {
-        AssistantToolResultStrip(messages: [message])
+        AssistantToolResultStrip(messages: [message], isExpanded: $toolExpanded)
     }
 
     // User content follows the current neutral, naturally sized bubble.
@@ -4851,13 +5050,21 @@ struct MessageBubble: View, Equatable {
                 if !message.imageThumbnails.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: ODLayout.elementGap) {
-                            ForEach(Array(message.imageThumbnails.enumerated()), id: \.offset) { _, attachment in
-                                imageTile(data: attachment.data) { onAnalyzeImage?(attachment.data) }
+                            ForEach(Array(message.imageThumbnails.enumerated()), id: \.offset) { index, attachment in
+                                AssistantAttachedImage(data: attachment.data,
+                                    identifier: "\(message.id)-\(index)") {
+                                    HapticManager.impact(.medium)
+                                    onAnalyzeImage?(attachment.data)
+                                }
                             }
                         }
                     }
+                    .frame(height: AssistantAttachedImage.side)
                 } else if let data = message.imageThumbnailData {
-                    imageTile(data: data) { onAnalyzeImage?(data) }
+                    AssistantAttachedImage(data: data, identifier: "\(message.id)-0") {
+                        HapticManager.impact(.medium)
+                        onAnalyzeImage?(data)
+                    }
                 }
                 if !message.content.isEmpty {
                     Text(message.content)
@@ -4874,53 +5081,6 @@ struct MessageBubble: View, Equatable {
         }
         .padding(.horizontal, ODLayout.pageInset)
         .accessibilityLabel("You: \(message.content)")
-    }
-
-    /// 46pt square photo tile inside a user turn, with the same tap-to-analyze
-    /// affordance the old carousel card had.
-    private func imageTile(data: Data, onAnalyze: (() -> Void)? = nil) -> some View {
-        let S = T.studio
-        return Group {
-            if let ui = UIImage(data: data) {
-                Image(uiImage: ui)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                Rectangle().fill(S.fillActive)
-            }
-        }
-        .frame(width: 46, height: 46)
-        .clipShape(RoundedRectangle(cornerRadius: StudioRadius.tile, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: StudioRadius.tile, style: .continuous)
-                .stroke(S.rule, lineWidth: 1)
-        )
-        .overlay(alignment: .bottomTrailing) {
-            if let onAnalyze {
-                Button {
-                    HapticManager.impact(.medium)
-                    onAnalyze()
-                } label: {
-                    HStack(spacing: 3) {
-                        Image(systemName: "eye.fill")
-                            .font(.system(size: 9, weight: .semibold))
-                        Text("Analyze")
-                            .font(S.mono(9, .medium))
-                    }
-                    .foregroundColor(S.ink)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 4)
-                    .background(S.paper.opacity(0.9), in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
-                            .stroke(S.rule, lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plain)
-                .padding(5)
-            }
-        }
-        .accessibilityLabel("Attached image")
     }
 
     // Assistant turns keep their full-measure prose and streaming caret. A compact
@@ -5086,318 +5246,13 @@ struct AssistantMarkdownView: View, Equatable {
             seconds: reasoningDuration.map { max(0, Int($0.rounded())) },
             startedAt: reasoningStartedAt ?? waitingStartedAt
         ) {
-            if isStreaming {
-                if !presentation.answer.isEmpty {
-                    ODStreamingText(content: presentation.answer, font: T.conversationBody,
-                                    color: T.ink, lineSpacing: 4)
-                } else if !presentation.isReasoningOpen && !presentation.isWaiting {
-                    StreamingCaret()
-                }
-            } else {
-                AssistantCompletedAnswer(content: presentation.answer)
+            AssistantStructuredAnswer(content: presentation.answer)
+            if isStreaming && (!presentation.answer.isEmpty || (!presentation.isReasoningOpen && !presentation.isWaiting)) {
+                StreamingCaret()
+                    .accessibilityLabel("Generating response")
+                    .accessibilityIdentifier("chat.reply.streaming")
             }
         }
-    }
-}
-
-/// Only answer formatting is replaced at completion; the disclosure stays mounted.
-private struct AssistantCompletedAnswer: View {
-    let content: String
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(Array(StudioTextBlocks.parse(content).enumerated()), id: \.offset) { _, block in
-                switch block {
-                case .text(let text): AssistantProseView(content: text)
-                case .code(let language, let code):
-                    if language.lowercased() == "diff" { DiffView(diffText: code) }
-                    else { CodeBlock(language: language, code: code) }
-                case .math(let latex): MathBlock(latex: latex)
-                case .thinking: EmptyView()
-                }
-            }
-        }
-    }
-}
-
-/// Completed answers keep Markdown's block structure. SwiftUI Text renders
-/// inline emphasis well, but a single Text made from full Markdown joins
-/// headings and table cells into run-on prose on iPhone.
-private struct AssistantProseView: View {
-    let content: String
-    @Environment(\.koduTheme) private var T
-
-    var body: some View {
-        let source = AssistantOutputSanitizer.preservingLineBreaksForMarkdown(content)
-        let blocks = StudioMarkdownLayout.parse(source)
-        VStack(alignment: .leading, spacing: 10) {
-            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
-                switch block {
-                case .heading(let level, let title):
-                    Text(Self.inline(title))
-                        .font(T.studio.sans(level == 1 ? 23 : level == 2 ? 20 : 18, .semibold))
-                        .foregroundStyle(T.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                case .paragraph(let text):
-                    Text(Self.inline(text))
-                        .font(T.conversationBody)
-                        .foregroundStyle(T.ink)
-                        .lineSpacing(4)
-                        .fixedSize(horizontal: false, vertical: true)
-                case .list(let items):
-                    AssistantProseList(items: items)
-                case .quote(let text):
-                    AssistantProseQuote(text: text)
-                case .table(let headers, let rows):
-                    AssistantProseTable(headers: headers, rows: rows)
-                case .rule:
-                    Rectangle().fill(T.rule).frame(height: 1)
-                }
-            }
-        }
-        .textSelection(.enabled)
-    }
-
-    static func inline(_ source: String) -> AttributedString {
-        (try? AttributedString(
-            markdown: source,
-            options: .init(
-                interpretedSyntax: .inlineOnlyPreservingWhitespace,
-                failurePolicy: .returnPartiallyParsedIfPossible
-            )
-        )) ?? AttributedString(source)
-    }
-}
-
-private struct AssistantProseList: View {
-    let items: [StudioMarkdownLayout.ListItem]
-    @Environment(\.koduTheme) private var T
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
-                HStack(alignment: .firstTextBaseline, spacing: 9) {
-                    Text(item.marker)
-                        .font(T.conversationBody.weight(.medium))
-                        .foregroundStyle(T.ink2)
-                        .frame(minWidth: 22, alignment: .trailing)
-                    Text(AssistantProseView.inline(item.text))
-                        .font(T.conversationBody)
-                        .foregroundStyle(T.ink)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(.leading, CGFloat(item.depth) * 16)
-            }
-        }
-    }
-}
-
-private struct AssistantProseQuote: View {
-    let text: String
-    @Environment(\.koduTheme) private var T
-
-    var body: some View {
-        Text(AssistantProseView.inline(text))
-            .font(T.conversationBody)
-            .foregroundStyle(T.ink2)
-            .lineSpacing(5)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.leading, 14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .overlay(alignment: .leading) {
-                Rectangle().fill(T.rule).frame(width: 2)
-            }
-    }
-}
-
-/// A compact row per record reads better than squeezing four columns into a
-/// phone-width grid. Every value keeps its original column label.
-private struct AssistantProseTable: View {
-    let headers: [String]
-    let rows: [[String]]
-    @Environment(\.koduTheme) private var T
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            if rows.isEmpty {
-                Text(headers.joined(separator: " · "))
-                    .font(T.studio.sans(14))
-                    .foregroundStyle(T.ink2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(12)
-                    .background(T.surface, in: RoundedRectangle(cornerRadius: StudioRadius.tile))
-            }
-            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                VStack(alignment: .leading, spacing: 8) {
-                    if let first = row.first {
-                        Text(headers.first ?? "Item")
-                            .font(T.studio.sans(12, .medium))
-                            .foregroundStyle(T.ink3)
-                        Text(AssistantProseView.inline(first))
-                            .font(T.studio.sans(16, .semibold))
-                            .foregroundStyle(T.ink)
-                    }
-                    if row.count > 1 {
-                        ForEach(1..<row.count, id: \.self) { column in
-                            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                                Text(column < headers.count ? headers[column] : "Column \(column + 1)")
-                                    .font(T.studio.sans(12, .medium))
-                                    .foregroundStyle(T.ink3)
-                                    .frame(minWidth: 48, alignment: .leading)
-                                Text(AssistantProseView.inline(row[column]))
-                                    .font(T.studio.sans(14))
-                                    .foregroundStyle(T.ink)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
-                .background(T.surface, in: RoundedRectangle(cornerRadius: StudioRadius.tile))
-                .overlay {
-                    RoundedRectangle(cornerRadius: StudioRadius.tile)
-                        .stroke(T.rule, lineWidth: 1)
-                }
-            }
-        }
-    }
-}
-
-// MARK: - CodeBlock
-
-struct CodeBlock: View {
-    let language: String
-    let code: String
-    @State private var copied = false
-    @Environment(\.koduTheme) private var T
-
-    private var S: StudioTokens { T.studio }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header: lang label + copy
-            HStack {
-                Text((language.isEmpty ? "code" : language).lowercased())
-                    .font(T.studio.mono(11, .medium))
-                    .tracking(0.8)
-                    .foregroundStyle(S.ink3)
-                Spacer()
-                Button {
-                    UIPasteboard.general.string = code
-                    withAnimation { copied = true }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        withAnimation { copied = false }
-                    }
-                    // One-time AI-generated-code reminder — shown only on the
-                    // first copy ever. Subsequent copies are silent.
-                    LegalAcceptanceManager.shared.markCodeCopiedAndWarnIfNeeded()
-                } label: {
-                    HStack(spacing: 3) {
-                        Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                            .font(.system(size: 10))
-                        Text((copied ? "copied" : "copy").uppercased())
-                            .font(T.studio.mono(11, .medium))
-                            .tracking(0.8)
-                    }
-                    .foregroundStyle(copied ? S.accent : S.ink3)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 20)
-            .overlay(alignment: .bottom) {
-                Rectangle()
-                    .fill(S.codeInk.opacity(0.14))
-                    .frame(height: 1)
-                    .accessibilityHidden(true)
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                Text(code)
-                    .font(T.studio.mono(12.5))
-                    .foregroundStyle(S.codeInk)
-                    .lineSpacing(7)
-                    .textSelection(.enabled)
-                    .padding(16)
-            }
-        }
-        .background(S.codeBg, in: RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous))
-        .clipShape(RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous))
-    }
-}
-
-// MARK: - Bucketed throttle helper
-
-// MARK: - MathBlock
-//
-// Display-math block extracted from `$$...$$` in assistant markdown.
-// Renders the LaTeX SOURCE in a math-coded surface (accent eyebrow + serif
-// italic font + light accent border) so the expression is visually
-// distinct from prose and trivially copy-pasteable into a LaTeX renderer
-// or Mathematica.
-//
-// **This is not a real LaTeX renderer yet.** The math-coded source is
-// the interim treatment until a single shared WKWebView + KaTeX bridge
-// can be wired through — see comment in `parseBlocks` above for why
-// per-block WKWebView is the wrong shape inside a LazyVStack. Until
-// then the user gets: a clear "this is math" affordance, a tap-to-copy
-// shortcut, and the original LaTeX source preserved so external tools
-// can render it.
-
-struct MathBlock: View {
-    let latex: String
-    @State private var copied = false
-    @Environment(\.koduTheme) private var T
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "function")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundColor(T.accent)
-                Text("MATH · LATEX")
-                    .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                    .tracking(0.8)
-                    .foregroundColor(T.accent)
-                Spacer(minLength: 0)
-                Button {
-                    UIPasteboard.general.string = latex
-                    HapticManager.impact(.light)
-                    withAnimation { copied = true }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-                        withAnimation { copied = false }
-                    }
-                } label: {
-                    Image(systemName: copied ? "checkmark" : "doc.on.doc")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(copied ? T.good : T.ink3)
-                        .symbolEffect(.bounce, value: copied)
-                }
-                .buttonStyle(.plain)
-            }
-            Text(latex)
-                // Serif italic is deliberate for maths. Anchored to a text
-                // style rather than a fixed 14pt so it still scales — the
-                // theme helpers only offer sans and mono.
-                .font(.system(.subheadline, design: .serif).italic())
-                .foregroundColor(T.ink)
-                .lineSpacing(2)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, 4)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
-                .fill(T.accent.opacity(T.isDark ? 0.06 : 0.04))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: StudioRadius.panel, style: .continuous)
-                .stroke(T.accent.opacity(0.25), lineWidth: 0.6)
-        )
     }
 }
 

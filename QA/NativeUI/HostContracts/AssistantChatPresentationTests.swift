@@ -1,9 +1,27 @@
 import Foundation
 import Testing
+import OnDeviceUI
 @testable import NativeUIReview
 
 @MainActor
 struct AssistantChatPresentationTests {
+    @Test func replayedToolUpdatesDoNotInflateCountsOrReorderAttempts() {
+        let firstID = UUID()
+        let secondID = UUID()
+        let summary = ODToolActivitySummary(events: [
+            ODToolEvent(id: firstID, title: "Read notes", status: .running),
+            ODToolEvent(id: secondID, title: "Cancelled read", status: .cancelled),
+            ODToolEvent(id: firstID, title: "Read failed", status: .failure),
+            ODToolEvent(title: "Retry read", status: .success),
+            ODToolEvent(title: "Search", status: .running)
+        ])
+        #expect(summary.events.count == 4)
+        #expect(summary.events.prefix(2).map(\.id) == [firstID, secondID])
+        #expect(summary.completedCount == 3)
+        #expect(summary.failureCount == 1)
+        #expect(summary.runningCount == 1)
+        #expect(summary.events[0].title == "Read failed")
+    }
     private func result(_ name: String, _ value: String) throws -> ChatMessage {
         let data = try JSONSerialization.data(withJSONObject: ["name": name, "result": value])
         return ChatMessage(role: .user, content: "```tool_result\n\(String(decoding: data, as: UTF8.self))\n```")
@@ -21,6 +39,13 @@ struct AssistantChatPresentationTests {
         #expect(rows[0].messages.count == 2)
         #expect(AssistantActivity.transcriptRowID(for: second.id, in: [first, second, answer, third]) == first.id)
         #expect(AssistantActivity.transcriptRowID(for: answer.id, in: [first, second, answer, third]) == answer.id)
+    }
+
+    @Test func toolDetailsPreserveEmbeddedCodeFencesAndProtocolWords() throws {
+        let output = "File: notes.md\n```swift\nlet text = \"```tool_result\"\n```\nFull output retained."
+        let message = try result("read_file", output)
+        #expect(AssistantActivity.parseToolResult(message.content)?.result == output)
+        #expect(AssistantActivity.parseToolResult("```tool_result\n{\"name\":\"read_file\"}") == nil)
     }
 
     @Test func toolPillsDistinguishFailureCancellationAndOrdinaryResultText() {

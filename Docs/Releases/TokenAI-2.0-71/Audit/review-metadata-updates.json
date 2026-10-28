@@ -1,0 +1,37 @@
+[
+  {
+    "type": "appStoreReviewDetails",
+    "id": "b5ee317c-593e-4df3-969b-03ddd63626bb",
+    "fieldsUpdated": [
+      "notes",
+      "demoAccountRequired",
+      "demoAccountName",
+      "demoAccountPassword"
+    ],
+    "readBackMatches": true
+  },
+  {
+    "type": "betaAppLocalizations",
+    "id": "9772aaac-a4db-4ffd-a3f3-e751e59b60a1",
+    "fieldsUpdated": [
+      "description",
+      "marketingUrl",
+      "privacyPolicyUrl",
+      "feedbackEmail"
+    ],
+    "readBackMatches": true
+  },
+  {
+    "type": "betaAppReviewDetails",
+    "id": "6774354746",
+    "fieldsUpdated": [
+      "contactFirstName",
+      "contactLastName",
+      "contactPhone",
+      "contactEmail",
+      "demoAccountRequired",
+      "notes"
+    ],
+    "readBackMatches": true
+  }
+]

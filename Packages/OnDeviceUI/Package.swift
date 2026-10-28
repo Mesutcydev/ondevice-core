@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "OnDeviceUI",
+    defaultLocalization: "en",
     platforms: [.iOS("26.0")],
     products: [.library(name: "OnDeviceUI", targets: ["OnDeviceUI"])],
     targets: [

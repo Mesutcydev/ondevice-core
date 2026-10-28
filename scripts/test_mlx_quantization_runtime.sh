@@ -49,7 +49,7 @@ PY
 xcodegen generate --spec "$evidence_directory/project.yml"
 lock_directory="$evidence_directory/MLXQuantizationChecks.xcodeproj/project.xcworkspace/xcshareddata/swiftpm"
 mkdir -p "$lock_directory"
-cp "$repository_root/OnDeviceMax.xcworkspace/xcshareddata/swiftpm/Package.resolved" \
+cp "$repository_root/TokenAI.xcworkspace/xcshareddata/swiftpm/Package.resolved" \
    "$lock_directory/Package.resolved"
 xcodebuild build -project "$evidence_directory/MLXQuantizationChecks.xcodeproj" \
     -scheme MLXQuantizationChecks -configuration Debug -destination 'platform=macOS,arch=arm64' \

@@ -1,0 +1,26 @@
+{
+  "utc": "2026-10-24T16:30:34.138259+00:00",
+  "reason": "User requested free space; archive and signed IPA retained, finished compilation caches and failed unsigned-export IPA removed.",
+  "removed": [
+    {
+      "path": "/Users/m/Desktop/OnDeviceMax/build/tokenai-2.0/Production/Build/Intermediates.noindex",
+      "logicalBytes": 2404096221
+    },
+    {
+      "path": "/Users/m/Desktop/OnDeviceMax/build/tokenai-2.0/Production/ModuleCache.noindex",
+      "logicalBytes": 286075188
+    },
+    {
+      "path": "/Users/m/Desktop/OnDeviceMax/build/tokenai-2.0/Production/SDKStatCaches.noindex",
+      "logicalBytes": 1581900
+    },
+    {
+      "path": "/Users/m/Desktop/OnDeviceMax/build/tokenai-2.0/Production/SDKExplicitPrecompiledModules",
+      "logicalBytes": 341778556
+    },
+    {
+      "path": "/Users/m/Desktop/OnDeviceMax/build/appstore/2.0-71/export/TokenAI.ipa",
+      "logicalBytes": 93492154
+    }
+  ]
+}

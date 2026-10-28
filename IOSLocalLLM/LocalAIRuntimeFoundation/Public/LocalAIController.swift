@@ -83,7 +83,7 @@ public final class LocalAIController {
                         continuation.yield(.started)
                         if options.toolMode != .disabled {
                             continuation.yield(.warning(
-                                "Tool mode is a host-app feature; this facade streams model text and leaves tool execution to OnDevice."
+                                "Tool mode is a host-app feature; this facade streams model text and leaves tool execution to Token AI."
                             ))
                         }
 
@@ -318,7 +318,7 @@ public final class LocalAIController {
             throw RuntimeError.underlying("Invalid repo id: \(repoID)")
         }
         var request = URLRequest(url: url)
-        request.setValue("OnDeviceMax/1.0 (iOS)", forHTTPHeaderField: "User-Agent")
+        request.setValue("TokenAI/2.0 (iOS)", forHTTPHeaderField: "User-Agent")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         HFTokenStore.authorize(&request)
 

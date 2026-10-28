@@ -1,0 +1,129 @@
+{
+  "date": "2026-10-12",
+  "product": "OnDevice Max",
+  "sources": [
+    {
+      "id": "chat",
+      "path": "AppStoreScreenshots/1.0-81/en-US/iphone-6.9/01-conversation.png",
+      "source_sha256": "1c2886071016f7fdb7c52b31d96c6bb0146b29efee5921b340cd35cc6eaaa3bf",
+      "source_size": [
+        1320,
+        2868
+      ],
+      "app_asset": "IOSLocalLLM/Assets.xcassets/UserGuide/UserGuideChat.imageset",
+      "app_asset_sha256": "6ffefb861ac96cf0bc97f11c09e461622890f44cd2215f499a2503f2bbd2f25d"
+    },
+    {
+      "id": "home",
+      "path": "AppStoreScreenshots/1.0-81/en-US/iphone-6.9/02-chats.png",
+      "source_sha256": "98ba68ae2c1aee9bec920dc92c6fe51c0ed91c7b2a0a5e04f3a37e1e1ba89795",
+      "source_size": [
+        1320,
+        2868
+      ],
+      "app_asset": "IOSLocalLLM/Assets.xcassets/UserGuide/UserGuideHome.imageset",
+      "app_asset_sha256": "24967c2e1070e947eb1be403341b156a2b19eecb97aa4360b10065c21ee19fab"
+    },
+    {
+      "id": "sidebar",
+      "path": "AppStoreScreenshots/1.0-81/en-US/iphone-6.9/03-sidebar.png",
+      "source_sha256": "c14b582466b0d40fee996ba6b816819ff6b53222c47ef1594124161489857561",
+      "source_size": [
+        1320,
+        2868
+      ],
+      "app_asset": "IOSLocalLLM/Assets.xcassets/UserGuide/UserGuideSidebar.imageset",
+      "app_asset_sha256": "ca680b4f09459aa569d4e7b3ec731e906f9e9a87438499037eeea213bf67290f"
+    },
+    {
+      "id": "models",
+      "path": "AppStoreScreenshots/1.0-81/en-US/iphone-6.9/04-models.png",
+      "source_sha256": "e8882d01df9ffc1bb8db14fbbcb8ad452a1981fbb969379fd5139813e68a7cc1",
+      "source_size": [
+        1320,
+        2868
+      ],
+      "app_asset": "IOSLocalLLM/Assets.xcassets/UserGuide/UserGuideModels.imageset",
+      "app_asset_sha256": "5cce87cb35ec0821ff79a4a5215257c61773c75d4f731788ec8b347112d618d5"
+    },
+    {
+      "id": "voices",
+      "path": "AppStoreScreenshots/1.0-81/en-US/iphone-6.9/05-voices.png",
+      "source_sha256": "53fb5fb5c3765b90b494e2d5c1a71d1813aacfad7316859b984f06437d1488ce",
+      "source_size": [
+        1320,
+        2868
+      ],
+      "app_asset": "IOSLocalLLM/Assets.xcassets/UserGuide/UserGuideVoices.imageset",
+      "app_asset_sha256": "6bb2ab9804bc71322dce570ecc19bb0b3193c9ecd4cb2b0781de17d0c14af02c"
+    },
+    {
+      "id": "image",
+      "path": "AppStoreScreenshots/1.0-81/en-US/iphone-6.9/06-image-studio.png",
+      "source_sha256": "c527f524bd2a240d25cd113354b79bc4f4ff32f476dca095a4083d330647c43b",
+      "source_size": [
+        1320,
+        2868
+      ],
+      "app_asset": "IOSLocalLLM/Assets.xcassets/UserGuide/UserGuideImage.imageset",
+      "app_asset_sha256": "fbace87e4c2d9d52edbf06cf2023f6451a262352938be086d504a4bb790a14a4"
+    },
+    {
+      "id": "lens",
+      "path": "build/audit-ux/shots/lens-light.png",
+      "source_sha256": "66e549df4e88ff472a80bac5bd971007072dde40d8c7a8cde4c57db1e7b7ea7c",
+      "source_size": [
+        528,
+        1147
+      ],
+      "app_asset": "IOSLocalLLM/Assets.xcassets/UserGuide/UserGuideLens.imageset",
+      "app_asset_sha256": "4f87aed96c274dd0eeac4146c58dea1e02a3adb3009af9d119f80d6914a7a59e"
+    },
+    {
+      "id": "session",
+      "path": "build/native-ui-evidence/latest-ui/polish-voice-session-light.png",
+      "source_sha256": "71dee5737e43f92174597fa100a66662731f71ad27e6d082d10cd8f2225c9229",
+      "source_size": [
+        1320,
+        2868
+      ],
+      "app_asset": "IOSLocalLLM/Assets.xcassets/UserGuide/UserGuideSession.imageset",
+      "app_asset_sha256": "ce76f30f23310426505b62331a7ce6b98682a090dfeca97e209c09088bbf3e73"
+    },
+    {
+      "id": "classifier",
+      "path": "build/native-ui-evidence/classifier-workbench/classifier-active-workbench.png",
+      "source_sha256": "4bf4049e24fe88e15d7cc36f6f93272908414cbe27739d426ce62d7e40b64c5b",
+      "source_size": [
+        1320,
+        2868
+      ],
+      "app_asset": "IOSLocalLLM/Assets.xcassets/UserGuide/UserGuideClassifier.imageset",
+      "app_asset_sha256": "037236a9cd65f8d5205d9aa60abd53037aaa59ea16ed8626b01a542d7b6ce1c4"
+    },
+    {
+      "id": "providers",
+      "path": "build/api-providers-evidence/api-provider-settings.png",
+      "source_sha256": "efb0cc843e70bfd35c6ad82832f2db3f3f4a920fa0eedb0285db11d49d2c25fb",
+      "source_size": [
+        1320,
+        2868
+      ],
+      "app_asset": "IOSLocalLLM/Assets.xcassets/UserGuide/UserGuideProviders.imageset",
+      "app_asset_sha256": "b452286ce542716b2ec374b02de7e1a008c51096aafb5546d010aafe865e94f2"
+    },
+    {
+      "id": "github",
+      "path": "build/github-chat-evidence/github-review-draft.png",
+      "source_sha256": "fad2c249e4d4edcce710f97095882277d5821872e7641732193543467eae0ff3",
+      "source_size": [
+        1320,
+        2868
+      ],
+      "app_asset": "IOSLocalLLM/Assets.xcassets/UserGuide/UserGuideGithub.imageset",
+      "app_asset_sha256": "f5085f198dab3d75250e65a66e190446225c6fe11df00cedc7eefc2de7db23e7"
+    }
+  ],
+  "rights": "Existing repository UI captures; original project documentation assets under MIT. Native iPhone chrome appears as interface context.",
+  "capture_note": "NativeUI review-host captures use synthetic content and do not demonstrate hardware inference, camera, or audio."
+}

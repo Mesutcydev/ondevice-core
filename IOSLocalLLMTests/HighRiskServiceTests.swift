@@ -110,28 +110,3 @@ final class CodingAssistantServicePolicyTests: XCTestCase {
         XCTAssertNil(policy.cacheLimitBytes)
     }
 }
-
-final class CloudSyncServiceTests: XCTestCase {
-    func testPartialPushErrorReportsFailedAndTotalCounts() {
-        let error = CloudSyncError.partialPush(failed: 2, total: 5)
-        XCTAssertEqual(
-            error.errorDescription,
-            "iCloud sync incomplete — 2 of 5 conversations failed to upload."
-        )
-    }
-
-    func testDeletionTombstoneRoundTrip() throws {
-        let id = UUID()
-        CloudSyncTombstones.clear(id.uuidString)
-        defer { CloudSyncTombstones.clear(id.uuidString) }
-
-        CloudSyncTombstones.mark(id)
-        let deletionDate = try XCTUnwrap(
-            CloudSyncTombstones.deletionDate(id.uuidString)
-        )
-
-        XCTAssertLessThan(abs(deletionDate.timeIntervalSinceNow), 2)
-        CloudSyncTombstones.clear(id.uuidString)
-        XCTAssertNil(CloudSyncTombstones.deletionDate(id.uuidString))
-    }
-}

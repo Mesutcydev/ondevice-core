@@ -179,6 +179,9 @@ struct PresentationContractsTests {
         #expect(filtered.pinned.map(\.id) == ["a"])
         #expect(filtered.recent.map(\.id) == ["b"])
         #expect(ODConversationGroups(conversations: conversations, query: "absent").recent.isEmpty)
+        // An earlier turn the preview doesn't show still finds its chat.
+        let transcript = ODConversationGroups(conversations: conversations, query: "tolstoy", transcriptMatches: ["c"])
+        #expect(transcript.recent.map(\.id) == ["c"])
     }
 
 }

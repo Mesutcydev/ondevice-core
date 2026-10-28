@@ -66,7 +66,7 @@ final class DiagnosticsTests: XCTestCase {
     func test_exportContainsHeaderAndEntry() {
         Diagnostics.shared.error("boom", category: "test")
         let text = Diagnostics.shared.exportText()
-        XCTAssertTrue(text.contains("OnDevice diagnostics"))
+        XCTAssertTrue(text.contains("Token AI diagnostics"))
         XCTAssertTrue(text.contains("boom"))
         // The shared Diagnostics singleton can hold entries logged by the app
         // during launch, so assert the section header shape, not an exact count.

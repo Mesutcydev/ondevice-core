@@ -18,11 +18,18 @@ Launch arguments for manual inspection:
 | Argument | Effect |
 | --- | --- |
 | `-screen composer` | Shared composer with explicit fixture status; default screen |
-| `-screen agent-chat`, `-agent-completed`, `-agent-waiting` | Production tool pills, reasoning timer/disclosure, streaming bar, compaction notice and composer; optional completed or waiting phase |
+| `-screen agent-chat`, `-agent-completed`, `-agent-waiting` | Production tool summary/pills, expandable log and selectable output, conversation details, reasoning timer/disclosure, streaming bar, compaction notice and composer; optional completed or waiting phase |
+| `-screen agent-chat -agent-waiting -agent-image` | Sent-image preview while the fixture advances through reply phases; no model inference |
+| `-screen agent-chat -agent-completed -agent-details` | Opens the production glass conversation sheet directly for material/spacing review |
 | `-screen api-providers`, `-screen api-chat`, `-api-empty` | Production provider settings/model picker with isolated credential storage and a mocked catalog; all model selection stays in the top bar; optional empty configuration |
+| `-screen api`, `-api-running`, `-api-starting`, `-api-generating`, `-api-failed MESSAGE` | Production local server workspace with isolated listener state and sample key; no sockets |
+| `-api-no-address`, `-api-no-model`, `-api-model-loading`, `-api-model-unloaded`, `-api-model-not-installed`, `-api-model-failed MESSAGE`, `-api-cloud-model` | API workspace LAN, model recovery and cloud-selection boundary cases |
 | `-screen github-settings`, `-screen github-chat`, `-github-enabled`, `-github-selected`, `-github-disconnected` | Production GitHub settings, repo/branch picker and review with mocked HTTP and isolated credentials; default-off toggle, optional enabled/selected/disconnected state |
+| `-screen coding` | Production Code editor, file tree, context, diff, checkpoints, preview and export with deterministic repository files and isolated credentials |
 | `-screen home`, `conversation`, `models`, `voice`, `lens`, `settings`, `device` | Current package screen and native shell |
 | `-screen image`, `onboarding` | Actual host view with isolated state |
+| `-screen user-guide` | Production User Guide with annotated captures and workflow diagrams |
+| `-review-language hi`, `de`, `es`, `ar`, `tr`, `ja` | Persist the UI language for localization review without changing device language |
 | `-dark` | Dark appearance |
 | `-compact` | 320-point content column |
 | `-width 320`, `375`, `393`, `430` | Measured content-width probes; use a simulator at least as wide |
@@ -37,6 +44,13 @@ For manual Argent review without launch arguments, add a
 `RepackPreparationFixture` string to the **built review app's** `Info.plist`,
 with value `preparing` or `paused`, then install and launch that QA bundle.
 The override only controls fixtures; it does not convert or download a model.
+For API server review, use an `APIServerReviewFixture` string in a copied built
+QA bundle: `stopped`, `running`, `generating`, or `dark-large-type`. This opens
+the production server workspace with fixture services and English labels.
+For classifier print review, use `ClassifierPrintReviewFixture` in a copied
+built QA bundle: `text`, `dark`, or `image`. These open the production machine,
+paper ticket and native classifier controls with sample input and fixture scores.
+Tap Activate model, then Classify; tap the ticket to inspect/export its scores.
 For Core AI removal review, use a `CoreAIRemovalFixture` string with a catalog
 pack ID in the built review bundle. This changes fixture state only; filesystem
 removal and selection recovery are tested separately with temporary packs.

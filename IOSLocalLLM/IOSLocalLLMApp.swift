@@ -61,6 +61,7 @@ struct IOSLocalLLMApp: App {
             AppBridge.shared.openConversation(id: id)
         }
         .task {
+            await BackgroundModelDownloadRecovery.restore()
             if settings.localAPIEnabled {
                 await LocalAPIManager.shared.start()
             }
@@ -105,6 +106,7 @@ struct IOSLocalLLMApp: App {
         // does not fire when a user on an English phone selects Arabic here.
         // `effectiveLanguage` resolves `.system` too, so this stays correct
         // when the device itself is Arabic.
+        .environment(\.locale, ODLocalization.locale(for: loc.effectiveLanguage))
         .environment(\.layoutDirection,
                      loc.effectiveLanguage.isRightToLeft ? .rightToLeft : .leftToRight)
     }
@@ -137,6 +139,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      handleEventsForBackgroundURLSession identifier: String,
                      completionHandler: @escaping () -> Void) {
+        guard identifier == BackgroundDownloadCoordinator.sessionIdentifier else { completionHandler(); return }
         Task { @MainActor in
             BackgroundDownloadCoordinator.shared.systemCompletionHandler = completionHandler
             // Re-create the background URLSession (it's lazy) so its delegate

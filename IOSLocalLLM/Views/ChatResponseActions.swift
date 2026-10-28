@@ -1,4 +1,5 @@
 import SwiftUI
+import OnDeviceUI
 
 enum QuickActionKind: String, CaseIterable, Identifiable {
     case continueReply, shorter, moreFormal, explain
@@ -120,7 +121,7 @@ struct StudioAnswerActionRow: View {
                 .frame(minWidth: 44, minHeight: 44)
                 .contentShape(Rectangle())
         }
-        .accessibilityLabel(title)
+        .accessibilityLabel(Text(odKey: title))
     }
 }
 
@@ -134,7 +135,7 @@ struct StudioGenerationRate: View {
         if tokensPerSecond.isFinite && tokensPerSecond > 0 {
             HStack(spacing: 4) {
                 Image(systemName: "speedometer").accessibilityHidden(true)
-                Text(tokensPerSecond, format: .number.precision(.fractionLength(0)))
+                Text(tokensPerSecond, format: .number.precision(.fractionLength(1)))
                 Text("tok/s")
             }
             .font(.caption.monospacedDigit())

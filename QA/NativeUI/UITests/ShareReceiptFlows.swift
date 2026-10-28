@@ -6,14 +6,14 @@ final class ShareReceiptFlows: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-screen", "share-receipt"]
         app.launch()
-        XCTAssertTrue(app.alerts["Saved to OnDevice Max"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Open OnDevice Max to continue with your shared content."].exists)
+        XCTAssertTrue(app.alerts["Saved to Token AI"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Open Token AI to continue with your shared content."].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "appstore-share-receipt"
         screenshot.lifetime = .keepAlways
         add(screenshot)
         app.buttons["Done"].tap()
-        XCTAssertFalse(app.alerts["Saved to OnDevice Max"].exists)
+        XCTAssertFalse(app.alerts["Saved to Token AI"].exists)
     }
 
     @MainActor
@@ -23,7 +23,7 @@ final class ShareReceiptFlows: XCTestCase {
                                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         app.launch()
         XCTAssertTrue(app.alerts["Couldn't share"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Couldn't save this item to OnDevice Max."].exists)
+        XCTAssertTrue(app.staticTexts["Couldn't save this item to Token AI."].exists)
         XCTAssertTrue(app.buttons["Done"].isHittable)
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "appstore-share-error-large-text"

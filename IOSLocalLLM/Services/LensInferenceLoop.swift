@@ -25,7 +25,8 @@ struct MLXVLMExecutionProfile: Equatable, Sendable {
 
     static func resolve(repoID: String, architecture: String? = nil) -> Self {
         let identity = "\(repoID) \(architecture ?? "")".lowercased()
-        if identity.contains("bonsai-27b") || identity.contains("qwen3_5") || identity.contains("qwen3.5") {
+        if identity.contains("bonsai-27b") || identity.contains("qwen3_5") || identity.contains("qwen3.5")
+            || identity.contains("bonsai-2-9b") || identity.contains("prism_hadamard_qwen35") {
             // Qwen 3.5/Bonsai 27B is a large unified text+vision backbone.
             // Bound Lens activations/KV aggressively; Assistant and Lens may
             // share its one container, but no second model should coexist.
@@ -243,7 +244,7 @@ final class LensInferenceLoop: ObservableObject {
     /// Returns the unified VLM container only for a declared dual-role model.
     /// Assistant uses this accessor instead of loading a second LLM copy.
     func sharedContainer(for repoID: String) -> ModelContainer? {
-        guard DualRoleModelPolicy.isTextAndVision(repoID: repoID),
+        guard DualRoleModelPolicy.isTextAndVision(repoID: repoID, directory: Self.stagedDirectory(for: repoID)),
               activeRepoID?.caseInsensitiveCompare(repoID) == .orderedSame else {
             return nil
         }
@@ -524,7 +525,12 @@ final class LensInferenceLoop: ObservableObject {
             do {
                 if let stagedURL {
                     try ModelCheckpointCompatibility.validateMLXDirectory(stagedURL)
+                    if let reason = LocalModelRegistry.unsupportedVisionRuntimeReason(in: stagedURL) {
+                        throw NSError(domain: "Bonsai2", code: 1,
+                                      userInfo: [NSLocalizedDescriptionKey: reason])
+                    }
                 }
+                await Bonsai2VLMRegistration.register()
                 let candidateProfile = MLXVLMExecutionProfile.resolve(repoID: candidate)
                 try await MLXGenerationGate.shared.run { [weak self] in
                     let owner = self
@@ -1140,7 +1146,7 @@ final class LensInferenceLoop: ObservableObject {
     /// then jetsams mid-encode on ~6.2 GB process caps (iPhone 18,2).
     static nonisolated func visionActivationReserveBytes(repoID: String) -> UInt64 {
         let lower = repoID.lowercased()
-        if lower.contains("bonsai-27b") {
+        if lower.contains("bonsai-27b") || lower.contains("bonsai-2-9b") {
             return UInt64(800_000_000)
         }
         if lower.contains("gemma-3") || lower.contains("gemma3")

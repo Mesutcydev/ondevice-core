@@ -1,0 +1,582 @@
+[
+  {
+    "path": "AGENTS.md",
+    "sha256Before": "294266583a5a0f1a716ba37fa1d8d4b1c77909a9217e2e759fea6068984fcda5",
+    "sha256After": "a9ae4897c39b7cc9fd9a9385eaf2aa4ed9df5f80a0168c3b4a30d10f1256b90b"
+  },
+  {
+    "path": "AppStoreMetadata/localizations/app-info/ar-SA.json",
+    "sha256Before": "e4be254bd753aab5284b8ab9a91866d27f8fbfa5ec15d22c2ad0c3d7fedbcefe",
+    "sha256After": "2ab1839db9b39265075e9406692712c74c2b94a134ff18732de1d4fd41ebbab8"
+  },
+  {
+    "path": "AppStoreMetadata/localizations/app-info/de-DE.json",
+    "sha256Before": "e98f80676ef355831f9365cb5704b0bd03324f3d966d9d076dbe91777e0ef172",
+    "sha256After": "dc3e081bd379160e637ed3e0deb9ec7ab3bfde6b058882c51615bbc1b2644a3f"
+  },
+  {
+    "path": "AppStoreMetadata/localizations/app-info/en-US.json",
+    "sha256Before": "310b99dee9f2502a12a963bfcf630a9f2ec27bb920fc6ebeba6a43917df9c5b2",
+    "sha256After": "20bcaee35a75d78839d93b8841a94716e136b3cc30ae00ec51300b2cca83f968"
+  },
+  {
+    "path": "AppStoreMetadata/localizations/app-info/es-ES.json",
+    "sha256Before": "cc1ccdb2f42a843a305c2fec37fe5880fc2864274ea79207e092955ba6938be7",
+    "sha256After": "a0ce2ae28a8c84d339c038bc0e7ad85cf7e6da5d181d0e621c772bd952c21fa9"
+  },
+  {
+    "path": "AppStoreMetadata/localizations/app-info/hi.json",
+    "sha256Before": "e5b1225c2d002c465c85356ef57af6770c085e6f2af9f12d19b52d8a0b7900b8",
+    "sha256After": "de3065348abe166c2b776795c04c29baa7fed5f26c438c2997a8899e1adda191"
+  },
+  {
+    "path": "AppStoreMetadata/localizations/app-info/ja.json",
+    "sha256Before": "a77802d7200c7b1f70af51619b0512b085247c968888572a4501749a793a6c0c",
+    "sha256After": "3b587918fd64663c0a10f6133af366bb199d8991dd825f91d5bde504fdd0dc52"
+  },
+  {
+    "path": "AppStoreMetadata/localizations/app-info/tr.json",
+    "sha256Before": "5f381ea05364855b1fbc71f35993f0ab45cef622660048e4475f874dd5d6771d",
+    "sha256After": "306e1340b6ad9e58b0e2ed17fd91a54a48fd38a12e540d13c1f020babf5982ae"
+  },
+  {
+    "path": "AppStoreMetadata/localizations/version/2.0/ar-SA.json",
+    "sha256Before": null,
+    "sha256After": "deb613aa2e728b89875fd50cbb8fc9a67190465850348cf92aeefc2c77174f0e"
+  },
+  {
+    "path": "AppStoreMetadata/localizations/version/2.0/de-DE.json",
+    "sha256Before": null,
+    "sha256After": "6c8b69256863d64a80b18cfaf01b5f67ca141ace56bf304c6e8789a20b9175f2"
+  },
+  {
+    "path": "AppStoreMetadata/localizations/version/2.0/en-US.json",
+    "sha256Before": null,
+    "sha256After": "69c993811d89e31f13a4abf8d3e2b79525b62d40942fde79bce81d97df902f98"
+  },
+  {
+    "path": "AppStoreMetadata/localizations/version/2.0/es-ES.json",
+    "sha256Before": null,
+    "sha256After": "917d1b786aed143c52e55ce4b32f26c3f3e7ff8f80e90914e047afd7c7ea936e"
+  },
+  {
+    "path": "AppStoreMetadata/localizations/version/2.0/hi.json",
+    "sha256Before": null,
+    "sha256After": "83bf9edd6cee2ae6473f4bb8f8ba61d02c2d1f2d5b847039ae88a18742d47fb5"
+  },
+  {
+    "path": "AppStoreMetadata/localizations/version/2.0/ja.json",
+    "sha256Before": null,
+    "sha256After": "e28fdd1e0b7cc11426c067c73d902a14a3c38fd93a1fcd90aa399fa1e668eabb"
+  },
+  {
+    "path": "AppStoreMetadata/localizations/version/2.0/tr.json",
+    "sha256Before": null,
+    "sha256After": "c8acf89f752859e414fd27dcd5f631907cffbc3e0ff2211c57f3103f259c2638"
+  },
+  {
+    "path": "CHANGELOG.md",
+    "sha256Before": "2f203973cc47e96090fa5fdf2f8c244e53af3916e3eb242412741e039c3ea720",
+    "sha256After": "0d40fd9804f393a105a6837177cf8e9306b2e1d9a0d00ee9f816e7a1f9144be6"
+  },
+  {
+    "path": "CITATION.cff",
+    "sha256Before": "43cb971eeb84deb49755d1e145adf1ee4b033a8cf9f482231c3c23ce2237b4cd",
+    "sha256After": "9a4e69f59d8a1a89afbee86bf21c1e7a93fcd86bdbdf61c0dcb53cea183ba0f2"
+  },
+  {
+    "path": "DownloadActivityExtension/DownloadActivityWidget.swift",
+    "sha256Before": "90598d333c4281923d080596cca25adeaf5e2c21b1d9ae2c670e4da4b2c9cbc3",
+    "sha256After": "bd11fd4eb97ea5a4b8d5c70db8631a9b2e0cdb7eda9d5e3461bf5e7e6bc30d5a"
+  },
+  {
+    "path": "DownloadActivityExtension/Info.plist",
+    "sha256Before": "78526e11b4cef7d3f48bcaceb143832dff4ed7fc27bcfc38498b79a0d9d42721",
+    "sha256After": "bb1ef446bda679503ef809aa0101c7d1dd0580bb85c9c6e260c68986b0d05a58"
+  },
+  {
+    "path": "IOSLocalLLM/IOSLocalLLM-AppStore-PCC.entitlements",
+    "sha256Before": "e23420dfaba203ecf7db741c98065fe5f4e1f8daa5fe29d1ad987099861fc9b8",
+    "sha256After": "4db133f7c961b7eaa362d5268c07c22fd0f47a0a2cf8e839ec672a4e006f153d"
+  },
+  {
+    "path": "IOSLocalLLM/IOSLocalLLM-AppStore.entitlements",
+    "sha256Before": "bf1a5f500225d3d37791e57e4a75368d35b39af6bcf1af9ca6b7ec35434a742f",
+    "sha256After": "e77b25555db2e65a6f691f597313e006d0ee5db3371570c6052f165ae26877fe"
+  },
+  {
+    "path": "IOSLocalLLM/IOSLocalLLM-Catalyst.entitlements",
+    "sha256Before": "55f4ed2518da4480e90ce3ea7aa20ee7d749e01e4c1f0857028438820d1fc7ae",
+    "sha256After": "0cb9f13f9e577627af4436ae033a9ed94fd0cfb509f2a7645588a894dd59b7ea"
+  },
+  {
+    "path": "IOSLocalLLM/IOSLocalLLM-PCC.entitlements",
+    "sha256Before": "95333c94f30fa9b5d91ab293e95be7190db1e5d2e30d88dc6633bed637a3fca4",
+    "sha256After": "80d9f3bd7c18f499fe9651053207a425200fb9b65a1ca96fd8b78fd18d907f0e"
+  },
+  {
+    "path": "IOSLocalLLM/IOSLocalLLM.entitlements",
+    "sha256Before": "0cd754a0ad912c87cdc7b906ee6cf37d45a5a504eca85f5d3b28f6e9382fe7c5",
+    "sha256After": "ac939b5f65e82d0bddb5b0f7430a39fb75e296b02d598bb0c65b52daa6f37fd6"
+  },
+  {
+    "path": "IOSLocalLLM/Info.plist",
+    "sha256Before": "fa57945914adf173fd9524d5a650a7fcbd73e9c26dd8599b4cc517db77a6ca10",
+    "sha256After": "92a534bf3b739171e40951521e8a913db65b363cc9d30e5d7be79b6d93f331ed"
+  },
+  {
+    "path": "IOSLocalLLM/LocalAIRuntimeFoundation/Public/LocalAIController.swift",
+    "sha256Before": "02d8a5daf35843152cddfb1161a4e3cdac239c3d790e99c3027b8b517b7be861",
+    "sha256After": "19a76c6c7f5c7134953097702e3ba57e9768db2d3c0c5cdb9d829de63f6c72ff"
+  },
+  {
+    "path": "IOSLocalLLM/Models/AppBridge.swift",
+    "sha256Before": "1df4a61f737e449001391e6114a9315d10f23d6875056492a24795fcc722cf0c",
+    "sha256After": "34f1f3e94686014f7259a5037015a6e1127afbc466a0dd65d08ff04d7094d7b2"
+  },
+  {
+    "path": "IOSLocalLLM/Models/AssistantModelCatalog.swift",
+    "sha256Before": "1296187eaa6674c61a64cf968a59ab180dcd965579c4be581c5fbc7d782da22c",
+    "sha256After": "fbbf6b21fa491f372c778b4ba43e251ea5b68dc9da47901e7d8244b223311689"
+  },
+  {
+    "path": "IOSLocalLLM/Models/LegalDocuments.swift",
+    "sha256Before": "9a6b92a8b25b137f34756a40d2672e1f85c5b3aecb6c34c481aa32aa9a4f2a4d",
+    "sha256After": "f0bed20fb597448adfbb6f785cb94916f2df8877a0cd37146e2bd15158c9bf9c"
+  },
+  {
+    "path": "IOSLocalLLM/Models/LocalAPIClientSetup.swift",
+    "sha256Before": "c331622e4259f8baaae7fc5f3def4662ddc0479d3f5fdcaac546e9a16d586f18",
+    "sha256After": "02afae89d8e2c9fe45083ce73f1d2753511ae523ea1bb1b5fe7b985032e0cc84"
+  },
+  {
+    "path": "IOSLocalLLM/Models/ShareInbox.swift",
+    "sha256Before": "64fbf3f288e8e5a05535e0f0be61c71f7e017cd4227cfe4395735c6e1c0857ed",
+    "sha256After": "806a365e03136746ab471c32b949bf020bb5f5b652ae1ddf7535eaaf9f499baf"
+  },
+  {
+    "path": "IOSLocalLLM/Models/UserGuideChapters.swift",
+    "sha256Before": "3ea1c492eb7aba37d5477b4c7be292bd6d2d86b9f57b7566c45230af8ffda9d6",
+    "sha256After": "c898c18835b51dc5d10e56c500ab8c6eb7140ce08906bdedaf037175e77c5073"
+  },
+  {
+    "path": "IOSLocalLLM/Resources/Localization/InfoPlist.xcstrings",
+    "sha256Before": "603448e020b06eceb89f6daf7bc875c269d2038ccea0b4aac16adeba3bf8899e",
+    "sha256After": "b5e8a88310e501dd8bc7e789ce6258eb9b74062aca62f6e2f0efaf7d4c1d51a4"
+  },
+  {
+    "path": "IOSLocalLLM/Services/APIProviderClient.swift",
+    "sha256Before": "6eaefd83d1ed0449f63260f579bbc9e11ee44134497f3cacfdf7c3e47fa48036",
+    "sha256After": "c6a6a6a9614e6438fb2b6a5fe156374cfbec73bb24af461523079b4944d277e7"
+  },
+  {
+    "path": "IOSLocalLLM/Services/APIProviderStore.swift",
+    "sha256Before": "c2345b4f0bb9f913071f1142e456fa71e8c56b28289e8792f46ef15ea23ca11e",
+    "sha256After": "9f7640586098151a9efe1aca0a1c408ab627e5458638d7cb823b2252fe901c21"
+  },
+  {
+    "path": "IOSLocalLLM/Services/BackgroundDownloadCoordinator.swift",
+    "sha256Before": "32214c46bfc3f05b214a6ee8af7d4371e05d5cde0a06ed9e2eafb910c64c362e",
+    "sha256After": "f6f70526770a1271c3ef39925a9fbf88143cc78bb46fd56f40c07558f4382010"
+  },
+  {
+    "path": "IOSLocalLLM/Services/Bridge/BridgeIdentity.swift",
+    "sha256Before": "a9efbc686eb693b15c54cebe30208e9689400d2f5a6a17d4574f906a2f7f58e0",
+    "sha256After": "293e07344c31fd17924bcd0bad6a2126a6faea9421ad25aca2aa516c67ff4197"
+  },
+  {
+    "path": "IOSLocalLLM/Services/Bridge/BridgePairingStore.swift",
+    "sha256Before": "9fd3681e3c7b7f51d6de4e94622c557a6a64aa205ccd69c272b50c5f0028ac19",
+    "sha256After": "682084c07851cc6f9243c9fe3f5e997c8f2c313de16218c694ef6a0edde1be73"
+  },
+  {
+    "path": "IOSLocalLLM/Services/Bridge/LocalAPIServer.swift",
+    "sha256Before": "5e943eccb7a861496ba4590b184f65263f58d11ad6601e0a0559f10f434bb7ca",
+    "sha256After": "d1480e11256435d68d78309a7fc5b10a6b8e511d6545be62d551693f36c8ce69"
+  },
+  {
+    "path": "IOSLocalLLM/Services/CameraService.swift",
+    "sha256Before": "c01ed203fddd77d3d42657772cac6877047231ae573e05ba81acf84748152673",
+    "sha256After": "fb1bc24022652666df9ec0ac060dd3a5e0e80fc93a00190154482d1bac7aa57a"
+  },
+  {
+    "path": "IOSLocalLLM/Services/CloudSyncService.swift",
+    "sha256Before": "a765f747ff3019a30f6867e14c66aa8710b1381d610cc35f5f2a58da6c4a07fc",
+    "sha256After": "84c9659e156039da9fa0dc470ad53c6cce56a3cdb3b654be48fcac6286b11e1e"
+  },
+  {
+    "path": "IOSLocalLLM/Services/CodingAssistantService.swift",
+    "sha256Before": "2943ced6216047a4abccc9ef63f131cd6c983d6e599aa1a7d40aa5ce5015790a",
+    "sha256After": "1ce75d23100f27e4b8983cf48b8100bcb6e18d9d2666c9a5f46ab90c19d7972d"
+  },
+  {
+    "path": "IOSLocalLLM/Services/CoreAIHFDownloadManager.swift",
+    "sha256Before": "daefd588bcefddc571fc5f66b90737496cb817b03cd216b7042615d9d8b3037d",
+    "sha256After": "cf326c3ee434868af3cb07eeedbd7c9d18a4385033ed52fd15dc70f975d9436a"
+  },
+  {
+    "path": "IOSLocalLLM/Services/Diagnostics/Diagnostics.swift",
+    "sha256Before": "51b9d7a19e26237763b1eb69a52ba11f6af99ffda496bb2e141db391f4e410de",
+    "sha256After": "26988ea158aab5494d387a410abc4b47d0afbbd8398dc0395bdfa9c1d16e47e7"
+  },
+  {
+    "path": "IOSLocalLLM/Services/Diagnostics/SystemSnapshot.swift",
+    "sha256Before": "a7ea9c48e7f6a548aa6e14c47967d71017f92dbf77db55e14bdb2f2fede77d00",
+    "sha256After": "438778da4e987fce71728ba730e45afd1e764ce1ecbebfab82b5ff9313ba1a58"
+  },
+  {
+    "path": "IOSLocalLLM/Services/GitHubClient.swift",
+    "sha256Before": "bdf1261d4456fb21ad7c62f4c7d1b082c7227ad557d0d2ce576e2a499896c91c",
+    "sha256After": "09dcbcd95230fe82974a85a5140740b348c515eebace40053d928fae4b72d991"
+  },
+  {
+    "path": "IOSLocalLLM/Services/GitHubConnectionStore.swift",
+    "sha256Before": "8073b6fc901b883a79efcb8a26b73420ddda5fe9a559ad40e0ef3d973d4182ad",
+    "sha256After": "1f73ebe246c27466a1d048739f1dd78fb300c17ed5463f8ea9d7de943f611dd6"
+  },
+  {
+    "path": "IOSLocalLLM/Services/GitHubDraftProtection.swift",
+    "sha256Before": "a9ab442d471d73b3ec205bb9fdcc49fa2748073eb0698cbcbfd454065460da88",
+    "sha256After": "e5f45584aa7e8bde93ff2bff9f4752668d9bae7018ab3ec20a28498bb5836248"
+  },
+  {
+    "path": "IOSLocalLLM/Services/GitHubWorkspaceService.swift",
+    "sha256Before": "576b468f94d9ca355b6b51d5e9719cb50b9d778950bb213c4336f943af105c51",
+    "sha256After": "f067c81f647b0e92f39650ba33627d73a8d1885480193e1a0133611139a1c58f"
+  },
+  {
+    "path": "IOSLocalLLM/Services/HFTokenStore.swift",
+    "sha256Before": "a186a99f619b59a74af2bce2cae7ca6918e39ed25ead90243cae386cc0a5251f",
+    "sha256After": "3ac620bb12d74e9c5b4416be7794bad38a4e9b0264fdd1c9618bc92afb955fe7"
+  },
+  {
+    "path": "IOSLocalLLM/Services/Intents/IOSLocalLLMAppIntents.swift",
+    "sha256Before": "01bd0205e4b2f19b8f130c4e7324d1a65e375a0e40fc6c3287ee2ce52106f561",
+    "sha256After": "3f9f2a036da6959df06a19f3d043057560367f4416cabfc221a5ac86dfa281a5"
+  },
+  {
+    "path": "IOSLocalLLM/Services/LiveOCRService.swift",
+    "sha256Before": "7d7c8307727c13c182ca81c74940637bc6914a97c4e41aeffba2b7add5f892c6",
+    "sha256After": "4fbef283d10359cc1f0bb14a5d313149fa4f2a97081c46d58b8ef3179cac8789"
+  },
+  {
+    "path": "IOSLocalLLM/Services/LocalModelImportService.swift",
+    "sha256Before": "b08ed1bb9ceb1136400095ac5d3aa0a40c9ec4d8f99e38be4d0d37005317e9f9",
+    "sha256After": "3834925f9134d5072ac35a10d8c12defefbf2706440e5d93d3a703522bdf0d10"
+  },
+  {
+    "path": "IOSLocalLLM/Services/ModelPrefetcher.swift",
+    "sha256Before": "3a6d8f056c7dd39eff6cebc67653028199f4e6551d2132d9086525d838c873f2",
+    "sha256After": "8fe81fcdcac851c43e79414687f268da1883eefd0efe12aa243d0515c91aea11"
+  },
+  {
+    "path": "IOSLocalLLM/Services/ParentalControlManager.swift",
+    "sha256Before": "71e8f5020c4e272297fbe6c05738b05425742a211bb0e6d6c6aaf997772981a1",
+    "sha256After": "80427df1cbc47d2cc31300583a2ddaa923d4c45f1dcf136065703674b42221c5"
+  },
+  {
+    "path": "IOSLocalLLM/Services/SpotlightIndexer.swift",
+    "sha256Before": "48b634251d85475d4c078210cd95b0e53d78dd8c473b9d0521ff1c31d8681802",
+    "sha256After": "be3decd11d4e06c7d60175b2817131cb51a4d9ac257d3327705bac3288ce0212"
+  },
+  {
+    "path": "IOSLocalLLM/Services/Voice/VoicePerformanceSignposts.swift",
+    "sha256Before": "5601b80fe4a1437ae8b8eeeeb9aca0e87480ffb28a40f3d162ca5b15655fc25a",
+    "sha256After": "b45695e6ce3e4f8473d94bf35f4938f029d9f025edcd8868ae8564eeda03c228"
+  },
+  {
+    "path": "IOSLocalLLM/Services/Voice/VoiceProfileRegistry.swift",
+    "sha256Before": "dadba4741c5891fbe048b8ad48fef6983999bd5a690c90756d643449f8bdf675",
+    "sha256After": "6f34904358c8d19a5d24096ee91cfe021960ab7cb1cdeab9ceff2c300e03af38"
+  },
+  {
+    "path": "IOSLocalLLM/Services/Voice/VoiceRuntimeDiagnostics.swift",
+    "sha256Before": "ea22457c5370160db60158487d04362def8b00b700e873da4f47f532281bb99a",
+    "sha256After": "2567e031f7bd5290c9e724ee51ed80e69a639f13858950a1990360ba332b3559"
+  },
+  {
+    "path": "IOSLocalLLM/Services/VoiceConversationService.swift",
+    "sha256Before": "8928e45aa399429873a95aa742245dd4cfb0fd21323548866bcca887e6d81da5",
+    "sha256After": "2bb43f4e36f08c8747abaa8b4d2c0f50c151b1e55ca21230b05d0d23b2f102c7"
+  },
+  {
+    "path": "IOSLocalLLM/Services/Web/KeychainStore.swift",
+    "sha256Before": "067c143421c7a2f53bf2cf97b904cc7663290a4d9f2ceac7f486f86753840575",
+    "sha256After": "b2efffaa740d5f7e3809357c9d798c2935076441550765c5bd5cbd6b1973e2e6"
+  },
+  {
+    "path": "IOSLocalLLM/Views/APIProvidersView.swift",
+    "sha256Before": "444183374e84178f3c9e0d43e356168cc7a34a90c845b9ecdd4ad2222a0621e7",
+    "sha256After": "ae4808071065efc5d22e4885af64ce8127d4133cc866372110d1f1fdf4ed2389"
+  },
+  {
+    "path": "IOSLocalLLM/Views/BootSplashView.swift",
+    "sha256Before": "cb28e3629e565b0f99921731a5a5ec3409993fe41cce07a2b425c1e6861051e7",
+    "sha256After": "1950da9923629e546790a9199c110b41e3d528304190f511a69589ec870ec720"
+  },
+  {
+    "path": "IOSLocalLLM/Views/Bridge/ArgentRemoteView.swift",
+    "sha256Before": "d40638c4350d07ba0a5814afad3f4b459e36b56db91b6baa5dfccea8cd3d6747",
+    "sha256After": "fa8f400341e205d4758d0fd5cabbaf5f6d5f5dda41297a75c04e75577a4a1fba"
+  },
+  {
+    "path": "IOSLocalLLM/Views/Bridge/LocalAPIServerView.swift",
+    "sha256Before": "7ad6216af5b56b9e5ac300396a6a4959034129ac1a86e8c24df7cced0bac9787",
+    "sha256After": "eb6f723847cfb896256c4d8da74c2b999e434ab9ce15232a510a80703b69600b"
+  },
+  {
+    "path": "IOSLocalLLM/Views/Classifiers/ClassifierMachine.swift",
+    "sha256Before": "619e84ac958891d97f3c6d871fbfaf70dec7af6fea9ce3bca808398538c54a0d",
+    "sha256After": "f04e722fabd6496a0b3761d1bdd4d8be0ef090445b2c99dfd48672771d60fde1"
+  },
+  {
+    "path": "IOSLocalLLM/Views/Classifiers/ClassifierPrintStage.swift",
+    "sha256Before": "8547ef2fc12a71595d9e1991d944accc9abaf858e597e5c17c34af6178143cac",
+    "sha256After": "753ec22fd013160fc37ecda17250167df3e3816f3d1382e8305458eb90495c08"
+  },
+  {
+    "path": "IOSLocalLLM/Views/Classifiers/ClassifierResultTicket.swift",
+    "sha256Before": "bc2b444ddbd3a48cb1f5cf827c5a67b8a9c6362c5d54b9b7ab5a90e6b0ab3ba2",
+    "sha256After": "09080f4079d2dc15b28c3fd307f857fbbbaca9beff85064af8cdea8874917121"
+  },
+  {
+    "path": "IOSLocalLLM/Views/CodingAssistantView.swift",
+    "sha256Before": "9ad39e213606c8f4c1e41307f2578ca93f6cd4a7405d796d36afc8e9f4d3260a",
+    "sha256After": "fbb55bc8e04d6952b894393538900d3229616164f67f1b47095a71f9d1d76d80"
+  },
+  {
+    "path": "IOSLocalLLM/Views/DiagnosticsView.swift",
+    "sha256Before": "dec9f564f37b29b8a998152e02f84244396a62393a545e43f130b3157cb4885f",
+    "sha256After": "ff2a4507bfde1dc8a6763da2a13fbfeb716f33cb3e1442eaee6ccfa3bdf02cf2"
+  },
+  {
+    "path": "IOSLocalLLM/Views/GitHubWorkspaceView.swift",
+    "sha256Before": "f98e8dc4e2dd5e54a2c58029fd73c2439ba832317c844e05ef4613ca8b311bb4",
+    "sha256After": "ddd59b963c543a42edf71065e8d1c173b58c0d7f1527da391ca12f9177794069"
+  },
+  {
+    "path": "IOSLocalLLM/Views/HFTokenSheet.swift",
+    "sha256Before": "20d31a4974a47965be446422b9a6f4dcb02c95f91373431672eeed86a43768da",
+    "sha256After": "979a7d7d597854a379cb102d841127490714e72f1332c3ca38b14496643c0cd3"
+  },
+  {
+    "path": "IOSLocalLLM/Views/ImageGenerationView.swift",
+    "sha256Before": "2bd0d989125e52a603bc58982c16e284311401c7742aaa5800f7d646755b2ebb",
+    "sha256After": "61e29cb4ba3919027ed35645904beb9378445044a376810b506decd3456afafe"
+  },
+  {
+    "path": "IOSLocalLLM/Views/Legal/AttributionsView.swift",
+    "sha256Before": "51a02d20bf445440e9b123923f58ce28c158d54d6bd0a780aa168ff47f115893",
+    "sha256After": "da711ba28eef678017c0b0e4b52f1bda54260dd9434948e5ba23402152306b26"
+  },
+  {
+    "path": "IOSLocalLLM/Views/LocalModelImportPicker.swift",
+    "sha256Before": "7841020647470719500e4b55425b2fd814539a82bdf9dfd4cd362e301bcfedca",
+    "sha256After": "6a5c28a5498af051d7000533c9b7e9092a44b5502b2eec9065ac7bc342cca22a"
+  },
+  {
+    "path": "IOSLocalLLM/Views/MicDictationButton.swift",
+    "sha256Before": "8c004e629ff91feb691019cf4da1c6ae3a8898abed62078b31da5f94a3c87342",
+    "sha256After": "3f05b9d3fe775c5b939163fc81a11a0a6e267c28a7b7cc10ca25485240e73ffe"
+  },
+  {
+    "path": "IOSLocalLLM/Views/ModelsManagerView.swift",
+    "sha256Before": "79b4c1cbe0404d928c61cd41fbb4c1d69e9a0a546619a639c4b33550317f989d",
+    "sha256After": "576153ec3727e1364fd09130c748b2f8efa6907e97131ac15a3d6f4953d176e2"
+  },
+  {
+    "path": "IOSLocalLLM/Views/OnboardingOnePager.swift",
+    "sha256Before": "22a8edfd4429e058004aae52664f1d15192357ecd73790ab00beb78f2128e5cf",
+    "sha256After": "4d1fb85857895edfa0c6b1309396a0a391f00779d6f9cc484a03b835d1c49370"
+  },
+  {
+    "path": "IOSLocalLLM/Views/SettingsView.swift",
+    "sha256Before": "81a7e055b874514d7b0b64d073ad2941a1117453404e48491f912ba41d1072d8",
+    "sha256After": "b92852840fa2d8cd7b9fcf1aa64330fa4e69acf0557e0727738cf681f0079683"
+  },
+  {
+    "path": "IOSLocalLLM/Views/Voice/VoiceSettingsView.swift",
+    "sha256Before": "e7290acb4f2e52128895de40bc161ef82002ddc036a02db4df4aec6d65b2ccd7",
+    "sha256After": "93c598108d23a4f5715eefe85810f774244e56a99618c594839540ef14746405"
+  },
+  {
+    "path": "IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements",
+    "sha256Before": "c3dee94a69921654ae935e1e6cc8e2396037491e001fc3a9373ea3fc1c9dec0b",
+    "sha256After": "d6b314b0de456e073f2770b0512dabcec7d5e99c2590a957fc4874494fa21507"
+  },
+  {
+    "path": "IOSLocalLLMShareExtension/Info.plist",
+    "sha256Before": "3c5176b38816bb0027f817c5b21ea3900521fb577ba082e3aa83a6fa0c61e791",
+    "sha256After": "0af0858a096450acf15252b68a6253200a42ffcd048746aab8773f72ec9c6ef0"
+  },
+  {
+    "path": "IOSLocalLLMShareExtension/ShareViewController.swift",
+    "sha256Before": "3f71021876037e89063384f816594a0ff063a3133fa240710d1300c349edc9df",
+    "sha256After": "7e542c2989977a317390c37f8cf78f98d210d645c7856071d4d7ed9fec97bab8"
+  },
+  {
+    "path": "IOSLocalLLMTests/DiagnosticsTests.swift",
+    "sha256Before": "b5524e51c6c326b2e6d7e50021929294f044f5a3cd891a130e727773bdc5de35",
+    "sha256After": "f69d0db69f0b7614152abfa33fe0ccd1ac20669c0de8d8d61f04ee8d523aced6"
+  },
+  {
+    "path": "Packages/OnDeviceUI/Sources/OnDeviceUI/Components/ODComponents.swift",
+    "sha256Before": "eccba4c97075b599fba3757675d045c224811f5085b83157250f4b53cd75dac2",
+    "sha256After": "be4d124b41c32bfa327780853d7293bd1da52d80e51b064b7766a63d19bf6b71"
+  },
+  {
+    "path": "Packages/OnDeviceUI/Sources/OnDeviceUI/Resources/Localizable.xcstrings",
+    "sha256Before": "5656321eea3e876ea02941c6dc7450f1c5f882da916bc4da3f3215eb595083b7",
+    "sha256After": "ae84720bcb64833bbec744b9297adfce8e71f2622614563a033a26d582f8bbd9"
+  },
+  {
+    "path": "Packages/OnDeviceUI/Sources/OnDeviceUI/Views/ODChatView.swift",
+    "sha256Before": "109ba2e587796cbc311fc1145c6aa1dff0093a897577d322e90a7f3ff2e68f35",
+    "sha256After": "02fba77b6b5648d6cbd9fbeafcbc04c6149fdf6c25a42cbf9ae5f994876ddd09"
+  },
+  {
+    "path": "Packages/OnDeviceUI/Sources/OnDeviceUI/Views/ODConversationDrawer.swift",
+    "sha256Before": "bf207b2d3d04fb5010e58d809f03051d64e59c51032091f008dd112ae0f8c300",
+    "sha256After": "4a18a7b88b7b4f4071fd0c89b16e338022ce012d6597127efc060f3bd681b062"
+  },
+  {
+    "path": "Packages/OnDeviceUI/Sources/OnDeviceUI/Views/ODVoiceSessionView.swift",
+    "sha256Before": "3d7b8c317061d234f3a5ad57d683336b5c69f90b5ddbb4b688e9762420a83a36",
+    "sha256After": "b6794a5eea0f38d62d9bccff279cbbc7be5b07a5c1615716dac2de2441f5914a"
+  },
+  {
+    "path": "Podfile",
+    "sha256Before": "1128ec8bf0aaa09b728bbd1760b11320923515c83ce6d73308b1fda338f326fb",
+    "sha256After": "61e29b469bd84489c265d9402095e4c079c152c43d6301693a363bb42cd05307"
+  },
+  {
+    "path": "Podfile.lock",
+    "sha256Before": "4da2acf8d72b41134719c42372fb4686d99e62b3883bb8bc46d03c896287e850",
+    "sha256After": "bba8f62ab62ce25a7b9f4ead3018fdf0a3378677c8708490cfb98a2cc91108de"
+  },
+  {
+    "path": "QA/NativeUI/DownloadActivityReview.swift",
+    "sha256Before": "a5da2eb08ef31f78cf582e1114de4b3e7343f296f0b70f5b07967bdad364f1fb",
+    "sha256After": "b12d0121ccb6c27d55cbcfcddcc68f957dd20bc7529f95bf3c407c1069aedc5d"
+  },
+  {
+    "path": "QA/NativeUI/HomeConcepts.swift",
+    "sha256Before": "e5cf49fa319d67d308d7708326d7a674c9a522fd34d279b5de5f91362884b9fc",
+    "sha256After": "fbbc2b08ccc5ecb71ebd7a3c8b1ecff9f1c7aac20cb15c6f530c35f00a682649"
+  },
+  {
+    "path": "QA/NativeUI/HostContracts/ShareInboxTests.swift",
+    "sha256Before": "68360674894ea4bba24fe22ccfe893b9d7af04518cb20dfbde46420fa8db25d4",
+    "sha256After": "45b3fff6102af4c058aff3f151c6e60166dfa30950d5de344a42fa57dd4ae8f1"
+  },
+  {
+    "path": "QA/NativeUI/Info.plist",
+    "sha256Before": "180f83419dc0db7dd8c475669d7a97f91ef1374e5ae63731ff4f562546737e4a",
+    "sha256After": "c71f48a291f32f9e8a20964e5d239f29693472cb68ce7c4a61082f093f5ec6e4"
+  },
+  {
+    "path": "QA/NativeUI/ReviewApp.swift",
+    "sha256Before": "4e51a71ff0dd254a9f1517f9da940a374f3023d31522ccf9988d8a6a67d35e48",
+    "sha256After": "2b75fe841e13f620351df21aebc10f4c889df6cae25f6f6c83890ec3f5a1d629"
+  },
+  {
+    "path": "QA/NativeUI/UITests/APIServerWorkspaceTests.swift",
+    "sha256Before": "db80b2c45b81b280bb5753bb086094a2570fefbeb86f42c532adf5b7a6e2d0b9",
+    "sha256After": "df495b23e82548097c8939d23f1524694cc6c3ae9c4db7fc67e17a8a1e80dd3d"
+  },
+  {
+    "path": "QA/NativeUI/UITests/ShareReceiptFlows.swift",
+    "sha256Before": "0cefcceef2f1fe80b2ccd79a65f09f5ccaef1dd3c5a0fa6aa97a85435e980a61",
+    "sha256After": "5404e090fcb04824aea23b3249d68756b6b2ed873791f24fddbe51f7a698e66a"
+  },
+  {
+    "path": "QA/NativeUI/project.yml",
+    "sha256Before": "900d82d32446cf7f183be0a28c51846616b4a5a66241d34402e8e3f214253102",
+    "sha256After": "b726f4d4c2112236c13a182a804ced5a3861954a345d42aee0096d7833a5b398"
+  },
+  {
+    "path": "README.md",
+    "sha256Before": "4125550697cbdb8c1fff2ea0ad9eed944ec902b08c3ff64ead8d432dd8d38f6b",
+    "sha256After": "0b91c3927023f65f8b3f9d3c20c7b392d45773ea577d1b70b863b23fc41edad9"
+  },
+  {
+    "path": "SBOM.spdx.json",
+    "sha256Before": "79022be8b8d4ae8c8c634a96c3615d15ea06ccdf9a50f98a39ee8f47d501feb6",
+    "sha256After": "b6f4f4420aca72d3b8844f2533e360e3fc1c72ccb8c276950b9f72aa1e4c896e"
+  },
+  {
+    "path": "SETUP_INSTRUCTIONS.md",
+    "sha256Before": "2345bd9ac2b14ba28ee943906c2502e894153b9e42b2e34794d79eec545a615c",
+    "sha256After": "c011f91627824df236741ed51aa34f9d1af30af5ff59e07bafa867f5d1ba306a"
+  },
+  {
+    "path": "Shared/DownloadActivityAttributes.swift",
+    "sha256Before": "62f9a44000606512805029e5ce8c329b3d81993630a6c6108ffd9d1d3e21f139",
+    "sha256After": "945488531bf077f6ce3310973cb076805c8f5e45dcc5c8510c5000d55412eddb"
+  },
+  {
+    "path": "TokenAI.xcodeproj/xcshareddata/xcschemes/TokenAI.xcscheme",
+    "sha256Before": null,
+    "sha256After": "017dc88f7e4372a2561849ecd6f15a772b9c663a8477fd7d7a4173d902dfb779"
+  },
+  {
+    "path": "TokenAI.xcworkspace/contents.xcworkspacedata",
+    "sha256Before": null,
+    "sha256After": "6ef380acfe36912b40b545de8ee218faf63c4ead2878821c27331aed2887b18b"
+  },
+  {
+    "path": "project.yml",
+    "sha256Before": "6a4c3b18ae180e4f90b76daea044d2c1553548b27bd6a554fa1a13211663de22",
+    "sha256After": "3564efa82259d63a492c9e7cc4d8be9aa83481ef0a71860e86d7494d81bb7c97"
+  },
+  {
+    "path": "scripts/audit_appstore_model_licenses.py",
+    "sha256Before": "787574d73e3feb8c41303251e4f475d864a312caed908cbeacdf9d11d3e1c113",
+    "sha256After": "0d7ee06d94109e8b6ee2b0acf02cca6fce4a24a1ff116c78c46d7c419994c796"
+  },
+  {
+    "path": "scripts/bootstrap_minicpm_v47_runtime.py",
+    "sha256Before": "02b6dae519e2e940e5fc0469f93e7a2368f80f87d8c079017c10994211c62d47",
+    "sha256After": "c14ec27f2c5f57976f8c40186d00db7756e09605c8ce88038d807dec5eeaf28f"
+  },
+  {
+    "path": "scripts/build_appstore.sh",
+    "sha256Before": "e27c12a188df2cdb8d22868f9a7e6097fcd75e38e269d7bc1ee4e1fdcfed2eac",
+    "sha256After": "7aada9dd473255f2aafe18430639b15bcb9d6231699956cab8dc3a10350246c6"
+  },
+  {
+    "path": "scripts/build_sideload_ipa.sh",
+    "sha256Before": "151ebecf963c66e77616385e8ce5344fd0717d1c5762a1292f37f0b2f49b0e36",
+    "sha256After": "a36196b9fb8d861910788889fbcf456fdee3b59d598359c322d03d77a397ef95"
+  },
+  {
+    "path": "scripts/collect_sideload_notices.py",
+    "sha256Before": "9896966b402ec69d8087b281a73cf95295f1b35cd33c4a8eeb37fd951fdb70f7",
+    "sha256After": "b22d87f87990af3ac553aa9e14d2793edd3fe76235d5263fc8d04fe76678f6ef"
+  },
+  {
+    "path": "scripts/test_mlx_quantization_runtime.sh",
+    "sha256Before": "1b481c0b9df7ca2017b5342be4d16193e245cce4b433077197158f518fa47503",
+    "sha256After": "baaad085c51fdee3557f4aacf4bd723b4bef51069e82085267a009a882581933"
+  },
+  {
+    "path": "scripts/tests/test_appstore_verification.py",
+    "sha256Before": "8f2d2cd2d2fbce876a3f17a81e90c98bd843f1dfcf4ace8ca338935089ace30d",
+    "sha256After": "e4c6c13d4cbdbe6fdc3d94e30c4c3c1bd34a46c96ff28601b9ad40a393845b8d"
+  },
+  {
+    "path": "scripts/validate_open_source.sh",
+    "sha256Before": "cca7ee633e205359cc23263d1221f57470c11a9f999ecf31569f847731512889",
+    "sha256After": "55485b516e85980a4037b730d98eae8b1fbb5f587ad96da6a952aa42421a2b20"
+  },
+  {
+    "path": "scripts/verify_appstore.py",
+    "sha256Before": "ecfd117ef9f030cb09b9ec38bd8a80eb9dda7c29ba59854461122585770382ff",
+    "sha256After": "a2008e2dc1af95fc7490d00f143d84041b3b174096538f6709f2b2b2e95e9c1d"
+  },
+  {
+    "path": "scripts/verify_ipa_identity.sh",
+    "sha256Before": "5638f0143e6848c999acc43fff03d3af5ef7a2d835fdaf3274062a6478ef7714",
+    "sha256After": "6729c72f3427981cad9970a806e08e71aa94a1b2376486b76179a921288d9b1d"
+  }
+]

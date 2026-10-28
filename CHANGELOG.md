@@ -3,6 +3,47 @@
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and intends to use semantic version tags for source releases.
 
+## [2.1.1] - 2026-10-28
+
+- Added optional Liquid AI LFM3 1.7B (text) and LFM3 VL 2B (images)
+  downloads, plus Ternary Bonsai 2 9B, and moved GGUF chat, Lens and
+  classifier execution onto a newer llama.cpp runtime.
+- Assistant image questions now carry up to 1,600 pixels of detail into
+  inference and give the answering text model both the vision model's
+  description and the phone's OCR, with explicit uncertainty guidance
+  instead of guessed text or numbers.
+- An installed visual model the user selected is tried before the compact
+  SmolVLM2 fallback. If it cannot load on this device, other installed visual
+  models are tried lightest first; when none can run, the composer offers the
+  smallest download instead of only reporting an error.
+- Sent image previews have a fixed size and cached rendering, and streaming
+  replies no longer combine competing scroll-position updates, so the image
+  and thread stay still while tokens arrive.
+- Wide windows pin the sidebar; the conversation can also open its details
+  from the chat menu.
+
+## [2.0.1] - 2026-10-26
+
+- Assistant answers about attached images with every model type: vision
+  models read the pixels, other runtimes get an on-device visual description,
+  with a one-tap visual model download when none is installed.
+- Sends after returning to the app load the chat's own model instead of the
+  saved default, which failed with "The model changed while this request was
+  waiting". Image grounding and voice mode use the same model.
+- Opening a past chat selects its model without loading weights.
+- Search chats matches text in every turn.
+- The conversation store never replaces a file it couldn't read, decodes
+  records individually, and can't be rewritten by a save racing a wipe.
+- Wipe also removes classifier models, saved classifier tasks and generated
+  images. Auto titles use a bounded prompt and never overwrite a rename.
+- Removed the unreachable iCloud sync code, its CloudKit entitlement and every
+  claim about it in the listing, privacy policy (v8) and user guide.
+
+## [2.0] - 2026-10-24
+
+- Rebrand the working OnDeviceMax app as Token: Local AI Studio, retaining its icon and app behavior.
+- Use the Token AI bundle ID, shared app group, extension IDs, URL scheme, privacy and support links.
+
 ## [Unreleased]
 
 ### Added

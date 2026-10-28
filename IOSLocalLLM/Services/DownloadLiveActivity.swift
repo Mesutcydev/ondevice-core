@@ -1,196 +1,113 @@
 import Foundation
 
-// Live Activities (ActivityKit) are unavailable on Mac Catalyst: the module
-// still imports (`canImport` is true) but every Activity symbol is marked
-// `unavailable in Mac Catalyst`, so guard on the environment too. The iOS
-// build keeps both conditions true → its code path is unchanged. Mac gets a
-// no-op manager (see the #else branch) so callers compile and silently skip
-// Live Activities.
 #if canImport(ActivityKit) && !targetEnvironment(macCatalyst)
 import ActivityKit
 
-// MARK: - DownloadActivityAttributes
-// Shape of data shown in a download Live Activity (Dynamic Island + lock-screen).
-//
-// Static attributes are set once when the activity starts; ContentState
-// updates with every progress tick.
-
-struct DownloadActivityAttributes: ActivityAttributes {
-    public typealias DownloadStatus = ContentState
-
-    public struct ContentState: Codable, Hashable {
-        var progress: Double            // 0–1
-        var downloadedBytes: Int64
-        var totalBytes: Int64
-        var currentFile: String
-        var filesDone: Int
-        var filesTotal: Int
-        var failed: Bool
-    }
-
-    /// Repo ID stays constant for the life of the activity
-    var repoID: String
-}
-
-// MARK: - DownloadLiveActivityManager
-// Lifecycle wrapper around `Activity<DownloadActivityAttributes>`. One
-// activity per repo. Caller drives updates.
-
 @MainActor
 final class DownloadLiveActivityManager {
-
     static let shared = DownloadLiveActivityManager()
-
     private var activities: [String: Activity<DownloadActivityAttributes>] = [:]
+    private var updates: [String: Task<Void, Never>] = [:]
+    private var lastUpdate: [String: Date] = [:]
+    private var latestStates: [String: DownloadActivityAttributes.ContentState] = [:]
 
-    private init() {}
+    private init() {
+        // Activities belong to the OS and survive process termination.
+        for activity in Activity<DownloadActivityAttributes>.activities
+            where activity.activityState == .active || activity.activityState == .stale {
+            activities[activity.attributes.repoID] = activity
+            latestStates[activity.attributes.repoID] = activity.content.state
+        }
+    }
 
-    /// Starts an activity if Live Activities are enabled. Returns true on success.
     @discardableResult
-    func start(repoID: String) -> Bool {
-        guard #available(iOS 16.2, *),
-              ActivityAuthorizationInfo().areActivitiesEnabled,
-              activities[repoID] == nil
-        else { return false }
-
-        let attrs = DownloadActivityAttributes(repoID: repoID)
-        let state = DownloadActivityAttributes.ContentState(
-            progress: 0,
-            downloadedBytes: 0, totalBytes: 0,
-            currentFile: "starting…",
-            filesDone: 0, filesTotal: 0,
-            failed: false
-        )
+    func start(repoID: String, displayName: String? = nil) -> Bool {
+        // Query again at the user action: ActivityKit can restore its list
+        // after this singleton was initialized during app launch.
+        if activities[repoID] == nil,
+           let restored = Activity<DownloadActivityAttributes>.activities.first(where: {
+               $0.attributes.repoID == repoID && ($0.activityState == .active || $0.activityState == .stale)
+           }) {
+            activities[repoID] = restored; latestStates[repoID] = restored.content.state
+        }
+        if let activity = activities[repoID], activity.activityState == .active || activity.activityState == .stale {
+            return true
+        }
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return false }
+        let state = DownloadActivityAttributes.ContentState(progress: 0, downloadedBytes: 0, totalBytes: 0,
+            currentFile: "", filesDone: 0, filesTotal: 0, phase: .downloading)
         do {
             let activity = try Activity<DownloadActivityAttributes>.request(
-                attributes: attrs,
-                content: .init(state: state, staleDate: nil),
-                pushType: nil
-            )
-            activities[repoID] = activity
+                attributes: .init(repoID: repoID, displayName: displayName ?? repoID),
+                content: .init(state: state, staleDate: .now.addingTimeInterval(120)), pushType: nil)
+            activities[repoID] = activity; latestStates[repoID] = state
             return true
         } catch {
-            Diagnostics.shared.error("start failed: \(error)", category: "liveactivity")
+            Diagnostics.shared.breadcrumb("Download Live Activity unavailable", category: "liveactivity")
             return false
         }
     }
 
-    /// Push a progress update.
-    func update(repoID: String,
-                progress: Double,
-                downloadedBytes: Int64,
-                totalBytes: Int64,
-                currentFile: String,
-                filesDone: Int,
-                filesTotal: Int) {
-        guard #available(iOS 16.2, *),
-              let activity = activities[repoID] else { return }
+    func update(repoID: String, progress: Double, downloadedBytes: Int64, totalBytes: Int64,
+                currentFile: String, filesDone: Int, filesTotal: Int,
+                phase: DownloadActivityAttributes.Phase = .downloading) {
+        guard let activity = activities[repoID] else { return }
+        let previous = latestStates[repoID]
         let state = DownloadActivityAttributes.ContentState(
-            progress: progress,
-            downloadedBytes: downloadedBytes,
-            totalBytes: totalBytes,
-            currentFile: currentFile,
-            filesDone: filesDone,
-            filesTotal: filesTotal,
-            failed: false
-        )
-        Task {
-            await activity.update(.init(state: state, staleDate: nil))
+            progress: min(1, max(0, progress.isFinite ? progress : 0)),
+            downloadedBytes: max(0, downloadedBytes), totalBytes: max(0, totalBytes),
+            currentFile: String(currentFile.prefix(100)), filesDone: filesDone, filesTotal: filesTotal, phase: phase)
+        latestStates[repoID] = state
+        // Byte callbacks can arrive hundreds of times a second. Publish at
+        // most once per second, plus phase changes. Serialize updates so an
+        // older tick cannot land after pause, cancellation or completion.
+        guard previous?.phase != phase || Date().timeIntervalSince(lastUpdate[repoID] ?? .distantPast) >= 1 else { return }
+        lastUpdate[repoID] = .now
+        let prior = updates[repoID]
+        updates[repoID] = Task {
+            await prior?.value
+            guard activities[repoID]?.id == activity.id else { return }
+            await activity.update(.init(state: state, staleDate: .now.addingTimeInterval(120)))
         }
     }
 
-    /// End an activity (success path).
-    func finish(repoID: String) {
-        guard #available(iOS 16.2, *),
-              let activity = activities[repoID] else { return }
-        // Drop the entry NOW (synchronously), before scheduling end(). Otherwise
-        // a late update() — these all run as independent unstructured Tasks and
-        // can land out of order — could fire its update() AFTER this end() and
-        // leave the Live Activity stuck on an intermediate progress state.
-        activities.removeValue(forKey: repoID)
-        let state = DownloadActivityAttributes.ContentState(
-            progress: 1.0,
-            downloadedBytes: 0, totalBytes: 0,
-            currentFile: "done",
-            filesDone: 0, filesTotal: 0,
-            failed: false
-        )
-        Task {
-            await activity.end(.init(state: state, staleDate: nil),
-                                dismissalPolicy: .after(.now + 4))
-        }
-    }
+    func finish(repoID: String) { end(repoID: repoID, phase: .completed) }
+    func pause(repoID: String) { end(repoID: repoID, phase: .paused) }
+    func cancel(repoID: String) { end(repoID: repoID, phase: .cancelled) }
+    func fail(repoID: String, reason: String) { end(repoID: repoID, phase: .failed) }
 
-    /// End a deliberately paused transfer without reporting 100% complete.
-    func pause(repoID: String) {
-        guard #available(iOS 16.2, *), let activity = activities.removeValue(forKey: repoID) else { return }
-        let previous = activity.content.state
-        let state = DownloadActivityAttributes.ContentState(
-            progress: previous.progress,
-            downloadedBytes: previous.downloadedBytes,
-            totalBytes: previous.totalBytes,
-            currentFile: "paused",
-            filesDone: previous.filesDone,
-            filesTotal: previous.filesTotal,
-            failed: false
-        )
-        Task {
-            await activity.end(.init(state: state, staleDate: nil),
-                               dismissalPolicy: .after(.now + 4))
+    private func end(repoID: String, phase: DownloadActivityAttributes.Phase) {
+        var matching = Activity<DownloadActivityAttributes>.activities.filter { $0.attributes.repoID == repoID }
+        if let tracked = activities.removeValue(forKey: repoID), !matching.contains(where: { $0.id == tracked.id }) {
+            matching.append(tracked)
         }
-    }
-
-    /// End an activity (failure path).
-    func fail(repoID: String, reason: String) {
-        guard #available(iOS 16.2, *),
-              let activity = activities[repoID] else { return }
-        let state = DownloadActivityAttributes.ContentState(
-            progress: activity.content.state.progress,
-            downloadedBytes: activity.content.state.downloadedBytes,
-            totalBytes: activity.content.state.totalBytes,
-            currentFile: "failed: \(reason)",
-            filesDone: activity.content.state.filesDone,
-            filesTotal: activity.content.state.filesTotal,
-            failed: true
-        )
-        // Synchronous removal (see finish()) so a late update() can't resurrect
-        // the activity after it's ended.
-        activities.removeValue(forKey: repoID)
+        guard !matching.isEmpty else { return }
+        let latest = latestStates.removeValue(forKey: repoID)
+        let prior = updates.removeValue(forKey: repoID)
+        lastUpdate.removeValue(forKey: repoID)
         Task {
-            await activity.end(.init(state: state, staleDate: nil),
-                                dismissalPolicy: .after(.now + 6))
+            await prior?.value
+            for activity in matching {
+                var state = latest ?? activity.content.state
+                state.phase = phase
+                if phase == .completed { state.progress = 1; state.filesDone = state.filesTotal }
+                await activity.end(.init(state: state, staleDate: nil),
+                    dismissalPolicy: phase == .cancelled ? .immediate : .after(.now.addingTimeInterval(6)))
+            }
         }
     }
 }
-
 #else
-
-// MARK: - Mac Catalyst no-op
-// Live Activities don't exist on Mac. This stub mirrors the manager's API so
-// HFModelDownloadManager and other callers compile and run unchanged; every
-// method is a no-op and `start` reports "not started".
-
 @MainActor
 final class DownloadLiveActivityManager {
     static let shared = DownloadLiveActivityManager()
-    private init() {}
-
-    @discardableResult
-    func start(repoID: String) -> Bool { false }
-
-    func update(repoID: String,
-                progress: Double,
-                downloadedBytes: Int64,
-                totalBytes: Int64,
-                currentFile: String,
-                filesDone: Int,
-                filesTotal: Int) {}
-
+    enum Phase { case downloading, verifying, preparing }
+    @discardableResult func start(repoID: String, displayName: String? = nil) -> Bool { false }
+    func update(repoID: String, progress: Double, downloadedBytes: Int64, totalBytes: Int64,
+                currentFile: String, filesDone: Int, filesTotal: Int, phase: Phase = .downloading) {}
     func finish(repoID: String) {}
-
     func pause(repoID: String) {}
-
+    func cancel(repoID: String) {}
     func fail(repoID: String, reason: String) {}
 }
-
 #endif
