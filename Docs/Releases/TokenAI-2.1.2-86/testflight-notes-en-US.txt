@@ -1,0 +1,6 @@
+• Code tab: Choose repository now opens GitHub settings, your repositories' branches and Enter a repository. These buttons did nothing before.
+• The repository page has a new design. When GitHub is off or not connected, it says what to do and offers one Open GitHub settings button. When connected, it shows your GitHub account (which also opens GitHub settings), the current repository with its actions, and your repositories as a clean list.
+• The Branch and Add repository pages match the new style.
+• Also includes the LFM3 improvements from build 85.
+
+Please test the Code tab with GitHub tools off, signed out and signed in: open Choose repository, go to GitHub settings and back, then pick a repository and branch.

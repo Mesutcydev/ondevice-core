@@ -1,0 +1,7 @@
+• LFM3 1.7B can now write a short answer before it calls a tool. The tool still runs, and that text stays in the chat.
+• With a GitHub repository selected, LFM3 keeps its instructions and tools. Previously the start of its prompt could be cut off, so it could miss tools or rules.
+• File changes LFM3 stages in a repository keep their exact indentation and final newline.
+• LFM3 now uses Liquid AI's recommended sampling (temperature 0.1) unless you saved custom settings for it. Model settings shows these as "Model card defaults".
+• Long conversations with downloaded GGUF models keep the assistant's instructions when the chat outgrows the model's context window; older messages are summarized instead of cut off.
+
+Please test LFM3 1.7B with tools (calculator, web search and a GitHub repository), staging a file edit, and a long conversation with any GGUF model.

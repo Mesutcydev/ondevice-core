@@ -1,0 +1,13 @@
+{
+  "mode": "ipa_upload",
+  "buildId": "95c89865-3e5f-4fff-9742-5d849653c30e",
+  "buildVersion": "2.1.2",
+  "buildNumber": "86",
+  "groupIds": [
+    "7879d475-100f-4c7c-bf49-5b5446be9b56"
+  ],
+  "uploaded": true,
+  "processingState": "VALID",
+  "ipaBytes": 94298834,
+  "ipaSHA256": "18f6b6114ce0daaf82b6c5f15049aed124a23c1b3ad03ade9f8e5c4f19eefe22"
+}
