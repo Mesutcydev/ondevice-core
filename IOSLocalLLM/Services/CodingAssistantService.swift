@@ -2731,7 +2731,8 @@ final class CodingAssistantService: ObservableObject {
         )
         let modelSettings = AssistantModelSettingsStore.shared.settings(
             for: activeModel.repoID
-        )
+        ) ?? (activeExecutionLocation.isCloud ? nil
+            : .publisherDefaults(for: activeModel.repoID, from: s, supportsThinking: activeThinkingSwitch))
         let requestedMaxTokens = min(
             maxTokensOverride
                 ?? modelSettings?.maxTokens

@@ -156,6 +156,22 @@ struct AssistantModelGenerationSettings: Codable, Equatable, Sendable {
         )
     }
 
+    /// A model card's recommended sampling, used when the user has not saved
+    /// a profile for that model. Nil keeps the app-wide settings.
+    static func publisherDefaults(
+        for repositoryID: String,
+        from settings: AppSettings,
+        supportsThinking: Bool
+    ) -> Self? {
+        // Liquid's LFM3 card: --temp 0.1 --top-k 50 --repeat-penalty 1.1.
+        guard LFM3Catalog.isFamily(repositoryID) else { return nil }
+        var defaults = appDefaults(from: settings, supportsThinking: supportsThinking)
+        defaults.temperature = 0.1
+        defaults.topK = 50
+        defaults.repetitionPenalty = 1.1
+        return defaults
+    }
+
     func clamped(supportsThinking: Bool) -> Self {
         AssistantModelGenerationSettings(
             maxTokens: min(4_096, max(128, maxTokens)),
@@ -232,6 +248,7 @@ final class AssistantModelSettingsStore: ObservableObject {
         appSettings: AppSettings
     ) -> AssistantModelGenerationSettings {
         settings(for: repositoryID)
+            ?? .publisherDefaults(for: repositoryID, from: appSettings, supportsThinking: supportsThinking)
             ?? .appDefaults(from: appSettings, supportsThinking: supportsThinking)
     }
 

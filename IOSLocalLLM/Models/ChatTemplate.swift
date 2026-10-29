@@ -370,7 +370,7 @@ struct ChatTemplate: Codable, Hashable {
                     // the most recent user, but keeps an open final response
                     // intact when continuing a truncated reply.
                     if let lastUserIndex, index < lastUserIndex,
-                       let end = content.range(of: "</think>") {
+                       let end = content.range(of: "</think>", options: .backwards) {
                         content = String(content[end.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
                     } else if content.hasPrefix("<think>") {
                         prefix = "<|im_start|>assistant\n"
@@ -425,5 +425,29 @@ extension [ChatMessage] {
             enableThinking: enableThinking,
             leaveLastAssistantOpen: leaveLastAssistantOpen
         )
+    }
+}
+
+// MARK: - Over-long prompts
+
+/// Chooses which tokens of a formatted prompt survive when it is longer than
+/// the runtime window. The first turn (the system prompt, or the user turn a
+/// template folds it into) is kept, then the newest whole turns. Keeping only
+/// the newest suffix used to drop the instructions, safety rules and tools.
+/// Without an end-of-turn token in the first half (plain-text prompts, or a
+/// first turn too large to protect), the first token (BOS) and suffix remain.
+enum PromptWindow {
+    static func trim<T>(_ tokens: [T], limit: Int, isEndOfTurn: (T) -> Bool) -> [T] {
+        guard tokens.count > limit else { return tokens }
+        guard limit > 1 else { return Array(tokens.suffix(limit)) }
+        guard let headEnd = tokens.prefix(limit / 2).firstIndex(where: isEndOfTurn) else {
+            return [tokens[0]] + tokens.suffix(limit - 1)
+        }
+        var start = tokens.count - (limit - headEnd - 1)
+        // Begin after a turn ends so no turn is kept without its role header.
+        if let boundary = tokens[start..<(tokens.count - 1)].firstIndex(where: isEndOfTurn) {
+            start = boundary + 1
+        }
+        return Array(tokens[...headEnd]) + tokens[start...]
     }
 }

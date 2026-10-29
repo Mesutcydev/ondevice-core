@@ -85,5 +85,24 @@ final class LFM3CatalogTests: XCTestCase {
         }
         XCTAssertEqual(AssistantModelCatalog.presets.first?.id, "qwen3-4b-2507")
     }
+
+    @MainActor
+    func test_unsavedLFM3ProfileUsesTheModelCardSampling() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: #function))
+        defer { defaults.removePersistentDomain(forName: #function) }
+        let store = AssistantModelSettingsStore(defaults: defaults)
+        let app = AppSettings.shared
+        let card = store.effectiveSettings(for: LFM3Catalog.text.repoID, supportsThinking: true, appSettings: app)
+        XCTAssertEqual(card.temperature, 0.1)
+        XCTAssertEqual(card.topK, 50)
+        XCTAssertEqual(card.repetitionPenalty, 1.1)
+        XCTAssertEqual(card.maxTokens, app.assistantMaxTokens)
+        XCTAssertNil(AssistantModelGenerationSettings.publisherDefaults(
+            for: "LiquidAI/LFM2.5-1.2B", from: app, supportsThinking: false))
+        var saved = card
+        saved.temperature = 0.7
+        store.save(saved, for: LFM3Catalog.text.repoID, supportsThinking: true)
+        XCTAssertEqual(store.effectiveSettings(for: LFM3Catalog.text.repoID, supportsThinking: true, appSettings: app).temperature, 0.7)
+    }
     #endif
 }

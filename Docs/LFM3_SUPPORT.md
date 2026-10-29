@@ -11,9 +11,18 @@ The normal build continues to use llama.cpp b11558. LFM3 requires b11938, so
 the experimental framework is built separately and the catalog is hidden
 unless the build explicitly opts in. A normal build refuses LFM3 selections
 before unloading the current model, including when an experimental download
-is still present on disk. LFM3's XML tool-call format is not yet wired into
-the app's tool protocol; the text preset does not advertise tools. LFM3 audio,
-omni, video, and d1 models are not implemented by this integration.
+is still present on disk. Assistant tools use LFM3's native
+`<tool_call><function=…>` format: the system turn ends with schemas for the
+app tools in Liquid's `tool_to_json` layout, and results return in the `tool`
+role. GitHub repository tools are listed by the existing prose catalog rather
+than as schemas, because their 22 schemas and the GitHub contract overflowed
+the 4K window. File text arguments (`content`, `oldText`, `newText`) keep
+their whitespace exactly. As in Liquid's parser, a reply may answer before its
+call; the call runs only when calls end the reply outside Markdown code, and
+the answer text stays visible. Without a saved per-model profile, LFM3 chat
+samples with the model card's values (temperature 0.1, top-k 50, repeat
+penalty 1.1). LFM3 audio, omni, video, and d1 models are not implemented by
+this integration.
 
 ## Experimental build
 

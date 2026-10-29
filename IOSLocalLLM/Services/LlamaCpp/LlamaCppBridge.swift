@@ -470,16 +470,12 @@ final class LlamaCppVLM: @unchecked Sendable {
         // maxTokens permitting) rather than a flat quarter — with the old /4
         // policy a 4K-context GGUF could never emit more than 1024 tokens,
         // even when the user asked for more and the prompt was tiny, so
-        // answers stopped mid-sentence. When trimming is needed, preserve the
-        // first special token (BOS), then take the newest prompt suffix.
+        // answers stopped mid-sentence. When trimming is needed, keep the
+        // first turn (system prompt) and the newest whole turns.
         let requestedOutputTokens = max(1, min(maxTokens, Int(configuredContextSize) / 2))
         let promptTokenLimit = max(1, Int(configuredContextSize) - requestedOutputTokens - 1)
         if tokens.count > promptTokenLimit {
-            if promptTokenLimit > 1, let firstToken = tokens.first {
-                tokens = [firstToken] + tokens.suffix(promptTokenLimit - 1)
-            } else {
-                tokens = Array(tokens.suffix(promptTokenLimit))
-            }
+            tokens = PromptWindow.trim(tokens, limit: promptTokenLimit) { llama_vocab_is_eog(vocab, $0) }
             Diagnostics.shared.breadcrumb(
                 "GGUF prompt trimmed · before=\(tokenizedPromptCount) · after=\(tokens.count) · outputReserve=\(requestedOutputTokens)",
                 category: "assistant"

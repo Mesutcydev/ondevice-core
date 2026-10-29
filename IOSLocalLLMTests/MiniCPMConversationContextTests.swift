@@ -83,4 +83,27 @@ final class MiniCPMConversationContextTests: XCTestCase {
         XCTAssertEqual(prepared.messages.last?.id, messages.last?.id)
         XCTAssertTrue(prepared.messages.contains { $0.content.contains("[CONVERSATION MEMORY]") })
     }
+
+    func test_largeSystemPromptStillLeavesTheCompactedPromptInsideTheWindow() {
+        let system = ChatMessage(role: .system, content: String(repeating: "rule ", count: 960))
+        let dialog = (0..<12).flatMap { index in
+            [ChatMessage(role: .user, content: "Question \(index): " + String(repeating: "detail ", count: 70)),
+             ChatMessage(role: .assistant, content: "Answer \(index): " + String(repeating: "result ", count: 70))]
+        }
+        let prepared = ConversationContextCompactor.prepare(
+            messages: [system] + dialog, existingMemory: nil, maxTokens: 2_032)
+        XCTAssertTrue(prepared.didCompact)
+        XCTAssertEqual(prepared.messages.first?.id, system.id)
+        XCTAssertEqual(prepared.messages.last?.id, dialog.last?.id)
+        XCTAssertLessThanOrEqual(ConversationContextCompactor.estimateTokens(prepared.messages), 2_032)
+    }
+
+    func test_overLongPromptKeepsTheFirstTurnAndWholeNewestTurns() {
+        // 0 ends a turn; 1 is BOS; 2 the system turn; 3...5 later turns.
+        let tokens = [1, 2, 2, 2, 0, 3, 3, 3, 3, 0, 4, 4, 4, 0, 5, 5]
+        XCTAssertEqual(PromptWindow.trim(tokens, limit: 10) { $0 == 0 }, [1, 2, 2, 2, 0, 5, 5])
+        XCTAssertEqual(PromptWindow.trim(tokens, limit: 16) { $0 == 0 }, tokens)
+        let plain = [1, 2, 2, 2, 2, 2, 0, 3, 3]
+        XCTAssertEqual(PromptWindow.trim(plain, limit: 6) { $0 == 0 }, [1, 2, 2, 0, 3, 3])
+    }
 }

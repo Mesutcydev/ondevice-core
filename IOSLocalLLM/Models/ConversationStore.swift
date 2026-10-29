@@ -656,7 +656,12 @@ enum ConversationContextCompactor {
         // Keep a generous recent suffix verbatim. Only compact a prefix ending
         // in a completed assistant/tool response so a user/assistant turn is
         // never split across memory and live context.
-        let recentBudget = max(128, Int(Double(maxTokens) * recentDialogFraction))
+        // A large system prompt (tool schemas, the GitHub contract) shares the
+        // window. Shrink the verbatim suffix so the compacted prompt still
+        // fits; otherwise the runtime trim would cut older text unsummarized.
+        let memoryTokens = max(150, Int(Double(maxTokens) * memoryFraction)) + 64  // + its header
+        let recentBudget = max(128, min(Int(Double(maxTokens) * recentDialogFraction),
+                                        maxTokens - estimateTokens(systemMessages) - memoryTokens))
         var recentCost = 0
         var provisionalCut = activeDialog.count
         for index in activeDialog.indices.reversed() {

@@ -202,12 +202,14 @@ struct AssistantModelSettingsView: View {
                 Section {
                     Toggle("Customize this model", isOn: $isCustomized)
                 } footer: {
-                    Text("Off uses the app-wide Assistant settings. Turn it on to save an independent profile for this model.")
+                    Text(hasPublisherDefaults
+                         ? "Off uses the model card's recommended sampling with your other Assistant settings. Turn it on to save an independent profile for this model."
+                         : "Off uses the app-wide Assistant settings. Turn it on to save an independent profile for this model.")
                 }
 
                 AssistantModelSettingsSummarySection(
                     settings: displayedSettings,
-                    sourceLabel: isCustomized ? "Custom profile" : "App defaults"
+                    sourceLabel: isCustomized ? "Custom profile" : (hasPublisherDefaults ? "Model card defaults" : "App defaults")
                 )
 
                 if isCustomized {
@@ -218,7 +220,7 @@ struct AssistantModelSettingsView: View {
                     AssistantModelSamplingSettingsSection(settings: $draft)
 
                     Section {
-                        Button("Reset to app defaults", role: .destructive) {
+                        Button(hasPublisherDefaults ? "Reset to model card defaults" : "Reset to app defaults", role: .destructive) {
                             isCustomized = false
                             HapticManager.selection()
                         }
@@ -239,10 +241,7 @@ struct AssistantModelSettingsView: View {
         .onChange(of: isCustomized) { _, customized in
             guard hasLoaded else { return }
             if customized {
-                draft = .appDefaults(
-                    from: appSettings,
-                    supportsThinking: target.supportsThinking
-                )
+                draft = baseline
                 saveDraft()
             } else {
                 store.reset(repositoryID: target.repositoryID)
@@ -255,22 +254,27 @@ struct AssistantModelSettingsView: View {
     }
 
     private var displayedSettings: AssistantModelGenerationSettings {
-        if isCustomized { return draft }
-        return .appDefaults(
-            from: appSettings,
-            supportsThinking: target.supportsThinking
-        )
+        isCustomized ? draft : baseline
     }
+
+    /// What generation uses without a saved profile: the model card's
+    /// recommendation when it has one, otherwise the app-wide settings.
+    private var baseline: AssistantModelGenerationSettings {
+        publisherDefaults ?? .appDefaults(from: appSettings, supportsThinking: target.supportsThinking)
+    }
+
+    private var publisherDefaults: AssistantModelGenerationSettings? {
+        .publisherDefaults(for: target.repositoryID, from: appSettings, supportsThinking: target.supportsThinking)
+    }
+
+    private var hasPublisherDefaults: Bool { publisherDefaults != nil }
 
     private func load() {
         if let saved = store.settings(for: target.repositoryID) {
             draft = saved
             isCustomized = true
         } else {
-            draft = .appDefaults(
-                from: appSettings,
-                supportsThinking: target.supportsThinking
-            )
+            draft = baseline
             isCustomized = false
         }
         hasLoaded = true

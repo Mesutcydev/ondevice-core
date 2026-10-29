@@ -2928,18 +2928,21 @@ struct CodingAssistantView: View {
             if usesLFM3NativeTools {
                 prompt = prompt.replacingOccurrences(of: ToolRunner.systemPromptAddendum, with: "")
                     .replacingOccurrences(of: ToolRunner.coreAISystemPromptAddendum, with: "")
-                prompt += LFM3ToolProtocol.systemPrompt(includeRepositoryTools: gitHub.isAvailable)
             }
             var repositoryTools = gitHub.promptAddendum(compact: coreAI || budget <= 2_048)
             if usesLFM3NativeTools {
                 repositoryTools = repositoryTools.replacingOccurrences(
                     of: "You may use the existing JSON tool format: {\"name\":\"read_file\",\"args\":{\"path\":\"README.md\"}}.",
-                    with: "Use the native tool-call format for the listed repository tools.")
+                    with: "Call the repository tools listed here in the native format: <tool_call>\n<function=read_file>\n<parameter=path>\nREADME.md\n</parameter>\n</function>\n</tool_call>")
             }
             if !repositoryTools.isEmpty { prompt += "\n\n" + repositoryTools }
             let uploads = availableGitHubImageAttachments.map(\.name) + gitHubUploadFiles.map(\.displayName)
             if gitHub.isAvailable, !uploads.isEmpty {
                 prompt += "\nUser attachments available for upload_attachment: " + uploads.joined(separator: ", ")
+            }
+            // Liquid's template ends the system turn with the tool definitions.
+            if usesLFM3NativeTools {
+                prompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines) + "\n\n" + LFM3ToolProtocol.systemPrompt
             }
         }
         return [ChatMessage(role: .system, content: prompt)] + dialog
@@ -4010,6 +4013,8 @@ struct CodingAssistantView: View {
     /// JSON remains model context; the user's disclosure retains the thoughts.
     private func retainReasoningBeforeTool(messageID: UUID) {
         guard let index = messages.firstIndex(where: { $0.id == messageID }) else { return }
+        // LFM3 may answer before its call; that text stays visible.
+        let preamble = usesLFM3NativeTools ? LFM3ToolProtocol.preamble(of: messages[index].content) : ""
         if !AssistantActivity.retainReasoningForTool(&messages[index]) {
             if usesLFM3NativeTools {
                 messages[index].modelContent = messages[index].content
@@ -4019,6 +4024,7 @@ struct CodingAssistantView: View {
                 messages.remove(at: index)
             }
         }
+        if !preamble.isEmpty { messages[index].content += preamble }
     }
 
     /// Keeps the persisted/UI message compact while giving the model the tool
