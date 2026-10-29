@@ -8,8 +8,11 @@ final class CodingReviewFixture: ObservableObject {
     let github = GitHubReviewFixture()
     let controller: CodingWorkspaceController
     init() {
-        github.connection.setEnabled(true)
-        if let account = github.connection.account {
+        // `-github-off` and `-coding-unselected` open the empty Code tab, whose
+        // repository picker must still reach GitHub settings.
+        let args = ProcessInfo.processInfo.arguments
+        if !args.contains("-github-off") { github.connection.setEnabled(true) }
+        if !args.contains("-coding-unselected"), let account = github.connection.account {
             try? github.workspace.select(.init(accountID: account.id, owner: "preview", name: "project", branch: "main"))
         }
         GitHubReviewHTTP.state.reset { Self.response($0) }

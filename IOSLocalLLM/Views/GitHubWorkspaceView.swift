@@ -170,70 +170,108 @@ struct GitHubRepositoryPicker: View {
     init(workspace: GitHubWorkspaceService) { self.workspace = workspace; connection = workspace.connection }
 
     var body: some View {
-        List {
-            if !connection.isEnabled || connection.account == nil {
-                Section {
-                    Text(connection.isEnabled ? "Connect GitHub to choose a repository." : "GitHub tools are off.")
-                        .foregroundStyle(ODPalette.secondary)
-                    NavigationLink("GitHub settings") { GitHubSettingsView(connection: connection, client: workspace.client) }
-                }
-            } else {
-                if let draft = workspace.draft {
-                    Section("This chat") {
-                        GitHubRow(title: draft.selection.fullName, subtitle: draft.selection.branch, symbol: "arrow.triangle.branch")
-                        if !workspace.isAvailable {
-                            Button("Use this repository with \(connection.account?.login ?? "GitHub")") {
-                                Task {
-                                    let message = await workspace.reconnectRepository()
-                                    if message.hasPrefix("Error:") { error = message }
-                                }
-                            }.disabled(workspace.isRunning).accessibilityIdentifier("github.repo.reconnect")
-                        }
-                        if !draft.changes.isEmpty {
-                            Text("\(draft.changes.count) staged \(draft.changes.count == 1 ? "file" : "files"). Review or discard the draft before switching repositories.")
-                                .font(.footnote).foregroundStyle(ODPalette.secondary)
-                            Button("Discard staged changes", role: .destructive) { discard = true }
-                                .accessibilityIdentifier("github.draft.discard")
-                        }
-                        Button("Remove repository from chat") {
-                            do { try workspace.select(nil); dismiss() }
-                            catch { self.error = GitHubError.safeMessage(error) }
-                        }.disabled(!draft.changes.isEmpty || workspace.isRunning)
-                    }
-                }
-                Section {
-                    NavigationLink {
-                        GitHubRepositoryEntryView(workspace: workspace) { dismiss() }
-                    } label: {
-                        GitHubRow(title: "Enter a repository", subtitle: "Owner and repository name", symbol: "link")
-                    }.disabled(workspace.draft?.changes.isEmpty == false || workspace.isRunning)
-                        .accessibilityIdentifier("github.repo.enter")
-                    ForEach(repositories.filter { search.isEmpty || $0.fullName.localizedCaseInsensitiveContains(search) }) { repository in
-                        NavigationLink {
-                            GitHubBranchPicker(workspace: workspace, repository: repository) { dismiss() }
-                        } label: {
-                            GitHubRow(title: repository.name, subtitle: repository.owner.login,
-                                      symbol: repository.isPrivate ? "lock" : "folder")
-                        }
-                        .disabled(workspace.draft?.changes.isEmpty == false || workspace.isRunning)
-                        .accessibilityIdentifier("github.repo.\(repository.fullName)")
-                    }
-                    if loading { ProgressView("Loading repositories…") }
-                    else if hasMore { Button(repositories.isEmpty ? "Load repositories" : "Load more repositories") { Task { await load() } } }
-                    else if repositories.isEmpty { Text("No accessible repositories. Check the token's repository access.").foregroundStyle(ODPalette.secondary) }
-                } header: { Text("Repositories") } footer: {
-                    Text("Selecting a repository enables file reads for this chat. Repository excerpts are sent to your selected chat model. Every write requires review.")
-                }
-            }
-            if let error { Section { Text(error).font(.footnote).foregroundStyle(ODPalette.secondary) } }
+        Group {
+            if connection.isEnabled, let account = connection.account { repositories(account: account) } else { setup }
         }
         .navigationTitle("Repository").navigationBarTitleDisplayMode(.inline)
-        .tint(ODPalette.text)
-        .searchable(text: $search, prompt: "Find a repository")
+        .modifier(GitHubPageStyle())
         .task(id: connection.revision) { repositories = []; page = 1; hasMore = true; await load() }
         .confirmationDialog("Discard staged changes?", isPresented: $discard, titleVisibility: .visible) {
             Button("Discard draft", role: .destructive) { workspace.discardChanges() }
         } message: { Text("The files on GitHub will stay unchanged.") }
+    }
+
+    private var settings: some View { GitHubSettingsView(connection: connection, client: workspace.client) }
+
+    /// GitHub off or not connected: one clear next step instead of a bare link.
+    private var setup: some View {
+        ContentUnavailableView {
+            Label(connection.account == nil ? "Connect GitHub" : "Turn on GitHub tools", systemImage: "arrow.triangle.branch")
+        } description: {
+            Text(connection.account == nil
+                 ? "Sign in or add an access token, then choose a repository to read and edit with your assistant. Credentials stay in this device's Keychain."
+                 : "GitHub is connected. Turn on GitHub tools to choose a repository for this chat.")
+        } actions: {
+            NavigationLink { settings } label: {
+                Text("Open GitHub settings").frame(minHeight: ODLayout.minimumHit).padding(.horizontal, 8)
+            }
+            .buttonStyle(.glassProminent).odInkProminent()
+            .accessibilityIdentifier("github.repo.settings")
+        }
+    }
+
+    private func repositories(account: GitHubAccount) -> some View {
+        let locked = workspace.draft?.changes.isEmpty == false || workspace.isRunning
+        return List {
+            ODSettingsSection(title: "GitHub account") {
+                NavigationLink { settings } label: {
+                    GitHubRow(title: account.login, subtitle: "Connected · GitHub settings", symbol: "person.crop.circle")
+                }
+                .buttonStyle(.plain).padding(.horizontal, ODLayout.settingsPageInset).padding(.vertical, 6)
+                .accessibilityIdentifier("github.repo.settings")
+            }
+            if let draft = workspace.draft {
+                ODSettingsSection(title: "Current repository",
+                                  footer: draft.changes.isEmpty ? nil : "\(draft.changes.count) staged \(draft.changes.count == 1 ? "file" : "files"). Review or discard the draft before switching repositories.") {
+                    GitHubRow(title: draft.selection.fullName, subtitle: draft.selection.branch, symbol: "arrow.triangle.branch")
+                        .padding(.horizontal, ODLayout.settingsPageInset).padding(.vertical, 6)
+                    if !workspace.isAvailable {
+                        GitHubRule()
+                        GitHubActionRow(title: "Use this repository with \(account.login)", symbol: "arrow.triangle.2.circlepath") {
+                            Task {
+                                let message = await workspace.reconnectRepository()
+                                if message.hasPrefix("Error:") { error = message }
+                            }
+                        }.disabled(workspace.isRunning).accessibilityIdentifier("github.repo.reconnect")
+                    }
+                    if !draft.changes.isEmpty {
+                        GitHubRule()
+                        GitHubActionRow(title: "Discard staged changes", symbol: "trash", role: .destructive) { discard = true }
+                            .accessibilityIdentifier("github.draft.discard")
+                    }
+                    GitHubRule()
+                    GitHubActionRow(title: "Remove repository from chat", symbol: "minus.circle") {
+                        do { try workspace.select(nil); dismiss() }
+                        catch { self.error = GitHubError.safeMessage(error) }
+                    }.disabled(!draft.changes.isEmpty || workspace.isRunning)
+                }
+            }
+            Section {
+                NavigationLink {
+                    GitHubRepositoryEntryView(workspace: workspace) { dismiss() }
+                } label: {
+                    GitHubRow(title: "Enter a repository", subtitle: "Owner and repository name", symbol: "link")
+                }
+                .disabled(locked).modifier(GitHubFlatRow()).accessibilityIdentifier("github.repo.enter")
+                ForEach(repositories.filter { search.isEmpty || $0.fullName.localizedCaseInsensitiveContains(search) }) { repository in
+                    NavigationLink {
+                        GitHubBranchPicker(workspace: workspace, repository: repository) { dismiss() }
+                    } label: {
+                        GitHubRow(title: repository.name,
+                                  subtitle: repository.owner.login + (repository.isPrivate ? " · Private" : ""),
+                                  symbol: repository.isPrivate ? "lock" : "folder")
+                    }
+                    .disabled(locked).modifier(GitHubFlatRow())
+                    .accessibilityIdentifier("github.repo.\(repository.fullName)")
+                }
+                Group {
+                    if loading {
+                        ProgressView("Loading repositories…").frame(maxWidth: .infinity, minHeight: 48)
+                    } else if hasMore {
+                        GitHubLoadMoreRow(title: repositories.isEmpty ? "Load repositories" : "Load more repositories") { Task { await load() } }
+                    } else if repositories.isEmpty {
+                        Text("No accessible repositories. Check the token's repository access in GitHub settings.")
+                            .font(.subheadline).foregroundStyle(ODPalette.secondary).padding(.vertical, 12)
+                    }
+                }.modifier(GitHubFlatRow())
+                // A row, not a section footer: plain-list footers float on a grey band.
+                Text("Selecting a repository enables file reads for this chat. Repository excerpts are sent to your selected chat model. Every write requires review.")
+                    .font(.footnote).foregroundStyle(ODPalette.secondary).padding(.top, ODLayout.elementGap)
+                    .modifier(GitHubFlatRow()).listRowSeparator(.hidden)
+            } header: { GitHubSectionHeader(title: "Repositories") }
+            if let error { GitHubErrorSection(message: error) }
+        }
+        .searchable(text: $search, prompt: "Find a repository")
     }
     private func load() async {
         guard connection.isEnabled, let account = connection.account, !loading else { return }
@@ -264,6 +302,7 @@ private struct GitHubRepositoryEntryView: View {
             Section {
                 TextField("owner/repository", text: $fullName)
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .frame(minHeight: ODLayout.minimumHit).modifier(GitHubFlatRow())
                     .accessibilityIdentifier("github.repo.name")
                 Button("Find repository") {
                     loading = true; error = nil; repository = nil
@@ -280,17 +319,22 @@ private struct GitHubRepositoryEntryView: View {
                         loading = false
                     }
                 }.disabled(loading || fullName.isEmpty || !workspace.connection.isEnabled)
-                if loading { ProgressView("Finding repository…") }
-            } footer: { Text("The connected account must have access. Enter a GitHub.com repository, then choose its branch.") }
+                    .frame(minHeight: ODLayout.minimumHit).modifier(GitHubFlatRow())
+                if loading { ProgressView("Finding repository…").modifier(GitHubFlatRow()) }
+                Text("The connected account must have access. Enter a GitHub.com repository, then choose its branch.")
+                    .font(.footnote).foregroundStyle(ODPalette.secondary).padding(.top, ODLayout.elementGap)
+                    .modifier(GitHubFlatRow()).listRowSeparator(.hidden)
+            }
             if let repository {
                 Section {
                     NavigationLink {
                         GitHubBranchPicker(workspace: workspace, repository: repository, onSelected: onSelected)
                     } label: { GitHubRow(title: repository.fullName, subtitle: "Choose a branch", symbol: "folder") }
+                        .modifier(GitHubFlatRow())
                 }
             }
-            if let error { Section { Text(error).font(.footnote).foregroundStyle(ODPalette.secondary) } }
-        }.navigationTitle("Add repository").navigationBarTitleDisplayMode(.inline).tint(ODPalette.text)
+            if let error { GitHubErrorSection(message: error) }
+        }.navigationTitle("Add repository").navigationBarTitleDisplayMode(.inline).modifier(GitHubPageStyle())
             .onDisappear { task?.cancel() }
     }
 }
@@ -323,15 +367,18 @@ private struct GitHubBranchPicker: View {
                                 Image(systemName: "checkmark").foregroundStyle(ODPalette.secondary)
                             }
                         }
-                    }.foregroundStyle(ODPalette.text).accessibilityIdentifier("github.branch.\(branch.name)")
+                    }.buttonStyle(.plain).foregroundStyle(ODPalette.text).modifier(GitHubFlatRow())
+                        .accessibilityIdentifier("github.branch.\(branch.name)")
                 }
-                if loading { ProgressView("Loading branches…") }
-                else if hasMore { Button("Load more branches") { Task { await load() } } }
-            } header: { Text(repository.fullName) }
-            if let error { Section { Text(error).font(.footnote).foregroundStyle(ODPalette.secondary) } }
+                Group {
+                    if loading { ProgressView("Loading branches…").frame(maxWidth: .infinity, minHeight: 48) }
+                    else if hasMore { GitHubLoadMoreRow(title: "Load more branches") { Task { await load() } } }
+                }.modifier(GitHubFlatRow())
+            } header: { GitHubSectionHeader(title: repository.fullName) }
+            if let error { GitHubErrorSection(message: error) }
         }
         .navigationTitle("Branch").navigationBarTitleDisplayMode(.inline)
-        .tint(ODPalette.text)
+        .modifier(GitHubPageStyle())
         .searchable(text: $search, prompt: "Find a branch")
         .task { await load() }
     }
@@ -538,6 +585,32 @@ private struct GitHubRow: View {
             }.fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
         }.frame(minHeight: 48).contentShape(Rectangle())
+    }
+}
+/// Flat list rows on the page background, as in Models, rather than a box per row.
+private struct GitHubFlatRow: ViewModifier {
+    func body(content: Content) -> some View {
+        content.listRowBackground(Color.clear).listRowSeparatorTint(ODPalette.line)
+            .listRowInsets(EdgeInsets(top: 4, leading: ODLayout.settingsPageInset, bottom: 4, trailing: ODLayout.settingsPageInset))
+    }
+}
+/// Matches `ODSettingsSection`'s header so flat lists and cards read as one page.
+private struct GitHubSectionHeader: View {
+    let title: String
+    var body: some View {
+        Text(title).font(.footnote.weight(.semibold)).tracking(1.1)
+            .foregroundStyle(ODPalette.secondary).textCase(nil)
+            .padding(.horizontal, ODLayout.settingsPageInset)
+    }
+}
+private struct GitHubLoadMoreRow: View {
+    let title: String
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: "arrow.down.circle").font(.subheadline)
+                .frame(maxWidth: .infinity, minHeight: ODLayout.minimumHit, alignment: .leading)
+        }.buttonStyle(.plain)
     }
 }
 private struct GitHubRule: View { var body: some View { Rectangle().fill(ODPalette.line).frame(height: 1).accessibilityHidden(true) } }

@@ -36,6 +36,35 @@ final class GitHubFlows: XCTestCase {
         XCTAssertEqual(composer(app).value as? String, "Keep my repository draft")
     }
 
+    @MainActor func testCodeTabRepositoryPickerOpensSettingsAndBranches() {
+        // The Code tab used to present the picker without a navigation stack,
+        // so "GitHub settings" and every repository row did nothing.
+        let app = launch("coding", extra: ["-coding-unselected", "-github-off"])
+        let choose = app.buttons["coding.connect"]
+        XCTAssertTrue(choose.waitForExistence(timeout: 10))
+        choose.tap()
+        let settings = app.buttons["github.repo.settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        capture("coding-repository-setup")
+        settings.tap()
+        let toggle = app.switches["github.tools.enabled"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.93, dy: 0.5)).tap()
+        XCTAssertEqual(toggle.value as? String, "1")
+        app.navigationBars["GitHub & tools"].buttons.element(boundBy: 0).tap()
+        let repository = app.buttons["github.repo.preview/project"]
+        reveal(repository, in: app)
+        capture("coding-repository-picker")
+        repository.tap()
+        XCTAssertTrue(app.buttons["github.branch.main"].waitForExistence(timeout: 5))
+        capture("coding-branch-picker")
+        app.buttons["github.branch.main"].tap()
+        XCTAssertFalse(app.buttons["coding.connect"].waitForExistence(timeout: 3))
+        app.buttons["coding.repository"].tap()
+        XCTAssertTrue(app.buttons["github.repo.settings"].waitForExistence(timeout: 5))
+        capture("coding-repository-selected")
+    }
+
     @MainActor func testReviewCancelRetainsDraftAndApprovalPublishesReviewedFiles() {
         let app = launch(extra: ["-github-enabled", "-github-selected"])
         XCTAssertTrue(app.buttons["chat.repositoryPicker"].waitForExistence(timeout: 10))

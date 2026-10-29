@@ -295,7 +295,9 @@ struct CodingWorkspaceView: View {
 
     @ViewBuilder private func sheetContent(_ destination: Sheet) -> some View {
         switch destination {
-        case .repository: GitHubRepositoryPicker(workspace: workspace)
+        // The picker navigates to branches and GitHub settings, so it needs a
+        // stack; presented bare, every row and the settings button were inert.
+        case .repository: navigationSheet("Repository") { GitHubRepositoryPicker(workspace: workspace) }
         case .files:
             navigationSheet("Files") { CodingFileBrowser(controller: controller, onOpen: { sheet = nil }) }
         case .outline:
