@@ -1,0 +1,4 @@
+• Under the hood: LFM3 models now run on a newer llama.cpp engine (b11960). It's needed for the upcoming LFM3-Omni model (video, audio and images). Nothing else changed.
+• Includes the PDF summary fix from build 87.
+
+Please compare with build 87, which you can still install from TestFlight: chat with LFM3, Lens with LFM3 VL, your other downloaded models, classifiers and voice. Report anything slower, different or broken.
