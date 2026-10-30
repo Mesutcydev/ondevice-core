@@ -1,0 +1,5 @@
+• Documents: when you ask LFM3 (or another small-context model) to summarize a PDF, it now reads excerpts from every page instead of only the first two. Before, it summarized just the cover and introduction and asked whether to read the rest.
+• Questions about a specific topic or page still use the best-matching pages.
+• Also includes the changes from builds 85 and 86.
+
+Please choose LFM3, attach a multi-page PDF (or pick it when the model asks for a file) and ask "Summarize this document". The summary should cover the whole document.
