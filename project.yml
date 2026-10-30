@@ -54,7 +54,7 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5.10"
-    MARKETING_VERSION: "2.1.2"
+    MARKETING_VERSION: "2.1.3"
     # Restored product owner's team. Release packaging can override this value
     # with its explicit TEAM_ID argument; forks must select their own team.
     DEVELOPMENT_TEAM: PUH4GMFV56
@@ -176,7 +176,7 @@ targets:
         # writes these into the generated Info.plist files on every run,
         # so hand-edits to those plists get reverted next regen — always
         # bump HERE first, then `xcodegen` to propagate.
-        CFBundleShortVersionString: "2.1.2"
+        CFBundleShortVersionString: "2.1.3"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         # Standard HTTPS only — answers the ASC export-compliance question
         # automatically so review submission doesn't stall on it.
@@ -220,7 +220,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLM/IOSLocalLLM.entitlements
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "86"
+        CURRENT_PROJECT_VERSION: "87"
         # Release uses public-distribution entitlements. PCC is optional and
         # requires Apple's managed grant; the App Store script can select the
         # PCC variant without overriding the share extension's entitlements.
@@ -493,7 +493,7 @@ targets:
         CFBundleDisplayName: Token AI
         # Must match the main target's version above — App Store rejects
         # extension targets with mismatched marketing versions.
-        CFBundleShortVersionString: "2.1.2"
+        CFBundleShortVersionString: "2.1.3"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         ITSAppUsesNonExemptEncryption: false
         NSExtension:
@@ -514,7 +514,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "86"
+        CURRENT_PROJECT_VERSION: "87"
         APPLICATION_EXTENSION_API_ONLY: YES
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_EMIT_LOC_STRINGS: YES
@@ -536,7 +536,7 @@ targets:
       path: DownloadActivityExtension/Info.plist
       properties:
         CFBundleDisplayName: Token AI Downloads
-        CFBundleShortVersionString: "2.1.2"
+        CFBundleShortVersionString: "2.1.3"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         ITSAppUsesNonExemptEncryption: false
         NSExtension:
@@ -549,7 +549,7 @@ targets:
         INFOPLIST_FILE: DownloadActivityExtension/Info.plist
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "86"
+        CURRENT_PROJECT_VERSION: "87"
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
         TARGETED_DEVICE_FAMILY: "1"
