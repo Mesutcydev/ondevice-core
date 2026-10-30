@@ -397,25 +397,18 @@ enum GGUFGenerationProfile: Equatable, Sendable {
 
     /// Prompt budget for message-level trimming. The bridge re-clamps with
     /// exact tokenizer counts, so this estimate only steers trimming.
-    func inputBudget(requestedOutputTokens: Int, retainingRecentSource: Bool = false) -> Int {
+    func inputBudget(requestedOutputTokens: Int) -> Int {
         switch self {
         case .compact:
             return Self.compactInputBudget
         case .standard:
-            // Adaptive split: the reply may grow up to the window minus the
-            // reserved prompt space, and the prompt keeps whatever remains.
-            var outputReserve = min(
-                max(1, requestedOutputTokens),
-                Self.standardContextTokens - Self.standardReservedInputTokens - 16
-            )
-            // MiniCPM bounds the reply with its exact tokenizer after prefill.
-            // Reserving a long requested reply here used to discard preceding
-            // code even when the code and a brief follow-up fit the context.
-            // Keep at least half the existing window for source material;
-            // this does not lower the user's requested output limit.
-            if retainingRecentSource {
-                outputReserve = min(outputReserve, Self.standardContextTokens / 2)
-            }
+            // Reserve at most half the window for the reply, as the bridge
+            // does (`LlamaCppBridge` trims prompts to context - min(maxTokens,
+            // context / 2)). Reserving a 3072-token reply here left ~1000
+            // prompt tokens, so a PDF summary saw ~250 tokens of the file
+            // while CodeLens, with the same model, saw ~2000. A short prompt
+            // still lets the bridge give the reply the rest of the window.
+            let outputReserve = min(max(1, requestedOutputTokens), Self.standardContextTokens / 2)
             return max(256, Self.standardContextTokens - outputReserve - 16)
         }
     }
@@ -724,10 +717,7 @@ final class CodingAssistantService: ObservableObject {
             return min(safe, activeModel.contextWindowTokens)
         }
         if isLlamaCppExecution {
-            return ggufProfile.inputBudget(
-                requestedOutputTokens: effectiveGenerationSettings.maxTokens,
-                retainingRecentSource: usesMiniCPMStreamingText || MiniCPMV47Catalog.is35B(activeModel.repoID)
-            )
+            return ggufProfile.inputBudget(requestedOutputTokens: effectiveGenerationSettings.maxTokens)
         }
         let executionProfile = activeExecutionProfile
         let deviceContextCap = (DeviceTierAdvisor.current == .max) ? 16_384 : 8_192
@@ -2812,8 +2802,7 @@ final class CodingAssistantService: ObservableObject {
             : effectiveMessages
         let deviceContextCap = (DeviceTierAdvisor.current == .max) ? 16_384 : 8_192
         let inputBudget = isImportedGGUF
-            ? ggufProfile.inputBudget(requestedOutputTokens: safeMaxTokens,
-                                      retainingRecentSource: usesMiniCPMStreamingText)
+            ? ggufProfile.inputBudget(requestedOutputTokens: safeMaxTokens)
             : executionProfile.inputBudget(
                 modelContextWindowTokens: activeModel.contextWindowTokens,
                 deviceContextCap: deviceContextCap,

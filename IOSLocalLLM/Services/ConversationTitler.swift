@@ -31,6 +31,14 @@ enum ConversationTitler {
             conv.title.hasPrefix(String(firstUserMessage.prefix(40)))
         guard needsTitle else { return }
 
+        // A short request already is its title. Asked to title "Summarize",
+        // LFM3 echoed the instruction ("summarize the user request in").
+        if firstUserMessage.split(whereSeparator: \.isWhitespace).count <= 5 {
+            let title = cleanTitle(firstUserMessage)
+            if !title.isEmpty { store.setTitle(title, for: conversationID) }
+            return
+        }
+
         // Must have a ready model. Skip silently otherwise so chat keeps
         // working even when the user is offline / model unloaded.
         guard case .ready = assistant.state else { return }

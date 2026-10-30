@@ -27,8 +27,9 @@ final class PageAwarePDFTests: XCTestCase {
         let result = FileAttachmentService.selectedPDFPageText(
             pages, query: "Summarize document for me", byteBudget: 4_096
         )
-        XCTAssertTrue(result.contains("Page 1: Bölüm 1"))
-        XCTAssertTrue(result.contains("Page 20: Bölüm 20"))
+        XCTAssertTrue(result.hasPrefix("Bölüm 1 "))
+        XCTAssertTrue(result.contains("Bölüm 20 "))
+        XCTAssertFalse(result.contains("Page "))
         XCTAssertFalse(result.contains("[…truncated…]"))
         XCTAssertLessThanOrEqual(result.utf8.count, 4_096)
     }

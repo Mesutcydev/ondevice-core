@@ -28,14 +28,14 @@ final class MiniCPMConversationContextTests: XCTestCase {
     func test_longReplyReservationNoLongerErasesThePageOnBriefFollowups() {
         let messages = transcript()
         let profile = GGUFGenerationProfile.standard
-        let previousBudget = profile.inputBudget(requestedOutputTokens: 3_072)
+        // The old GGUF budget reserved the whole 3072-token reply.
+        let previousBudget = 1_008
         let previous = ConversationContextCompactor.prepare(
             messages: messages, existingMemory: nil, maxTokens: previousBudget)
         XCTAssertTrue(previous.didCompact)
         XCTAssertFalse(previous.messages.contains { $0.content == messages[2].content })
 
-        let budget = profile.inputBudget(requestedOutputTokens: 3_072,
-                                         retainingRecentSource: true)
+        let budget = profile.inputBudget(requestedOutputTokens: 3_072)
         let prepared = ConversationContextCompactor.prepare(
             messages: messages, existingMemory: nil, maxTokens: budget,
             retainingRecentSource: true)
