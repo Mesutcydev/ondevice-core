@@ -296,7 +296,7 @@ enum LegalDocuments {
             licenseURL: "https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF/blob/b3f2ae5d73cd3c91bf40e8ba752c648aa05dffdf/LICENSE",
             sourceURL: "https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF",
             paperURL: nil,
-            note: "Optional experimental text and image models. The license includes a commercial-use revenue threshold; use is subject to Liquid AI's terms.",
+            note: "Optional experimental text, image and omni (LFM3-Omni-2B) models. The license includes a commercial-use revenue threshold; use is subject to Liquid AI's terms.",
             category: "Language Model"
         ),
         Attribution(

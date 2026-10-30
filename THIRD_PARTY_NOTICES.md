@@ -136,10 +136,15 @@ b11558 runtime. Its build recipe verifies the upstream source and release
 archive checksums. Existing model, Lens, and classifier behavior must be
 revalidated before this experimental runtime becomes the default.
 
+LFM3-Omni builds use llama.cpp **b11960**, commit
+`8642541b255bfb5dc39cd351a178be09013a55d6` (MIT;
+[license](LICENSES/Llama-b11960-MIT.txt)), prepared the same way beside b11938.
+
 | Optional LFM3 download | Pinned revision | Model license |
 | --- | --- | --- |
 | [LFM3 1.7B GGUF](https://huggingface.co/LiquidAI/LFM3-1.7B-GGUF) | `b3f2ae5d73cd3c91bf40e8ba752c648aa05dffdf` | [LFM Open License v1.0](LICENSES/Models/LiquidAI--LFM3-1.7B-GGUF/LICENSE) |
 | [LFM3 VL 2B GGUF](https://huggingface.co/LiquidAI/LFM3-VL-2B-GGUF) | `7c3b4a43c9023e80bf234fec5e826a3365c8dda8` | [LFM Open License v1.0](LICENSES/Models/LiquidAI--LFM3-VL-2B-GGUF/LICENSE) |
+| [LFM3 Omni 2B GGUF](https://huggingface.co/LiquidAI/LFM3-Omni-2B-GGUF) | `3d29af2ad166f8299c2d820937e47dc0add20ffc` | [LFM Open License v1.0](LICENSES/Models/LiquidAI--LFM3-Omni-2B-GGUF/LICENSE) |
 
 These downloads include the publisher's license and model card. The license
 permits redistribution subject to its conditions and limits the commercial

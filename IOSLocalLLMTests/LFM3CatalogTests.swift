@@ -13,9 +13,12 @@ final class LFM3CatalogTests: XCTestCase {
                        ["LFM3-1.7B-QAD-Q4_0.gguf", "README.md", "LICENSE"])
         XCTAssertEqual(LFM3Catalog.vision.fileAllowlist,
                        ["LFM3-VL-2B-QAD-Q4_0.gguf", "mmproj-LFM3-VL-2B-Q8_0.gguf", "README.md", "LICENSE"])
+        XCTAssertEqual(LFM3Catalog.omni.fileAllowlist,
+                       ["LFM3-Omni-2B-Q4_0.gguf", "mmproj-LFM3-Omni-2B-Q8_0.gguf", "README.md", "LICENSE"])
         XCTAssertEqual(LFM3Catalog.text.downloadBytes, 1_049_615_680)
         XCTAssertEqual(LFM3Catalog.vision.downloadBytes, 1_252_647_520)
-        for model in [LFM3Catalog.text, LFM3Catalog.vision] {
+        XCTAssertEqual(LFM3Catalog.omni.downloadBytes, 1_556_460_448)
+        for model in [LFM3Catalog.text, LFM3Catalog.vision, LFM3Catalog.omni] {
             XCTAssertEqual(model.revision.count, 40)
             XCTAssertTrue(model.revision.allSatisfy(\.isHexDigit))
         }
@@ -29,7 +32,22 @@ final class LFM3CatalogTests: XCTestCase {
         XCTAssertEqual(existing.components(separatedBy: marker).count, 2)
         XCTAssertTrue(LFM3Catalog.visionPrompt("  ", marker: marker).contains("user\n<__media__><|im_end|>"))
         XCTAssertTrue(LFM3Catalog.isVision(LFM3Catalog.vision.modelFilename))
+        XCTAssertTrue(LFM3Catalog.isVision(LFM3Catalog.omni.modelFilename))
+        XCTAssertTrue(LFM3Catalog.isVision(LFM3Catalog.omni.repoID))
         XCTAssertFalse(LFM3Catalog.isVision(LFM3Catalog.text.modelFilename))
+    }
+
+    func test_omniIsBlockedUnlessTheRuntimeHasItsVideoAPI() {
+        XCTAssertTrue(LFM3Catalog.isOmni(LFM3Catalog.omni.repoID))
+        XCTAssertTrue(LFM3Catalog.isOmni(LFM3Catalog.omni.modelFilename))
+        XCTAssertFalse(LFM3Catalog.isOmni(LFM3Catalog.vision.repoID))
+        XCTAssertFalse(LFM3Catalog.isOmni(LFM3Catalog.text.repoID))
+        let blocked = !LFM3Catalog.isEnabled || !LFM3Catalog.omniRuntimeAvailable
+        XCTAssertEqual(LFM3Catalog.unavailableReason(for: LFM3Catalog.omni.repoID) != nil, blocked)
+        // The other LFM3 models never depend on the Omni runtime.
+        XCTAssertEqual(LFM3Catalog.unavailableReason(for: LFM3Catalog.vision.repoID) != nil, !LFM3Catalog.isEnabled)
+        let profile = LlamaCppVLMExecutionProfile.resolve(repoID: LFM3Catalog.omni.repoID)
+        XCTAssertEqual(profile, LlamaCppVLMExecutionProfile.resolve(repoID: LFM3Catalog.vision.repoID))
     }
 
     func test_textTemplateFollowsLiquidThinkingAndHistoryRules() {
@@ -68,8 +86,17 @@ final class LFM3CatalogTests: XCTestCase {
     func test_catalogIsVisibleOnlyInTheExperimentalBuild() {
         let text = ModelDownloadCenter.shared.models.first { $0.sourceRepoID == LFM3Catalog.text.repoID }
         let vision = ModelDownloadCenter.shared.models.first { $0.sourceRepoID == LFM3Catalog.vision.repoID }
+        let omni = ModelDownloadCenter.shared.models.first { $0.sourceRepoID == LFM3Catalog.omni.repoID }
         XCTAssertEqual(text != nil, LFM3Catalog.isEnabled)
         XCTAssertEqual(vision != nil, LFM3Catalog.isEnabled)
+        XCTAssertEqual(omni != nil, LFM3Catalog.isEnabled && LFM3Catalog.omniRuntimeAvailable)
+        if let omni {
+            XCTAssertEqual(omni.downloader?.branch, LFM3Catalog.omni.revision)
+            XCTAssertEqual(omni.downloader?.fileAllowlist, LFM3Catalog.omni.fileAllowlist)
+            XCTAssertTrue(omni.supportsCategory(.assistant))
+            XCTAssertTrue(omni.supportsCategory(.vlm))
+            XCTAssertFalse(omni.capabilities.contains(.thinking))
+        }
         if !LFM3Catalog.isEnabled {
             XCTAssertNil(AssistantModelCatalog.selection(forStoredID: "lfm3-1.7b-qad"))
             XCTAssertNil(AssistantModelCatalog.selection(forStoredID: "downloaded:LiquidAI/LFM3-VL-2B-GGUF"))

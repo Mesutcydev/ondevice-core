@@ -21,8 +21,11 @@ their whitespace exactly. As in Liquid's parser, a reply may answer before its
 call; the call runs only when calls end the reply outside Markdown code, and
 the answer text stays visible. Without a saved per-model profile, LFM3 chat
 samples with the model card's values (temperature 0.1, top-k 50, repeat
-penalty 1.1). LFM3 audio, omni, video, and d1 models are not implemented by
-this integration.
+penalty 1.1). LFM3-Omni-2B (Q4_0 with the Q8_0 projector) is offered only
+when the linked runtime is b11960 or newer, detected by its
+`mtmd_get_video_config` export; it answers about images through the LFM3 VL
+path for now. Omni audio and video, LFM3 audio, and d1 models are not
+implemented yet; see `Docs/LFM3_OMNI_PLAN.md`.
 
 ## Experimental build
 

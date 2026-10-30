@@ -66,7 +66,8 @@ final class DownloadableModel: ObservableObject, Identifiable {
         var roles: Set<Category> = [category]
         guard category == .assistant || category == .vlm else { return roles }
         if MiniCPMV47Catalog.downloadableModels.contains(where: { $0.repoID == sourceRepoID })
-            || sourceRepoID.caseInsensitiveCompare(LFM3Catalog.vision.repoID) == .orderedSame {
+            || sourceRepoID.caseInsensitiveCompare(LFM3Catalog.vision.repoID) == .orderedSame
+            || sourceRepoID.caseInsensitiveCompare(LFM3Catalog.omni.repoID) == .orderedSame {
             roles.formUnion([.assistant, .vlm])
         }
         if capabilities.contains(.vision)
@@ -1059,6 +1060,21 @@ final class ModelDownloadCenter: ObservableObject {
                 runtime: .llamaCpp,
                 revision: LFM3Catalog.vision.revision
             ))
+            if LFM3Catalog.omniRuntimeAvailable {
+                // No .thinking: Omni's template defaults thinking off and the
+                // model card does not support enabling it.
+                curatedVLMs.append(CuratedVLM(
+                    repoID: LFM3Catalog.omni.repoID,
+                    displayName: "LFM3 Omni 2B (4-bit)",
+                    sizeLabel: "~1.56 GB",
+                    approxRAMBytes: 3_000_000_000,
+                    capabilities: [.newRelease],
+                    longDescription: "Liquid AI's model for text, images, audio and video. This version answers about images; audio and video arrive in later updates. Downloads the 4-bit model and its matching projector. LFM Open License v1.0 applies, including a commercial revenue threshold.",
+                    fileAllowlist: LFM3Catalog.omni.fileAllowlist,
+                    runtime: .llamaCpp,
+                    revision: LFM3Catalog.omni.revision
+                ))
+            }
         }
         // Gemma 4 12B (4-bit) — Google's unified encoder-free multimodal
         // model. Loads via the `gemma4` type registered in mlx-swift-lm 3.x

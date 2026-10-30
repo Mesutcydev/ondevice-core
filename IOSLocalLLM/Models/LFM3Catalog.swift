@@ -45,18 +45,47 @@ enum LFM3Catalog {
         projectorBytes: 203_031_872
     )
 
+    /// Text, image, audio and video in one download. The projector also holds
+    /// the audio encoder; image prompts use the same markup as LFM3 VL.
+    static let omni = Model(
+        repoID: "LiquidAI/LFM3-Omni-2B-GGUF",
+        revision: "3d29af2ad166f8299c2d820937e47dc0add20ffc",
+        modelFilename: "LFM3-Omni-2B-Q4_0.gguf",
+        modelBytes: 1_049_617_920,
+        projectorFilename: "mmproj-LFM3-Omni-2B-Q8_0.gguf",
+        projectorBytes: 506_842_528
+    )
+
+    /// Omni needs llama.cpp b11960 (`build/LFM3OmniNative`). A build switched
+    /// back to b11938 must neither offer nor load it, so ask the linked
+    /// runtime for the video API that arrived with Omni support.
+    static let omniRuntimeAvailable =
+        dlsym(UnsafeMutableRawPointer(bitPattern: -2), "mtmd_get_video_config") != nil  // RTLD_DEFAULT
+
+    private static func squashed(_ identity: String) -> String {
+        identity.lowercased().filter { $0.isASCII && ($0.isLetter || $0.isNumber) }
+    }
+
     static func isFamily(_ identity: String) -> Bool {
-        identity.lowercased().filter { $0.isASCII && ($0.isLetter || $0.isNumber) }.contains("lfm3")
+        squashed(identity).contains("lfm3")
+    }
+
+    static func isOmni(_ identity: String) -> Bool {
+        squashed(identity).contains("lfm3omni")
     }
 
     static func unavailableReason(for identity: String) -> String? {
+        if isEnabled, isOmni(identity), !omniRuntimeAvailable {
+            return "LFM3-Omni needs the llama.cpp b11960 runtime; this build uses an earlier one."
+        }
         guard !isEnabled, isFamily(identity) else { return nil }
         return "LFM3 needs the experimental LFM3 runtime; this build uses the existing llama.cpp runtime."
     }
 
+    /// LFM3 models that take images through mtmd with Liquid's vision markup.
     static func isVision(_ identity: String) -> Bool {
-        identity.lowercased().filter { $0.isASCII && ($0.isLetter || $0.isNumber) }
-            .contains("lfm3vl2b")
+        let id = squashed(identity)
+        return id.contains("lfm3vl2b") || id.contains("lfm3omni2b")
     }
 
     /// mtmd expands the marker to Liquid's vision-start/image/vision-end

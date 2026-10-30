@@ -11,6 +11,12 @@ Restore point: git tag `backup/pre-omni-2026-10-31` (2.1.3 (87), runtime b11938)
 3. The b11938 runtime stays in `build/LFM3Native`. b11960 lives in `build/LFM3OmniNative`. Rolling back means building with the old folder again.
 4. Each phase ships as its own TestFlight build with its own notes.
 
+## Status
+
+- Phase 0: restore point and backup done; baseline checklist below.
+- Phase 1: shipped to TestFlight as 2.1.3 (88), the same app as 87 built against b11960 (branch `lfm3-omni`). Device comparison with 87 pending.
+- Phase 2: on branch `lfm3-omni`, not shipped. `LFM3Catalog.omni` (Q4_0 + Q8_0 projector, revision `3d29af2a`) uses the LFM3 VL image path: same markup, same non-thinking prefix, same 4K exclusive Lens profile. It is offered and loadable only when the runtime exports `mtmd_get_video_config` (b11960), so a build switched back to b11938 hides and refuses it.
+
 ## Phases
 
 | Phase | Change | Gate |
