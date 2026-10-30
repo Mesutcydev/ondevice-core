@@ -4,8 +4,10 @@ set -euo pipefail
 minicpm_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [[ "${1:-}" == "--lfm3-experimental" && $# -eq 1 ]]; then
     set -- -Xswiftc -DLFM3_EXPERIMENTAL
+elif [[ "${1:-}" == "--lfm3-omni" && $# -eq 1 ]]; then
+    set -- -Xswiftc -DLFM3_EXPERIMENTAL -Xswiftc -DLFM3_OMNI
 elif [[ $# -ne 0 ]]; then
-    echo "usage: $0 [--lfm3-experimental]" >&2
+    echo "usage: $0 [--lfm3-experimental | --lfm3-omni]" >&2
     exit 64
 else
     set --
@@ -39,12 +41,14 @@ sed -n '/^struct LlamaCppVLMExecutionProfile: Equatable, Sendable {/,/^}/p' \
     > "$minicpm_work/Sources/IOSLocalLLM/LlamaCppVLMExecutionProfile.swift"
 cp "$minicpm_root/IOSLocalLLMTests/MiniCPMV47CatalogTests.swift" "$minicpm_work/Tests/MiniCPMTests/"
 cp "$minicpm_root/IOSLocalLLMTests/LFM3CatalogTests.swift" "$minicpm_work/Tests/MiniCPMTests/"
+cp "$minicpm_root/IOSLocalLLM/Services/LlamaCpp/OmniVideoInput.swift" "$minicpm_work/Sources/IOSLocalLLM/"
+cp "$minicpm_root/IOSLocalLLMTests/OmniVideoLayoutTests.swift" "$minicpm_work/Tests/MiniCPMTests/"
 cp "$minicpm_root/IOSLocalLLMTests/MiniCPMV47ArtifactTests.swift" "$minicpm_work/Tests/MiniCPMTests/"
 cp "$minicpm_root/IOSLocalLLMTests/MiniCPM35BTextProfileTests.swift" "$minicpm_work/Tests/MiniCPMTests/"
 cat > "$minicpm_work/Package.swift" <<'SWIFT'
 // swift-tools-version: 5.10
 import PackageDescription
-let package = Package(name: "MiniCPMChecks", platforms: [.macOS(.v14)], targets: [
+let package = Package(name: "MiniCPMChecks", platforms: [.macOS("27.0")], targets: [
     .target(name: "IOSLocalLLM"),
     .testTarget(name: "MiniCPMTests", dependencies: ["IOSLocalLLM"])
 ])

@@ -831,24 +831,38 @@ final class LlamaCppVLM: @unchecked Sendable {
         }
 
         // 3. Tokenize text + bitmap into a chunks list.
-        let chunks = mtmd_input_chunks_init()
+        let chunks = try tokenizeMultimodal(mc, prompt: fullPrompt, bitmaps: [mb])
         defer { mtmd_input_chunks_free(chunks) }
+        try evalAndGenerate(chunks: chunks, mc: mc, c: c, samp: samp, m: m, maxTokens: maxTokens,
+                            onToken: onToken, onComplete: onComplete)
+    }
 
-        let tokenizeStatus: Int32 = fullPrompt.withCString { cstr -> Int32 in
+    /// Text plus media into a chunk list the caller frees.
+    private func tokenizeMultimodal(_ mc: OpaquePointer, prompt: String, bitmaps: [OpaquePointer?]) throws -> OpaquePointer? {
+        let chunks = mtmd_input_chunks_init()
+        let tokenizeStatus: Int32 = prompt.withCString { cstr -> Int32 in
             var inputText = mtmd_input_text()
             inputText.text = cstr
             inputText.text_len = strlen(cstr)
             inputText.add_special = true
             inputText.parse_special = true
-            var bitmaps: [OpaquePointer?] = [mb]
-            return bitmaps.withUnsafeMutableBufferPointer { bp -> Int32 in
-                mtmd_tokenize(mc, chunks, &inputText, bp.baseAddress, 1)
+            var media = bitmaps
+            return media.withUnsafeMutableBufferPointer { bp -> Int32 in
+                mtmd_tokenize(mc, chunks, &inputText, bp.baseAddress, bp.count)
             }
         }
         guard tokenizeStatus == 0 else {
+            mtmd_input_chunks_free(chunks)
             throw LlamaCppError.tokenizeFailed(tokenizeStatus)
         }
+        return chunks
+    }
 
+    private func evalAndGenerate(
+        chunks: OpaquePointer?, mc: OpaquePointer, c: OpaquePointer, samp: UnsafeMutablePointer<llama_sampler>,
+        m: OpaquePointer, maxTokens: Int,
+        onToken: @escaping (String) -> Void, onComplete: @escaping (Double) -> Void
+    ) throws {
         // 4. Eval the chunks. mtmd-helper handles the text+image
         //    interleave + non-causal attention setup for image
         //    chunks. n_past starts at 0 (fresh KV cache).
@@ -947,6 +961,56 @@ final class LlamaCppVLM: @unchecked Sendable {
 
         onComplete(Self.tokensPerSec(tokens: tokensGenerated, start: startTime))
     }
+
+    // MARK: - LFM3-Omni video
+    // b11960-only API: normal (b11558) and rolled-back (b11938) builds do not
+    // have these headers, so the code exists only in LFM3_OMNI builds.
+    #if LFM3_OMNI
+
+    /// The audio encoder's sample rate, or 0 without one.
+    var audioSampleRate: Int {
+        mtmdCtx.map { max(0, Int(mtmd_get_audio_sample_rate($0))) } ?? 0
+    }
+
+    /// mtmd's frame count and size for this video. Nil unless the projector
+    /// takes LFM3 video and hears the soundtrack (LFM3-Omni).
+    func omniVideoConfig(width: Int, height: Int, sourceFrames: Int, fps: Double) -> (frames: Int, width: Int, height: Int)? {
+        guard let mc = mtmdCtx else { return nil }
+        let config = mtmd_get_video_config(mc, Int32(width), Int32(height), Int32(sourceFrames), Float(fps))
+        guard config.tmpl == MTMD_VIDEO_TEMPLATE_LFM3_OMNI, config.n_frames > 0 else { return nil }
+        return (Int(config.n_frames), Int(config.frame_width), Int(config.frame_height))
+    }
+
+    /// Answers about a decoded clip. Throws `promptTooLong` with the exact
+    /// token count when the clip does not fit beside `maxTokens`.
+    func describeVideo(
+        clip: OmniVideoClip, prompt: String, maxTokens: Int,
+        onToken: @escaping (String) -> Void, onComplete: @escaping (Double) -> Void
+    ) throws {
+        guard let mc = mtmdCtx, let c = ctx, let samp = sampler, let m = model else {
+            throw LlamaCppError.contextInitFailed
+        }
+        cancelFlag.withLock { $0 = false }
+        llama_memory_clear(llama_get_memory(c), false)
+        invalidateTokenCache()
+
+        let feed = OmniVideoFeed(clip)
+        guard let video = feed.makeBitmap(mc) else { throw LlamaCppError.bitmapInitFailed }
+        defer { mtmd_bitmap_free(video) }
+
+        let marker = String(cString: mtmd_get_marker(mc))
+        let chunks = try withExtendedLifetime(feed) {
+            try tokenizeMultimodal(mc, prompt: LFM3Catalog.visionPrompt(prompt, marker: marker), bitmaps: [video])
+        }
+        defer { mtmd_input_chunks_free(chunks) }
+        let promptTokens = mtmd_helper_get_n_tokens(chunks)
+        guard promptTokens + maxTokens + 1 <= Int(configuredContextSize) else {
+            throw LlamaCppError.promptTooLong(promptTokens)
+        }
+        try evalAndGenerate(chunks: chunks, mc: mc, c: c, samp: samp, m: m, maxTokens: maxTokens,
+                            onToken: onToken, onComplete: onComplete)
+    }
+    #endif
 
     // MARK: - Helpers
 

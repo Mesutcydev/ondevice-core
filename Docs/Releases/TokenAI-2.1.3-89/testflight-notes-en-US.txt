@@ -1,0 +1,4 @@
+• New optional model: LFM3 Omni 2B (about 1.56 GB, under Models → visual models). In this build it answers about photos, like LFM3 VL. Video and audio come in the next builds.
+• LFM3 VL and your other models are unchanged.
+
+Please download LFM3 Omni 2B, choose it as the visual model, and ask about a photo in chat and in Lens. Then switch to another model and check that it still works.

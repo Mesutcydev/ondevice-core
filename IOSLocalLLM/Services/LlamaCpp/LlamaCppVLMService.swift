@@ -15,6 +15,18 @@ struct LlamaCppVLMExecutionProfile: Equatable, Sendable {
 
     static func resolve(repoID: String) -> Self {
         let id = repoID.lowercased()
+        if LFM3Catalog.isOmni(repoID) {
+            // Video frames plus their soundtrack need far more than one
+            // image's tokens (Omni allows 32K). LFM3 is a hybrid with few
+            // attention layers, so a 16K KV cache stays small.
+            // ponytail: fixed 16K; size it from measured device headroom if
+            // phones with less memory refuse to load.
+            return .init(
+                contextSize: 16_384,
+                maxOutputTokens: 512,
+                requiresSingleResidency: true
+            )
+        }
         if id == MiniCPMV47Catalog.oneB.repoID.lowercased() || MiniCPMV47Catalog.is35B(repoID)
             || LFM3Catalog.isVision(repoID) {
             // The 16x projector can expand a sliced image beyond 1K tokens.
@@ -586,6 +598,102 @@ final class LlamaCppVLMService: ObservableObject {
             }
         }
     }
+
+    #if LFM3_OMNI
+    /// LFM3-Omni video question: decode the clip, then answer from its frames
+    /// and soundtrack. A clip that does not fit the context is retried with
+    /// proportionally fewer frames, down to the model's minimum of 4.
+    func describeVideo(
+        url: URL,
+        prompt: String,
+        maxTokens: Int = 512,
+        onPrepared: @Sendable @escaping (_ seconds: Double, _ frames: Int, _ heard: Bool) -> Void = { _, _, _ in },
+        onToken: @Sendable @escaping (String) -> Void,
+        onComplete: @Sendable @escaping (Double) -> Void
+    ) {
+        guard case .ready = state, let repoID = activeRepoID, LFM3Catalog.isOmni(repoID),
+              let model = vlm?.standard else {
+            onComplete(0)
+            return
+        }
+        if DeviceSafetyMonitor.shared.shouldStopHeavyWork
+            || UIApplication.shared.applicationState != .active {
+            onComplete(0)
+            return
+        }
+        let profile = LlamaCppVLMExecutionProfile.resolve(repoID: repoID)
+        let tokenCap = min(maxTokens, profile.maxOutputTokens, DeviceSafetyMonitor.shared.recommendedMaxTokens)
+        state = .generating
+        let startedAt = Date()
+        ModelResidency.shared.cancelPrefetch()
+        inferenceTask?.cancel()
+        let completionGuard = CompletionGuard(onComplete)
+        inferenceTask = Task.detached(priority: .userInitiated) { [weak self] in
+            do {
+                let probe = try await OmniVideoClip.probe(url)
+                let notVideo = LlamaCppError.unsupportedModel("This model cannot take video.")
+                guard let recommended = model.omniVideoConfig(width: probe.width, height: probe.height,
+                                                              sourceFrames: probe.sourceFrames, fps: probe.fps)
+                else { throw notVideo }
+                // ponytail: start at 64 frames (32 s at 2 fps); raise once
+                // device memory for longer clips has been measured.
+                var frames = min(recommended.frames, 64)
+                while true {
+                    // The frame size depends on the count; ask for the size
+                    // of a source that mtmd would sample to `frames`.
+                    let sized = frames == recommended.frames ? recommended
+                        : model.omniVideoConfig(width: probe.width, height: probe.height,
+                                                sourceFrames: Int((Double(frames) / 2 * probe.fps).rounded(.up)),
+                                                fps: probe.fps)
+                    guard let sized else { throw notVideo }
+                    let clip = try await OmniVideoClip.load(url, probe: probe, frameCount: frames,
+                                                            width: sized.width, height: sized.height,
+                                                            sampleRate: model.audioSampleRate)
+                    do {
+                        onPrepared(probe.duration, frames, clip.hasSoundtrack)
+                        try model.describeVideo(clip: clip, prompt: prompt, maxTokens: tokenCap,
+                                                onToken: onToken, onComplete: { rate in
+                            Task { @MainActor in
+                                self?.lastTokensPerSecond = rate
+                                self?.lastInferenceMillis = Date().timeIntervalSince(startedAt) * 1000
+                                self?.inferenceTask = nil
+                                if case .generating = self?.state { self?.state = .ready }
+                                Diagnostics.shared.breadcrumb(
+                                    "Omni video · \(frames) frames · audio \(clip.hasSoundtrack) · \(Int(probe.duration)) s",
+                                    category: "lens"
+                                )
+                            }
+                            completionGuard.fire(rate)
+                        })
+                        return
+                    } catch LlamaCppError.promptTooLong(let tokens) where frames > 4 {
+                        let room = Int(profile.contextSize) - tokenCap - 1
+                        frames = max(4, Int(Double(frames) * Double(room) / Double(tokens) * 0.9) / 2 * 2)
+                    }
+                }
+            } catch is CancellationError {
+                Task { @MainActor in
+                    self?.inferenceTask = nil
+                    if case .generating = self?.state { self?.state = .ready }
+                }
+                completionGuard.fire(0)
+            } catch let llamaErr as LlamaCppError where llamaErr == LlamaCppError.cancelled {
+                Task { @MainActor in
+                    self?.inferenceTask = nil
+                    if case .generating = self?.state { self?.state = .ready }
+                }
+                completionGuard.fire(0)
+            } catch {
+                Task { @MainActor in
+                    self?.inferenceTask = nil
+                    if case .generating = self?.state { self?.state = .ready }
+                    ToastCenter.shared.error("Couldn't watch the video", detail: error.localizedDescription)
+                }
+                completionGuard.fire(0)
+            }
+        }
+    }
+    #endif
 }
 
 // MARK: - CompletionGuard

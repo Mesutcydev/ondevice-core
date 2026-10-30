@@ -96,6 +96,9 @@ settings:
     ONDEVICE_LLAMA_FRAMEWORK_DIR: "$(SRCROOT)/build/ClassifierNative"
     ONDEVICE_LLAMA_SOURCE: "$(SRCROOT)/build/ClassifierNative/cache/llama.cpp-c83f3058b6f876f2f7e6ccbada858b2446860c85"
     ONDEVICE_LFM3_SWIFT_FLAG: ""
+    # LFM3_OMNI compiles the b11960-only LFM3-Omni code; only valid with
+    # the build/LFM3OmniNative runtime (checked by the pre-build script).
+    ONDEVICE_LFM3_OMNI_SWIFT_FLAG: ""
   configs:
     Release:
       SWIFT_OPTIMIZATION_LEVEL: "-O"
@@ -227,12 +230,12 @@ targets:
         ONDEVICE_DISTRIBUTION_ENTITLEMENTS: IOSLocalLLM/IOSLocalLLM-AppStore.entitlements
         ONDEVICE_MODEL_POLICY: APP_STORE
         ONDEVICE_RESEARCH_BUILD: NO
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) $(ONDEVICE_LFM3_SWIFT_FLAG)"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) $(ONDEVICE_LFM3_SWIFT_FLAG) $(ONDEVICE_LFM3_OMNI_SWIFT_FLAG)"
         # PCC symbols exist only in the iOS 27 SDK. Enable the implementation
         # and its capability automatically for iOS 27 device/simulator builds;
         # Xcode 26 and iOS 18–26 builds keep the existing local-only binary.
-        "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.*]": "$(inherited) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG)"
-        "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.*]": "$(inherited) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG)"
+        "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.*]": "$(inherited) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG) $(ONDEVICE_LFM3_OMNI_SWIFT_FLAG)"
+        "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.*]": "$(inherited) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG) $(ONDEVICE_LFM3_OMNI_SWIFT_FLAG)"
         "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos27.*]": IOSLocalLLM/IOSLocalLLM-PCC.entitlements
         # iOS stays iPhone-only (family 1) so the iPhone app is unchanged.
         # Mac Catalyst is built against the macosx SDK and *requires* the
@@ -286,9 +289,9 @@ targets:
           - "$(SRCROOT)/ThirdParty/whisper.cpp/include"
       configs:
         Release:
-          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) $(ONDEVICE_MODEL_POLICY) $(ONDEVICE_LFM3_SWIFT_FLAG)"
-          "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.*]": "$(inherited) $(ONDEVICE_MODEL_POLICY) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG)"
-          "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.*]": "$(inherited) $(ONDEVICE_MODEL_POLICY) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG)"
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) $(ONDEVICE_MODEL_POLICY) $(ONDEVICE_LFM3_SWIFT_FLAG) $(ONDEVICE_LFM3_OMNI_SWIFT_FLAG)"
+          "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.*]": "$(inherited) $(ONDEVICE_MODEL_POLICY) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG) $(ONDEVICE_LFM3_OMNI_SWIFT_FLAG)"
+          "SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.*]": "$(inherited) $(ONDEVICE_MODEL_POLICY) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG) $(ONDEVICE_LFM3_OMNI_SWIFT_FLAG)"
           CODE_SIGN_ENTITLEMENTS: "$(ONDEVICE_DISTRIBUTION_ENTITLEMENTS)"
           "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos27.*]": "$(ONDEVICE_DISTRIBUTION_ENTITLEMENTS)"
     dependencies:
@@ -360,14 +363,19 @@ targets:
           set -e
           if [ "${ONDEVICE_LFM3_SWIFT_FLAG}" = "LFM3_EXPERIMENTAL" ]; then
             # b11960 (LFM3-Omni) or the earlier b11938 runtime, never a mix.
+            # The LFM3_OMNI code needs b11960 headers and vice versa.
             if [ "${ONDEVICE_LLAMA_FRAMEWORK_DIR}" = "${SRCROOT}/build/LFM3OmniNative" ]; then
               test "${ONDEVICE_LLAMA_SOURCE}" = "${SRCROOT}/build/LFM3OmniNative/cache/llama.cpp-8642541b255bfb5dc39cd351a178be09013a55d6"
+              test "${ONDEVICE_LFM3_OMNI_SWIFT_FLAG}" = "LFM3_OMNI"
               python3 "${SRCROOT}/scripts/bootstrap_lfm3_omni_runtime.py" --check
             else
               test "${ONDEVICE_LLAMA_FRAMEWORK_DIR}" = "${SRCROOT}/build/LFM3Native"
               test "${ONDEVICE_LLAMA_SOURCE}" = "${SRCROOT}/build/LFM3Native/cache/llama.cpp-19cce6919992fdffd92e0ac152caaf1e2b8f254e"
+              test -z "${ONDEVICE_LFM3_OMNI_SWIFT_FLAG}"
               python3 "${SRCROOT}/scripts/bootstrap_lfm3_runtime.py" --check
             fi
+          else
+            test -z "${ONDEVICE_LFM3_OMNI_SWIFT_FLAG}"
           fi
         basedOnDependencyAnalysis: false
 

@@ -15,7 +15,10 @@ Restore point: git tag `backup/pre-omni-2026-10-31` (2.1.3 (87), runtime b11938)
 
 - Phase 0: restore point and backup done; baseline checklist below.
 - Phase 1: shipped to TestFlight as 2.1.3 (88), the same app as 87 built against b11960 (branch `lfm3-omni`). Device comparison with 87 pending.
-- Phase 2: on branch `lfm3-omni`, not shipped. `LFM3Catalog.omni` (Q4_0 + Q8_0 projector, revision `3d29af2a`) uses the LFM3 VL image path: same markup, same non-thinking prefix, same 4K exclusive Lens profile. It is offered and loadable only when the runtime exports `mtmd_get_video_config` (b11960), so a build switched back to b11938 hides and refuses it.
+- Phase 2: shipped as 2.1.3 (89). `LFM3Catalog.omni` (Q4_0 + Q8_0 projector, revision `3d29af2a`) uses the LFM3 VL image path: same markup, same non-thinking prefix, same 4K exclusive Lens profile. It is offered and loadable only when the runtime exports `mtmd_get_video_config` (b11960), so a build switched back to b11938 hides and refuses it.
+- Phase 3: video in chat. `OmniVideoInput.swift` ports b11960's mtmd-helper video reader to AVFoundation (frame picks, `<X.X seconds>` per 2 frames, each group's 16 kHz soundtrack slice after its frames); `OmniVideoFeed.swift` hands it to mtmd as one lazy video bitmap. b11960-only calls compile only with `LFM3_OMNI`, which the pre-build check ties to `build/LFM3OmniNative`; normal (b11558) and rolled-back (b11938) builds still compile. Omni gets a 16K context (other models keep theirs); clips start at 64 frames and retry with fewer when they do not fit.
+  - Reference check (`scripts/test_omni_video_on_mac.sh`, real model on a Mac, `tools/mtmd/test-3.mp4`): the app path and b11960's `llama-mtmd-cli --video` produce the same 20 frames at 704×352, identical timestamps and identical soundtrack slices (160,000 samples); prompt tokens 2,651 vs 2,648 (the app's prompt pre-fills `<think></think>` and puts the marker on its own line). The answer describes the scene and quotes the dialogue.
+  - Stored pixel size, as ffmpeg uses: a first version used AVFoundation's display size, which for non-square-pixel video gave 864×352 frames and 554 extra tokens. Unlike ffprobe, rotation is applied, so portrait iPhone clips are not squashed.
 
 ## Phases
 

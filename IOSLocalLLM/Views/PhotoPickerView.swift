@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import UniformTypeIdentifiers
 import Vision
 import CoreImage
 import ImageIO
@@ -47,10 +48,13 @@ enum AssistantImageEncoder {
 
 struct PhotoPickerView: UIViewControllerRepresentable {
     let onResult: (PickedPhoto) -> Void
+    /// Set only when the build can answer about videos (LFM3-Omni); the
+    /// picker then also lists videos and hands back a temporary copy.
+    var onVideo: ((URL) -> Void)? = nil
 
     func makeUIViewController(context: Context) -> PHPickerViewController {
         var config = PHPickerConfiguration()
-        config.filter = .images
+        config.filter = onVideo == nil ? .images : .any(of: [.images, .videos])
         config.selectionLimit = 1
         config.preferredAssetRepresentationMode = .current
 
@@ -61,15 +65,17 @@ struct PhotoPickerView: UIViewControllerRepresentable {
 
     func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
 
-    func makeCoordinator() -> Coordinator { Coordinator(onResult: onResult) }
+    func makeCoordinator() -> Coordinator { Coordinator(onResult: onResult, onVideo: onVideo) }
 
     // MARK: - Coordinator
 
     final class Coordinator: NSObject, PHPickerViewControllerDelegate {
         let onResult: (PickedPhoto) -> Void
+        let onVideo: ((URL) -> Void)?
 
-        init(onResult: @escaping (PickedPhoto) -> Void) {
+        init(onResult: @escaping (PickedPhoto) -> Void, onVideo: ((URL) -> Void)?) {
             self.onResult = onResult
+            self.onVideo = onVideo
         }
 
         func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
@@ -77,6 +83,14 @@ struct PhotoPickerView: UIViewControllerRepresentable {
             guard let result = results.first else { return }
 
             let onResult = onResult
+            if let onVideo, result.itemProvider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
+                // The provided file is deleted when the handler returns.
+                result.itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, _ in
+                    guard let url, let copy = PickedVideo.temporaryCopy(of: url) else { return }
+                    DispatchQueue.main.async { onVideo(copy) }
+                }
+                return
+            }
             result.itemProvider.loadDataRepresentation(forTypeIdentifier: "public.image") { data, _ in
                 guard let data else { return }
                 DispatchQueue.global(qos: .userInitiated).async {
@@ -106,6 +120,17 @@ struct PhotoPickerView: UIViewControllerRepresentable {
                 onResult(PickedPhoto(image: image, attachmentData: attachmentData, ocrText: text))
             }
         }
+    }
+}
+
+enum PickedVideo {
+    /// A copy in the temporary folder that outlives the picker's own file.
+    nonisolated static func temporaryCopy(of url: URL) -> URL? {
+        let copy = FileManager.default.temporaryDirectory
+            .appendingPathComponent("picked-video-\(UUID().uuidString)")
+            .appendingPathExtension(url.pathExtension.isEmpty ? "mov" : url.pathExtension)
+        do { try FileManager.default.copyItem(at: url, to: copy) } catch { return nil }
+        return copy
     }
 }
 

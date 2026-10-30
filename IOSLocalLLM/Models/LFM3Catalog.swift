@@ -56,11 +56,16 @@ enum LFM3Catalog {
         projectorBytes: 506_842_528
     )
 
-    /// Omni needs llama.cpp b11960 (`build/LFM3OmniNative`). A build switched
-    /// back to b11938 must neither offer nor load it, so ask the linked
-    /// runtime for the video API that arrived with Omni support.
-    static let omniRuntimeAvailable =
-        dlsym(UnsafeMutableRawPointer(bitPattern: -2), "mtmd_get_video_config") != nil  // RTLD_DEFAULT
+    /// Omni needs llama.cpp b11960 (`build/LFM3OmniNative`), which the build
+    /// script ties to the LFM3_OMNI flag. A build switched back to b11938
+    /// neither offers nor loads it.
+    static var omniRuntimeAvailable: Bool {
+        #if LFM3_OMNI
+        true
+        #else
+        false
+        #endif
+    }
 
     private static func squashed(_ identity: String) -> String {
         identity.lowercased().filter { $0.isASCII && ($0.isLetter || $0.isNumber) }

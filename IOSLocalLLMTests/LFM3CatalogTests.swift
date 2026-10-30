@@ -46,8 +46,10 @@ final class LFM3CatalogTests: XCTestCase {
         XCTAssertEqual(LFM3Catalog.unavailableReason(for: LFM3Catalog.omni.repoID) != nil, blocked)
         // The other LFM3 models never depend on the Omni runtime.
         XCTAssertEqual(LFM3Catalog.unavailableReason(for: LFM3Catalog.vision.repoID) != nil, !LFM3Catalog.isEnabled)
+        // Omni alone gets the larger video context; LFM3 VL keeps its 4K.
         let profile = LlamaCppVLMExecutionProfile.resolve(repoID: LFM3Catalog.omni.repoID)
-        XCTAssertEqual(profile, LlamaCppVLMExecutionProfile.resolve(repoID: LFM3Catalog.vision.repoID))
+        XCTAssertEqual(profile, .init(contextSize: 16_384, maxOutputTokens: 512, requiresSingleResidency: true))
+        XCTAssertEqual(LlamaCppVLMExecutionProfile.resolve(repoID: LFM3Catalog.vision.repoID).contextSize, 4_096)
     }
 
     func test_textTemplateFollowsLiquidThinkingAndHistoryRules() {

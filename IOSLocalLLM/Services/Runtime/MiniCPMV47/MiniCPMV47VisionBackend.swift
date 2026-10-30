@@ -30,6 +30,11 @@ enum LlamaCppVisionBackend: @unchecked Sendable {
         case .miniCPM35B(let model): try model.describe(image: image, prompt: prompt, maxTokens: maxTokens, onToken: onToken, onComplete: onComplete, onStage: onStage)
         }
     }
+    /// LFM3-Omni runs on the standard bridge only.
+    var standard: LlamaCppVLM? {
+        if case .standard(let model) = self { return model }
+        return nil
+    }
 }
 
 final class MiniCPMV47StreamingVLM {

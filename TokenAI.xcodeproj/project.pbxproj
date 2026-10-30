@@ -43,6 +43,7 @@
 		1025131F06519E7C260B576F /* CoreAIClassifierRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = B04405F32BAA310FB57006DE /* CoreAIClassifierRuntime.swift */; };
 		109F72395C2FB10452D3280A /* AssistantAttachedImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 745259B086DE0FC2C7269E9B /* AssistantAttachedImage.swift */; };
 		112E858126EE8346B9D3975C /* CodeBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00AA8219E91D33A0787E458F /* CodeBlock.swift */; };
+		11473423934A10ADF755C7BE /* OmniVideoLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A923BED748899B8D881106A /* OmniVideoLayoutTests.swift */; };
 		11513B7D35DB91C5C294E836 /* BenchmarkService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEC8D788A4FA6138E0FD7B8E /* BenchmarkService.swift */; };
 		1166AAD908A181DCC1D6BD1C /* Edge0RuntimeBackendTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE55A96641C5EF56BB86227F /* Edge0RuntimeBackendTests.swift */; };
 		128A17F1AEBC989A430311DA /* Edge0TensorStoreAdviseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 949B4F0B7B6231587702D722 /* Edge0TensorStoreAdviseTests.swift */; };
@@ -295,6 +296,7 @@
 		83843ABD3DD004B894C63FF1 /* llama.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8835BA2DA06BF0D1C8CBCA7D /* llama.xcframework */; };
 		83AA3B2DB9E3916B3DEE24A5 /* Edge0ContextBudget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B554BF0C765879606535D3AE /* Edge0ContextBudget.swift */; };
 		848D6E88A26A541552954111 /* MLXQuantizationPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7FF4154721635EC7DD130FC /* MLXQuantizationPolicyTests.swift */; };
+		84933B1EF27B095F21ACB5D4 /* OmniVideoFeed.swift in Sources */ = {isa = PBXBuildFile; fileRef = 512BFA21E54B9529A7FC9638 /* OmniVideoFeed.swift */; };
 		84A26022ECBBD00AA1139210 /* NetworkActivityMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02C383025652D38B72DA2741 /* NetworkActivityMonitor.swift */; };
 		84CB0A4DACD0C53B28E2B314 /* ArenaLeaderboardCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 040D7E87F6DF46AEFDB6E336 /* ArenaLeaderboardCard.swift */; };
 		858B6369F65533D14EFB4F72 /* whisper.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 377E5279070E90B8067B9DBB /* whisper.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
@@ -307,6 +309,7 @@
 		877EB346F60BEC1A28ED2F22 /* AIContentPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88A9EC0C47FC105FD7492C89 /* AIContentPolicy.swift */; };
 		8805E02DB20D7EEEC21061D8 /* InstalledModelRegistryValidationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 013AA5981EB4AD44D5DEFC4B /* InstalledModelRegistryValidationTests.swift */; };
 		88AD351759A23918DD15D1F6 /* LensPromptPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2BF1E6E0D368C0DCA7E57B31 /* LensPromptPreset.swift */; };
+		88F2D69AD2539A8A69C2C093 /* OmniVideoInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BC737D5EA1EDE5FF76225EB /* OmniVideoInput.swift */; };
 		89095396F324A53AB1E2CA71 /* AssistantOutputSanitizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FA4DAF0001303EF491DB2F6 /* AssistantOutputSanitizer.swift */; };
 		8924B7A7CD6CFB1EDA5023AB /* FastVLM.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAEC2F70455A518AF2E5768A /* FastVLM.swift */; };
 		892CF9EBF6579F960A486692 /* SemanticChunker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81B56DEBD622BB07037E50CB /* SemanticChunker.swift */; };
@@ -813,6 +816,7 @@
 		4FB5B254815E221264D9E64B /* CoreAIClassifierTokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAIClassifierTokenizer.swift; sourceTree = "<group>"; };
 		4FE2531D1C81A915F6620D0E /* LFM3ToolProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LFM3ToolProtocol.swift; sourceTree = "<group>"; };
 		503DB666F9524E05C5FA70F2 /* GitHubConnectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubConnectionStore.swift; sourceTree = "<group>"; };
+		512BFA21E54B9529A7FC9638 /* OmniVideoFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmniVideoFeed.swift; sourceTree = "<group>"; };
 		51C220C97C1B3919551111FB /* WebPassageReranker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebPassageReranker.swift; sourceTree = "<group>"; };
 		53638C6106A041AA09444C90 /* Edge0RealLayerParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0RealLayerParityTests.swift; sourceTree = "<group>"; };
 		540F7AB20D7F93841E255F04 /* AppBridgeSecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBridgeSecurityTests.swift; sourceTree = "<group>"; };
@@ -920,6 +924,7 @@
 		7ABAD86339887FC1E762F88B /* RecoveryState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryState.swift; sourceTree = "<group>"; };
 		7B3C4D555371FBB7D5A69D96 /* CoreAIZooCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAIZooCatalogTests.swift; sourceTree = "<group>"; };
 		7B4D06409D67085E7EBF7E91 /* AudioVisualClockTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioVisualClockTests.swift; sourceTree = "<group>"; };
+		7BC737D5EA1EDE5FF76225EB /* OmniVideoInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmniVideoInput.swift; sourceTree = "<group>"; };
 		7F40A45133EB7FFA7E2AB2C9 /* ClassifierModelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassifierModelStore.swift; sourceTree = "<group>"; };
 		7F8EEFC05AFF31F79617DE5D /* BridgeQRScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeQRScannerView.swift; sourceTree = "<group>"; };
 		7FBC6A4BE5FEA1FD86394C77 /* ModelMemoryBudget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelMemoryBudget.swift; sourceTree = "<group>"; };
@@ -983,6 +988,7 @@
 		993980E25479F64BC21F50BB /* ModelStoragePaths.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelStoragePaths.swift; sourceTree = "<group>"; };
 		99F4055229F5FF75BC06F549 /* VoiceAudioSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceAudioSessionManager.swift; sourceTree = "<group>"; };
 		9A1A2C777C4C298C2D35DE55 /* SnippetPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnippetPickerView.swift; sourceTree = "<group>"; };
+		9A923BED748899B8D881106A /* OmniVideoLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmniVideoLayoutTests.swift; sourceTree = "<group>"; };
 		9AB027EE075B6D6086978D89 /* AudioRoutePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRoutePicker.swift; sourceTree = "<group>"; };
 		9B2977EED2CFF4C95E08AF64 /* BridgePinningDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgePinningDelegate.swift; sourceTree = "<group>"; };
 		9B977A49FE254C306B6FFA96 /* Edge0_35BIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0_35BIntegrationTests.swift; sourceTree = "<group>"; };
@@ -1693,6 +1699,7 @@
 				2E6B4CA5D20FDBF1D4B5E809 /* ModelCategoryInferenceTests.swift */,
 				FB5F72C606D2E9CA1D0E396B /* ModelLoadCoordinatorTests.swift */,
 				B2E2CF0CC48D00FEA70BFB74 /* ModelStoragePathsTests.swift */,
+				9A923BED748899B8D881106A /* OmniVideoLayoutTests.swift */,
 				4EACD8181C5937A8FC9D7709 /* OnDeviceEmbedderTests.swift */,
 				1733CC2F0582413EAD3C36CA /* PageAwarePDFTests.swift */,
 				FF4EC2FA1DB7FD7FC7120068 /* PCCEntitlementTests.swift */,
@@ -2087,6 +2094,8 @@
 				8E0A417132117F0A479DB8F3 /* IOSLocalLLM-Bridging-Header.h */,
 				6EA3179B1522B6D30F3127FC /* LlamaCppBridge.swift */,
 				C1CF5EA04F4A080D5B7C5700 /* LlamaCppVLMService.swift */,
+				512BFA21E54B9529A7FC9638 /* OmniVideoFeed.swift */,
+				7BC737D5EA1EDE5FF76225EB /* OmniVideoInput.swift */,
 			);
 			path = LlamaCpp;
 			sourceTree = "<group>";
@@ -2607,7 +2616,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nif [ \"${ONDEVICE_LFM3_SWIFT_FLAG}\" = \"LFM3_EXPERIMENTAL\" ]; then\n  # b11960 (LFM3-Omni) or the earlier b11938 runtime, never a mix.\n  if [ \"${ONDEVICE_LLAMA_FRAMEWORK_DIR}\" = \"${SRCROOT}/build/LFM3OmniNative\" ]; then\n    test \"${ONDEVICE_LLAMA_SOURCE}\" = \"${SRCROOT}/build/LFM3OmniNative/cache/llama.cpp-8642541b255bfb5dc39cd351a178be09013a55d6\"\n    python3 \"${SRCROOT}/scripts/bootstrap_lfm3_omni_runtime.py\" --check\n  else\n    test \"${ONDEVICE_LLAMA_FRAMEWORK_DIR}\" = \"${SRCROOT}/build/LFM3Native\"\n    test \"${ONDEVICE_LLAMA_SOURCE}\" = \"${SRCROOT}/build/LFM3Native/cache/llama.cpp-19cce6919992fdffd92e0ac152caaf1e2b8f254e\"\n    python3 \"${SRCROOT}/scripts/bootstrap_lfm3_runtime.py\" --check\n  fi\nfi\n";
+			shellScript = "set -e\nif [ \"${ONDEVICE_LFM3_SWIFT_FLAG}\" = \"LFM3_EXPERIMENTAL\" ]; then\n  # b11960 (LFM3-Omni) or the earlier b11938 runtime, never a mix.\n  # The LFM3_OMNI code needs b11960 headers and vice versa.\n  if [ \"${ONDEVICE_LLAMA_FRAMEWORK_DIR}\" = \"${SRCROOT}/build/LFM3OmniNative\" ]; then\n    test \"${ONDEVICE_LLAMA_SOURCE}\" = \"${SRCROOT}/build/LFM3OmniNative/cache/llama.cpp-8642541b255bfb5dc39cd351a178be09013a55d6\"\n    test \"${ONDEVICE_LFM3_OMNI_SWIFT_FLAG}\" = \"LFM3_OMNI\"\n    python3 \"${SRCROOT}/scripts/bootstrap_lfm3_omni_runtime.py\" --check\n  else\n    test \"${ONDEVICE_LLAMA_FRAMEWORK_DIR}\" = \"${SRCROOT}/build/LFM3Native\"\n    test \"${ONDEVICE_LLAMA_SOURCE}\" = \"${SRCROOT}/build/LFM3Native/cache/llama.cpp-19cce6919992fdffd92e0ac152caaf1e2b8f254e\"\n    test -z \"${ONDEVICE_LFM3_OMNI_SWIFT_FLAG}\"\n    python3 \"${SRCROOT}/scripts/bootstrap_lfm3_runtime.py\" --check\n  fi\nelse\n  test -z \"${ONDEVICE_LFM3_OMNI_SWIFT_FLAG}\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -2697,6 +2706,7 @@
 				A8728C7B5F57329B2F48B44B /* ModelCategoryInferenceTests.swift in Sources */,
 				D0D421E19E338235B2B94A3D /* ModelLoadCoordinatorTests.swift in Sources */,
 				243723979A3A784A218F2E1C /* ModelStoragePathsTests.swift in Sources */,
+				11473423934A10ADF755C7BE /* OmniVideoLayoutTests.swift in Sources */,
 				FA5216D9AE0028DE77FF61B8 /* OnDeviceEmbedderTests.swift in Sources */,
 				7A3D34AD40EA62E2146880BA /* PCCEntitlementTests.swift in Sources */,
 				A211CF542CEDAB1FDC410737 /* PageAwarePDFTests.swift in Sources */,
@@ -3055,6 +3065,8 @@
 				84A26022ECBBD00AA1139210 /* NetworkActivityMonitor.swift in Sources */,
 				148DDFCE3F0FCA8339EE0341 /* OCRService.swift in Sources */,
 				6A3302245BF5A80B52498C1D /* ODBridge.swift in Sources */,
+				84933B1EF27B095F21ACB5D4 /* OmniVideoFeed.swift in Sources */,
+				88F2D69AD2539A8A69C2C093 /* OmniVideoInput.swift in Sources */,
 				A2F44330EBE845521C97D99E /* OnDeviceCompatibility.swift in Sources */,
 				4FC1C7A7C0A4F47716A87E91 /* OnDeviceEmbedder.swift in Sources */,
 				85B777624A129EA4524E931A /* OnboardingModelPickerView.swift in Sources */,
@@ -3293,9 +3305,9 @@
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) $(ONDEVICE_MODEL_POLICY) $(ONDEVICE_LFM3_SWIFT_FLAG)";
-				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.*]" = "$(inherited) $(ONDEVICE_MODEL_POLICY) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG)";
-				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.*]" = "$(inherited) $(ONDEVICE_MODEL_POLICY) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) $(ONDEVICE_MODEL_POLICY) $(ONDEVICE_LFM3_SWIFT_FLAG) $(ONDEVICE_LFM3_OMNI_SWIFT_FLAG)";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.*]" = "$(inherited) $(ONDEVICE_MODEL_POLICY) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG) $(ONDEVICE_LFM3_OMNI_SWIFT_FLAG)";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.*]" = "$(inherited) $(ONDEVICE_MODEL_POLICY) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG) $(ONDEVICE_LFM3_OMNI_SWIFT_FLAG)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/IOSLocalLLM/Services/LlamaCpp/IOSLocalLLM-Bridging-Header.h";
 				TARGETED_DEVICE_FAMILY = 1;
@@ -3395,9 +3407,9 @@
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = YES;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) $(ONDEVICE_LFM3_SWIFT_FLAG)";
-				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.*]" = "$(inherited) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG)";
-				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.*]" = "$(inherited) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) $(ONDEVICE_LFM3_SWIFT_FLAG) $(ONDEVICE_LFM3_OMNI_SWIFT_FLAG)";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphoneos27.*]" = "$(inherited) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG) $(ONDEVICE_LFM3_OMNI_SWIFT_FLAG)";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS[sdk=iphonesimulator27.*]" = "$(inherited) FM_PCC $(ONDEVICE_LFM3_SWIFT_FLAG) $(ONDEVICE_LFM3_OMNI_SWIFT_FLAG)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "$(SRCROOT)/IOSLocalLLM/Services/LlamaCpp/IOSLocalLLM-Bridging-Header.h";
 				TARGETED_DEVICE_FAMILY = 1;
@@ -3468,6 +3480,7 @@
 				MARKETING_VERSION = 2.1.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
+				ONDEVICE_LFM3_OMNI_SWIFT_FLAG = "";
 				ONDEVICE_LFM3_SWIFT_FLAG = "";
 				ONDEVICE_LLAMA_FRAMEWORK_DIR = "$(SRCROOT)/build/ClassifierNative";
 				ONDEVICE_LLAMA_SOURCE = "$(SRCROOT)/build/ClassifierNative/cache/llama.cpp-c83f3058b6f876f2f7e6ccbada858b2446860c85";
@@ -3661,6 +3674,7 @@
 				MARKETING_VERSION = 2.1.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
+				ONDEVICE_LFM3_OMNI_SWIFT_FLAG = "";
 				ONDEVICE_LFM3_SWIFT_FLAG = "";
 				ONDEVICE_LLAMA_FRAMEWORK_DIR = "$(SRCROOT)/build/ClassifierNative";
 				ONDEVICE_LLAMA_SOURCE = "$(SRCROOT)/build/ClassifierNative/cache/llama.cpp-c83f3058b6f876f2f7e6ccbada858b2446860c85";

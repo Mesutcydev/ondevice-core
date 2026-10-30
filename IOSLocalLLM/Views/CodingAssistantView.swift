@@ -549,9 +549,9 @@ struct CodingAssistantView: View {
                 )
             }
             .sheet(isPresented: $showPhotoPicker) {
-                PhotoPickerView { picked in
+                PhotoPickerView(onResult: { picked in
                     handlePickedPhoto(picked)
-                }
+                }, onVideo: omniVideoPick)
             }
             .sheet(isPresented: $showModelPicker) {
                 AssistantModelPickerView(downloadedOnly: true)
@@ -639,7 +639,8 @@ struct CodingAssistantView: View {
                     onCancel: { showFilePicker = false },
                     onImagePick: { photos in
                         photos.forEach(handlePickedPhoto)
-                    }
+                    },
+                    onVideoPick: omniVideoPick
                 )
             }
             .sheet(isPresented: $showToolFilePicker) {
@@ -4540,6 +4541,91 @@ struct CodingAssistantView: View {
     }
 
     // MARK: - Local VLM description
+
+    /// Pickers offer videos only in builds with LFM3-Omni and its runtime.
+    private var omniVideoPick: ((URL) -> Void)? {
+        LFM3Catalog.isEnabled && LFM3Catalog.omniRuntimeAvailable ? { analyzeVideoWithOmni($0) } : nil
+    }
+
+    /// LFM3-Omni watches a picked clip, frames and sound, and answers the
+    /// question typed in the composer (or describes the clip). The answer
+    /// stays in the chat as context for follow-up questions.
+    private func analyzeVideoWithOmni(_ url: URL) {
+        #if LFM3_OMNI
+        guard !isGenerating else {
+            try? FileManager.default.removeItem(at: url)
+            return
+        }
+        operationID = UUID()
+        let scope = captureRequest()
+        let typed = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let question = typed.isEmpty ? "Describe what happens in this video, including what you can hear." : typed
+        if !typed.isEmpty { inputText = "" }
+        messages.append(ChatMessage(role: .user, content: "🎬 \(url.lastPathComponent)\n\(question)"))
+        let assistantMsg = ChatMessage(role: .assistant, content: "", isStreaming: true)
+        messages.append(assistantMsg)
+        let assistantMsgID = assistantMsg.id
+
+        isPreparingImageContext = true
+        imageGroundingTask = Task {
+            let llama = LlamaCppVLMService.shared
+            if llama.activeRepoID != LFM3Catalog.omni.repoID {
+                ToastCenter.shared.info("Loading LFM3 Omni…", detail: "Videos are answered on this device.")
+                await llama.switchTo(repoID: LFM3Catalog.omni.repoID)
+            }
+            guard accepts(scope), !Task.isCancelled else {
+                try? FileManager.default.removeItem(at: url)
+                return
+            }
+            guard case .ready = llama.state else {
+                try? FileManager.default.removeItem(at: url)
+                isPreparingImageContext = false
+                imageGroundingTask = nil
+                if let idx = messages.firstIndex(where: { $0.id == assistantMsgID }) {
+                    messages[idx].content = "Download LFM3 Omni 2B under Models to ask about videos."
+                    messages[idx].isStreaming = false
+                }
+                return
+            }
+            llama.describeVideo(
+                url: url,
+                prompt: question,
+                onPrepared: { seconds, frames, heard in
+                    Task { @MainActor in
+                        ToastCenter.shared.info("Watching \(frames) frames of \(Int(seconds.rounded())) s",
+                                                detail: heard ? "With the soundtrack" : "No soundtrack")
+                    }
+                },
+                onToken: { token in
+                    Task { @MainActor in
+                        guard self.accepts(scope) else { return }
+                        if let idx = self.messages.firstIndex(where: { $0.id == assistantMsgID }) {
+                            self.appendAssistantToken(token, at: idx, allowsThinking: false)
+                        }
+                    }
+                },
+                onComplete: { rate in
+                    Task { @MainActor in
+                        try? FileManager.default.removeItem(at: url)
+                        guard self.accepts(scope) else { return }
+                        self.isPreparingImageContext = false
+                        self.imageGroundingTask = nil
+                        if let idx = self.messages.firstIndex(where: { $0.id == assistantMsgID }) {
+                            if self.messages[idx].content.isEmpty {
+                                self.messages[idx].content = "LFM3 Omni could not answer about this video."
+                            }
+                            self.messages[idx].isStreaming = false
+                            self.recordGenerationMetrics(messageID: assistantMsgID, tokensPerSecond: rate)
+                            self.persistCurrentConversation()
+                        }
+                    }
+                }
+            )
+        }
+        #else
+        try? FileManager.default.removeItem(at: url)
+        #endif
+    }
 
     private func analyzeImageWithVLM(imageData: Data) {
         guard !isGenerating, let uiImage = UIImage(data: imageData) else { return }

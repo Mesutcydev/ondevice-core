@@ -17,6 +17,8 @@ struct FileAttachmentPicker: UIViewControllerRepresentable {
     let onPick: ([FileAttachmentService.Attachment], [String]) -> Void
     let onCancel: () -> Void
     var onImagePick: (([PickedPhoto]) -> Void)? = nil
+    /// Set only when the build can answer about videos (LFM3-Omni).
+    var onVideoPick: ((URL) -> Void)? = nil
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         // .data admits text files with uncommon extensions (for example
@@ -25,7 +27,7 @@ struct FileAttachmentPicker: UIViewControllerRepresentable {
         let types: [UTType] = [
             .plainText, .utf8PlainText, .text, .sourceCode, .pdf,
             .json, .xml, .yaml, .commaSeparatedText, .tabSeparatedText,
-            .data, .image,
+            .data, .image, .movie,
             // Common code types iOS reports as conforming to .sourceCode
             // but they sometimes also report as their own UTI.
             UTType(filenameExtension: "swift") ?? .sourceCode,
@@ -44,22 +46,25 @@ struct FileAttachmentPicker: UIViewControllerRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator(existing: existing, onPick: onPick,
-                    onImagePick: onImagePick, onCancel: onCancel)
+                    onImagePick: onImagePick, onVideoPick: onVideoPick, onCancel: onCancel)
     }
 
     final class Coordinator: NSObject, UIDocumentPickerDelegate {
         let existing: [FileAttachmentService.Attachment]
         let onPick: ([FileAttachmentService.Attachment], [String]) -> Void
         let onImagePick: (([PickedPhoto]) -> Void)?
+        let onVideoPick: ((URL) -> Void)?
         let onCancel: () -> Void
 
         init(existing: [FileAttachmentService.Attachment],
              onPick: @escaping ([FileAttachmentService.Attachment], [String]) -> Void,
              onImagePick: (([PickedPhoto]) -> Void)?,
+             onVideoPick: ((URL) -> Void)? = nil,
              onCancel: @escaping () -> Void) {
             self.existing = existing
             self.onPick = onPick
             self.onImagePick = onImagePick
+            self.onVideoPick = onVideoPick
             self.onCancel = onCancel
         }
 
@@ -72,10 +77,17 @@ struct FileAttachmentPicker: UIViewControllerRepresentable {
             Task { @MainActor in
                 var ok: [FileAttachmentService.Attachment] = []
                 var images: [PickedPhoto] = []
+                var video: URL?
                 var errors: [String] = []
                 var running = existing
                 for url in toRead {
                     do {
+                        if onVideoPick != nil, video == nil,
+                           UTType(filenameExtension: url.pathExtension)?.conforms(to: .movie) == true {
+                            // asCopy: the file is already the app's own copy.
+                            video = url
+                            continue
+                        }
                         if onImagePick != nil,
                            UTType(filenameExtension: url.pathExtension)?.conforms(to: .image) == true {
                             let (preview, visibleText) = try await Self.readImagePreview(url)
@@ -104,6 +116,7 @@ struct FileAttachmentPicker: UIViewControllerRepresentable {
                     errors.append("Skipped \(urls.count - remaining) — limit is \(FileAttachmentService.maxAttachmentsPerSend) files per message.")
                 }
                 if !images.isEmpty { self.onImagePick?(images) }
+                if let video { self.onVideoPick?(video) }
                 self.onPick(ok, errors)
             }
         }

@@ -22,10 +22,10 @@ call; the call runs only when calls end the reply outside Markdown code, and
 the answer text stays visible. Without a saved per-model profile, LFM3 chat
 samples with the model card's values (temperature 0.1, top-k 50, repeat
 penalty 1.1). LFM3-Omni-2B (Q4_0 with the Q8_0 projector) is offered only
-when the linked runtime is b11960 or newer, detected by its
-`mtmd_get_video_config` export; it answers about images through the LFM3 VL
-path for now. Omni audio and video, LFM3 audio, and d1 models are not
-implemented yet; see `Docs/LFM3_OMNI_PLAN.md`.
+in `LFM3_OMNI` builds. It answers about images through the LFM3 VL path and
+about videos (frames plus soundtrack) through `OmniVideoInput.swift`, a port of
+b11960's mtmd-helper video reader to AVFoundation; see `Docs/LFM3_OMNI_PLAN.md`.
+LFM3 audio and d1 models are not implemented.
 
 ## Experimental build
 
@@ -50,8 +50,10 @@ prepares it in `build/LFM3OmniNative` and leaves `build/LFM3Native` (b11938)
 untouched. To build against it, use the same command with
 `-derivedDataPath "$PWD/build/LFM3OmniNative/DerivedData"`,
 `"ONDEVICE_LLAMA_FRAMEWORK_DIR=$PWD/build/LFM3OmniNative"` and
-`"ONDEVICE_LLAMA_SOURCE=$PWD/build/LFM3OmniNative/cache/llama.cpp-8642541b255bfb5dc39cd351a178be09013a55d6"`.
-Switching back is the original command. The rollout is in `Docs/LFM3_OMNI_PLAN.md`.
+`"ONDEVICE_LLAMA_SOURCE=$PWD/build/LFM3OmniNative/cache/llama.cpp-8642541b255bfb5dc39cd351a178be09013a55d6"`
+and `ONDEVICE_LFM3_OMNI_SWIFT_FLAG=LFM3_OMNI`. The pre-build check requires that
+flag with the b11960 folder and refuses it with any other, because the Omni
+code calls b11960-only mtmd API. Switching back is the original command. The rollout is in `Docs/LFM3_OMNI_PLAN.md`.
 
 The separate DerivedData directory prevents Xcode from reusing a module built
 against the normal framework's headers. The build checks that the experimental
