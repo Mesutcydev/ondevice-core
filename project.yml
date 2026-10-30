@@ -359,9 +359,15 @@ targets:
         script: |
           set -e
           if [ "${ONDEVICE_LFM3_SWIFT_FLAG}" = "LFM3_EXPERIMENTAL" ]; then
-            test "${ONDEVICE_LLAMA_FRAMEWORK_DIR}" = "${SRCROOT}/build/LFM3Native"
-            test "${ONDEVICE_LLAMA_SOURCE}" = "${SRCROOT}/build/LFM3Native/cache/llama.cpp-19cce6919992fdffd92e0ac152caaf1e2b8f254e"
-            python3 "${SRCROOT}/scripts/bootstrap_lfm3_runtime.py" --check
+            # b11960 (LFM3-Omni) or the earlier b11938 runtime, never a mix.
+            if [ "${ONDEVICE_LLAMA_FRAMEWORK_DIR}" = "${SRCROOT}/build/LFM3OmniNative" ]; then
+              test "${ONDEVICE_LLAMA_SOURCE}" = "${SRCROOT}/build/LFM3OmniNative/cache/llama.cpp-8642541b255bfb5dc39cd351a178be09013a55d6"
+              python3 "${SRCROOT}/scripts/bootstrap_lfm3_omni_runtime.py" --check
+            else
+              test "${ONDEVICE_LLAMA_FRAMEWORK_DIR}" = "${SRCROOT}/build/LFM3Native"
+              test "${ONDEVICE_LLAMA_SOURCE}" = "${SRCROOT}/build/LFM3Native/cache/llama.cpp-19cce6919992fdffd92e0ac152caaf1e2b8f254e"
+              python3 "${SRCROOT}/scripts/bootstrap_lfm3_runtime.py" --check
+            fi
           fi
         basedOnDependencyAnalysis: false
 

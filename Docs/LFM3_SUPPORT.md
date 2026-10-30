@@ -42,6 +42,14 @@ xcodebuild -workspace TokenAI.xcworkspace -scheme TokenAI \
   build-for-testing
 ```
 
+LFM3-Omni needs llama.cpp b11960. `python3 scripts/bootstrap_lfm3_omni_runtime.py`
+prepares it in `build/LFM3OmniNative` and leaves `build/LFM3Native` (b11938)
+untouched. To build against it, use the same command with
+`-derivedDataPath "$PWD/build/LFM3OmniNative/DerivedData"`,
+`"ONDEVICE_LLAMA_FRAMEWORK_DIR=$PWD/build/LFM3OmniNative"` and
+`"ONDEVICE_LLAMA_SOURCE=$PWD/build/LFM3OmniNative/cache/llama.cpp-8642541b255bfb5dc39cd351a178be09013a55d6"`.
+Switching back is the original command. The rollout is in `Docs/LFM3_OMNI_PLAN.md`.
+
 The separate DerivedData directory prevents Xcode from reusing a module built
 against the normal framework's headers. The build checks that the experimental
 framework and headers match the pinned revision. Download the models explicitly

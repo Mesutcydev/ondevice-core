@@ -2607,7 +2607,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nif [ \"${ONDEVICE_LFM3_SWIFT_FLAG}\" = \"LFM3_EXPERIMENTAL\" ]; then\n  test \"${ONDEVICE_LLAMA_FRAMEWORK_DIR}\" = \"${SRCROOT}/build/LFM3Native\"\n  test \"${ONDEVICE_LLAMA_SOURCE}\" = \"${SRCROOT}/build/LFM3Native/cache/llama.cpp-19cce6919992fdffd92e0ac152caaf1e2b8f254e\"\n  python3 \"${SRCROOT}/scripts/bootstrap_lfm3_runtime.py\" --check\nfi\n";
+			shellScript = "set -e\nif [ \"${ONDEVICE_LFM3_SWIFT_FLAG}\" = \"LFM3_EXPERIMENTAL\" ]; then\n  # b11960 (LFM3-Omni) or the earlier b11938 runtime, never a mix.\n  if [ \"${ONDEVICE_LLAMA_FRAMEWORK_DIR}\" = \"${SRCROOT}/build/LFM3OmniNative\" ]; then\n    test \"${ONDEVICE_LLAMA_SOURCE}\" = \"${SRCROOT}/build/LFM3OmniNative/cache/llama.cpp-8642541b255bfb5dc39cd351a178be09013a55d6\"\n    python3 \"${SRCROOT}/scripts/bootstrap_lfm3_omni_runtime.py\" --check\n  else\n    test \"${ONDEVICE_LLAMA_FRAMEWORK_DIR}\" = \"${SRCROOT}/build/LFM3Native\"\n    test \"${ONDEVICE_LLAMA_SOURCE}\" = \"${SRCROOT}/build/LFM3Native/cache/llama.cpp-19cce6919992fdffd92e0ac152caaf1e2b8f254e\"\n    python3 \"${SRCROOT}/scripts/bootstrap_lfm3_runtime.py\" --check\n  fi\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
