@@ -1,0 +1,4 @@
+• Lens clips: with LFM3 Omni 2B downloaded, Lens has a new Clip mode. Tap capture to record 6 seconds; Omni watches the frames and listens through the microphone, then answers the question you typed, or describes the clip. Allow the microphone for sound; without it, Omni uses the frames only.
+• The other Lens modes and vision models are unchanged.
+
+Please try Clip with someone talking or a sound playing, then switch back to Ask with your usual vision model.
