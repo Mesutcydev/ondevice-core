@@ -21,6 +21,12 @@ Restore point: git tag `backup/pre-omni-2026-10-31` (2.1.3 (87), runtime b11938)
   - Stored pixel size, as ffmpeg uses: a first version used AVFoundation's display size, which for non-square-pixel video gave 864×352 frames and 554 extra tokens. Unlike ffprobe, rotation is applied, so portrait iPhone clips are not squashed.
 - Text-only answers: a real-model run showed Omni can open a text answer with `<|mixed_start|>` (text plus speech) and stop. Every Omni sampler now carries llama.cpp's text-only bias (`<|audio_start|>`, `<|mixed_start|>` at -inf); shipped in 2.1.3 (90) with Phase 3.
 - Phase 4: Lens has a Clip mode, listed only when the host sets `canRecordLensClips` (LFM3_OMNI builds). It samples the live preview at 2 fps for 6 s while recording the microphone (16 kHz, under the shared audio-session lease; frames only without permission), then runs the same Omni video path (`OmniVideoSource.live`). The Mac harness replays a clip this way with `OMNI_HARNESS_SOURCE=live`.
+- Phase 5: voice, all opt-in and only in LFM3_OMNI builds; Whisper stays the default, and System, Kitten and Kokoro voices are unchanged.
+  - 5a: "omni" speech-to-text in Settings. Hold-to-talk records 16 kHz like Whisper and LFM3-Omni transcribes with the card's "Perform ASR in <language>." prompt.
+  - 5b: an "LFM3 Omni" voice engine (female or male; the language follows each sentence, 19 languages). It renders the GGUF's own `tts` chat template and runs llama-tts's loop through b11960's `mtmd_helper_gen_audio` API (`OmniSpeech.swift`).
+  - 5c: voice conversation. With Omni speech-to-text, Apple Speech still ends each turn and Omni re-transcribes the turn's audio. With Omni listening and speaking, Omni also writes the reply, so one model stays resident instead of swapping with the chat model every turn.
+  - Mac checks with the real model (`scripts/test_omni_video_on_mac.sh`): transcription of `tools/mtmd/test-2.mp3` is accurate; speech output made 5.9 s of 24 kHz audio in 2.0 s, and transcribing it back returned the input sentence.
+- Phase 6: no change. LFM3-VL stays in the catalog; Omni is not recommended over it until device results are in.
 
 ## Phases
 

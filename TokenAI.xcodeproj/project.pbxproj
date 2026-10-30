@@ -154,6 +154,7 @@
 		3F534ED150EC7BC019EA0850 /* StudioComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9DB94F582AA5D84CF811028 /* StudioComposer.swift */; };
 		3FAAD4CE241E919E0CB243B2 /* LegalDocumentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59E0F9A9955E6772549640E0 /* LegalDocumentView.swift */; };
 		402B86BD9AB6C094F6445491 /* KoduComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB2A1A6C3F2FF10FCE4F0B2D /* KoduComponents.swift */; };
+		4092D4DCC935EC82CE35A050 /* OmniVoiceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2D8CDEB27A7242E213E3891 /* OmniVoiceEngine.swift */; };
 		4108703D69D974B3E7E75D3B /* Edge0PrerouterParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67F1A15FE3612AED530890B9 /* Edge0PrerouterParityTests.swift */; };
 		4129CAB867B7681936C19645 /* AnalysisHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07785190DB14715E7AECB14B /* AnalysisHistoryView.swift */; };
 		41718D9175298608C3FE4E16 /* VoiceRuntimeDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 580771FC932142BD60372655 /* VoiceRuntimeDiagnostics.swift */; };
@@ -418,6 +419,7 @@
 		B2728EBE9C2EDCDF2641FC92 /* VoiceDisplayLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FDB1BBFABE9344C9BC4190A /* VoiceDisplayLink.swift */; };
 		B2F1FCCD46B876053284A967 /* Bonsai2VLMModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 689A08D0BDA1A327B86EA2ED /* Bonsai2VLMModel.swift */; };
 		B2F4FB1120C7B8D57EC87751 /* BonjourPublisher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21B2A95AABC554CED67C048E /* BonjourPublisher.swift */; };
+		B3435D7A8CD3F35B23F5D1BD /* OmniSpeech.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52CE73656AAD18E292A875DC /* OmniSpeech.swift */; };
 		B3D1F12B591ECE925C582C48 /* ClassifierModelLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF391EEA7F562D1F6DEEA2AD /* ClassifierModelLibrary.swift */; };
 		B404B4307B0B518EF28572DD /* HFSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 224DB253CE5226218AC37AE6 /* HFSearchView.swift */; };
 		B46F968CACB0DFFBD2016DD1 /* Edge0ContextBudgetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF9C08DA500F20E85F1106F3 /* Edge0ContextBudgetTests.swift */; };
@@ -820,6 +822,7 @@
 		503DB666F9524E05C5FA70F2 /* GitHubConnectionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubConnectionStore.swift; sourceTree = "<group>"; };
 		512BFA21E54B9529A7FC9638 /* OmniVideoFeed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmniVideoFeed.swift; sourceTree = "<group>"; };
 		51C220C97C1B3919551111FB /* WebPassageReranker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebPassageReranker.swift; sourceTree = "<group>"; };
+		52CE73656AAD18E292A875DC /* OmniSpeech.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmniSpeech.swift; sourceTree = "<group>"; };
 		53638C6106A041AA09444C90 /* Edge0RealLayerParityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0RealLayerParityTests.swift; sourceTree = "<group>"; };
 		540F7AB20D7F93841E255F04 /* AppBridgeSecurityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBridgeSecurityTests.swift; sourceTree = "<group>"; };
 		54ED2A149BA03879BDB0124E /* VoiceStatusPillTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceStatusPillTests.swift; sourceTree = "<group>"; };
@@ -1005,6 +1008,7 @@
 		A09AC3E78D3AC1E96B0EB0CC /* TextChunker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TextChunker.swift; sourceTree = "<group>"; };
 		A12B2C11645AE0A7FE53E734 /* BackgroundDownloadJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundDownloadJournal.swift; sourceTree = "<group>"; };
 		A238AE5FB6738D8A1BD631B7 /* ContentConcernView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentConcernView.swift; sourceTree = "<group>"; };
+		A2D8CDEB27A7242E213E3891 /* OmniVoiceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmniVoiceEngine.swift; sourceTree = "<group>"; };
 		A2E7C60808554840091BC872 /* FastVLMPromptBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastVLMPromptBuilder.swift; sourceTree = "<group>"; };
 		A3344D2233AFCF86124193B3 /* CodeTask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeTask.swift; sourceTree = "<group>"; };
 		A37E6BF4A69B70E687883B16 /* SystemSpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemSpeechService.swift; sourceTree = "<group>"; };
@@ -1258,6 +1262,7 @@
 				363FDA3816ACAC013449F3DC /* KokoroPhonemizer.swift */,
 				1C02834D1A6AD95CFE834DE9 /* KokoroTTSService.swift */,
 				EC67F4383E0A534666475B89 /* LensVoiceNarrator.swift */,
+				A2D8CDEB27A7242E213E3891 /* OmniVoiceEngine.swift */,
 				0FC8E7FEF7335C45FD1FCCAD /* PhonemizerEN.swift */,
 				C7F17100056DC5BDC516AD7A /* SpeechPlaybackCoordinator.swift */,
 				A37E6BF4A69B70E687883B16 /* SystemSpeechService.swift */,
@@ -2097,6 +2102,7 @@
 				6EA3179B1522B6D30F3127FC /* LlamaCppBridge.swift */,
 				C1CF5EA04F4A080D5B7C5700 /* LlamaCppVLMService.swift */,
 				4F057E827943F4CDA0D836B9 /* OmniClipRecorder.swift */,
+				52CE73656AAD18E292A875DC /* OmniSpeech.swift */,
 				512BFA21E54B9529A7FC9638 /* OmniVideoFeed.swift */,
 				7BC737D5EA1EDE5FF76225EB /* OmniVideoInput.swift */,
 			);
@@ -3069,8 +3075,10 @@
 				148DDFCE3F0FCA8339EE0341 /* OCRService.swift in Sources */,
 				6A3302245BF5A80B52498C1D /* ODBridge.swift in Sources */,
 				5604C14FF7C49A8D7DA156C0 /* OmniClipRecorder.swift in Sources */,
+				B3435D7A8CD3F35B23F5D1BD /* OmniSpeech.swift in Sources */,
 				84933B1EF27B095F21ACB5D4 /* OmniVideoFeed.swift in Sources */,
 				88F2D69AD2539A8A69C2C093 /* OmniVideoInput.swift in Sources */,
+				4092D4DCC935EC82CE35A050 /* OmniVoiceEngine.swift in Sources */,
 				A2F44330EBE845521C97D99E /* OnDeviceCompatibility.swift in Sources */,
 				4FC1C7A7C0A4F47716A87E91 /* OnDeviceEmbedder.swift in Sources */,
 				85B777624A129EA4524E931A /* OnboardingModelPickerView.swift in Sources */,

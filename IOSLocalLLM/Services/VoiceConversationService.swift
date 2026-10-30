@@ -59,6 +59,34 @@ final class VoiceConversationService: ObservableObject {
     var isCapturingInput: Bool { dictation.isCapturingInput }
 
     private func owns(_ operation: UUID) -> Bool { sessionOperationID == operation }
+
+    /// LFM3-Omni both listens and speaks, so it also writes the replies: one
+    /// resident model instead of swapping it with the chat model every turn.
+    private var usesOmniVoiceChat: Bool {
+        SpeechDictationService.usesOmni && AppSettings.shared.voiceEngine == VoiceEngineKind.lfm3Omni.rawValue
+    }
+
+    /// The reply: LFM3-Omni itself in Omni voice chat, otherwise the chat model.
+    private func generateReply(
+        messages: [ChatMessage],
+        onToken: @escaping @Sendable (String) -> Void,
+        onComplete: @escaping @Sendable (Double) -> Void
+    ) {
+        #if LFM3_OMNI
+        if usesOmniVoiceChat {
+            Task { @MainActor in
+                do {
+                    try await LlamaCppVLMService.shared.omniChat(messages, onToken: onToken)
+                } catch {
+                    ToastCenter.shared.error("LFM3 Omni could not reply", detail: error.localizedDescription)
+                }
+                onComplete(0)
+            }
+            return
+        }
+        #endif
+        assistant.generate(messages: messages, onToken: onToken, onComplete: onComplete)
+    }
     private func event(_ name: String, operation: UUID) {
         #if DEBUG
         Logger(subsystem: "com.token.TokenAI", category: "sensor-ownership")
@@ -267,6 +295,7 @@ final class VoiceConversationService: ObservableObject {
         // time the user finishes their first sentence. switchTo (from the
         // override path) may already have it loading; load() is a no-op then.
         switch assistant.state {
+        case _ where usesOmniVoiceChat: break   // Omni was loaded by voice.load()
         case .ready, .loading, .generating: break
         // The model on screen, which may be the open chat's own choice.
         default: modelLoadTask = Task { [assistant] in await assistant.load(reselectFromSettings: false) }
@@ -728,7 +757,7 @@ final class VoiceConversationService: ObservableObject {
 
     private func handleEndOfTurn(_ text: String) async {
         guard let operation = sessionOperationID, !microphoneMuted, !isInterrupted, !Task.isCancelled else { return }
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             // Heard "speech" but the recogniser produced nothing — probably
             // a cough or a non-speech sound. Reset state and keep listening.
@@ -741,6 +770,19 @@ final class VoiceConversationService: ObservableObject {
         // conversation audio lease while inference and playback continue.
         dictation.pauseEngineForTTS()
         phase = .thinking
+        #if LFM3_OMNI
+        // Apple Speech ended the turn; LFM3-Omni transcribes what was said.
+        if SpeechDictationService.usesOmni {
+            let audio = dictation.takeTurnAudio()
+            if let heard = try? await LlamaCppVLMService.shared.omniTranscribe(
+                samples: audio, language: Locale.current.language.languageCode?.identifier),
+               !heard.isEmpty {
+                trimmed = heard
+                liveTranscript = heard
+            }
+            guard owns(operation), !isInterrupted, !Task.isCancelled else { return }
+        }
+        #endif
         resetLiveReply()
         SpeechPlaybackCoordinator.shared.beginUtterance()
         SpeechPlaybackCoordinator.shared.bindSessionPhase(.thinking)
@@ -753,7 +795,7 @@ final class VoiceConversationService: ObservableObject {
         // (first turn before the proactive load finished, or a prior load
         // failed), bring it up and wait briefly here rather than latching
         // .failed and stranding the mic on a dead orb.
-        if assistant.state != .ready {
+        if assistant.state != .ready, !usesOmniVoiceChat {
             switch assistant.state {
             case .unloaded, .failed: await assistant.load(reselectFromSettings: false)
             default: break   // .loading already in progress
@@ -767,7 +809,7 @@ final class VoiceConversationService: ObservableObject {
             }
         }
         guard owns(operation), !isInterrupted, !Task.isCancelled else { return }
-        guard assistant.state == .ready else {
+        guard assistant.state == .ready || usesOmniVoiceChat else {
             if case .failed(let msg) = assistant.state {
                 // Genuine load failure (e.g. model too big for this device).
                 pendingTranscript = ""
@@ -802,7 +844,7 @@ final class VoiceConversationService: ObservableObject {
         // `.generating`. Wait briefly so turn 2 isn't dropped if turn 1's
         // native decode hasn't flipped back to `.ready` yet.
         var spins = 0
-        while case .generating = assistant.state, spins < 80, !Task.isCancelled {
+        while case .generating = assistant.state, !usesOmniVoiceChat, spins < 80, !Task.isCancelled {
             try? await Task.sleep(nanoseconds: 50_000_000)
             spins += 1
         }
@@ -854,7 +896,7 @@ final class VoiceConversationService: ObservableObject {
         var startedSpeaking = false
 
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            assistant.generate(
+            generateReply(
                 messages: Array(history),
                 onToken: { [weak self] token in
                     Task { @MainActor [weak self] in

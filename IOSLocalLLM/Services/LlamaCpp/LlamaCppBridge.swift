@@ -968,18 +968,17 @@ final class LlamaCppVLM: @unchecked Sendable {
         onComplete(Self.tokensPerSec(tokens: tokensGenerated, start: startTime))
     }
 
-    /// Omni's text-only rule from llama.cpp (mtmd-helper-gen): a text answer
-    /// never opens an audio or mixed text+speech segment. No-op for other models.
+    /// Omni's text-only rule (OmniSpeech.textOnlyBias): a text answer never
+    /// opens an audio or mixed text+speech segment. No-op for other models,
+    /// and Omni loads only in LFM3_OMNI builds.
     private func addTextOnlyBias(_ chain: UnsafeMutablePointer<llama_sampler>, model: OpaquePointer) {
+        #if LFM3_OMNI
         guard isOmni else { return }
         let vocab = llama_model_get_vocab(model)
-        var bias: [llama_logit_bias] = ["<|audio_start|>", "<|mixed_start|>"].compactMap { name in
-            var token: llama_token = 0
-            let count = llama_tokenize(vocab, name, Int32(name.utf8.count), &token, 1, false, true)
-            return count == 1 ? llama_logit_bias(token: token, bias: -.infinity) : nil
-        }
+        var bias = OmniSpeech.textOnlyBias(vocab)
         guard !bias.isEmpty else { return }
         llama_sampler_chain_add(chain, llama_sampler_init_logit_bias(llama_vocab_n_tokens(vocab), Int32(bias.count), &bias))
+        #endif
     }
 
     // MARK: - LFM3-Omni video
@@ -1029,6 +1028,45 @@ final class LlamaCppVLM: @unchecked Sendable {
         }
         try evalAndGenerate(chunks: chunks, mc: mc, c: c, samp: samp, m: m, maxTokens: maxTokens,
                             onToken: onToken, onComplete: onComplete)
+    }
+
+    /// A text-only turn on the loaded Omni model (voice chat), so listening,
+    /// replying and speaking share one resident model. Throws `promptTooLong`
+    /// when `prompt` does not fit beside `maxTokens`.
+    func chat(prompt: String, maxTokens: Int,
+              onToken: @escaping (String) -> Void, onComplete: @escaping (Double) -> Void) throws {
+        guard let mc = mtmdCtx, let c = ctx, let samp = sampler, let m = model else {
+            throw LlamaCppError.contextInitFailed
+        }
+        cancelFlag.withLock { $0 = false }
+        llama_memory_clear(llama_get_memory(c), false)
+        invalidateTokenCache()
+        let chunks = try tokenizeMultimodal(mc, prompt: prompt, bitmaps: [])
+        defer { mtmd_input_chunks_free(chunks) }
+        let promptTokens = mtmd_helper_get_n_tokens(chunks)
+        guard promptTokens + maxTokens + 1 <= Int(configuredContextSize) else {
+            throw LlamaCppError.promptTooLong(promptTokens)
+        }
+        try evalAndGenerate(chunks: chunks, mc: mc, c: c, samp: samp, m: m, maxTokens: maxTokens,
+                            onToken: onToken, onComplete: onComplete)
+    }
+
+    /// Speech to text with LFM3-Omni's audio encoder (`samples` at `audioSampleRate`).
+    func transcribe(samples: [Float], language: String?) throws -> String {
+        guard let mc = mtmdCtx, let c = ctx, let m = model else { throw LlamaCppError.contextInitFailed }
+        cancelFlag.withLock { $0 = false }
+        invalidateTokenCache()
+        return try OmniSpeech.transcribe(samples, language: language, model: m, context: c, mtmd: mc,
+                                         isCancelled: { cancelFlag.withLock { $0 } })
+    }
+
+    /// LFM3-Omni's own voice: a 16-bit mono WAV.
+    func speak(text: String, language: String?, voice: String?) throws -> OmniSpeech.Audio {
+        guard let mc = mtmdCtx, let c = ctx, let m = model else { throw LlamaCppError.contextInitFailed }
+        cancelFlag.withLock { $0 = false }
+        invalidateTokenCache()
+        return try OmniSpeech.synthesize(text, language: language, voice: voice, model: m, context: c, mtmd: mc,
+                                         isCancelled: { cancelFlag.withLock { $0 } })
     }
     #endif
 

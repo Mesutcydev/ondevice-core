@@ -93,6 +93,37 @@ enum LFM3Catalog {
         return id.contains("lfm3vl2b") || id.contains("lfm3omni2b")
     }
 
+    /// Language names from LFM3-Omni's "tts" chat template
+    /// (GGUF `tokenizer.chat_template.tts`); other codes pass through.
+    static let omniLanguageNames: [String: String] = [
+        "ar": "Arabic", "da": "Danish", "de": "German", "el": "Greek", "en": "American English",
+        "en-us": "American English", "en-gb": "British English", "fi": "Finnish", "fr": "French",
+        "he": "Hebrew", "it": "Italian", "ja": "Japanese", "ko": "Korean", "nl": "Dutch",
+        "pl": "Polish", "pt": "Portuguese", "es": "Spanish", "sv": "Swedish", "tr": "Turkish",
+        "zh": "Chinese",
+    ]
+
+    private static func omniLanguage(_ code: String?) -> String {
+        let code = (code?.isEmpty == false ? code! : "en").lowercased()
+        return omniLanguageNames[code] ?? code
+    }
+
+    /// The model's own "tts" template, rendered here because the app does not
+    /// link llama.cpp's common library. Voice is "female" (default) or "male".
+    static func speechPrompt(_ text: String, language: String?, voice: String?) -> String {
+        let voice = ["female", "male"].contains(voice?.lowercased() ?? "") ? voice!.lowercased() : "female"
+        return "<|startoftext|><|im_start|>system\nPerform TTS in \(omniLanguage(language)) using a \(voice) voice.<|im_end|>\n"
+            + "<|im_start|>user\n\(text)<|im_end|>\n<|im_start|>assistant\n<think></think><|audio_start|>"
+    }
+
+    /// Speech-to-text as on the LFM3-Omni card ("Perform ASR in English."),
+    /// with the recording as the user turn.
+    static func transcriptionPrompt(marker: String, language: String?) -> String {
+        let name = omniLanguage(language) == "American English" ? "English" : omniLanguage(language)
+        return "<|im_start|>system\nPerform ASR in \(name).<|im_end|>\n<|im_start|>user\n\(marker)<|im_end|>\n"
+            + "<|im_start|>assistant\n<think></think>"
+    }
+
     /// mtmd expands the marker to Liquid's vision-start/image/vision-end
     /// tokens. Lens uses the publisher's non-thinking assistant prefix so a
     /// short image request does not spend its answer budget on reasoning.

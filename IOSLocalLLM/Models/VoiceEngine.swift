@@ -7,6 +7,7 @@ enum VoiceEngineKind: String, CaseIterable, Identifiable, Codable {
     case appleSystem = "apple_system"   // AVSpeechSynthesizer — always available
     case kittenTTS   = "kitten_tts"     // KittenTTS CoreML — requires download
     case kokoro      = "kokoro"         // Kokoro-82M CoreML — experimental
+    case lfm3Omni    = "lfm3_omni"      // LFM3-Omni's own voice — LFM3_OMNI builds
 
     var id: String { rawValue }
 
@@ -22,6 +23,7 @@ enum VoiceEngineKind: String, CaseIterable, Identifiable, Codable {
             switch kind {
             case .appleSystem, .kittenTTS: return true
             case .kokoro:                   return VoiceModelBundleValidator.isKokoroAvailable()
+            case .lfm3Omni:                 return LFM3Catalog.isEnabled && LFM3Catalog.omniRuntimeAvailable
             }
         }
     }
@@ -31,6 +33,7 @@ enum VoiceEngineKind: String, CaseIterable, Identifiable, Codable {
         case .appleSystem: return "Apple System Voice"
         case .kittenTTS:   return "KittenTTS — Tiny Neural"
         case .kokoro:      return "Kokoro — Neural"
+        case .lfm3Omni:    return "LFM3 Omni — Multilingual"
         }
     }
 
@@ -39,12 +42,13 @@ enum VoiceEngineKind: String, CaseIterable, Identifiable, Codable {
         case .appleSystem: return "System"
         case .kittenTTS:   return "KittenTTS"
         case .kokoro:      return "Kokoro"
+        case .lfm3Omni:    return "LFM3 Omni"
         }
     }
 
     /// Whether this engine requires a model download before first use.
     var requiresDownload: Bool {
-        self == .kittenTTS || self == .kokoro
+        self == .kittenTTS || self == .kokoro || self == .lfm3Omni
     }
 
     /// Whether this engine is labelled experimental in the UI.
@@ -71,6 +75,7 @@ enum VoiceEngineKind: String, CaseIterable, Identifiable, Codable {
         case .appleSystem: return 22050
         case .kittenTTS:   return 24000
         case .kokoro:      return 24000
+        case .lfm3Omni:    return 24000
         }
     }
 }

@@ -160,6 +160,9 @@ struct TTSEngineCapabilities: OptionSet, Sendable, Equatable {
         case .kokoro:
             // Duration stage is fused inside the CoreML graph — not exposed.
             return [.completePCMBuffers, .playbackMetering, .immediateCancellation]
+        case .lfm3Omni:
+            // One WAV per sentence from the Omni audio generator.
+            return [.completePCMBuffers, .playbackMetering, .immediateCancellation]
         }
     }
 }

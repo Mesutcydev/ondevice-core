@@ -593,6 +593,7 @@ struct SettingsView: View {
         case .appleSystem: return "Apple System Voice"
         case .kittenTTS:   return "KittenTTS (neural)"
         case .kokoro:      return "Kokoro (neural)"
+        case .lfm3Omni:    return "LFM3 Omni (voice)"
         }
     }
 
@@ -615,6 +616,13 @@ struct SettingsView: View {
             }
         case .kokoro:
             switch voiceServiceObs.kokoroState {
+            case .ready:    KStatusBadge(glyph: .ready, label: "ready", color: T.good)
+            case .loading:  KStatusBadge(glyph: .streaming, label: "loading", color: T.warn)
+            case .failed:   KStatusBadge(glyph: .remote, label: "error", color: T.bad)
+            case .unloaded: KStatusBadge(glyph: .remote, label: "off", color: T.ink3)
+            }
+        case .lfm3Omni:
+            switch voiceServiceObs.omniState {
             case .ready:    KStatusBadge(glyph: .ready, label: "ready", color: T.good)
             case .loading:  KStatusBadge(glyph: .streaming, label: "loading", color: T.warn)
             case .failed:   KStatusBadge(glyph: .remote, label: "error", color: T.bad)
@@ -1814,6 +1822,10 @@ private struct WhisperSTTBlock: View {
     /// because that's a static fileExists probe; the Picker stays
     /// disabled across a successful in-place download without the
     /// observer half of the check.
+    /// LFM3-Omni transcribes in builds that can load it (it downloads with
+    /// the visual models).
+    private var omniAvailable: Bool { LFM3Catalog.isEnabled && LFM3Catalog.omniRuntimeAvailable }
+
     private var isInstalled: Bool {
         observer.state == .ready || WhisperModelCatalog.isInstalled
     }
@@ -1825,10 +1837,11 @@ private struct WhisperSTTBlock: View {
                 Picker("", selection: $settings.sttProvider) {
                     Text("system").tag("system")
                     Text("whisper").tag("whisper")
+                    if omniAvailable { Text("omni").tag("omni") }
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 140)
-                .disabled(!isInstalled)
+                .frame(width: omniAvailable ? 210 : 140)
+                .disabled(!isInstalled && !omniAvailable)
             }, last: !speaking && isInstalled && !observer.isActive)
 
             if !isInstalled {

@@ -113,6 +113,7 @@ final class VoiceSettingsViewModel: ObservableObject {
         case .appleSystem: return voiceService.systemState
         case .kittenTTS:   return voiceService.kittenState
         case .kokoro:      return voiceService.kokoroState
+        case .lfm3Omni:    return voiceService.omniState
         }
     }
 
@@ -123,6 +124,7 @@ final class VoiceSettingsViewModel: ObservableObject {
         case .appleSystem: return true
         case .kittenTTS:   return VoiceModelBundleValidator.isKittenTTSAvailable()
         case .kokoro:      return VoiceModelBundleValidator.isKokoroAvailable()
+        case .lfm3Omni:    return LFM3Catalog.isEnabled && LFM3Catalog.omniRuntimeAvailable
         }
     }
 
@@ -133,6 +135,8 @@ final class VoiceSettingsViewModel: ObservableObject {
             return "KittenTTS model not installed. Open Models → Download to fetch it (~61 MB)."
         case .kokoro:
             return "Kokoro is no longer available on this device. Voice Mode can use Apple TTS until it is downloaded again."
+        case .lfm3Omni:
+            return "LFM3 Omni speaks with the LFM3 Omni 2B model. Download it under Models → visual models."
         }
     }
 
@@ -156,6 +160,7 @@ final class VoiceSettingsViewModel: ObservableObject {
         case .appleSystem: return voiceService.systemEngine.availableVoices
         case .kittenTTS:   return KittenTTSService.kittenVoices
         case .kokoro:      return KokoroTTSService.kokoroVoices
+        case .lfm3Omni:    return OmniVoiceEngine.voices
         }
     }
 }

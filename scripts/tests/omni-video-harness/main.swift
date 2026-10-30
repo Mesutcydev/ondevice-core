@@ -31,6 +31,35 @@ struct OmniVideoHarness {
         guard let mc = mtmd_init_from_file(args[2], model, mtmd_context_params_default()) else { fail("projector") }
 
         let url = URL(fileURLWithPath: args[3])
+        switch ProcessInfo.processInfo.environment["OMNI_HARNESS_MODE"] {
+        case "asr":
+            // <file> is any audio or video; [question] is the language code.
+            let asset = AVURLAsset(url: url)
+            let seconds = try await asset.load(.duration).seconds
+            let pcm = try await OmniVideoClip.monoPCM(asset, sampleRate: Int(mtmd_get_audio_sample_rate(mc)), seconds: seconds)
+            let text = try OmniSpeech.transcribe(pcm, language: args.count > 4 ? args[4] : "en",
+                                                 model: model, context: ctx, mtmd: mc)
+            print("transcript: \(text)")
+            finish(model, ctx, mc)
+            return
+        case "tts":
+            // <file> is the WAV to write; [question] is the text; then the WAV
+            // is transcribed back as a round trip.
+            let text = args.count > 4 ? args[4] : "The quick brown fox jumps over the lazy dog."
+            let start = Date()
+            let audio = try OmniSpeech.synthesize(text, language: "en", voice: "female",
+                                                  model: model, context: ctx, mtmd: mc)
+            try audio.wav.write(to: url)
+            print("speech: \(audio.wav.count) bytes at \(audio.sampleRate) Hz in \(String(format: "%.1f", Date().timeIntervalSince(start))) s")
+            let asset = AVURLAsset(url: url)
+            let pcm = try await OmniVideoClip.monoPCM(asset, sampleRate: Int(mtmd_get_audio_sample_rate(mc)),
+                                                      seconds: try await asset.load(.duration).seconds)
+            print("round trip: \(try OmniSpeech.transcribe(pcm, language: "en", model: model, context: ctx, mtmd: mc))")
+            finish(model, ctx, mc)
+            return
+        default:
+            break
+        }
         // OMNI_HARNESS_SOURCE=live replays the clip the way a Lens clip arrives:
         // frames already sampled at 2 fps plus a separate audio file.
         let source: OmniVideoSource
@@ -93,12 +122,7 @@ struct OmniVideoHarness {
         var nPast: llama_pos = 0
         guard mtmd_helper_eval_chunks(mc, ctx, chunks, 0, 0, 512, true, &nPast) == 0 else { fail("eval") }
         let sampler = llama_sampler_chain_init(llama_sampler_chain_default_params())
-        // Same text-only rule as LlamaCppVLM.addTextOnlyBias.
-        var bias: [llama_logit_bias] = ["<|audio_start|>", "<|mixed_start|>"].compactMap { name in
-            var token: llama_token = 0
-            let count = llama_tokenize(llama_model_get_vocab(model), name, Int32(name.utf8.count), &token, 1, false, true)
-            return count == 1 ? llama_logit_bias(token: token, bias: -.infinity) : nil
-        }
+        var bias = OmniSpeech.textOnlyBias(llama_model_get_vocab(model))
         llama_sampler_chain_add(sampler, llama_sampler_init_logit_bias(
             llama_vocab_n_tokens(llama_model_get_vocab(model)), Int32(bias.count), &bias))
         llama_sampler_chain_add(sampler, llama_sampler_init_greedy())
@@ -125,7 +149,11 @@ struct OmniVideoHarness {
         llama_sampler_free(sampler)
         mtmd_bitmap_free(video)
         mtmd_input_chunks_free(chunks)
-        // Free Metal resources before exit; otherwise ggml-metal asserts at teardown.
+        finish(model, ctx, mc)
+    }
+
+    /// Free Metal resources before exit; otherwise ggml-metal asserts at teardown.
+    static func finish(_ model: OpaquePointer, _ ctx: OpaquePointer, _ mc: OpaquePointer) {
         mtmd_free(mc)
         llama_free(ctx)
         llama_model_free(model)

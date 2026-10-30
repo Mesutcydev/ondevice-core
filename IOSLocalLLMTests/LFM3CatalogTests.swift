@@ -52,6 +52,21 @@ final class LFM3CatalogTests: XCTestCase {
         XCTAssertEqual(LlamaCppVLMExecutionProfile.resolve(repoID: LFM3Catalog.vision.repoID).contextSize, 4_096)
     }
 
+    /// Rendered from the GGUF's tokenizer.chat_template.tts and the Omni card's ASR prompt.
+    func test_omniSpeechPromptsFollowTheModelTemplates() {
+        XCTAssertEqual(LFM3Catalog.speechPrompt("Hi there", language: "tr", voice: "male"),
+                       "<|startoftext|><|im_start|>system\nPerform TTS in Turkish using a male voice.<|im_end|>\n"
+                       + "<|im_start|>user\nHi there<|im_end|>\n<|im_start|>assistant\n<think></think><|audio_start|>")
+        XCTAssertTrue(LFM3Catalog.speechPrompt("x", language: nil, voice: "robot")
+            .contains("Perform TTS in American English using a female voice."))
+        XCTAssertTrue(LFM3Catalog.speechPrompt("x", language: "EN-GB", voice: nil).contains("in British English using"))
+        XCTAssertTrue(LFM3Catalog.speechPrompt("x", language: "sw", voice: nil).contains("in sw using"))
+        XCTAssertEqual(LFM3Catalog.transcriptionPrompt(marker: "<__media__>", language: "en"),
+                       "<|im_start|>system\nPerform ASR in English.<|im_end|>\n<|im_start|>user\n<__media__><|im_end|>\n"
+                       + "<|im_start|>assistant\n<think></think>")
+        XCTAssertTrue(LFM3Catalog.transcriptionPrompt(marker: "<m>", language: "tr").contains("Perform ASR in Turkish."))
+    }
+
     func test_textTemplateFollowsLiquidThinkingAndHistoryRules() {
         let template = ChatTemplate.detect(for: LFM3Catalog.text.repoID)
         XCTAssertEqual(template.format, "lfm3")

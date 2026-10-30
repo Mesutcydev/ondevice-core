@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Real LFM3-Omni video run on this Mac through the app's own video code
-# (OmniVideoInput.swift, OmniVideoFeed.swift, LFM3Catalog.visionPrompt) and the
+# Real LFM3-Omni run on this Mac through the app's own code (OmniVideoInput,
+# OmniVideoFeed, OmniSpeech, LFM3Catalog prompts) and the
 # b11960 runtime's macOS slice. Needs scripts/bootstrap_lfm3_omni_runtime.py and
-# the two model files; downloads nothing.
+# the two model files; downloads nothing. OMNI_HARNESS_MODE=asr|tts switches
+# from video questions to speech in or out; OMNI_HARNESS_SOURCE=live replays a
+# video the way a Lens clip arrives.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 models="${1:?usage: $0 <dir with LFM3-Omni-2B-Q4_0.gguf and mmproj-LFM3-Omni-2B-Q8_0.gguf> [video] [question] [max frames]}"
@@ -17,6 +19,7 @@ xcrun swiftc -O -parse-as-library -D LFM3_EXPERIMENTAL -D LFM3_OMNI \
     -F "$frameworks" -framework llama -Xlinker -rpath -Xlinker "$frameworks" \
     "$root/IOSLocalLLM/Services/LlamaCpp/OmniVideoInput.swift" \
     "$root/IOSLocalLLM/Services/LlamaCpp/OmniVideoFeed.swift" \
+    "$root/IOSLocalLLM/Services/LlamaCpp/OmniSpeech.swift" \
     "$root/IOSLocalLLM/Models/LFM3Catalog.swift" \
     "$root/scripts/tests/omni-video-harness/main.swift" \
     -o "$work/omni-video-harness"

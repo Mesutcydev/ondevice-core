@@ -925,6 +925,8 @@ enum LocalModelRegistry {
                     return repoID.lowercased().contains("mini") ? 700_000_000 : 250_000_000
                 case .kokoro:
                     return 400_000_000
+                case .lfm3Omni:
+                    return 0   // counted with the LFM3 Omni visual model
                 }
             }
             return 0

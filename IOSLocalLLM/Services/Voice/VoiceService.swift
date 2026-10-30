@@ -40,12 +40,14 @@ final class VoiceService: ObservableObject {
     @Published private(set) var systemState:  VoiceModelState = .ready
     @Published private(set) var kittenState:  VoiceModelState = .unloaded
     @Published private(set) var kokoroState:  VoiceModelState = .unloaded
+    @Published private(set) var omniState:    VoiceModelState = .unloaded
 
     // MARK: - Engines
 
     let systemEngine  = SystemSpeechService()
     let kittenEngine  = KittenTTSService()
     let kokoroEngine  = KokoroTTSService()
+    let omniEngine    = OmniVoiceEngine()
 
     /// All voices the user could currently select — the active engine's
     /// voices plus the always-available system voices, deduplicated by id.
@@ -136,6 +138,11 @@ final class VoiceService: ObservableObject {
             kokoroState = .loading
             await kokoroEngine.load()
             kokoroState = kokoroEngine.modelState
+
+        case .lfm3Omni:
+            omniState = .loading
+            await omniEngine.load()
+            omniState = omniEngine.modelState
 
         case .appleSystem:
             break   // always ready
@@ -687,6 +694,8 @@ final class VoiceService: ObservableObject {
             return kittenEngine.isReady ? kittenEngine : nil
         case .kokoro:
             return kokoroEngine.isReady ? kokoroEngine : nil
+        case .lfm3Omni:
+            return omniEngine.isReady ? omniEngine : nil
         case .appleSystem:
             return systemEngine
         }
@@ -927,6 +936,12 @@ final class VoiceService: ObservableObject {
             kokoroState = .loading
             await kokoroEngine.load()
             kokoroState = kokoroEngine.modelState
+
+        case .lfm3Omni:
+            guard !omniEngine.isReady, omniState != .loading else { return }
+            omniState = .loading
+            await omniEngine.load()
+            omniState = omniEngine.modelState
         }
         refreshStates()
     }
@@ -937,6 +952,7 @@ final class VoiceService: ObservableObject {
         systemState = systemEngine.modelState
         kittenState = kittenEngine.modelState
         kokoroState = kokoroEngine.modelState
+        omniState = omniEngine.modelState
     }
 
     // MARK: - Unload
@@ -945,6 +961,7 @@ final class VoiceService: ObservableObject {
         stop()
         kittenEngine.unload()
         kokoroEngine.unload()
+        omniEngine.unload()
         refreshStates()
     }
 }

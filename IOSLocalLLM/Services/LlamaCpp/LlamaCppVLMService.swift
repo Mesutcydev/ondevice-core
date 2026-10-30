@@ -600,6 +600,52 @@ final class LlamaCppVLMService: ObservableObject {
     }
 
     #if LFM3_OMNI
+    /// Loads LFM3-Omni for speech when it is not the active visual model, then
+    /// runs `work` on the bridge off the main actor. Speech shares the visual
+    /// model slot, so the next Lens or video request reloads its own model.
+    private func withOmni<T: Sendable>(_ work: @escaping @Sendable (LlamaCppVLM) throws -> T) async throws -> T {
+        if activeRepoID != LFM3Catalog.omni.repoID || vlm == nil {
+            await switchTo(repoID: LFM3Catalog.omni.repoID)
+        }
+        guard case .ready = state, let model = vlm?.standard, LFM3Catalog.isOmni(activeRepoID ?? "") else {
+            throw OmniSpeech.Failure.step("loading LFM3 Omni 2B (download it under Models)")
+        }
+        state = .generating
+        defer { if case .generating = state { state = .ready } }
+        return try await Task.detached(priority: .userInitiated) { try work(model) }.value
+    }
+
+    /// Speech to text with LFM3-Omni; `samples` are mono at 16 kHz.
+    func omniTranscribe(samples: [Float], language: String?) async throws -> String {
+        try await withOmni { try $0.transcribe(samples: samples, language: language) }
+    }
+
+    /// A voice-chat reply from LFM3-Omni itself, in LFM3's chat format with
+    /// thinking off. Drops the oldest turns while the history does not fit.
+    func omniChat(
+        _ messages: [ChatMessage], maxTokens: Int = 512,
+        onToken: @escaping @Sendable (String) -> Void
+    ) async throws {
+        var history = messages
+        if history.first?.role != .system {
+            history.insert(ChatMessage(role: .system, content: "You are a helpful voice assistant. Answer in short, natural spoken sentences without Markdown."), at: 0)
+        }
+        while true {
+            let prompt = ChatTemplate.lfm3.format(messages: history, enableThinking: false)
+            do {
+                try await withOmni { try $0.chat(prompt: prompt, maxTokens: maxTokens, onToken: onToken, onComplete: { _ in }) }
+                return
+            } catch LlamaCppError.promptTooLong where history.count > 2 {
+                history.remove(at: 1)   // oldest turn after the system prompt
+            }
+        }
+    }
+
+    /// LFM3-Omni's own voice for `text`.
+    func omniSpeak(_ text: String, language: String?, voice: String?) async throws -> OmniSpeech.Audio {
+        try await withOmni { try $0.speak(text: text, language: language, voice: voice) }
+    }
+
     /// LFM3-Omni video question: decode the clip, then answer from its frames
     /// and soundtrack. A clip that does not fit the context is retried with
     /// proportionally fewer frames, down to the model's minimum of 4.

@@ -1964,6 +1964,7 @@ struct ModelsManagerView: View {
         case .appleSystem: return "Apple System Voice"
         case .kittenTTS:   return "KittenTTS (neural)"
         case .kokoro:      return "Kokoro (neural)"
+        case .lfm3Omni:    return "LFM3 Omni (voice)"
         }
     }
 
@@ -1972,6 +1973,7 @@ struct ModelsManagerView: View {
         case .appleSystem: return "AVSpeechSynthesizer · built-in"
         case .kittenTTS:   return "alexwengg/kittentts-coreml"
         case .kokoro:      return "hexgrad/Kokoro-82M"
+        case .lfm3Omni:    return LFM3Catalog.omni.repoID
         }
     }
 
@@ -1986,6 +1988,8 @@ struct ModelsManagerView: View {
             return loadPhase(for: voiceSvc.kittenState)
         case .kokoro:
             return loadPhase(for: voiceSvc.kokoroState)
+        case .lfm3Omni:
+            return loadPhase(for: voiceSvc.omniState)
         }
     }
 

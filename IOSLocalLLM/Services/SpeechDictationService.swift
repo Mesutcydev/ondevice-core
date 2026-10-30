@@ -179,6 +179,29 @@ final class SpeechDictationService: ObservableObject {
         vadFrameLock.unlock()
     }
 
+    /// Voice conversation with LFM3-Omni listening: the user's audio for the
+    /// current turn (16 kHz mono, never the assistant's own voice), which Omni
+    /// re-transcribes when Apple Speech's endpointing ends the turn.
+    nonisolated(unsafe) private var captureTurnAudio: Bool = false
+    private let turnAudioLock = NSLock()
+    private nonisolated(unsafe) var turnAudio: [Float] = []
+
+    private nonisolated func captureTurnFrames(_ buffer: AVAudioPCMBuffer) {
+        guard let samples = WhisperContext.resampleTo16kMonoFloat(buffer), !samples.isEmpty else { return }
+        turnAudioLock.lock()
+        turnAudio.append(contentsOf: samples)
+        let cap = 960_000   // 60 s @ 16 kHz
+        if turnAudio.count > cap { turnAudio.removeFirst(turnAudio.count - cap) }
+        turnAudioLock.unlock()
+    }
+
+    /// Hands over and clears the current turn's audio.
+    func takeTurnAudio() -> [Float] {
+        turnAudioLock.lock()
+        defer { turnAudio.removeAll(keepingCapacity: true); turnAudioLock.unlock() }
+        return turnAudio
+    }
+
     /// Pulls and clears the 16 kHz frames captured since the last call.
     /// Returns empty when frame capture is off or nothing has arrived.
     func drainVADFrames() -> [Float] {
@@ -229,8 +252,16 @@ final class SpeechDictationService: ObservableObject {
         return ok
     }
 
+    /// LFM3-Omni transcription: chosen in Settings, and only in builds that
+    /// can load Omni. Hold-to-talk records like Whisper; conversation keeps
+    /// Apple Speech for turn-taking and has Omni re-transcribe each turn.
+    static var usesOmni: Bool {
+        AppSettings.shared.sttProvider == "omni" && LFM3Catalog.isEnabled && LFM3Catalog.omniRuntimeAvailable
+    }
+
     var supportsLocalDictation: Bool {
-        (AppSettings.shared.sttProvider == "whisper" && WhisperModelCatalog.isInstalled)
+        Self.usesOmni
+            || (AppSettings.shared.sttProvider == "whisper" && WhisperModelCatalog.isInstalled)
             || (recognizer?.isAvailable == true && recognizer?.supportsOnDeviceRecognition == true)
     }
 
@@ -266,7 +297,8 @@ final class SpeechDictationService: ObservableObject {
         // user isn't silently broken if they enabled the toggle then
         // deleted the model.
         let wantsWhisper = AppSettings.shared.sttProvider == "whisper"
-        if wantsWhisper, !continuous, WhisperModelCatalog.isInstalled {
+        if (wantsWhisper && WhisperModelCatalog.isInstalled) || Self.usesOmni, !continuous {
+            // Same 16 kHz hold-to-talk capture; the provider picks the transcriber.
             try startWhisperSingleShot(onTranscript)
             return
         }
@@ -290,6 +322,8 @@ final class SpeechDictationService: ObservableObject {
         self.inputPaused = false
         // Feed the neural VAD only in conversation mode. Cleared in cleanup().
         self.captureVADFrames = continuous
+        self.captureTurnAudio = continuous && Self.usesOmni
+        _ = takeTurnAudio()
         vadFrameLock.lock(); vadFrames.removeAll(keepingCapacity: true); vadFrameLock.unlock()
         lastError = nil
 
@@ -374,6 +408,7 @@ final class SpeechDictationService: ObservableObject {
             if self.captureVADFrames { self.captureFramesForVAD(buffer) }
             // Drop audio into the recogniser only when not paused.
             guard !self.inputPaused else { return }
+            if self.captureTurnAudio { self.captureTurnFrames(buffer) }
             self.appendToCurrentRequest(buffer)
         }
 
@@ -495,6 +530,7 @@ final class SpeechDictationService: ObservableObject {
         try? audioEngine.inputNode.setVoiceProcessingEnabled(false)
         levelMeter = 0
         captureVADFrames = false
+        captureTurnAudio = false
         vadFrameLock.lock(); vadFrames.removeAll(keepingCapacity: true); vadFrameLock.unlock()
     }
 
@@ -520,6 +556,9 @@ final class SpeechDictationService: ObservableObject {
         }
         inputPaused = false
         captureVADFrames = continuous
+        captureTurnAudio = continuous && Self.usesOmni
+        // A new turn starts after the reply: drop audio from before it.
+        _ = takeTurnAudio()
         // After TTS we may have stopped the engine entirely (pauseEngineForTTS).
         // After a route change it may also be dead. Rebuild the tap + start
         // before opening a new recognition request.
@@ -567,9 +606,11 @@ final class SpeechDictationService: ObservableObject {
             }
             if self.captureVADFrames { self.captureFramesForVAD(buffer) }
             guard !self.inputPaused else { return }
+            if self.captureTurnAudio { self.captureTurnFrames(buffer) }
             self.appendToCurrentRequest(buffer)
         }
         captureVADFrames = continuous
+        captureTurnAudio = continuous && Self.usesOmni
     }
 
     private func cleanup() {
@@ -586,6 +627,7 @@ final class SpeechDictationService: ObservableObject {
         levelMeter = 0
         inputPaused = false
         captureVADFrames = false
+        captureTurnAudio = false
         vadFrameLock.lock(); vadFrames.removeAll(keepingCapacity: true); vadFrameLock.unlock()
         // Continuous mode: the VoiceConversationService owns the session.
         // It needs to stay active so the very next TTS utterance plays
@@ -710,6 +752,22 @@ final class SpeechDictationService: ObservableObject {
             callback?("", true)
             return
         }
+        #if LFM3_OMNI
+        if Self.usesOmni {
+            cleanup()
+            Task { @MainActor in
+                do {
+                    let text = try await LlamaCppVLMService.shared.omniTranscribe(
+                        samples: buffer, language: Locale.current.language.languageCode?.identifier)
+                    callback?(text, true)
+                } catch {
+                    ToastCenter.shared.error("LFM3 Omni transcription failed", detail: error.localizedDescription)
+                    callback?("", true)
+                }
+            }
+            return
+        }
+        #endif
         guard let modelPath = WhisperModelCatalog.installedModelPath() else {
             cleanup()
             lastError = "No whisper model installed."
