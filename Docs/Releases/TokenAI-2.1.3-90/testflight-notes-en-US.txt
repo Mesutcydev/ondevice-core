@@ -1,0 +1,4 @@
+• Ask about videos: with LFM3 Omni 2B downloaded, pick a video from Photos or Files in chat. Omni watches up to 64 frames and listens to the soundtrack, then answers the question in the composer, or describes the clip if it's empty. Long clips are sampled evenly; a toast shows how many frames it used.
+• Other models and photos work as before.
+
+Please try a 10–30 second clip with speech: ask what happens and what is said. Also try a clip without sound and a longer clip.
