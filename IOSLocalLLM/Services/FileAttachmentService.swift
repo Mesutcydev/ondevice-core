@@ -357,7 +357,7 @@ public enum FileAttachmentService {
                 let query = relevanceQuery ?? ""
                 if pages.count > 1 {
                     let note = wantsPDFOverview(pages, query: query)
-                        ? "excerpts across all \(pages.count) pages"
+                        ? "condensed from all \(pages.count) pages"
                         : target == nil
                         ? "Pages selected from \(pages.count) readable pages"
                         : "selected pages"
@@ -472,18 +472,23 @@ public enum FileAttachmentService {
 
     /// An equal share of the budget per page, evenly spaced when the budget
     /// cannot give every page a useful share, so a 4K-context model still
-    /// sees the document from start to end.
+    /// sees the document from start to end. Short pages pass their unused
+    /// share on. No "Page N:" headings: with them LFM3 listed pages instead
+    /// of summarizing, where CodeLens's plain text got a real summary.
     // ponytail: leading text of each page, not map-reduce; add chunked summaries if late-page detail is missed.
     nonisolated private static func pdfOverviewText(_ pages: [PDFPageText], byteBudget: Int) -> String {
         let count = max(1, min(pages.count, byteBudget / 160))
-        let share = byteBudget / count
-        return (0..<count).compactMap { slot -> String? in
-            let page = pages[slot * pages.count / count]
-            let heading = "Page \(page.number): "
-            let flat = page.text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
-            let text = capToBytes(flat, cap: max(0, share - heading.utf8.count - 2), marker: "…").0
-            return text.isEmpty ? nil : heading + text
-        }.joined(separator: "\n\n")
+        var remaining = byteBudget
+        var parts: [String] = []
+        for slot in 0..<count {
+            let flat = pages[slot * pages.count / count].text
+                .split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            let text = capToBytes(flat, cap: max(0, remaining / (count - slot) - 2), marker: "…").0
+            guard !text.isEmpty else { continue }
+            parts.append(text)
+            remaining -= text.utf8.count + 2
+        }
+        return parts.joined(separator: "\n\n")
     }
 
     private nonisolated static func pdfPageScore(
