@@ -18,6 +18,21 @@ final class PageAwarePDFTests: XCTestCase {
         XCTAssertLessThanOrEqual(result.utf8.count, 240)
     }
 
+    func testSummaryQueryCoversWholeDocument() {
+        let pages = (1...20).map {
+            FileAttachmentService.PDFPageText(
+                number: $0, text: "Bölüm \($0)\n" + String(repeating: "acil durum hazırlığı ", count: 60)
+            )
+        }
+        let result = FileAttachmentService.selectedPDFPageText(
+            pages, query: "Summarize document for me", byteBudget: 4_096
+        )
+        XCTAssertTrue(result.contains("Page 1: Bölüm 1"))
+        XCTAssertTrue(result.contains("Page 20: Bölüm 20"))
+        XCTAssertFalse(result.contains("[…truncated…]"))
+        XCTAssertLessThanOrEqual(result.utf8.count, 4_096)
+    }
+
     func testPDFImportKeepsPagesAfterLegacyPreviewCap() async throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("page-aware-\(UUID().uuidString).pdf")

@@ -261,9 +261,10 @@ public enum FileAttachmentService {
     /// removed one character at a time until the string fit, which is O(n) in
     /// the length of the discarded text — for a large file that is a
     /// main-thread stall before the user even hits send.
-    private nonisolated static func capToBytes(_ s: String, cap: Int) -> (String, Bool) {
+    private nonisolated static func capToBytes(
+        _ s: String, cap: Int, marker: String = "\n\n[…truncated…]"
+    ) -> (String, Bool) {
         guard cap >= 0, s.utf8.count > cap else { return (s, false) }
-        let marker = "\n\n[…truncated…]"
         guard cap > marker.utf8.count else { return ("", true) }
         var slice = s.utf8.prefix(cap - marker.utf8.count)
         // Walk back to a complete scalar: drop the continuation bytes of a
@@ -353,15 +354,22 @@ public enum FileAttachmentService {
                 max(0, $0 - prefix.utf8.count - suffix.utf8.count)
             } ?? perFileByteCap
             if let pages = a.pdfPages, !pages.isEmpty {
-                text = selectedPDFPageText(
-                    pages, query: relevanceQuery ?? "", byteBudget: initialAllowance
-                )
+                let query = relevanceQuery ?? ""
                 if pages.count > 1 {
-                    let note = target == nil
+                    let note = wantsPDFOverview(pages, query: query)
+                        ? "excerpts across all \(pages.count) pages"
+                        : target == nil
                         ? "Pages selected from \(pages.count) readable pages"
                         : "selected pages"
                     warning = warning.map { "\($0) · \(note)" } ?? note
                 }
+                // The note lengthens the prefix; leave room for it so the
+                // overflow path below does not replace it with "excerpt".
+                let notedPrefix = promptFilePrefix(index: i + 1, name: name, warning: warning)
+                text = selectedPDFPageText(
+                    pages, query: query,
+                    byteBudget: max(0, initialAllowance - (notedPrefix.utf8.count - prefix.utf8.count))
+                )
             }
             prefix = promptFilePrefix(index: i + 1, name: name, warning: warning)
             if let target {
@@ -423,7 +431,10 @@ public enum FileAttachmentService {
     nonisolated static func selectedPDFPageText(
         _ pages: [PDFPageText], query: String, byteBudget: Int
     ) -> String {
-        guard byteBudget > 0 else { return "" }
+        guard byteBudget > 0, !pages.isEmpty else { return "" }
+        if wantsPDFOverview(pages, query: query) {
+            return pdfOverviewText(pages, byteBudget: byteBudget)
+        }
         let terms = queryTerms(query)
         let ranked = pages.sorted { lhs, rhs in
             let left = pdfPageScore(lhs, query: query, terms: terms)
@@ -446,6 +457,33 @@ public enum FileAttachmentService {
         return selected.sorted { $0.number < $1.number }
             .map { "Page \($0.number):\n\($0.text)" }
             .joined(separator: "\n\n")
+    }
+
+    /// A summary needs the whole document. General requests ("Summarize
+    /// this") match no page, which used to fall back to pages 1-2: the model
+    /// saw only the cover and asked whether to read the rest, while CodeLens
+    /// fed the full text and summarized it.
+    nonisolated static func wantsPDFOverview(_ pages: [PDFPageText], query: String) -> Bool {
+        let lower = query.lowercased()
+        if ["summar", "overview", "özet"].contains(where: lower.contains) { return true }
+        let terms = queryTerms(query)
+        return !pages.contains { pdfPageScore($0, query: query, terms: terms) > 0 }
+    }
+
+    /// An equal share of the budget per page, evenly spaced when the budget
+    /// cannot give every page a useful share, so a 4K-context model still
+    /// sees the document from start to end.
+    // ponytail: leading text of each page, not map-reduce; add chunked summaries if late-page detail is missed.
+    nonisolated private static func pdfOverviewText(_ pages: [PDFPageText], byteBudget: Int) -> String {
+        let count = max(1, min(pages.count, byteBudget / 160))
+        let share = byteBudget / count
+        return (0..<count).compactMap { slot -> String? in
+            let page = pages[slot * pages.count / count]
+            let heading = "Page \(page.number): "
+            let flat = page.text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            let text = capToBytes(flat, cap: max(0, share - heading.utf8.count - 2), marker: "…").0
+            return text.isEmpty ? nil : heading + text
+        }.joined(separator: "\n\n")
     }
 
     private nonisolated static func pdfPageScore(
