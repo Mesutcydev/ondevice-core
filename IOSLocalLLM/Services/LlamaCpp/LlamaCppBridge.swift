@@ -99,6 +99,8 @@ final class LlamaCppVLM: @unchecked Sendable {
     private let configuredContextSize: UInt32
     private let usesMiniCPMInstructTemplate: Bool
     private let usesLFM3VisionTemplate: Bool
+    /// LFM3-Omni can also answer in speech; text answers must not switch to it.
+    private let isOmni: Bool
     private let textGenerationActive = OSAllocatedUnfairLock(initialState: false)
     private var cachedSequence: [llama_token] = []
     private var cacheUsableForContinue = false
@@ -219,6 +221,7 @@ final class LlamaCppVLM: @unchecked Sendable {
         self.configuredContextSize = contextSize
         self.usesMiniCPMInstructTemplate = MiniCPMV47Catalog.usesInstructVisionPrompt(for: llmPath)
         self.usesLFM3VisionTemplate = LFM3Catalog.isVision(llmPath)
+        self.isOmni = LFM3Catalog.isOmni(llmPath)
         if MiniCPMV47Catalog.is35B(llmPath)
             || MiniCPMV47Catalog.embeddedRuntimeIdentity(modelPath: llmPath) == MiniCPMV47Catalog.thirtyFiveBRepoID {
             guard allowMiniCPMStreamingText else {
@@ -331,6 +334,7 @@ final class LlamaCppVLM: @unchecked Sendable {
             self.mtmdCtx = nil; self.ctx = nil; self.model = nil
             throw LlamaCppError.samplerInitFailed
         }
+        addTextOnlyBias(chain, model: m)
         if usesLFM3VisionTemplate {
             llama_sampler_chain_add(chain, llama_sampler_init_penalties(
                 llama_vocab_n_tokens(llama_model_get_vocab(m)), 64, 1.1, 0, 0
@@ -417,6 +421,7 @@ final class LlamaCppVLM: @unchecked Sendable {
             throw LlamaCppError.samplerInitFailed
         }
         defer { llama_sampler_free(samp) }
+        addTextOnlyBias(samp, model: m)
         if spec.repetitionPenalty != 1.0 {
             llama_sampler_chain_add(samp, llama_sampler_init_penalties(
                 llama_vocab_n_tokens(llama_model_get_vocab(m)), -1, spec.repetitionPenalty, 0.0, 0.0
@@ -681,6 +686,7 @@ final class LlamaCppVLM: @unchecked Sendable {
             throw LlamaCppError.samplerInitFailed
         }
         defer { llama_sampler_free(samp) }
+        addTextOnlyBias(samp, model: m)
         if spec.repetitionPenalty != 1.0 {
             llama_sampler_chain_add(samp, llama_sampler_init_penalties(
                 llama_vocab_n_tokens(llama_model_get_vocab(m)), -1, spec.repetitionPenalty, 0.0, 0.0
@@ -960,6 +966,20 @@ final class LlamaCppVLM: @unchecked Sendable {
         }
 
         onComplete(Self.tokensPerSec(tokens: tokensGenerated, start: startTime))
+    }
+
+    /// Omni's text-only rule from llama.cpp (mtmd-helper-gen): a text answer
+    /// never opens an audio or mixed text+speech segment. No-op for other models.
+    private func addTextOnlyBias(_ chain: UnsafeMutablePointer<llama_sampler>, model: OpaquePointer) {
+        guard isOmni else { return }
+        let vocab = llama_model_get_vocab(model)
+        var bias: [llama_logit_bias] = ["<|audio_start|>", "<|mixed_start|>"].compactMap { name in
+            var token: llama_token = 0
+            let count = llama_tokenize(vocab, name, Int32(name.utf8.count), &token, 1, false, true)
+            return count == 1 ? llama_logit_bias(token: token, bias: -.infinity) : nil
+        }
+        guard !bias.isEmpty else { return }
+        llama_sampler_chain_add(chain, llama_sampler_init_logit_bias(llama_vocab_n_tokens(vocab), Int32(bias.count), &bias))
     }
 
     // MARK: - LFM3-Omni video
