@@ -480,6 +480,7 @@ final class ODBridge: ObservableObject {
         caps.canManageStorage = routesInstalled
         caps.canConfigureApp = routesInstalled
         caps.canSelectLensModel = routesInstalled
+        caps.canRecordLensClips = routesInstalled && LFM3Catalog.isEnabled && LFM3Catalog.omniRuntimeAvailable
         caps.canMinimizeVoiceSession = true
         caps.canControlMicrophone = true
         caps.canControlSpeaker = true

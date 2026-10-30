@@ -604,7 +604,7 @@ final class LlamaCppVLMService: ObservableObject {
     /// and soundtrack. A clip that does not fit the context is retried with
     /// proportionally fewer frames, down to the model's minimum of 4.
     func describeVideo(
-        url: URL,
+        source: OmniVideoSource,
         prompt: String,
         maxTokens: Int = 512,
         onPrepared: @Sendable @escaping (_ seconds: Double, _ frames: Int, _ heard: Bool) -> Void = { _, _, _ in },
@@ -630,7 +630,7 @@ final class LlamaCppVLMService: ObservableObject {
         let completionGuard = CompletionGuard(onComplete)
         inferenceTask = Task.detached(priority: .userInitiated) { [weak self] in
             do {
-                let probe = try await OmniVideoClip.probe(url)
+                let probe = try await source.probe()
                 let notVideo = LlamaCppError.unsupportedModel("This model cannot take video.")
                 guard let recommended = model.omniVideoConfig(width: probe.width, height: probe.height,
                                                               sourceFrames: probe.sourceFrames, fps: probe.fps)
@@ -646,9 +646,9 @@ final class LlamaCppVLMService: ObservableObject {
                                                 sourceFrames: Int((Double(frames) / 2 * probe.fps).rounded(.up)),
                                                 fps: probe.fps)
                     guard let sized else { throw notVideo }
-                    let clip = try await OmniVideoClip.load(url, probe: probe, frameCount: frames,
-                                                            width: sized.width, height: sized.height,
-                                                            sampleRate: model.audioSampleRate)
+                    let clip = try await source.clip(probe: probe, frameCount: frames,
+                                                     width: sized.width, height: sized.height,
+                                                     sampleRate: model.audioSampleRate)
                     do {
                         onPrepared(probe.duration, frames, clip.hasSoundtrack)
                         try model.describeVideo(clip: clip, prompt: prompt, maxTokens: tokenCap,

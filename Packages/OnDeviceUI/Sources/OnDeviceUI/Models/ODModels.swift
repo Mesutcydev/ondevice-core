@@ -276,6 +276,8 @@ public enum ODVoicePhase: Equatable {
 
 public enum ODLensMode: String, CaseIterable, Identifiable {
     case ask, translate, scan, solve
+    /// Listed only when the host sets `canRecordLensClips` (LFM3-Omni).
+    case clip
     public var id: String { rawValue }
     public var title: String { rawValue.capitalized }
     public var instruction: String {
@@ -284,6 +286,7 @@ public enum ODLensMode: String, CaseIterable, Identifiable {
         case .translate: return "Point at text to translate"
         case .scan: return "Capture text or a document"
         case .solve: return "Frame the problem to solve"
+        case .clip: return "Record a few seconds to ask about"
         }
     }
 }
@@ -302,6 +305,7 @@ public enum ODModelCommand: String, CaseIterable, Identifiable {
 /// Host capabilities govern enabled controls. They do not start any services.
 public struct ODCapabilities {
     public var canPinConversations = false
+    public var canRecordLensClips = false
     public var canOpenMacBridge = false
     public var canOpenAPIServer = false
     public var canOpenCodeWorkspace = false

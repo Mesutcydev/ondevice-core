@@ -308,7 +308,7 @@ struct ODLensView: View {
 
     private var modePicker: some View {
         Picker(ODLocalizedString("Lens mode"), selection: $store.cameraMode) {
-            ForEach(ODLensMode.allCases) { mode in
+            ForEach(ODLensMode.allCases.filter { $0 != .clip || store.capabilities.canRecordLensClips }) { mode in
                 Text(odKey: mode.title).tag(mode)
             }
         }

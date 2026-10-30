@@ -67,6 +67,42 @@ enum OmniVideoError: LocalizedError {
     }
 }
 
+/// What Omni watches: a video file, or frames already sampled from the Lens
+/// camera with an optional microphone recording of the same seconds.
+enum OmniVideoSource: @unchecked Sendable {
+    case file(URL)
+    case live(frames: [CGImage], fps: Double, audio: URL?)
+
+    func probe() async throws -> OmniVideoClip.Probe {
+        switch self {
+        case .file(let url):
+            return try await OmniVideoClip.probe(url)
+        case .live(let frames, let fps, _):
+            guard let first = frames.first, fps > 0 else { throw OmniVideoError.noLength }
+            return .init(width: first.width, height: first.height, fps: fps,
+                         sourceFrames: frames.count, duration: Double(frames.count) / fps)
+        }
+    }
+
+    func clip(probe: OmniVideoClip.Probe, frameCount: Int, width: Int, height: Int,
+              sampleRate: Int) async throws -> OmniVideoClip {
+        switch self {
+        case .file(let url):
+            return try await OmniVideoClip.load(url, probe: probe, frameCount: frameCount,
+                                                width: width, height: height, sampleRate: sampleRate)
+        case .live(let frames, _, let audio):
+            let audioAsset = audio.map { AVURLAsset(url: $0) }
+            return try await OmniVideoClip.assemble(
+                probe: probe, frameCount: frameCount, width: width, height: height, sampleRate: sampleRate,
+                image: { frames[$0] },
+                soundtrack: { rate, seconds in
+                    guard let audioAsset else { return [] }
+                    return try await OmniVideoClip.monoPCM(audioAsset, sampleRate: rate, seconds: seconds)
+                })
+        }
+    }
+}
+
 /// A decoded clip ready for mtmd: RGB frames at the size mtmd asked for, the
 /// mono soundtrack at the audio encoder's rate, and the prompt layout.
 struct OmniVideoClip: Sendable {
@@ -116,29 +152,36 @@ struct OmniVideoClip: Sendable {
     /// frames only, as mtmd-helper does.
     static func load(_ url: URL, probe: Probe, frameCount: Int, width: Int, height: Int,
                      sampleRate: Int) async throws -> OmniVideoClip {
-        let picks = OmniVideoLayout.frameIndices(sourceFrames: probe.sourceFrames, count: frameCount)
         let asset = AVURLAsset(url: url)
         let generator = AVAssetImageGenerator(asset: asset)
         generator.appliesPreferredTrackTransform = true
         generator.requestedTimeToleranceBefore = .zero
         generator.requestedTimeToleranceAfter = .zero
+        return try await assemble(
+            probe: probe, frameCount: frameCount, width: width, height: height, sampleRate: sampleRate,
+            image: { try await generator.image(at: CMTime(seconds: Double($0) / probe.fps, preferredTimescale: 600)).image },
+            soundtrack: { try await monoPCM(asset, sampleRate: $0, seconds: $1) })
+    }
+
+    /// Picks `frameCount` source frames, scales them, reads the soundtrack
+    /// for the frames' span and lays the clip out for mtmd.
+    static func assemble(probe: Probe, frameCount: Int, width: Int, height: Int, sampleRate: Int,
+                         image: (Int) async throws -> CGImage,
+                         soundtrack: (Int, Double) async throws -> [Float]) async throws -> OmniVideoClip {
+        let picks = OmniVideoLayout.frameIndices(sourceFrames: probe.sourceFrames, count: frameCount)
         let outWidth = width > 0 ? width : probe.width
         let outHeight = height > 0 ? height : probe.height
         var frames: [[UInt8]] = []
         frames.reserveCapacity(picks.count)
         for pick in picks {
             try Task.checkCancellation()
-            let time = CMTime(seconds: Double(pick) / probe.fps, preferredTimescale: 600)
-            let image = try await generator.image(at: time).image
-            frames.append(try rgb(image, width: outWidth, height: outHeight))
+            frames.append(try rgb(try await image(pick), width: outWidth, height: outHeight))
         }
-        let soundtrack = sampleRate > 0
-            ? try await monoPCM(asset, sampleRate: sampleRate, seconds: Double(probe.sourceFrames) / probe.fps)
-            : []
+        let audio = sampleRate > 0 ? try await soundtrack(sampleRate, Double(probe.sourceFrames) / probe.fps) : []
         let items = OmniVideoLayout.items(frameIndices: picks, sourceFPS: probe.fps,
-                                          sampleRate: sampleRate, soundtrackSamples: soundtrack.count)
+                                          sampleRate: sampleRate, soundtrackSamples: audio.count)
         return OmniVideoClip(frames: frames, width: outWidth, height: outHeight,
-                             soundtrack: soundtrack, items: items, probe: probe)
+                             soundtrack: audio, items: items, probe: probe)
     }
 
     /// Packed RGB, stretched to the exact size like ffmpeg's `scale=w:h`.
@@ -164,7 +207,7 @@ struct OmniVideoClip: Sendable {
         return out
     }
 
-    private static func monoPCM(_ asset: AVURLAsset, sampleRate: Int, seconds: Double) async throws -> [Float] {
+    static func monoPCM(_ asset: AVURLAsset, sampleRate: Int, seconds: Double) async throws -> [Float] {
         guard let track = try await asset.loadTracks(withMediaType: .audio).first else { return [] }
         let reader = try AVAssetReader(asset: asset)
         let output = AVAssetReaderTrackOutput(track: track, outputSettings: [

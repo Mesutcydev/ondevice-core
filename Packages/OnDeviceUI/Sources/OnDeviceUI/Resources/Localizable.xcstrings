@@ -1,6 +1,88 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+  "Clip": {
+    "extractionState": "manual",
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Clip"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Clip"
+        }
+      },
+      "ar": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "مقطع"
+        }
+      },
+      "tr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Klip"
+        }
+      },
+      "hi": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "क्लिप"
+        }
+      },
+      "ja": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "クリップ"
+        }
+      }
+    }
+  },
+  "Record a few seconds to ask about": {
+    "extractionState": "manual",
+    "localizations": {
+      "de": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Nimm ein paar Sekunden auf, um danach zu fragen"
+        }
+      },
+      "es": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Graba unos segundos para preguntar sobre ellos"
+        }
+      },
+      "ar": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "سجّل بضع ثوانٍ لتسأل عنها"
+        }
+      },
+      "tr": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "Hakkında soru sormak için birkaç saniye kaydedin"
+        }
+      },
+      "hi": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "पूछने के लिए कुछ सेकंड रिकॉर्ड करें"
+        }
+      },
+      "ja": {
+        "stringUnit": {
+          "state": "translated",
+          "value": "数秒間録画して質問できます"
+        }
+      }
+    }
+  },
   "Copy code": {
     "extractionState": "manual",
     "localizations": {

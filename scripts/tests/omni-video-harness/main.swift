@@ -2,6 +2,7 @@
 // LFM3 prompt) against the real model on a Mac. Built and driven by
 // scripts/test_omni_video_on_mac.sh; not part of the app target.
 import Foundation
+import AVFoundation
 
 @main
 struct OmniVideoHarness {
@@ -30,7 +31,22 @@ struct OmniVideoHarness {
         guard let mc = mtmd_init_from_file(args[2], model, mtmd_context_params_default()) else { fail("projector") }
 
         let url = URL(fileURLWithPath: args[3])
-        let probe = try await OmniVideoClip.probe(url)
+        // OMNI_HARNESS_SOURCE=live replays the clip the way a Lens clip arrives:
+        // frames already sampled at 2 fps plus a separate audio file.
+        let source: OmniVideoSource
+        if ProcessInfo.processInfo.environment["OMNI_HARNESS_SOURCE"] == "live" {
+            let generator = AVAssetImageGenerator(asset: AVURLAsset(url: url))
+            generator.appliesPreferredTrackTransform = true
+            let length = try await OmniVideoClip.probe(url).duration
+            var frames: [CGImage] = []
+            for step in 0..<Int(length * 2) {
+                frames.append(try await generator.image(at: CMTime(seconds: Double(step) / 2, preferredTimescale: 600)).image)
+            }
+            source = .live(frames: frames, fps: 2, audio: url)
+        } else {
+            source = .file(url)
+        }
+        let probe = try await source.probe()
         let recommended = mtmd_get_video_config(mc, Int32(probe.width), Int32(probe.height),
                                                 Int32(probe.sourceFrames), Float(probe.fps))
         guard recommended.tmpl == MTMD_VIDEO_TEMPLATE_LFM3_OMNI else { fail("not an Omni projector") }
@@ -39,9 +55,9 @@ struct OmniVideoHarness {
             : mtmd_get_video_config(mc, Int32(probe.width), Int32(probe.height),
                                     Int32((Double(frames) / 2 * probe.fps).rounded(.up)), Float(probe.fps))
         let rate = Int(mtmd_get_audio_sample_rate(mc))
-        let clip = try await OmniVideoClip.load(url, probe: probe, frameCount: frames,
-                                                width: Int(sized.frame_width), height: Int(sized.frame_height),
-                                                sampleRate: rate)
+        let clip = try await source.clip(probe: probe, frameCount: frames,
+                                         width: Int(sized.frame_width), height: Int(sized.frame_height),
+                                         sampleRate: rate)
         print("probe: \(probe.width)x\(probe.height) \(probe.fps) fps \(probe.sourceFrames) frames \(probe.duration) s")
         print("clip: \(clip.frames.count) frames at \(clip.width)x\(clip.height), \(clip.soundtrack.count) samples at \(rate) Hz, \(clip.items.count) items")
 
@@ -77,6 +93,14 @@ struct OmniVideoHarness {
         var nPast: llama_pos = 0
         guard mtmd_helper_eval_chunks(mc, ctx, chunks, 0, 0, 512, true, &nPast) == 0 else { fail("eval") }
         let sampler = llama_sampler_chain_init(llama_sampler_chain_default_params())
+        // Same text-only rule as LlamaCppVLM.addTextOnlyBias.
+        var bias: [llama_logit_bias] = ["<|audio_start|>", "<|mixed_start|>"].compactMap { name in
+            var token: llama_token = 0
+            let count = llama_tokenize(llama_model_get_vocab(model), name, Int32(name.utf8.count), &token, 1, false, true)
+            return count == 1 ? llama_logit_bias(token: token, bias: -.infinity) : nil
+        }
+        llama_sampler_chain_add(sampler, llama_sampler_init_logit_bias(
+            llama_vocab_n_tokens(llama_model_get_vocab(model)), Int32(bias.count), &bias))
         llama_sampler_chain_add(sampler, llama_sampler_init_greedy())
         let vocab = llama_model_get_vocab(model)
         var batch = llama_batch_init(1, 0, 1)

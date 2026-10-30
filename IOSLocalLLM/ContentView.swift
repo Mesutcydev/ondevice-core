@@ -531,6 +531,12 @@ struct ContentView: View {
             odBridge.store.voiceSessionPresented = false
         }
         routes.capture = { mode, question in
+            #if LFM3_OMNI
+            if mode == .clip {
+                analysis.captureClipAndAnalyze(question: question)
+                return
+            }
+            #endif
             lensPhotoOperationID = UUID()
             // Mirror the workbench's mode onto the app's preset so the capture
             // runs the right prompt — the job the old mode bar did.

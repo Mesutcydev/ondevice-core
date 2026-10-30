@@ -39,6 +39,104 @@ final class AnalysisService: ObservableObject {
         selectImageForReview(UIImage(cgImage: cg))
     }
 
+    #if LFM3_OMNI
+    /// Lens clip for LFM3-Omni: samples the live preview at 2 fps for
+    /// `seconds` while recording the microphone, then asks Omni about the
+    /// frames and sound. The answer streams into a normal Lens result.
+    func captureClipAndAnalyze(question: String, seconds: Int = 6) {
+        guard !isAnalyzing, latestPixelBuffer != nil else {
+            ToastCenter.shared.info("Camera not ready", detail: "Wait for the preview.")
+            return
+        }
+        cancelCurrentAnalysis()
+        let typed = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        let ask = typed.isEmpty ? "Describe what happens in this clip, including what you can hear." : typed
+        isAnalyzing = true
+        analysisStartedAt = .now
+        statusMessage = "Recording a \(seconds) s clip…"
+        analysisTask = Task {
+            let recorder = OmniClipRecorder()
+            let audio = await recorder.start()
+            var frames: [CGImage] = []
+            let orientation = Self.cgOrientation(for: UIDevice.current.orientation)
+            let context = CIContext()
+            for _ in 0..<(seconds * 2) {
+                guard !Task.isCancelled else { break }
+                if let live = latestPixelBuffer, let copy = Self.deepCopyPixelBuffer(live) {
+                    let frame = CIImage(cvPixelBuffer: copy).oriented(orientation)
+                    if let image = context.createCGImage(frame, from: frame.extent) { frames.append(image) }
+                }
+                try? await Task.sleep(for: .milliseconds(500))
+            }
+            recorder.stop()
+            let removeAudio: @Sendable () -> Void = { if let audio { try? FileManager.default.removeItem(at: audio) } }
+            guard !Task.isCancelled, frames.count >= 4, let first = frames.first else {
+                removeAudio()
+                isAnalyzing = false
+                statusMessage = "Clip cancelled"
+                return
+            }
+
+            let resultID = UUID()
+            let preview = CIImage(cgImage: first)
+            let placeholder = AnalysisResult(
+                id: resultID,
+                detection: Detection(boundingBox: CGRect(x: 0, y: 0, width: 1, height: 1),
+                                     confidence: 1, label: "Clip", classIndex: -1),
+                extractedCode: "", reviewMarkdown: "", mode: .visual, ocrFallback: false,
+                fallbackReason: nil, thumbnail: Self.makeThumbnail(from: preview, maxDim: 240),
+                ciImage: preview, isStreaming: true
+            )
+            analysisResults.insert(placeholder, at: 0)
+            if analysisResults.count > 10 { analysisResults.removeLast() }
+            activeResult = placeholder
+
+            await CodingAssistantService.shared.unloadAndWaitForCleanup()
+            let llama = LlamaCppVLMService.shared
+            if llama.activeRepoID != LFM3Catalog.omni.repoID {
+                statusMessage = "Loading LFM3 Omni…"
+                await llama.switchTo(repoID: LFM3Catalog.omni.repoID)
+            }
+            guard ownsAnalysis(resultID), !Task.isCancelled else {
+                removeAudio()
+                return
+            }
+            guard case .ready = llama.state else {
+                removeAudio()
+                updateResult(id: resultID) { r in
+                    r.extractedCode = "Download LFM3 Omni 2B under Models to ask about clips."
+                    r.isStreaming = false
+                }
+                isAnalyzing = false
+                return
+            }
+            statusMessage = "Watching the clip…"
+            llama.describeVideo(
+                source: .live(frames: frames, fps: 2, audio: audio),
+                prompt: ask,
+                onToken: { token in
+                    Task { @MainActor in
+                        guard self.ownsAnalysis(resultID) else { return }
+                        self.updateResult(id: resultID) { $0.extractedCode += token }
+                    }
+                },
+                onComplete: { _ in
+                    Task { @MainActor in
+                        removeAudio()
+                        guard self.ownsAnalysis(resultID) else { return }
+                        self.updateResult(id: resultID) { r in
+                            if r.extractedCode.isEmpty { r.extractedCode = "LFM3 Omni could not answer about this clip." }
+                            r.isStreaming = false
+                        }
+                        self.isAnalyzing = false
+                        self.statusMessage = "Clip analysis complete"
+                    }
+                }
+            )
+        }
+    }
+    #endif
+
     func selectImageForReview(_ image: UIImage) {
         let format = UIGraphicsImageRendererFormat()
         format.scale = image.scale

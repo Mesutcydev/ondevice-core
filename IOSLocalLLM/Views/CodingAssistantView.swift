@@ -4588,7 +4588,7 @@ struct CodingAssistantView: View {
                 return
             }
             llama.describeVideo(
-                url: url,
+                source: .file(url),
                 prompt: question,
                 onPrepared: { seconds, frames, heard in
                     Task { @MainActor in

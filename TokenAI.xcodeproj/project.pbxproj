@@ -204,6 +204,7 @@
 		54E1AAD0F4B90F1AF4B08B54 /* HFTokenSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04675716C093B46B82795AFD /* HFTokenSheet.swift */; };
 		5544682C5CC4F623D85DD7E3 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 40BDCD3E8D0F10192C6D4D17 /* Localizable.xcstrings */; };
 		55B76C0C7589A07C493CBEB1 /* VoiceEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4737833060AB0C4BB29A37B1 /* VoiceEngine.swift */; };
+		5604C14FF7C49A8D7DA156C0 /* OmniClipRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F057E827943F4CDA0D836B9 /* OmniClipRecorder.swift */; };
 		5828673F96E884194583FEB1 /* VAE.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE5EA204FDCEFC997A0BB53E /* VAE.swift */; };
 		59C7311845C953103B2A5B54 /* AssistantActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC6A3F93DD0056BCD76F50D8 /* AssistantActivity.swift */; };
 		5A6865A622B9E4635DDD62EF /* CoreAIModelLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D208D7DA0F3B3A36BD3559 /* CoreAIModelLibrary.swift */; };
@@ -812,6 +813,7 @@
 		4EACD8181C5937A8FC9D7709 /* OnDeviceEmbedderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceEmbedderTests.swift; sourceTree = "<group>"; };
 		4EEA94867295AB64FC4AF34B /* VoiceControlsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceControlsView.swift; sourceTree = "<group>"; };
 		4EFAC358D84218462DEF1A26 /* BootSplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BootSplashView.swift; sourceTree = "<group>"; };
+		4F057E827943F4CDA0D836B9 /* OmniClipRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OmniClipRecorder.swift; sourceTree = "<group>"; };
 		4F4F1C9FC2C263C48563554D /* VoicePerformanceSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicePerformanceSnapshot.swift; sourceTree = "<group>"; };
 		4FB5B254815E221264D9E64B /* CoreAIClassifierTokenizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAIClassifierTokenizer.swift; sourceTree = "<group>"; };
 		4FE2531D1C81A915F6620D0E /* LFM3ToolProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LFM3ToolProtocol.swift; sourceTree = "<group>"; };
@@ -2094,6 +2096,7 @@
 				8E0A417132117F0A479DB8F3 /* IOSLocalLLM-Bridging-Header.h */,
 				6EA3179B1522B6D30F3127FC /* LlamaCppBridge.swift */,
 				C1CF5EA04F4A080D5B7C5700 /* LlamaCppVLMService.swift */,
+				4F057E827943F4CDA0D836B9 /* OmniClipRecorder.swift */,
 				512BFA21E54B9529A7FC9638 /* OmniVideoFeed.swift */,
 				7BC737D5EA1EDE5FF76225EB /* OmniVideoInput.swift */,
 			);
@@ -3065,6 +3068,7 @@
 				84A26022ECBBD00AA1139210 /* NetworkActivityMonitor.swift in Sources */,
 				148DDFCE3F0FCA8339EE0341 /* OCRService.swift in Sources */,
 				6A3302245BF5A80B52498C1D /* ODBridge.swift in Sources */,
+				5604C14FF7C49A8D7DA156C0 /* OmniClipRecorder.swift in Sources */,
 				84933B1EF27B095F21ACB5D4 /* OmniVideoFeed.swift in Sources */,
 				88F2D69AD2539A8A69C2C093 /* OmniVideoInput.swift in Sources */,
 				A2F44330EBE845521C97D99E /* OnDeviceCompatibility.swift in Sources */,
