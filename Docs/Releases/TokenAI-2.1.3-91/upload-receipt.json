@@ -1,0 +1,14 @@
+{
+  "mode": "ipa_upload",
+  "buildId": "5cb10ba8-1f9d-4e17-a9a7-b48654dbd5ba",
+  "buildVersion": "2.1.3",
+  "buildNumber": "91",
+  "groupIds": [
+    "7879d475-100f-4c7c-bf49-5b5446be9b56"
+  ],
+  "uploaded": true,
+  "processingState": "VALID",
+  "ipaBytes": 94556258,
+  "ipaSHA256": "e820b407c88cd635bdd9d9af0f9310eb4fe7e10a4b48c651ca1eff55ac87738d",
+  "source": "da1739b (12c9b9d Lens clips + bump)"
+}
