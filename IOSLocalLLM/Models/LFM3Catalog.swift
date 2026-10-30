@@ -105,7 +105,9 @@ enum LFM3Catalog {
 
     private static func omniLanguage(_ code: String?) -> String {
         let code = (code?.isEmpty == false ? code! : "en").lowercased()
-        return omniLanguageNames[code] ?? code
+        // Recognisers report "zh-hans", "pt-br" …; the template knows the base.
+        let base = String(code.prefix { $0 != "-" && $0 != "_" })
+        return omniLanguageNames[code] ?? omniLanguageNames[base] ?? code
     }
 
     /// The model's own "tts" template, rendered here because the app does not

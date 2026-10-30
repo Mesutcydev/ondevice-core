@@ -61,6 +61,9 @@ final class LFM3CatalogTests: XCTestCase {
             .contains("Perform TTS in American English using a female voice."))
         XCTAssertTrue(LFM3Catalog.speechPrompt("x", language: "EN-GB", voice: nil).contains("in British English using"))
         XCTAssertTrue(LFM3Catalog.speechPrompt("x", language: "sw", voice: nil).contains("in sw using"))
+        // Recognisers report region variants; the template knows the base language.
+        XCTAssertTrue(LFM3Catalog.speechPrompt("x", language: "zh-Hans", voice: nil).contains("in Chinese using"))
+        XCTAssertTrue(LFM3Catalog.speechPrompt("x", language: "pt_BR", voice: nil).contains("in Portuguese using"))
         XCTAssertEqual(LFM3Catalog.transcriptionPrompt(marker: "<__media__>", language: "en"),
                        "<|im_start|>system\nPerform ASR in English.<|im_end|>\n<|im_start|>user\n<__media__><|im_end|>\n"
                        + "<|im_start|>assistant\n<think></think>")

@@ -603,7 +603,27 @@ final class LlamaCppVLMService: ObservableObject {
     /// Loads LFM3-Omni for speech when it is not the active visual model, then
     /// runs `work` on the bridge off the main actor. Speech shares the visual
     /// model slot, so the next Lens or video request reloads its own model.
+    /// Requests share one llama context, so each waits for the one before it
+    /// (a voice-chat reply finishes before its first sentence is spoken).
     private func withOmni<T: Sendable>(_ work: @escaping @Sendable (LlamaCppVLM) throws -> T) async throws -> T {
+        let previous = omniQueue
+        let run = Task { @MainActor in
+            await previous?.value
+            return try await self.runOmni(work)
+        }
+        omniQueue = Task { _ = try? await run.value }
+        return try await run.value
+    }
+
+    private var omniQueue: Task<Void, Never>?
+
+    private func runOmni<T: Sendable>(_ work: @escaping @Sendable (LlamaCppVLM) throws -> T) async throws -> T {
+        // Same gates as describe(): Metal work while backgrounding aborts the
+        // process, and thermal/memory refusals are product behaviour.
+        guard !DeviceSafetyMonitor.shared.shouldStopHeavyWork,
+              UIApplication.shared.applicationState == .active else {
+            throw OmniSpeech.Failure.step("start: the device is too hot or the app is in the background")
+        }
         if activeRepoID != LFM3Catalog.omni.repoID || vlm == nil {
             await switchTo(repoID: LFM3Catalog.omni.repoID)
         }
@@ -692,9 +712,12 @@ final class LlamaCppVLMService: ObservableObject {
                                                 sourceFrames: Int((Double(frames) / 2 * probe.fps).rounded(.up)),
                                                 fps: probe.fps)
                     guard let sized else { throw notVideo }
+                    // The soundtrack spans the whole clip (~12.5 tokens/s), so
+                    // fewer frames cannot make a very long one fit: past 10
+                    // minutes, watch without sound.
                     let clip = try await source.clip(probe: probe, frameCount: frames,
                                                      width: sized.width, height: sized.height,
-                                                     sampleRate: model.audioSampleRate)
+                                                     sampleRate: probe.duration <= 600 ? model.audioSampleRate : 0)
                     do {
                         onPrepared(probe.duration, frames, clip.hasSoundtrack)
                         try model.describeVideo(clip: clip, prompt: prompt, maxTokens: tokenCap,

@@ -83,7 +83,9 @@ struct PhotoPickerView: UIViewControllerRepresentable {
             guard let result = results.first else { return }
 
             let onResult = onResult
-            if let onVideo, result.itemProvider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
+            // An item that is also an image (a Live Photo) stays a photo.
+            if let onVideo, !result.itemProvider.hasItemConformingToTypeIdentifier(UTType.image.identifier),
+               result.itemProvider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
                 // The provided file is deleted when the handler returns.
                 result.itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, _ in
                     guard let url, let copy = PickedVideo.temporaryCopy(of: url) else { return }

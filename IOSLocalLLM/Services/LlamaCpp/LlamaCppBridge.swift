@@ -1011,6 +1011,9 @@ final class LlamaCppVLM: @unchecked Sendable {
         }
         cancelFlag.withLock { $0 = false }
         llama_memory_clear(llama_get_memory(c), false)
+        // The long-lived sampler's repetition window must not carry the
+        // previous answer into this one.
+        llama_sampler_reset(samp)
         invalidateTokenCache()
 
         let feed = OmniVideoFeed(clip)
@@ -1040,6 +1043,9 @@ final class LlamaCppVLM: @unchecked Sendable {
         }
         cancelFlag.withLock { $0 = false }
         llama_memory_clear(llama_get_memory(c), false)
+        // The long-lived sampler's repetition window must not carry the
+        // previous answer into this one.
+        llama_sampler_reset(samp)
         invalidateTokenCache()
         let chunks = try tokenizeMultimodal(mc, prompt: prompt, bitmaps: [])
         defer { mtmd_input_chunks_free(chunks) }

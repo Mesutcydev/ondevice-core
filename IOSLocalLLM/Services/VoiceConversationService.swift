@@ -60,10 +60,16 @@ final class VoiceConversationService: ObservableObject {
 
     private func owns(_ operation: UUID) -> Bool { sessionOperationID == operation }
 
-    /// LFM3-Omni both listens and speaks, so it also writes the replies: one
-    /// resident model instead of swapping it with the chat model every turn.
+    /// With LFM3-Omni's voice, Omni also writes the replies. Speaking needs
+    /// Omni in the visual slot, and loading it unloads the chat model, which
+    /// would cancel a reply still being streamed; one resident model avoids
+    /// that swap on every turn.
     private var usesOmniVoiceChat: Bool {
-        SpeechDictationService.usesOmni && AppSettings.shared.voiceEngine == VoiceEngineKind.lfm3Omni.rawValue
+        #if LFM3_OMNI
+        AppSettings.shared.voiceEngine == VoiceEngineKind.lfm3Omni.rawValue
+        #else
+        false
+        #endif
     }
 
     /// The reply: LFM3-Omni itself in Omni voice chat, otherwise the chat model.

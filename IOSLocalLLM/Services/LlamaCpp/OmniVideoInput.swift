@@ -157,9 +157,26 @@ struct OmniVideoClip: Sendable {
         generator.appliesPreferredTrackTransform = true
         generator.requestedTimeToleranceBefore = .zero
         generator.requestedTimeToleranceAfter = .zero
+        if width > 0, height > 0 {
+            // Decode 4K near the target size, but never below it in either
+            // dimension (frames are stretched to it afterwards).
+            let side = CGFloat(max(width, height) * 2)
+            generator.maximumSize = CGSize(width: side, height: side)
+        }
+        // One ordered pass instead of a keyframe seek per frame.
+        let picks = OmniVideoLayout.frameIndices(sourceFrames: probe.sourceFrames, count: frameCount)
+        let time = { (pick: Int) in CMTime(seconds: Double(pick) / probe.fps, preferredTimescale: 600) }
+        var decoded: [CMTime: CGImage] = [:]
+        for await result in generator.images(for: picks.map(time)) {
+            try Task.checkCancellation()
+            if case .success(let requested, let image, _) = result { decoded[requested] = image }
+        }
         return try await assemble(
             probe: probe, frameCount: frameCount, width: width, height: height, sampleRate: sampleRate,
-            image: { try await generator.image(at: CMTime(seconds: Double($0) / probe.fps, preferredTimescale: 600)).image },
+            image: { pick in
+                guard let image = decoded[time(pick)] else { throw OmniVideoError.frameUnreadable }
+                return image
+            },
             soundtrack: { try await monoPCM(asset, sampleRate: $0, seconds: $1) })
     }
 

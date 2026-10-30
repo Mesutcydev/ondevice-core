@@ -41,14 +41,20 @@ sed -n '/^struct LlamaCppVLMExecutionProfile: Equatable, Sendable {/,/^}/p' \
     > "$minicpm_work/Sources/IOSLocalLLM/LlamaCppVLMExecutionProfile.swift"
 cp "$minicpm_root/IOSLocalLLMTests/MiniCPMV47CatalogTests.swift" "$minicpm_work/Tests/MiniCPMTests/"
 cp "$minicpm_root/IOSLocalLLMTests/LFM3CatalogTests.swift" "$minicpm_work/Tests/MiniCPMTests/"
-cp "$minicpm_root/IOSLocalLLM/Services/LlamaCpp/OmniVideoInput.swift" "$minicpm_work/Sources/IOSLocalLLM/"
-cp "$minicpm_root/IOSLocalLLMTests/OmniVideoLayoutTests.swift" "$minicpm_work/Tests/MiniCPMTests/"
+# OmniVideoInput reads audio with the macOS/iOS 27 AVAssetReader API; older
+# hosts still run every other check.
+host_platform='.macOS(.v14)'
+if [[ "$(sw_vers -productVersion | cut -d. -f1)" -ge 27 ]]; then
+    host_platform='.macOS("27.0")'
+    cp "$minicpm_root/IOSLocalLLM/Services/LlamaCpp/OmniVideoInput.swift" "$minicpm_work/Sources/IOSLocalLLM/"
+    cp "$minicpm_root/IOSLocalLLMTests/OmniVideoLayoutTests.swift" "$minicpm_work/Tests/MiniCPMTests/"
+fi
 cp "$minicpm_root/IOSLocalLLMTests/MiniCPMV47ArtifactTests.swift" "$minicpm_work/Tests/MiniCPMTests/"
 cp "$minicpm_root/IOSLocalLLMTests/MiniCPM35BTextProfileTests.swift" "$minicpm_work/Tests/MiniCPMTests/"
-cat > "$minicpm_work/Package.swift" <<'SWIFT'
+cat > "$minicpm_work/Package.swift" <<SWIFT
 // swift-tools-version: 5.10
 import PackageDescription
-let package = Package(name: "MiniCPMChecks", platforms: [.macOS("27.0")], targets: [
+let package = Package(name: "MiniCPMChecks", platforms: [$host_platform], targets: [
     .target(name: "IOSLocalLLM"),
     .testTarget(name: "MiniCPMTests", dependencies: ["IOSLocalLLM"])
 ])

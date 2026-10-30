@@ -64,7 +64,10 @@ final class AnalysisService: ObservableObject {
                 guard !Task.isCancelled else { break }
                 if let live = latestPixelBuffer, let copy = Self.deepCopyPixelBuffer(live) {
                     let frame = CIImage(cvPixelBuffer: copy).oriented(orientation)
-                    if let image = context.createCGImage(frame, from: frame.extent) { frames.append(image) }
+                    // Omni frames are ~700 px; do not hold 12 full camera frames.
+                    let scale = min(1, 1_024 / max(frame.extent.width, frame.extent.height))
+                    let small = frame.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+                    if let image = context.createCGImage(small, from: small.extent) { frames.append(image) }
                 }
                 try? await Task.sleep(for: .milliseconds(500))
             }

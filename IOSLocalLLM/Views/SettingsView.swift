@@ -1836,7 +1836,9 @@ private struct WhisperSTTBlock: View {
             KRow(label: "speech-to-text", trailing: {
                 Picker("", selection: $settings.sttProvider) {
                     Text("system").tag("system")
-                    Text("whisper").tag("whisper")
+                    // Without Omni the whole picker waits for the Whisper
+                    // download; with Omni only the whisper choice does.
+                    if isInstalled || !omniAvailable { Text("whisper").tag("whisper") }
                     if omniAvailable { Text("omni").tag("omni") }
                 }
                 .pickerStyle(.segmented)

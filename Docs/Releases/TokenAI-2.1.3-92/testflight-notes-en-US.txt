@@ -1,7 +1,7 @@
 • LFM3 Omni can now listen and speak (needs LFM3 Omni 2B):
   – Settings → speech-to-text → omni: hold-to-talk dictation transcribed by Omni.
   – Voice → LFM3 Omni: Omni's own female or male voice, in the reply's language (19 languages, including Turkish).
-  – Voice conversation: with Omni for both listening and speaking, Omni also writes the replies, so one model stays loaded.
+  – Voice conversation: with the LFM3 Omni voice, Omni also writes the replies, so one model stays loaded.
 • Whisper, System, KittenTTS and Kokoro are unchanged and remain the defaults.
 
 Please try dictation and a short voice conversation in English and in your own language.

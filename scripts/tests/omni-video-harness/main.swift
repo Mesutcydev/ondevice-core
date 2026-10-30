@@ -47,14 +47,15 @@ struct OmniVideoHarness {
             // is transcribed back as a round trip.
             let text = args.count > 4 ? args[4] : "The quick brown fox jumps over the lazy dog."
             let start = Date()
-            let audio = try OmniSpeech.synthesize(text, language: "en", voice: "female",
+            let language = ProcessInfo.processInfo.environment["OMNI_HARNESS_LANG"] ?? "en"
+            let audio = try OmniSpeech.synthesize(text, language: language, voice: "female",
                                                   model: model, context: ctx, mtmd: mc)
             try audio.wav.write(to: url)
             print("speech: \(audio.wav.count) bytes at \(audio.sampleRate) Hz in \(String(format: "%.1f", Date().timeIntervalSince(start))) s")
             let asset = AVURLAsset(url: url)
             let pcm = try await OmniVideoClip.monoPCM(asset, sampleRate: Int(mtmd_get_audio_sample_rate(mc)),
                                                       seconds: try await asset.load(.duration).seconds)
-            print("round trip: \(try OmniSpeech.transcribe(pcm, language: "en", model: model, context: ctx, mtmd: mc))")
+            print("round trip: \(try OmniSpeech.transcribe(pcm, language: language, model: model, context: ctx, mtmd: mc))")
             finish(model, ctx, mc)
             return
         default:
