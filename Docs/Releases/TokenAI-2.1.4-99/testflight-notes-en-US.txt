@@ -1,0 +1,4 @@
+• Fix: the assistant now makes an image only when you ask for one. Asking for code or text (for example an animated HTML background right after an image) gets you an answer instead of another picture.
+• Same as build 98, now as version 2.1.4. Everything else is as in 2.1.3 on the App Store.
+
+Please try: ask the assistant for an image of an apple, wait for it, then ask it for an animated background in HTML.

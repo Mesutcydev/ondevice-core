@@ -1,0 +1,22 @@
+{
+  "mode": "ipa_upload",
+  "buildId": "343796cb-ac5e-45c7-b926-eafbf0ec1351",
+  "buildVersion": "2.1.4",
+  "buildNumber": "99",
+  "groupIds": [
+    "7879d475-100f-4c7c-bf49-5b5446be9b56"
+  ],
+  "uploaded": true,
+  "processingState": "VALID",
+  "ipaBytes": 94635824,
+  "ipaSHA256": "d8b727f08851b2eea26cbb5ef9ef5c52e643461ecbedb8a6997f14fc6acbd4cc",
+  "source": "1248c0c (ddc2713 fix)",
+  "appStoreVersion": {
+    "id": "c0302f96-3f59-458e-91c6-4673df0ef6a9",
+    "version": "2.1.4",
+    "attachedBuild": "99",
+    "state": "PREPARE_FOR_SUBMISSION",
+    "releaseType": "MANUAL",
+    "submitted": false
+  }
+}
