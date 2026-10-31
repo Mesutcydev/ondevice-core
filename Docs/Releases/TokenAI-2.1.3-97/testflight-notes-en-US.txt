@@ -1,0 +1,5 @@
+• Fix: after the assistant makes an image, the chat model loads again by itself, so you can keep talking without loading it by hand.
+• Fix: the next request should no longer repeat the last image (for example, asking for an HTML animation right after an image should now get you the code).
+• Everything else is as in 96.
+
+Please try: ask the assistant for a picture of a dog, wait for it, then ask it to write an animation in HTML.
