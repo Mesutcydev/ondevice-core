@@ -1,0 +1,6 @@
+• Fix: generated images now appear in the chat. When the assistant makes an image, it shows up in the conversation once it is ready, however long the image model takes to load, even if you have moved to another chat.
+• While the image is being made, the chat shows the same live progress as Image studio.
+• If you decline a tool (an image, a web search or a file), the assistant answers right away instead of asking for another tool.
+• Everything else is as in 95.
+
+Please try: ask the assistant to draw a picture. Then ask for an animated website background in HTML; if it offers to make an image, decline once and it should write the code.
