@@ -216,6 +216,14 @@ enum AssistantActivity {
         !aborted
     }
 
+    /// A started image evicts the chat model, so a follow-up reply would die
+    /// mid-stream and leave an unanswered tool call the model repeats on the
+    /// next turn. The chat closes that turn itself once the image lands.
+    static func shouldFollowUpAfterTool(aborted: Bool, name: String, result: String) -> Bool {
+        shouldFollowUpAfterTool(aborted: aborted)
+            && !(name == "generate_image" && result.hasPrefix("Started generating"))
+    }
+
     static func canResumeTruncatedReply(
         hitTokenLimit: Bool?,
         isStreaming: Bool,

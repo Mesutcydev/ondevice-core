@@ -75,6 +75,15 @@ final class AssistantActivityCardTests: XCTestCase {
         XCTAssertTrue(AssistantActivity.shouldFollowUpAfterTool(aborted: false))
     }
 
+    func test_startedImageSkipsFollowUpThatWouldRaceTheModelUnload() {
+        XCTAssertFalse(AssistantActivity.shouldFollowUpAfterTool(
+            aborted: false, name: "generate_image", result: "Started generating an image for: \"a dog\""))
+        XCTAssertTrue(AssistantActivity.shouldFollowUpAfterTool(
+            aborted: false, name: "generate_image", result: "Error: the image model isn't downloaded"))
+        XCTAssertTrue(AssistantActivity.shouldFollowUpAfterTool(
+            aborted: false, name: "calculator", result: "4"))
+    }
+
     func test_canResumeTruncatedReply_onlyWhenCutOffAndIdle() {
         XCTAssertTrue(
             AssistantActivity.canResumeTruncatedReply(

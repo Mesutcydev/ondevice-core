@@ -3781,10 +3781,10 @@ struct CodingAssistantView: View {
         }
         // generate_image is fire-and-forget — the diffusion result lands on
         // ImageGenerationService asynchronously. Start a bounded waiter that
-        // drops the finished image into the chat inline, in addition to the
-        // textual status the model synthesises from below.
+        // drops the finished image into the chat inline and stands in for the
+        // follow-up reply, which feedToolResultAndFollowUp skips here.
         if call.name == "generate_image", result.hasPrefix("Started generating") {
-            appendGeneratedImageWhenReady()
+            appendGeneratedImageWhenReady(prompt: (call.args["prompt"] as? String) ?? "")
         }
         feedToolResultAndFollowUp(name: call.name, result: result, depth: depth)
     }
@@ -3792,12 +3792,14 @@ struct CodingAssistantView: View {
     /// Polls `ImageGenerationService` (bounded) for the image produced by a
     /// `generate_image` tool call and appends it to the conversation as an
     /// assistant image message, so the result is visible inline rather than
-    /// only in the Image tab. No-ops on timeout or generation failure.
-    /// The image lands in the conversation that asked for it, however long the
+    /// only in the Image tab. The image lands in the conversation that asked for it, however long the
     /// image model takes to load. A 3-minute cap and the reply's request scope
     /// used to drop it: SDXL Turbo can take longer, and a new message or chat
     /// changes the scope.
-    private func appendGeneratedImageWhenReady() {
+    /// The captioned message closes the tool turn: with an empty one the model
+    /// read the `generate_image` call as unanswered and repeated it on the next
+    /// request. The diffusion run evicted the chat model, so it is reloaded.
+    private func appendGeneratedImageWhenReady(prompt: String) {
         let service = ImageGenerationService.shared
         guard let conversationID = currentConversationID else { return }
         let baseline = service.resultURL
@@ -3806,15 +3808,26 @@ struct CodingAssistantView: View {
             while service.isWorking {
                 try? await Task.sleep(nanoseconds: 400_000_000)   // 0.4s
             }
-            guard service.resultURL != baseline, let image = service.image,
-                  let data = AssistantImageEncoder.jpeg(image) else { return }
-            let message = ChatMessage(role: .assistant, content: "", imageThumbnailData: data)
+            var data: Data?
+            if service.resultURL != baseline, let image = service.image {
+                data = AssistantImageEncoder.jpeg(image)
+            }
+            let closing: String
+            if data != nil {
+                closing = "Here's the image of \"\(prompt)\"."
+            } else if case .failed(let reason) = service.state {
+                closing = "Image generation failed: \(reason)"
+            } else {
+                closing = "Image generation didn't finish."
+            }
+            let message = ChatMessage(role: .assistant, content: closing, imageThumbnailData: data)
             if conversationID == self.currentConversationID {
                 self.messages.append(message)
                 self.persistCurrentConversation()
             } else {
                 self.store.update(id: conversationID, messages: self.store.messages(for: conversationID) + [message])
             }
+            if self.canLoadSelectedModel { await self.assistant.load() }
         }
     }
 
@@ -3935,7 +3948,10 @@ struct CodingAssistantView: View {
         let resultBlock = ToolRunner.resultBlock(name: name, result: result)
         let resultMessage = ChatMessage(role: .user, content: resultBlock)
         messages.append(resultMessage)
-        guard AssistantActivity.shouldFollowUpAfterTool(aborted: userAbortedToolTurn) else {
+        guard AssistantActivity.shouldFollowUpAfterTool(
+            aborted: userAbortedToolTurn, name: name, result: result
+        ) else {
+            submissionPreparing = false
             persistCurrentConversation()
             return
         }
