@@ -541,6 +541,10 @@ final class CodingAssistantService: ObservableObject {
     /// than inferring functionality, so they stay identity-based. Adding a
     /// runtime starts at `RuntimeEngineFactory.unsupportedReason(for:)`.
     private var isLlamaCppExecution: Bool { activeModel.runtime == .llamaCpp }
+    /// Ends a load failure for weights that are not on this device. Retrying
+    /// cannot help, so the chat offers the model picker instead.
+    static let missingModelSuffix = " from the Models tab first."
+
     private var isMLXExecution: Bool { activeModel.runtime == .mlx }
     private var isEdge0Execution: Bool { activeModel.runtime == .edge0MLX }
 
@@ -1356,7 +1360,7 @@ final class CodingAssistantService: ObservableObject {
         do {
             installed = try store.selectModel(id: activeModel.id)
         } catch {
-            let detail = "Download \(activeModel.displayName) from the Models tab first."
+            let detail = "Download \(activeModel.displayName)\(Self.missingModelSuffix)"
             state = .failed(detail)
             ToastCenter.shared.error("Core AI model not installed", detail: detail)
             return
@@ -1937,40 +1941,15 @@ final class CodingAssistantService: ObservableObject {
             )
         }
 
-        // Open with "Preparing" by default — the verb users want for a
-        // warm cache. The on-disk probe (preStagedDirectory) tries hard
-        // but can miss HubApi cache variants. If the load turns out to
-        // be a real network download, the latch below flips to
-        // "Downloading" once we observe genuine network-slow progress
-        // (≥3 s elapsed AND <20% complete). This way a cached model
-        // never shows "Downloading" by accident — worst case is a
-        // brief "Preparing" before "Downloading" on a true cold fetch,
-        // which reads correctly because preparation IS the first phase
-        // of any network download.
+        // Downloads start from Models, never from a chat load: Core AI, Edge0
+        // and GGUF models already refuse missing weights, and an MLX load of
+        // a missing model used to fetch it from the Hub behind "Preparing".
         let probedWarm = Self.isModelCachedLocally(activeModel)
-
-        // Pre-flight DISK check for the download path. When nothing usable is
-        // staged, the id-based load fetches the weights via HubApi. On a
-        // near-full device that write fails late with a raw ENOSPC AFTER
-        // writing a multi-GB partial snapshot that then squats on disk across
-        // retries — making "no space" worse each attempt. Refuse early with the
-        // honest free-vs-needed message instead, writing nothing.
-        //
-        // CRITICAL: credit bytes ALREADY on disk. HubApi resumes — it skips
-        // files already downloaded — so the real requirement is the REMAINING
-        // bytes, not the full model. Without this, a model that's 90% fetched
-        // (e.g. interrupted by a previous ENOSPC, or a partial the shard-probe
-        // rejected) is wrongly refused for space it doesn't actually need.
-        if !probedWarm {
-            let estimatedTotal = Int64(Self.estimatedWeightBytes(for: activeModel))
-            let alreadyOnDisk = Self.hubCacheBytesOnDisk(for: activeModel)
-            let needBytes = max(0, estimatedTotal - alreadyOnDisk) + 300_000_000
-            if let free = HFModelDownloadManager.freeDiskBytes(), free < needBytes {
-                let msg = Self.outOfStorageMessage(for: activeModel, remainingBytes: needBytes)
-                state = .failed(msg)
-                ToastCenter.shared.error("\(activeModel.displayName) needs more storage", detail: msg)
-                return
-            }
+        if isMLXExecution, !probedWarm {
+            let detail = "Download \(activeModel.displayName)\(Self.missingModelSuffix)"
+            state = .failed(detail)
+            ToastCenter.shared.error("Model not downloaded", detail: detail)
+            return
         }
 
         state = .loading("Preparing \(activeModel.displayName)…")
@@ -2463,34 +2442,11 @@ final class CodingAssistantService: ObservableObject {
     }
 
     /// Honest, actionable out-of-storage message reporting the device's real
-    /// free space alongside the model's approximate footprint.
-    /// Honest, actionable out-of-storage message. `remainingBytes`, when given,
-    /// is the still-to-download amount (full size minus what's already cached)
-    /// so the figure matches what the user must actually free; otherwise it
-    /// falls back to the model's full estimated on-disk size.
-    private static func outOfStorageMessage(for model: AssistantModel, remainingBytes: Int64? = nil) -> String {
+    /// free space alongside the model's approximate on-disk size.
+    private static func outOfStorageMessage(for model: AssistantModel) -> String {
         let freeStr = HFModelDownloadManager.freeDiskBytes()?.formattedBytes ?? "an unknown amount"
-        let needStr = (remainingBytes ?? Int64(Double(model.approxRAMBytes) * 0.6)).formattedBytes
+        let needStr = Int64(Double(model.approxRAMBytes) * 0.6).formattedBytes
         return "Not enough storage to load \(model.displayName). About \(freeStr) is free, but it needs ~\(needStr) more on disk. Free up space in Settings → General → iPhone Storage, or delete other downloaded models in the Models tab, then retry."
-    }
-
-    /// Bytes of `model`'s weights already present in the HubApi cache — the
-    /// location an id-based load downloads/resumes into. HubApi skips files
-    /// already on disk, so the disk pre-flight credits these against the total.
-    private static func hubCacheBytesOnDisk(for model: AssistantModel) -> Int64 {
-        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let dashed = model.repoID.replacingOccurrences(of: "/", with: "--")
-        let dirs = [
-            docs.appendingPathComponent("huggingface/models/\(model.repoID)", isDirectory: true),
-            docs.appendingPathComponent("huggingface/hub/models--\(dashed)", isDirectory: true),
-        ]
-        var total: Int64 = 0
-        for dir in dirs where FileManager.default.fileExists(atPath: dir.path) {
-            if let sz = try? FileManager.default.allocatedSizeOfDirectory(at: dir) {
-                total += sz
-            }
-        }
-        return total
     }
 
     // MARK: - Generate (streaming, full conversation history)

@@ -285,7 +285,7 @@ struct CodingAssistantView: View {
                                         modelName: assistant.activeDisplayName,
                                         modelStatus: modelStatusDescriptor.title,
                                         loadFailure: modelLoadFailure,
-                                        failureCanRetry: !hasPermanentModelCapacityFailure,
+                                        failureCanRetry: !cannotRetryModelLoad,
                                         canGenerate: assistant.canGenerateSelectedTarget,
                                         onRetry: {
                                             Task { await ensureModelReady() }
@@ -1248,7 +1248,7 @@ struct CodingAssistantView: View {
                 showModelPicker = true
                 Task { await assistant.refreshApplePrivateCloudStatus() }
                 HapticManager.impact(.light)
-            } else if hasPermanentModelCapacityFailure {
+            } else if cannotRetryModelLoad {
                 showModelPicker = true
                 HapticManager.impact(.light)
             } else if canLoadSelectedModel {
@@ -1295,8 +1295,8 @@ struct CodingAssistantView: View {
                 Spacer(minLength: AppSpacing.small)
                 if canLoadSelectedModel {
                     Label(
-                        hasPermanentModelCapacityFailure ? "Choose" : "Load",
-                        systemImage: hasPermanentModelCapacityFailure
+                        cannotRetryModelLoad ? "Choose" : "Load",
+                        systemImage: cannotRetryModelLoad
                             ? "square.stack.3d.up.fill"
                             : "arrow.down.circle.fill"
                     )
@@ -1321,7 +1321,7 @@ struct CodingAssistantView: View {
         .accessibilityLabel("Runtime status: \(modelStatusDescriptor.title)")
         .accessibilityHint(
             canLoadSelectedModel
-                ? (hasPermanentModelCapacityFailure
+                ? (cannotRetryModelLoad
                     ? "Shows compatible on-device models"
                     : "Loads the selected on-device model")
                 : "Shows on-device model and performance details"
@@ -1374,6 +1374,15 @@ struct CodingAssistantView: View {
     private var hasPermanentModelCapacityFailure: Bool {
         guard let modelLoadFailure else { return false }
         return MemoryAdvisor.isHardCapacityFailure(modelLoadFailure)
+    }
+
+    private var isMissingModelFailure: Bool {
+        modelLoadFailure?.hasSuffix(CodingAssistantService.missingModelSuffix) == true
+    }
+
+    /// Retrying cannot fix these, so the chat points at the model picker.
+    private var cannotRetryModelLoad: Bool {
+        hasPermanentModelCapacityFailure || isMissingModelFailure
     }
 
     // Legacy status implementation retained temporarily for source-level
@@ -2322,13 +2331,14 @@ struct CodingAssistantView: View {
         }
         if !assistant.canGenerateSelectedTarget && !isGenerating && !isModelPreparing {
             return AnyView(HStack(spacing: ODLayout.elementGap) {
-                Text(modelLoadFailure != nil ? "The model couldn’t load. Try again or choose another model."
+                Text(isMissingModelFailure ? (modelLoadFailure ?? "")
+                     : modelLoadFailure != nil ? "The model couldn’t load. Try again or choose another model."
                      : "Choose or load a model to send your message.")
                     .font(.footnote).foregroundStyle(.secondary)
                 Spacer(minLength: 0)
-                Button(canLoadSelectedModel && !hasPermanentModelCapacityFailure
+                Button(canLoadSelectedModel && !cannotRetryModelLoad
                        ? (modelLoadFailure == nil ? "Load model" : "Retry loading") : "Choose model") {
-                    if canLoadSelectedModel && !hasPermanentModelCapacityFailure { Task { await assistant.load() } }
+                    if canLoadSelectedModel && !cannotRetryModelLoad { Task { await assistant.load() } }
                     else { showModelPicker = true }
                 }
                 .font(.footnote.weight(.medium)).frame(minHeight: ODLayout.minimumHit)
