@@ -1,0 +1,5 @@
+• Fix: PDF summaries now cover the whole document. The model gets text from every page instead of a few short slices, so LFM3 summarizes the file instead of listing its first pages.
+• A first message of five words or fewer now becomes the chat title as is.
+• Everything else is as in 94.
+
+Please try the PDF again: attach it in a new chat with LFM3 and ask “Summarize document for me”.
