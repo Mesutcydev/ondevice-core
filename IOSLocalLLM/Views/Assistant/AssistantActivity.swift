@@ -62,6 +62,18 @@ enum AssistantActivity {
         return .success
     }
 
+    /// True once the user declined or cancelled a tool since their last
+    /// message. The rest of that turn answers without tools: offered them
+    /// again, small models asked for another one (a declined image, then a
+    /// web search) instead of answering.
+    static func userDeclinedToolThisTurn(_ messages: [ChatMessage]) -> Bool {
+        for message in messages.reversed() where message.role == .user {
+            guard let result = parseToolResult(message.content) else { return false }
+            if toolStatus(result: result.result) == .cancelled { return true }
+        }
+        return false
+    }
+
     static func toolPillTitle(name: String, result: String) -> String {
         switch toolStatus(result: result) {
         case .failure: return "\(name) failed"

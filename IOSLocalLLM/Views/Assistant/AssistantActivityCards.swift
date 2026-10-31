@@ -275,11 +275,22 @@ struct AssistantImageGenerationCard: View {
                     subtitle: AssistantActivity.imageGenerationSubtitle(status),
                     pulsing: true
                 )
-                if !detail.isEmpty {
-                    Text(detail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                if case .failed = status {
+                    if !detail.isEmpty {
+                        Text(detail)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                } else {
+                    // The Image tab's live status: its animated mark and step text.
+                    HStack(spacing: ODLayout.elementGap) {
+                        ODBrandMark(height: 9, motion: .live)
+                        Text(detail.isEmpty ? "Generating…" : detail)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
             }
         }

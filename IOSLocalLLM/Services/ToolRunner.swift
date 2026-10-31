@@ -224,7 +224,7 @@ enum ToolRunner {
         }()
         service.generate(prompt: prompt, negativePrompt: negative, steps: steps)
         return "Started generating an image for: \"\(prompt)\" using "
-            + "\(model.displayName). It will appear in the Image tab when ready."
+            + "\(model.displayName). It will appear in this chat and the Image tab when ready."
     }
 
     /// Returns a fenced result block ready to append to the chat history.

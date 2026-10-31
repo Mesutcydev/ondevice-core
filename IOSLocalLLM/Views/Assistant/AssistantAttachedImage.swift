@@ -3,21 +3,25 @@ import ImageIO
 
 /// A fixed-size, synchronously cached preview keeps a sent image stable as
 /// replies stream: the first layout already has the final 72-point thumbnail.
+/// Generated images use the same view at a larger `side`.
 struct AssistantAttachedImage: View {
     static let side: CGFloat = 72
     let data: Data
     let identifier: String
+    let side: CGFloat
     let onAnalyze: () -> Void
 
     private let preview: UIImage?
 
-    init(data: Data, identifier: String, onAnalyze: @escaping () -> Void) {
+    init(data: Data, identifier: String, side: CGFloat = Self.side, onAnalyze: @escaping () -> Void) {
         self.data = data
         self.identifier = identifier
+        self.side = side
         self.onAnalyze = onAnalyze
         self.preview = AssistantImagePreviewCache.thumbnail(
             for: data,
-            key: "\(identifier)-\(data.count)" as NSString
+            key: "\(identifier)-\(data.count)-\(Int(side))" as NSString,
+            maxPixelSize: side * 3
         )
     }
 
@@ -28,11 +32,11 @@ struct AssistantAttachedImage: View {
                     Image(uiImage: preview)
                         .resizable()
                         .scaledToFill()
-                        .frame(width: Self.side, height: Self.side)
+                        .frame(width: side, height: side)
                         .clipped()
                 } else {
                     Color.secondary.opacity(0.15)
-                        .frame(width: Self.side, height: Self.side)
+                        .frame(width: side, height: side)
                 }
                 Image(systemName: "eye.fill")
                     .font(.system(size: 10, weight: .semibold))
@@ -41,11 +45,11 @@ struct AssistantAttachedImage: View {
                     .background(.black.opacity(0.7), in: Circle())
                     .padding(4)
             }
-            .frame(width: Self.side, height: Self.side)
+            .frame(width: side, height: side)
             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
         .buttonStyle(.plain)
-        .frame(width: Self.side, height: Self.side)
+        .frame(width: side, height: side)
         .accessibilityLabel("Attached image")
         .accessibilityHint("Analyze")
         .accessibilityIdentifier("chat.attached-image.\(identifier)")
@@ -62,12 +66,12 @@ private enum AssistantImagePreviewCache {
 
     /// Decode a small thumbnail synchronously so the first rendered frame is
     /// already final. The source is at most 1,600 pixels and cached by key.
-    static func thumbnail(for data: Data, key: NSString) -> UIImage? {
+    static func thumbnail(for data: Data, key: NSString, maxPixelSize: CGFloat) -> UIImage? {
         if let cached = images.object(forKey: key) { return cached }
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),
               let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
                 kCGImageSourceCreateThumbnailFromImageAlways: true,
-                kCGImageSourceThumbnailMaxPixelSize: 216,
+                kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
                 kCGImageSourceCreateThumbnailWithTransform: true,
               ] as CFDictionary) else { return nil }
         let thumbnail = UIImage(cgImage: image)

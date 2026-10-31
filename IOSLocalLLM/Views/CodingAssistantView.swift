@@ -2925,7 +2925,8 @@ struct CodingAssistantView: View {
         let persona = PersonaStore.shared.active
         let coreAI = assistant.activeExecutionLocation != .externalCloud && assistant.activeModel.runtime == .coreAI
         let budget = assistant.currentInputBudget
-        let tools: CodingAssistantService.PromptContext.Tools = activeModelToolsEnabled
+        let offersTools = activeModelToolsEnabled && !AssistantActivity.userDeclinedToolThisTurn(source)
+        let tools: CodingAssistantService.PromptContext.Tools = offersTools
             ? (coreAI || budget <= 2_048 ? .compact : .full)
             : (AppSettings.shared.toolsEnabled && coreAI ? .unavailable : .none)
         var prompt = CodingAssistantService.composeSystemPrompt(.init(
@@ -2935,7 +2936,7 @@ struct CodingAssistantView: View {
             messages: dialog,
             inputBudget: budget
         ))
-        if activeModelToolsEnabled {
+        if offersTools {
             if usesLFM3NativeTools {
                 prompt = prompt.replacingOccurrences(of: ToolRunner.systemPromptAddendum, with: "")
                     .replacingOccurrences(of: ToolRunner.coreAISystemPromptAddendum, with: "")
@@ -3792,31 +3793,27 @@ struct CodingAssistantView: View {
     /// `generate_image` tool call and appends it to the conversation as an
     /// assistant image message, so the result is visible inline rather than
     /// only in the Image tab. No-ops on timeout or generation failure.
+    /// The image lands in the conversation that asked for it, however long the
+    /// image model takes to load. A 3-minute cap and the reply's request scope
+    /// used to drop it: SDXL Turbo can take longer, and a new message or chat
+    /// changes the scope.
     private func appendGeneratedImageWhenReady() {
         let service = ImageGenerationService.shared
-        let scope = captureRequest()
+        guard let conversationID = currentConversationID else { return }
         let baseline = service.resultURL
         Task { @MainActor in
-            let deadline = Date().addingTimeInterval(180)   // 3-minute safety cap
-            while Date() < deadline {
-                guard self.accepts(scope), !Task.isCancelled else { return }
-                if case .failed = service.state { return }
-                // A fresh, fully-decoded image is a different instance than
-                // whatever was there when the tool fired.
-                if let img = service.image, service.resultURL != baseline {
-                    if case .generating = service.state {
-                        // a later denoise step is still publishing — keep waiting
-                    } else if let data = AssistantImageEncoder.jpeg(img) {
-                        self.messages.append(ChatMessage(role: .assistant,
-                                                         content: "",
-                                                         imageThumbnailData: data))
-                        self.persistCurrentConversation()
-                        return
-                    } else {
-                        return
-                    }
-                }
+            // Generation ends in a result, a failure or a cancellation.
+            while service.isWorking {
                 try? await Task.sleep(nanoseconds: 400_000_000)   // 0.4s
+            }
+            guard service.resultURL != baseline, let image = service.image,
+                  let data = AssistantImageEncoder.jpeg(image) else { return }
+            let message = ChatMessage(role: .assistant, content: "", imageThumbnailData: data)
+            if conversationID == self.currentConversationID {
+                self.messages.append(message)
+                self.persistCurrentConversation()
+            } else {
+                self.store.update(id: conversationID, messages: self.store.messages(for: conversationID) + [message])
             }
         }
     }
@@ -3983,6 +3980,7 @@ struct CodingAssistantView: View {
                         forKey: followID
                     )
                     let nextCall = self.activeModelToolsEnabled && depth + 1 < self.maxToolDepth
+                        && !AssistantActivity.userDeclinedToolThisTurn(self.messages)
                         ? streamedCall ?? self.messages
                             .first(where: { $0.id == followID })
                             .flatMap({ ToolRunner.extractCall(from: $0.content) })
@@ -5194,6 +5192,14 @@ struct MessageBubble: View, Equatable {
             // The answering side gets the same speaker rule as the asking
             // side, named for whatever actually produced the text. Symmetry is
             // the point: in a transcript neither party is the guest.
+
+            // An image from a generate_image call.
+            if let data = message.imageThumbnailData {
+                AssistantAttachedImage(data: data, identifier: "\(message.id)-0", side: 240) {
+                    HapticManager.impact(.medium)
+                    onAnalyzeImage?(data)
+                }
+            }
 
             VStack(alignment: .leading, spacing: 8) {
                 // .equatable() wires AssistantMarkdownView's `==` into

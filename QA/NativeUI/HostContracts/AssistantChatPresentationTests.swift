@@ -63,6 +63,19 @@ struct AssistantChatPresentationTests {
         #expect(AssistantActivity.toolStatus(result: file) == .success)
     }
 
+    @Test func aDeclinedToolEndsToolUseOnlyForThatTurn() throws {
+        let ask = ChatMessage(role: .user, content: "Write an animated website background in HTML.")
+        let declined = try result("generate_image", "The user declined this generate_image request.")
+        let searched = try result("web_search", "WEB CONTEXT START\nResults\nWEB CONTEXT END")
+        #expect(AssistantActivity.userDeclinedToolThisTurn([ask, declined]))
+        #expect(AssistantActivity.userDeclinedToolThisTurn([ask, declined, searched]))
+        #expect(!AssistantActivity.userDeclinedToolThisTurn([ask, searched]))
+        #expect(!AssistantActivity.userDeclinedToolThisTurn([ask]))
+        let answer = ChatMessage(role: .assistant, content: "Here is the HTML.")
+        let next = ChatMessage(role: .user, content: "Now draw a cat.")
+        #expect(!AssistantActivity.userDeclinedToolThisTurn([ask, declined, answer, next]))
+    }
+
     @Test func reasoningTimingFreezesAtTheClosingTagAndSurvivesPersistence() throws {
         let start = Date(timeIntervalSince1970: 100)
         var message = ChatMessage(role: .assistant, content: "<think>Checking", isStreaming: true)
