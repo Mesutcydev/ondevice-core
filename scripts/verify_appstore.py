@@ -164,6 +164,10 @@ def check_source():
     revisions = json.loads((ROOT / "IOSLocalLLM/Resources/AuditedModelRevisions.json").read_text())
     require(bool(revisions) and all(re.fullmatch(r"[0-9a-f]{40}", value) for value in revisions.values()),
             "Invalid model source revision inventory")
+    # Public builds hide any download whose repo is not in the inventory.
+    catalog = (ROOT / "IOSLocalLLM/Models/LFM3Catalog.swift").read_text()
+    for repo, revision in re.findall(r'repoID: "([^"]+)",\s*revision: "([0-9a-f]{40})"', catalog):
+        require(revisions.get(repo) == revision, f"{repo} is pinned in LFM3Catalog but not audited at {revision[:8]}")
     print("App Store source checks passed")
 
 

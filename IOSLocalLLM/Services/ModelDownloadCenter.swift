@@ -1069,7 +1069,7 @@ final class ModelDownloadCenter: ObservableObject {
                     sizeLabel: "~1.56 GB",
                     approxRAMBytes: 3_000_000_000,
                     capabilities: [.newRelease],
-                    longDescription: "Liquid AI's model for text, images, audio and video. This version answers about images; audio and video arrive in later updates. Downloads the 4-bit model and its matching projector. LFM Open License v1.0 applies, including a commercial revenue threshold.",
+                    longDescription: "Liquid AI's model for text, images, audio and video. Ask about photos, videos with their sound and Lens clips, or pick it for voice. Downloads the 4-bit model and its matching projector. LFM Open License v1.0 applies, including a commercial revenue threshold.",
                     fileAllowlist: LFM3Catalog.omni.fileAllowlist,
                     runtime: .llamaCpp,
                     revision: LFM3Catalog.omni.revision
