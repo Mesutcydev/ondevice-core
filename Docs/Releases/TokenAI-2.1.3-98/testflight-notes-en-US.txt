@@ -1,0 +1,4 @@
+• Fix: the assistant now makes an image only when you ask for one. Asking for code or text (for example an animated HTML background right after an image) gets you an answer instead of another picture.
+• Everything else is as in 97.
+
+Please try: ask the assistant for an image of an apple, wait for it, then ask it for an animated background in HTML.
