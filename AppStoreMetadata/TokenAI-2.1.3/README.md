@@ -13,3 +13,11 @@ the app's translations (Models, Clip).
 the App Store Connect read-back comparison. All 11 updates matched and the
 description, keywords, marketing URL, and support URL remained unchanged.
 No build was attached and no review was submitted by this work.
+
+## 31 October 2026 — build 96 additions
+
+Two bullets were appended to What's New in all 11 locales for build 96: images the
+assistant creates appear in the chat with live progress, and a declined tool
+gets an answer instead of another tool request. `copy.json` holds the new text
+and `verified.json` the App Store Connect read-back (11/11 match; description,
+keywords, URLs and promotional text unchanged). Nothing was submitted.
