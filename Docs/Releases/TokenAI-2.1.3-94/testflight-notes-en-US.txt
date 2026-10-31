@@ -1,0 +1,4 @@
+• Fix: a chat no longer starts downloading a model that isn't on your iPhone (it showed "Preparing model" while fetching it). If the selected model is missing, the chat says so and offers the models you have; downloads start only from Models.
+• Everything else is as in 93.
+
+Please continue the checklist: pick LFM3 Omni 2B in the chat's model picker, then try a photo and a short video.
