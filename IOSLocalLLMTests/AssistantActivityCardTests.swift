@@ -84,6 +84,23 @@ final class AssistantActivityCardTests: XCTestCase {
             aborted: false, name: "calculator", result: "4"))
     }
 
+    func test_finishedImageTurnReachesModelAsCaptionOnly() {
+        let ask = ChatMessage(role: .user, content: "generate a dog")
+        let call = ChatMessage(role: .assistant, content:
+            "<tool_call>\n<function=generate_image>\n<parameter=prompt>\na dog\n</parameter>\n</function>\n</tool_call>")
+        let result = ChatMessage(role: .user, content: ToolRunner.resultBlock(
+            name: "generate_image", result: "Started generating an image for: \"a dog\""))
+        let caption = ChatMessage(role: .assistant, content: "Here's the image of \"a dog\".")
+        let next = ChatMessage(role: .user, content: "write a animation html")
+        XCTAssertEqual(
+            AssistantActivity.collapsingFinishedImageTurns([ask, call, result, caption, next]).map(\.id),
+            [ask, caption, next].map(\.id))
+        // The round being answered keeps its call and result.
+        XCTAssertEqual(
+            AssistantActivity.collapsingFinishedImageTurns([ask, call, result]).map(\.id),
+            [ask, call, result].map(\.id))
+    }
+
     func test_canResumeTruncatedReply_onlyWhenCutOffAndIdle() {
         XCTAssertTrue(
             AssistantActivity.canResumeTruncatedReply(

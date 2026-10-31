@@ -2915,7 +2915,9 @@ struct CodingAssistantView: View {
     /// for this reply, so a persona switch, a new day, new memories or newly
     /// attached material take effect on the very next answer.
     private func withCurrentSystemPrompt(_ source: [ChatMessage]) -> [ChatMessage] {
-        let dialog = source.filter { $0.role != .system }.map { message in
+        let dialog = AssistantActivity.collapsingFinishedImageTurns(
+            source.filter { $0.role != .system }
+        ).map { message in
             guard usesLFM3NativeTools, message.role == .user,
                   let result = AssistantActivity.parseToolResult(message.content) else { return message }
             return ChatMessage(id: message.id, role: .tool,

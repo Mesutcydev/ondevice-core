@@ -224,6 +224,24 @@ enum AssistantActivity {
             && !(name == "generate_image" && result.hasPrefix("Started generating"))
     }
 
+    /// A finished image turn reaches the model as its caption alone. With the
+    /// generate_image call and result left in, LFM3 1.7B answered the next
+    /// request ("write a animation html") with another image in 10/10 runs;
+    /// without them, 1/10, the same as a fresh chat. The latest result stays
+    /// so a follow-up can still read it.
+    static func collapsingFinishedImageTurns(_ dialog: [ChatMessage]) -> [ChatMessage] {
+        var dropped = Set<UUID>()
+        for (index, message) in dialog.enumerated().dropLast()
+        where message.role == .user && parseToolResult(message.content)?.name == "generate_image" {
+            dropped.insert(message.id)
+            if let call = dialog[..<index].last(where: { $0.role == .assistant }),
+               ToolRunner.extractCall(from: call.content)?.name == "generate_image" {
+                dropped.insert(call.id)
+            }
+        }
+        return dialog.filter { !dropped.contains($0.id) }
+    }
+
     static func canResumeTruncatedReply(
         hitTokenLimit: Bool?,
         isStreaming: Bool,
