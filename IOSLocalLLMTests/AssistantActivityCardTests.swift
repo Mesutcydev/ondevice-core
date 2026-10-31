@@ -101,6 +101,17 @@ final class AssistantActivityCardTests: XCTestCase {
             [ask, call, result].map(\.id))
     }
 
+    func test_imageToolNeedsTheUserToAskForAnImage() {
+        for request in ["generate a dog", "generate a apple image", "draw a cat", "bir kedi resmi çiz",
+                        "Erstelle ein Bild von einem Hund", "猫の画像を生成して", "нарисуй кота"] {
+            XCTAssertTrue(AssistantActivity.asksForImage(request), request)
+        }
+        for request in ["Need a animated background html code", "write a animation hmtl",
+                        "generate a html landing page", "tell me about apples", "hesap makinesi kodu yaz"] {
+            XCTAssertFalse(AssistantActivity.asksForImage(request), request)
+        }
+    }
+
     func test_canResumeTruncatedReply_onlyWhenCutOffAndIdle() {
         XCTAssertTrue(
             AssistantActivity.canResumeTruncatedReply(

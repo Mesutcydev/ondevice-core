@@ -242,6 +242,40 @@ enum AssistantActivity {
         return dialog.filter { !dropped.contains($0.id) }
     }
 
+    /// The model may start an image only when the user's own message asks for
+    /// one. On the iPhone, LFM3 1.7B still called generate_image for "Need a
+    /// animated background html code" after an image turn. An image word, or a
+    /// generate/create verb with no code in sight, in the app's languages.
+    /// ponytail: keyword heuristic; a miss only means the model answers in text.
+    static func asksForImage(_ request: String) -> Bool {
+        func fold(_ text: String) -> String {
+            text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+        }
+        let text = fold(request)
+        let words = text.components(separatedBy: CharacterSet.letters.inverted)
+        func matches(wordStarts: [String], anywhere: [String]) -> Bool {
+            let starts = wordStarts.map(fold), inside = anywhere.map(fold)
+            return words.contains { word in starts.contains { word.hasPrefix($0) } }
+                || inside.contains { text.contains($0) }
+        }
+        let imageWord = matches(
+            wordStarts: ["imag", "pict", "photo", "foto", "draw", "paint", "sketch", "illustr", "ilustr",
+                         "wallpaper", "logo", "bild", "zeichn", "gemälde", "dibuj", "desen", "pint",
+                         "poză", "poze", "resim", "resm", "görsel", "çiz", "изображ", "картин", "рисун",
+                         "нарису", "фото", "иллюстр", "εικόν", "φωτογραφ", "ζωγραφ", "σχεδι"],
+            anywhere: ["画像", "絵", "写真", "イラスト", "描", "तस्वीर", "चित्र", "फोटो", "इमेज", "छवि", "صور", "رسم"])
+        if imageWord { return true }
+        let generateVerb = matches(
+            wordStarts: ["gener", "create", "erstell", "erzeug", "crea", "crie", "cria", "üret", "oluştur",
+                         "сгенер", "генер", "созда", "δημιουργ"],
+            anywhere: ["生成", "作成", "जनरेट", "أنشئ"])
+        let code = matches(
+            wordStarts: ["html", "css", "cod", "script", "json", "sql", "svg", "program", "web", "kod",
+                         "код", "κώδικ"],
+            anywhere: ["コード", "कोड", "كود"])
+        return generateVerb && !code
+    }
+
     static func canResumeTruncatedReply(
         hitTokenLimit: Bool?,
         isStreaming: Bool,

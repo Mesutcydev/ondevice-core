@@ -3742,6 +3742,17 @@ struct CodingAssistantView: View {
             )
             return
         }
+        // Declined, so the rest of the turn answers without tools.
+        if call.name == "generate_image",
+           let request = messages.last(where: { $0.role == .user && AssistantActivity.parseToolResult($0.content) == nil }),
+           !AssistantActivity.asksForImage(request.content) {
+            feedToolResultAndFollowUp(
+                name: call.name,
+                result: "The user declined this generate_image request: they did not ask for an image. Answer their message in text.",
+                depth: depth
+            )
+            return
+        }
         if call.name == "index_document" || call.name == "generate_image" {
             pendingToolConfirm = ToolConfirmRequest(call: call, depth: depth)
             return
