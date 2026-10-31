@@ -1,0 +1,5 @@
+• Fix: LFM3 Omni 2B is now listed in Models, so it can be downloaded (builds 89–92 hid it).
+• Once it is downloaded, the Omni features from 89–92 work: photos and videos with their sound in chat, Lens → Clip, Omni dictation, the LFM3 Omni voice and voice conversation.
+• Other models are unchanged.
+
+Please download LFM3 Omni 2B (~1.56 GB) and attach a short video in chat.

@@ -223,7 +223,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLM/IOSLocalLLM.entitlements
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "92"
+        CURRENT_PROJECT_VERSION: "93"
         # Release uses public-distribution entitlements. PCC is optional and
         # requires Apple's managed grant; the App Store script can select the
         # PCC variant without overriding the share extension's entitlements.
@@ -528,7 +528,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: IOSLocalLLMShareExtension/IOSLocalLLMShareExtension.entitlements
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "92"
+        CURRENT_PROJECT_VERSION: "93"
         APPLICATION_EXTENSION_API_ONLY: YES
         TARGETED_DEVICE_FAMILY: "1"
         SWIFT_EMIT_LOC_STRINGS: YES
@@ -563,7 +563,7 @@ targets:
         INFOPLIST_FILE: DownloadActivityExtension/Info.plist
         CODE_SIGN_STYLE: Automatic
         VERSIONING_SYSTEM: apple-generic
-        CURRENT_PROJECT_VERSION: "92"
+        CURRENT_PROJECT_VERSION: "93"
         APPLICATION_EXTENSION_API_ONLY: YES
         SKIP_INSTALL: YES
         TARGETED_DEVICE_FAMILY: "1"
