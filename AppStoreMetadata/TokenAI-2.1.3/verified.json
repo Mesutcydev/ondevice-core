@@ -1,0 +1,46 @@
+{
+  "en-US": {
+    "textsMatch": true,
+    "otherFieldsUnchanged": true
+  },
+  "de-DE": {
+    "textsMatch": true,
+    "otherFieldsUnchanged": true
+  },
+  "es-ES": {
+    "textsMatch": true,
+    "otherFieldsUnchanged": true
+  },
+  "pt-PT": {
+    "textsMatch": true,
+    "otherFieldsUnchanged": true
+  },
+  "ja": {
+    "textsMatch": true,
+    "otherFieldsUnchanged": true
+  },
+  "hi": {
+    "textsMatch": true,
+    "otherFieldsUnchanged": true
+  },
+  "tr": {
+    "textsMatch": true,
+    "otherFieldsUnchanged": true
+  },
+  "ru": {
+    "textsMatch": true,
+    "otherFieldsUnchanged": true
+  },
+  "ro": {
+    "textsMatch": true,
+    "otherFieldsUnchanged": true
+  },
+  "el": {
+    "textsMatch": true,
+    "otherFieldsUnchanged": true
+  },
+  "ar-SA": {
+    "textsMatch": true,
+    "otherFieldsUnchanged": true
+  }
+}
