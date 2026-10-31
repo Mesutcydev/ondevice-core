@@ -1,6 +1,6 @@
 # Token: Local AI Studio 2.1.3 (97) — App Store candidate
 
-After the assistant generates an image, the chat model reloads by itself, and the next request no longer repeats the image. Uploaded 2026-10-31, **VALID**, internal beta via the "Test" group. The 2.1.3 submission with build 96 was cancelled, and build 97 is attached to version 2.1.3 (`PREPARE_FOR_SUBMISSION`). **Not submitted for App Review**; the user resubmits after checking.
+After the assistant generates an image, the chat model reloads by itself, and the next request no longer repeats the image. Uploaded 2026-10-31, **VALID**, internal beta via the "Test" group. The 2.1.3 submission with build 96 was cancelled, and build 97 is attached to version 2.1.3. On the user's request it was submitted for App Review the same day (submission `831e7443-c45b-4eb6-90ee-b97701292041`, `WAITING_FOR_REVIEW`; `asc validate`: 0 errors). Release type stays manual.
 
 - Build ID: `82d9f3ff-bf6e-4e6e-942a-745bb1f53013`
 - IPA: 94,630,826 bytes, SHA-256 `79799b66a47c0de2492f6ac1b3cb9a0699a7116e7f1c3b64cf7809faeff5fc23`
