@@ -140,6 +140,7 @@ final class ODBridge: ObservableObject {
             CoreAIDownloadCenter.shared.objectWillChange,
             ConversationStore.shared.objectWillChange,
             VoiceService.shared.objectWillChange,
+            VoiceService.shared.systemEngine.objectWillChange,
             VoiceSettingsStore.shared.objectWillChange,
             VoiceConversationService.shared.objectWillChange,
             VoiceAudioSessionManager.shared.objectWillChange,
@@ -375,11 +376,14 @@ final class ODBridge: ObservableObject {
         // ── Voice ────────────────────────────────────────────────────────
         let voice = VoiceService.shared
         let voiceSettings = VoiceSettingsStore.shared
-        // `availableVoicesForCurrentEngine` enumerates the system voice table,
-        // so it is not something to call per token either.
-        let engineKey = voice.currentEngineKind.rawValue
-        if engineKey != voicesSignature {
-            voicesSignature = engineKey
+        // Rebuilt only when what `availableVoicesForCurrentEngine` returns can
+        // change: the selected engine, whether it is loaded (until it is, the
+        // Apple voices stand in), and Apple's voice snapshot, which arrives
+        // after launch. Keying on the running engine alone kept the empty
+        // pre-snapshot list forever.
+        let voicesKey = "\(voiceSettings.selectedEngine.rawValue)|\(voice.isPreferredEngineReady)|\(voice.systemEngine.voicesVersion)"
+        if voicesKey != voicesSignature {
+            voicesSignature = voicesKey
             store.voices = voice.availableVoicesForCurrentEngine.map { option in
                 ODVoice(
                     id: option.id,

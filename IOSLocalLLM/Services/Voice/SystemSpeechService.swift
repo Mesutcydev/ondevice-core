@@ -42,6 +42,9 @@ final class SystemSpeechService: NSObject, LocalVoiceEngine, ObservableObject {
     /// picker binding reading it got the app watchdog-killed (0x8BADF00D).
     private var usableAVVoices: [AVSpeechSynthesisVoice] = []
     private var systemPickID: String?
+    /// Bumped by every refresh, so callers that cache the voice list know
+    /// when to rebuild it (the first snapshot lands after launch).
+    private(set) var voicesVersion = 0
 
     /// Re-enumerates voices off the main thread. Runs at init and whenever
     /// iOS reports an installed/removed voice.
@@ -53,6 +56,8 @@ final class SystemSpeechService: NSObject, LocalVoiceEngine, ObservableObject {
         objectWillChange.send()
         usableAVVoices = voices
         systemPickID = pick
+        voicesVersion += 1
+        Diagnostics.shared.notice("Apple voices ready · \(voices.count) usable", category: "voice")
     }
 
     var availableVoices: [VoiceOption] {
