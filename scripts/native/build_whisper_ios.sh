@@ -2,12 +2,13 @@
 
 # Build the iOS device and Simulator slices of whisper.cpp without modifying
 # the pinned submodule. The helper functions are sourced from whisper.cpp's
-# upstream Apple XCFramework script at the pinned commit.
+# upstream Apple XCFramework script at the pinned commit. NATIVE_SOURCE_ROOT
+# builds another checkout instead (scripts/bootstrap_whisper_runtime.py).
 
 set -euo pipefail
 
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-whisper_root="${repository_root}/ThirdParty/whisper.cpp"
+whisper_root="${NATIVE_SOURCE_ROOT:-${repository_root}/ThirdParty/whisper.cpp}"
 
 if [[ ! -f "${whisper_root}/build-xcframework.sh" ]]; then
   echo "error: whisper.cpp submodule is missing; run git submodule update --init --recursive" >&2
@@ -26,6 +27,8 @@ GGML_METAL_EMBED_LIBRARY=ON
 GGML_BLAS_DEFAULT=ON
 GGML_METAL_USE_BF16=ON
 GGML_OPENMP=OFF
+# Read by the 1.9 helpers; OFF keeps the dynamic framework the app embeds.
+BUILD_STATIC_XCFRAMEWORK=OFF
 
 common_c_flags="-Wno-macro-redefined -Wno-shorten-64-to-32 -Wno-unused-command-line-argument -g"
 common_cxx_flags="$common_c_flags"
@@ -49,10 +52,16 @@ common_cmake_args=(
   -DGGML_OPENMP=${GGML_OPENMP}
 )
 
-# shellcheck disable=SC1091
-source <(sed -n \
-  '/^setup_framework_structure()/,/^}/p; /^combine_static_libraries()/,/^}/p' \
-  build-xcframework.sh)
+# Copy the two functions out whole: a heredoc inside setup_framework_structure
+# has its own line-start "}", so a plain sed range would cut it short. eval,
+# not `source <(...)`, which reads nothing in macOS's bash 3.2.
+eval "$(awk '
+  /^(setup_framework_structure|combine_static_libraries)\(\)/ { inside = 1 }
+  inside { print }
+  inside && /<< *EOF/ { heredoc = 1 }
+  heredoc && /^EOF$/ { heredoc = 0; next }
+  inside && !heredoc && /^}$/ { inside = 0 }
+' build-xcframework.sh)"
 
 echo "==> Building whisper.cpp for iOS Simulator"
 cmake -B build-ios-sim -G Xcode \
@@ -98,4 +107,4 @@ xcrun xcodebuild -create-xcframework \
   -debug-symbols "$(pwd)/build-ios-device/dSYMs/whisper.dSYM" \
   -output "$(pwd)/build-apple/whisper.xcframework"
 
-echo "==> Created ThirdParty/whisper.cpp/build-apple/whisper.xcframework"
+echo "==> Created ${whisper_root}/build-apple/whisper.xcframework"

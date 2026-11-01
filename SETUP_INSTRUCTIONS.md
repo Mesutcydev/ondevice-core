@@ -61,6 +61,21 @@ build/MiniCPMNative/ODMiniCPM.xcframework
 
 These outputs are generated files and must not be committed.
 
+### Optional whisper.cpp v1.9.5 runtime
+
+`python3 scripts/bootstrap_whisper_runtime.py` builds whisper.cpp v1.9.5
+(`d1be6fd`) into `build/WhisperNative`, beside the pinned 1.8.4 submodule, with
+the same three slices and `include/` + `build-apple/whisper.xcframework` layout.
+A build selects it with one setting, so headers and framework always match:
+
+```bash
+xcodebuild … ONDEVICE_WHISPER_ROOT="$PWD/build/WhisperNative" …
+```
+
+Leaving the setting out builds against 1.8.4 as before. The C API the app
+calls is unchanged in 1.9.5; on a Mac its transcripts matched 1.8.4 in six
+languages and were about 25% faster. `--check` reports whether it is ready.
+
 MiniCPM 1B downloads its model and vision encoder (about 1.78 GB). MiniCPM 35B
 requires at least 12 GB physical RAM, downloads about 16.62 GB, and temporarily
 needs about 35 GB free storage before download and preparation. Preparation

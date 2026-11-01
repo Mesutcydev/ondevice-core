@@ -96,6 +96,10 @@ settings:
     ONDEVICE_LLAMA_FRAMEWORK_DIR: "$(SRCROOT)/build/ClassifierNative"
     ONDEVICE_LLAMA_SOURCE: "$(SRCROOT)/build/ClassifierNative/cache/llama.cpp-c83f3058b6f876f2f7e6ccbada858b2446860c85"
     ONDEVICE_LFM3_SWIFT_FLAG: ""
+    # whisper.cpp headers and framework come from one root, so they cannot
+    # mismatch. build/WhisperNative (scripts/bootstrap_whisper_runtime.py)
+    # holds v1.9.5 in the same layout as the pinned 1.8.4 submodule.
+    ONDEVICE_WHISPER_ROOT: "$(SRCROOT)/ThirdParty/whisper.cpp"
     # LFM3_OMNI compiles the b11960-only LFM3-Omni code; only valid with
     # the build/LFM3OmniNative runtime (checked by the pre-build script).
     ONDEVICE_LFM3_OMNI_SWIFT_FLAG: ""
@@ -286,7 +290,7 @@ targets:
           # whisper.h lives inside the framework, but adding the source
           # include dir makes the bridging header importable without
           # full module-map gymnastics.
-          - "$(SRCROOT)/ThirdParty/whisper.cpp/include"
+          - "$(ONDEVICE_WHISPER_ROOT)/include"
       configs:
         Release:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) $(ONDEVICE_MODEL_POLICY) $(ONDEVICE_LFM3_SWIFT_FLAG) $(ONDEVICE_LFM3_OMNI_SWIFT_FLAG)"
@@ -337,7 +341,7 @@ targets:
       # scripts/build_native_frameworks.sh. Provides libwhisper with the Metal backend
       # for on-device speech-to-text without SFSpeechRecognizer's
       # cloud-fallback dependency.
-      - framework: ThirdParty/whisper.cpp/build-apple/whisper.xcframework
+      - framework: "$(ONDEVICE_WHISPER_ROOT)/build-apple/whisper.xcframework"
         embed: true
       - target: IOSLocalLLMShareExtension
         embed: true
@@ -601,7 +605,7 @@ targets:
           - "$(ONDEVICE_LLAMA_SOURCE)/tools/mtmd"
           - "$(ONDEVICE_LLAMA_SOURCE)/include"
           - "$(ONDEVICE_LLAMA_SOURCE)/ggml/include"
-          - "$(SRCROOT)/ThirdParty/whisper.cpp/include"
+          - "$(ONDEVICE_WHISPER_ROOT)/include"
 
   IOSLocalLLMUITests:
     type: bundle.ui-testing

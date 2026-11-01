@@ -135,6 +135,11 @@ else
     "${build_dir}/ggml/src/ggml-metal/libggml-metal.a"
     "${build_dir}/ggml/src/ggml-blas/libggml-blas.a"
   )
+  # whisper.cpp 1.9 also builds Parakeet support into the framework.
+  if [[ -f "${build_dir}/src/libparakeet.a" ]]; then
+    header_sources+=(include/parakeet.h)
+    static_libraries+=("${build_dir}/src/libparakeet.a")
+  fi
 fi
 
 for header in "${header_sources[@]}"; do

@@ -44,7 +44,7 @@ The model and adapters remain separately licensed and outside Git.
 | Component | Upstream | License |
 | --- | --- | --- |
 | llama.cpp | <https://github.com/ggml-org/llama.cpp> | MIT |
-| whisper.cpp | <https://github.com/ggerganov/whisper.cpp> | MIT |
+| whisper.cpp | <https://github.com/ggerganov/whisper.cpp> (1.8.4 submodule; optional v1.9.5 `d1be6fd` runtime from `scripts/bootstrap_whisper_runtime.py`, same MIT LICENSE) | MIT |
 
 Each submodule retains its upstream notices and license.
 
