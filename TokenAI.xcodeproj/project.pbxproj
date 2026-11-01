@@ -270,6 +270,7 @@
 		782BCAB0AE92DC5EF96AB01E /* MiniCPMV47Catalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C39897B9E6044D4BA390F7D /* MiniCPMV47Catalog.swift */; };
 		782E1A6F9DA0E9518C168FFE /* MiniCPMV47Artifacts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26103B7588A26C722C7B59D8 /* MiniCPMV47Artifacts.swift */; };
 		785A1FDF595562858E4A49F2 /* KittenTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB144B647A911F219C04EEFF /* KittenTTSService.swift */; };
+		785F66FFF929774489F33688 /* ParakeetTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7A758D62527B0B0C97E226E /* ParakeetTranscriber.swift */; };
 		78722FCF50418CAB14F65131 /* MacroChain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90B5F2D93A20F437242E48CC /* MacroChain.swift */; };
 		789607596AFEC7BB4A32098F /* AppleFoundationModelService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91FB187C99C72AE440152E7C /* AppleFoundationModelService.swift */; };
 		79F4A23AC3650273D67E694B /* DeviceTierAdvisorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 854E9899B5D5080A1822E4F6 /* DeviceTierAdvisorTests.swift */; };
@@ -1027,6 +1028,7 @@
 		A6BF559D6EC9913538C73813 /* RuntimeEngineFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeEngineFactory.swift; sourceTree = "<group>"; };
 		A71B8B7E05D029EF9440EC3A /* Edge0PrefetchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0PrefetchTests.swift; sourceTree = "<group>"; };
 		A737C187F577E47A54A7FC4A /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
+		A7A758D62527B0B0C97E226E /* ParakeetTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParakeetTranscriber.swift; sourceTree = "<group>"; };
 		A7FF4154721635EC7DD130FC /* MLXQuantizationPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXQuantizationPolicyTests.swift; sourceTree = "<group>"; };
 		A97377B1B345B53CDA6069E5 /* ScorerAndToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScorerAndToolTests.swift; sourceTree = "<group>"; };
 		A9E61F4FFD578D10CD8BE733 /* GitHubDraftProtection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitHubDraftProtection.swift; sourceTree = "<group>"; };
@@ -1274,6 +1276,7 @@
 				EC67F4383E0A534666475B89 /* LensVoiceNarrator.swift */,
 				A2D8CDEB27A7242E213E3891 /* OmniVoiceEngine.swift */,
 				E158FD6693397A186C0A827E /* ParadeeTTSService.swift */,
+				A7A758D62527B0B0C97E226E /* ParakeetTranscriber.swift */,
 				0FC8E7FEF7335C45FD1FCCAD /* PhonemizerEN.swift */,
 				C7F17100056DC5BDC516AD7A /* SpeechPlaybackCoordinator.swift */,
 				06624A9A3077AFDE3A51BA6B /* SupertonicPipeline.swift */,
@@ -3102,6 +3105,7 @@
 				315ED1674988000CF9456328 /* OnboardingOnePager.swift in Sources */,
 				BE5752D822DD3B061C65F40D /* PIIRedactor.swift in Sources */,
 				6F8716A68C3288CEAABA03A5 /* ParadeeTTSService.swift in Sources */,
+				785F66FFF929774489F33688 /* ParakeetTranscriber.swift in Sources */,
 				E4E8349BD83806E0DCD40BA8 /* ParentalControlManager.swift in Sources */,
 				5D7826A73E2732AFD9E1C40B /* ParentalControlsView.swift in Sources */,
 				DC33CFF7215A84D683D780E1 /* PendingIndexQueue.swift in Sources */,

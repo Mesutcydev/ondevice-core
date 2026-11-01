@@ -276,6 +276,28 @@ struct VoiceModelBundleValidator {
         paradeeModelURL() != nil
     }
 
+    // MARK: - Parakeet TDT v3
+    //
+    // Documents/VoiceModels/Parakeet/ mirrors the int8 files of
+    // istupakov/parakeet-tdt-0.6b-v3-onnx that ParakeetTranscriber loads.
+
+    static let parakeetFiles = ["nemo128.onnx", "encoder-model.int8.onnx",
+                                "decoder_joint-model.int8.onnx", "vocab.txt"]
+    /// The int8 encoder and decoder/joint, the bulk of what loads into memory.
+    static let parakeetModelBytes: Int64 = 670_386_003
+
+    static func parakeetDirectoryURL() -> URL? {
+        let directory = voiceModelsRoot().appendingPathComponent("Parakeet", isDirectory: true)
+        let complete = parakeetFiles.allSatisfy {
+            FileManager.default.fileExists(atPath: directory.appendingPathComponent($0).path)
+        }
+        return complete ? directory : nil
+    }
+
+    static func isParakeetAvailable() -> Bool {
+        parakeetDirectoryURL() != nil
+    }
+
     // MARK: - Silero VAD
     //
     // Voice-activity-detection model for the listening pipeline. Bundled

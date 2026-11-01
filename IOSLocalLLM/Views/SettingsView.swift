@@ -1842,7 +1842,8 @@ private struct WhisperSTTBlock: View {
     /// the visual models).
     private var omniAvailable: Bool { LFM3Catalog.isEnabled && LFM3Catalog.omniRuntimeAvailable }
     private var analyzerAvailable: Bool { AppleSpeechAnalyzerTranscriber.isAvailable }
-    private var hasDownloadFreeChoice: Bool { omniAvailable || analyzerAvailable }
+    private var parakeetInstalled: Bool { VoiceModelBundleValidator.isParakeetAvailable() }
+    private var hasDownloadFreeChoice: Bool { omniAvailable || analyzerAvailable || parakeetInstalled }
 
     private var isInstalled: Bool {
         observer.state == .ready || WhisperModelCatalog.isInstalled
@@ -1860,6 +1861,7 @@ private struct WhisperSTTBlock: View {
                     // Whisper download; otherwise only the whisper choice does.
                     if isInstalled || !hasDownloadFreeChoice { Text("whisper").tag("whisper") }
                     if omniAvailable { Text("omni").tag("omni") }
+                    if parakeetInstalled { Text("parakeet").tag("parakeet") }
                 }
                 .pickerStyle(.menu)
                 .disabled(!isInstalled && !hasDownloadFreeChoice)

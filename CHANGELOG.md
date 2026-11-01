@@ -12,6 +12,8 @@ and intends to use semantic version tags for source releases.
   faster than real time.
 - Apple's on-device SpeechAnalyzer is a new hold-to-talk speech-to-text
   choice that needs no download.
+- Parakeet TDT 0.6B v3 (~670 MB) is a downloadable speech-to-text choice
+  for 25 European languages, detected automatically.
 - Whisper tiny, small and large-v3-turbo can be downloaded alongside base;
   dictation uses the most accurate one installed.
 - Research builds download the same audited Kokoro revision as the App

@@ -1310,6 +1310,25 @@ final class ModelDownloadCenter: ObservableObject {
             )
         ))
 
+        // ── 6a. Parakeet TDT 0.6B v3 — 25-language STT on ONNX Runtime ──────
+        // istupakov/parakeet-tdt-0.6b-v3-onnx (NVIDIA weights, CC-BY-4.0):
+        // only the int8 files ParakeetTranscriber loads.
+        models.append(DownloadableModel(
+            id: "parakeet-tdt-v3",
+            displayName: "Parakeet TDT 0.6B v3",
+            subtitle: "nvidia/parakeet-tdt-0.6b-v3 · 25 European languages, on-device",
+            sizeLabel: "~670 MB",
+            category: .voice,
+            docURL: "https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx",
+            downloader: HFModelDownloadManager(
+                repoID: "istupakov/parakeet-tdt-0.6b-v3-onnx",
+                destination: docs.appendingPathComponent("VoiceModels/Parakeet"),
+                branch: "8f23f0c03c8761650bdb5b40aaf3e40d2c15f1ce",
+                fileAllowlist: VoiceModelBundleValidator.parakeetFiles
+            ),
+            approxRAMBytes: 900_000_000
+        ))
+
         // ── 6b. More whisper.cpp sizes — same runtime, same staged dir ───────
         // WhisperModelCatalog.preferredFilenames picks the best one on disk.
         for extra in Self.whisperExtras {

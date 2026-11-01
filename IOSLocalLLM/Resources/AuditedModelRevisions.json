@@ -27,6 +27,7 @@
   "ggml-org/SmolVLM2-500M-Video-Instruct-GGUF": "ccd7aae53bcb1997355c2f094959e72b3642ce17",
   "ggml-org/gemma-3-4b-it-GGUF": "d0976223747697cb51e056d85c532013931fe52e",
   "ggml-org/laya-GGUF": "22265007700297ba9e128297e82540cf28c5d7d4",
+  "istupakov/parakeet-tdt-0.6b-v3-onnx": "8f23f0c03c8761650bdb5b40aaf3e40d2c15f1ce",
   "kevinqz/Qwen2.5-0.5B-Instruct-CoreAI": "f08c9d63fbfc9bc7aa86388da880b6e8ae339979",
   "kevinqz/Qwen2.5-1.5B-Instruct-CoreAI": "f903417cb9ac4b3c4c53c16aefd7f097cc6b8338",
   "kevinqz/Qwen2.5-Coder-0.5B-Instruct-CoreAI": "408f4506b9f4058e054e7bbd58a45189b382ee65",

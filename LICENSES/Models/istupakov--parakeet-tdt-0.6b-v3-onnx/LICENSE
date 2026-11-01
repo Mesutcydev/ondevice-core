@@ -1,0 +1,11 @@
+Parakeet TDT 0.6B v3 — license and attribution
+
+Model:     nvidia/parakeet-tdt-0.6b-v3, by NVIDIA
+           https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3
+ONNX export used by the app: istupakov/parakeet-tdt-0.6b-v3-onnx
+           https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/tree/8f23f0c03c8761650bdb5b40aaf3e40d2c15f1ce
+           (the int8 encoder and decoder/joint are quantized from NVIDIA's weights)
+License:   Creative Commons Attribution 4.0 International (CC BY 4.0)
+           https://creativecommons.org/licenses/by/4.0/legalcode
+
+The app downloads these files on request and does not modify them.

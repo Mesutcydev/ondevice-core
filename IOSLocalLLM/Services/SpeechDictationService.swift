@@ -265,8 +265,13 @@ final class SpeechDictationService: ObservableObject {
         AppSettings.shared.sttProvider == "analyzer" && AppleSpeechAnalyzerTranscriber.isAvailable
     }
 
+    /// Parakeet TDT v3: chosen in Settings once downloaded; hold-to-talk only.
+    static var usesParakeet: Bool {
+        AppSettings.shared.sttProvider == "parakeet" && VoiceModelBundleValidator.isParakeetAvailable()
+    }
+
     var supportsLocalDictation: Bool {
-        Self.usesOmni || Self.usesAnalyzer
+        Self.usesOmni || Self.usesAnalyzer || Self.usesParakeet
             || (AppSettings.shared.sttProvider == "whisper" && WhisperModelCatalog.isInstalled)
             || (recognizer?.isAvailable == true && recognizer?.supportsOnDeviceRecognition == true)
     }
@@ -303,7 +308,7 @@ final class SpeechDictationService: ObservableObject {
         // user isn't silently broken if they enabled the toggle then
         // deleted the model.
         let wantsWhisper = AppSettings.shared.sttProvider == "whisper"
-        if (wantsWhisper && WhisperModelCatalog.isInstalled) || Self.usesOmni || Self.usesAnalyzer, !continuous {
+        if (wantsWhisper && WhisperModelCatalog.isInstalled) || Self.usesOmni || Self.usesAnalyzer || Self.usesParakeet, !continuous {
             // Same 16 kHz hold-to-talk capture; the provider picks the transcriber.
             try startWhisperSingleShot(onTranscript)
             return
@@ -786,6 +791,33 @@ final class SpeechDictationService: ObservableObject {
                 } catch {
                     ToastCenter.shared.error("Apple transcription failed", detail: error.localizedDescription)
                     callback?("", true)
+                }
+            }
+            return
+        }
+        if Self.usesParakeet, let directory = VoiceModelBundleValidator.parakeetDirectoryURL() {
+            cleanup()
+            // ~700 MB once loaded, so it loads per dictation, behind the same
+            // gates as the other heavy runtimes, and is freed right after.
+            let needed = Int64(Double(VoiceModelBundleValidator.parakeetModelBytes) * MemoryAdvisor.loadSpikeMultiplier)
+                + MemoryAdvisor.loadHeadroomReserve
+            guard !DeviceSafetyMonitor.shared.shouldStopHeavyWork,
+                  MemoryAdvisor.availableMemoryForModel >= needed else {
+                ToastCenter.shared.error("Parakeet can't run right now",
+                                         detail: "The phone is too warm or low on memory. Try again, or switch speech-to-text to System.")
+                callback?("", true)
+                return
+            }
+            Task.detached(priority: .userInitiated) { [callback] in
+                do {
+                    let text = try ParakeetTranscriber(directory: directory).transcribe(buffer)
+                    await MainActor.run { callback?(text, true) }
+                } catch {
+                    Diagnostics.shared.error("transcription failed: \(error)", category: "parakeet")
+                    await MainActor.run {
+                        ToastCenter.shared.error("Parakeet transcription failed", detail: error.localizedDescription)
+                        callback?("", true)
+                    }
                 }
             }
             return

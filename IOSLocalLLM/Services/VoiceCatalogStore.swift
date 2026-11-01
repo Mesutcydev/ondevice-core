@@ -95,6 +95,7 @@ private enum VoiceCatalogFallback {
         e("stt.whisper.small", "Whisper Small", .speechRecognition, "Multilingual Whisper Small.", "https://huggingface.co/ggerganov/whisper.cpp", .production, true, "whisper-small-multi"),
         e("stt.whisper.small.en", "Whisper Small.en", .speechRecognition, "English Whisper Small.", "https://huggingface.co/ggerganov/whisper.cpp", .production, true, "whisper-small-en"),
         e("stt.whisper.large-v3-turbo", "Whisper Large-v3 Turbo", .speechRecognition, "Most accurate multilingual Whisper, quantized for iPhone.", "https://huggingface.co/ggerganov/whisper.cpp", .production, true, "whisper-large-v3-turbo"),
+        e("stt.parakeet.tdt-0.6b-v3", "Parakeet TDT 0.6B v3", .speechRecognition, "Accurate speech-to-text in 25 European languages, detected automatically.", "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3", .production, true, "parakeet-tdt-v3"),
         e("stt.moonshine.base", "Moonshine Base", .speechRecognition, "Efficient on-device speech recognition.", "https://huggingface.co/UsefulSensors/moonshine-base", .catalogOnly, false, nil),
         e("stt.moonshine.streaming-tiny", "Moonshine Streaming Tiny", .speechRecognition, "Low-latency streaming recognition.", "https://huggingface.co/UsefulSensors/moonshine-streaming-tiny", .catalogOnly, false, nil),
         e("stt.moonshine.streaming-medium", "Moonshine Streaming Medium", .speechRecognition, "Higher-accuracy streaming recognition.", "https://huggingface.co/UsefulSensors/moonshine-streaming-medium", .catalogOnly, false, nil),

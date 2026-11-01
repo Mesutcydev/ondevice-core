@@ -255,6 +255,21 @@ Kokoro-82M) are not in Git or the IPA. When the user chooses the voice, the
 app downloads `onnx/paradee_int8.onnx`, `config.json` and `LICENSE` from
 <https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.2/tree/ed2934d4df8a4fd891e29584c5e1104649409765>.
 The license is in `LICENSES/Models/sahilmahendrakar--Paradee-8M-v1.2/LICENSE`.
+
+## Parakeet TDT 0.6B v3 speech-to-text (downloaded on request)
+
+Parakeet TDT 0.6B v3 is by NVIDIA and licensed under CC BY 4.0
+(<https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3>). When the user
+chooses it, the app downloads the int8 ONNX export
+<https://huggingface.co/istupakov/parakeet-tdt-0.6b-v3-onnx/tree/8f23f0c03c8761650bdb5b40aaf3e40d2c15f1ce>
+(`nemo128.onnx`, `encoder-model.int8.onnx`, `decoder_joint-model.int8.onnx`,
+`vocab.txt`); nothing is in Git or the IPA. Attribution is in
+`LICENSES/Models/istupakov--parakeet-tdt-0.6b-v3-onnx/LICENSE`.
+
+`IOSLocalLLM/Services/Voice/ParakeetTranscriber.swift` follows the greedy
+token-and-duration decoding loop of onnx-asr
+(<https://github.com/istupakov/onnx-asr> at `a2fd7530c01a78727422e592bc67ab98d96a9697`, MIT; see
+`LICENSES/onnx-asr-MIT.txt`).
 # Model license evidence for public-distribution review
 
 The 2026-10-01 source/revision inventory is in
