@@ -1329,6 +1329,25 @@ final class ModelDownloadCenter: ObservableObject {
             approxRAMBytes: 900_000_000
         ))
 
+        // ── 6a'. Nemotron 3.5 ASR — every interface language, ONNX Runtime ──
+        // soniqo/Nemotron-3.5-ASR-Streaming-Multilingual-0.6B-ONNX-INT8 (NVIDIA Open Model License):
+        // the int8 encoder, decoder and joint plus the vocab and language prompts.
+        models.append(DownloadableModel(
+            id: "nemotron-3.5-asr",
+            displayName: "Nemotron 3.5 ASR",
+            subtitle: "nvidia/nemotron-3.5-asr-streaming-0.6b · 40+ languages, on-device",
+            sizeLabel: "~755 MB",
+            category: .voice,
+            docURL: "https://huggingface.co/soniqo/Nemotron-3.5-ASR-Streaming-Multilingual-0.6B-ONNX-INT8",
+            downloader: HFModelDownloadManager(
+                repoID: "soniqo/Nemotron-3.5-ASR-Streaming-Multilingual-0.6B-ONNX-INT8",
+                destination: docs.appendingPathComponent("VoiceModels/Nemotron"),
+                branch: "1ce4daedd303e01d4e603634a72c28562f1a6855",
+                fileAllowlist: VoiceModelBundleValidator.nemotronFiles
+            ),
+            approxRAMBytes: 1_300_000_000
+        ))
+
         // ── 6b. More whisper.cpp sizes — same runtime, same staged dir ───────
         // WhisperModelCatalog.preferredFilenames picks the best one on disk.
         for extra in Self.whisperExtras {

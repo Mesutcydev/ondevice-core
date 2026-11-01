@@ -578,6 +578,7 @@
 		FAB1A1C52122A01D6B52441B /* AudioPlaybackSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BE42BC5ED86B10CB553CFC9 /* AudioPlaybackSnapshot.swift */; };
 		FB102D49420FEBDFA0E97F37 /* CoreAIClassifierHostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47D194EA0795DF34272DF763 /* CoreAIClassifierHostView.swift */; };
 		FB4FEE901C9EE1B77781DC58 /* BridgeAgentCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37BF005C10CA43418874E8C6 /* BridgeAgentCard.swift */; };
+		FC823C8B26C1439A1D1CDA1C /* NemotronTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0119CE52ACBB68D1D2F5F709 /* NemotronTranscriber.swift */; };
 		FCA79BE8512F5B92A18BCB8A /* ModelLoadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E9B9C8BA0681A1602633E82 /* ModelLoadCoordinator.swift */; };
 		FCBB48C0A7419B944A40B470 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 40BDCD3E8D0F10192C6D4D17 /* Localizable.xcstrings */; };
 		FCD326CAFFE2C7C2B3B5558A /* StudioPageBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 618B9124C4018D5055A75871 /* StudioPageBackground.swift */; };
@@ -649,6 +650,7 @@
 /* Begin PBXFileReference section */
 		008D999849893FA558F86656 /* Edge0_35BPrerouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Edge0_35BPrerouter.swift; sourceTree = "<group>"; };
 		00AA8219E91D33A0787E458F /* CodeBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodeBlock.swift; sourceTree = "<group>"; };
+		0119CE52ACBB68D1D2F5F709 /* NemotronTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NemotronTranscriber.swift; sourceTree = "<group>"; };
 		013AA5981EB4AD44D5DEFC4B /* InstalledModelRegistryValidationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstalledModelRegistryValidationTests.swift; sourceTree = "<group>"; };
 		01E415A4AD71D5F6595A8C2C /* AssistantToolPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantToolPresentation.swift; sourceTree = "<group>"; };
 		021B40A4A42C1922BAA28038 /* KeyboardToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardToolbar.swift; sourceTree = "<group>"; };
@@ -1274,6 +1276,7 @@
 				363FDA3816ACAC013449F3DC /* KokoroPhonemizer.swift */,
 				1C02834D1A6AD95CFE834DE9 /* KokoroTTSService.swift */,
 				EC67F4383E0A534666475B89 /* LensVoiceNarrator.swift */,
+				0119CE52ACBB68D1D2F5F709 /* NemotronTranscriber.swift */,
 				A2D8CDEB27A7242E213E3891 /* OmniVoiceEngine.swift */,
 				E158FD6693397A186C0A827E /* ParadeeTTSService.swift */,
 				A7A758D62527B0B0C97E226E /* ParakeetTranscriber.swift */,
@@ -3091,6 +3094,7 @@
 				8EE3D86266CBBCE4EEB0EA77 /* ModelUsageTracker.swift in Sources */,
 				FF0EE9C5C6650CA1953B18EA /* ModelsManagerView.swift in Sources */,
 				747AE2FE2A0BEE8D25444522 /* NanbeigeMLXModel.swift in Sources */,
+				FC823C8B26C1439A1D1CDA1C /* NemotronTranscriber.swift in Sources */,
 				84A26022ECBBD00AA1139210 /* NetworkActivityMonitor.swift in Sources */,
 				148DDFCE3F0FCA8339EE0341 /* OCRService.swift in Sources */,
 				6A3302245BF5A80B52498C1D /* ODBridge.swift in Sources */,

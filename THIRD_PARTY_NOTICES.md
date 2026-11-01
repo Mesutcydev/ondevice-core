@@ -270,6 +270,22 @@ chooses it, the app downloads the int8 ONNX export
 token-and-duration decoding loop of onnx-asr
 (<https://github.com/istupakov/onnx-asr> at `a2fd7530c01a78727422e592bc67ab98d96a9697`, MIT; see
 `LICENSES/onnx-asr-MIT.txt`).
+
+## Nemotron 3.5 ASR speech-to-text (downloaded on request)
+
+Licensed by NVIDIA Corporation under the NVIDIA Open Model License
+(<https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/>).
+When the user chooses it, the app downloads Soniqo's int8 ONNX export
+<https://huggingface.co/soniqo/Nemotron-3.5-ASR-Streaming-Multilingual-0.6B-ONNX-INT8/tree/1ce4daedd303e01d4e603634a72c28562f1a6855>
+(`encoder.onnx`, `decoder.onnx(.data)`, `joint.onnx(.data)`, `vocab.json`,
+`languages.json`); nothing is in Git or the IPA. Attribution is in
+`LICENSES/Models/soniqo--Nemotron-3.5-ASR-Streaming-Multilingual-0.6B-ONNX-INT8/LICENSE`.
+
+`IOSLocalLLM/Services/Voice/NemotronTranscriber.swift` is a Swift port of
+NemotronMultilingualStt and StreamingMelSpectrogram from soniqo/speech-core
+(<https://github.com/soniqo/speech-core> at `8294f9eaf5ed1acff8925c5baa72c32bb02622d2`), licensed under the
+Apache License 2.0 (`LICENSES/Apache-2.0.txt`). It was changed to transcribe
+whole clips and to use Accelerate's DFT.
 # Model license evidence for public-distribution review
 
 The 2026-10-01 source/revision inventory is in

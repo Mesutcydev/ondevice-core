@@ -298,6 +298,27 @@ struct VoiceModelBundleValidator {
         parakeetDirectoryURL() != nil
     }
 
+    // MARK: - Nemotron 3.5 ASR
+    //
+    // Documents/VoiceModels/Nemotron/ mirrors the files of
+    // soniqo/Nemotron-3.5-ASR-Streaming-Multilingual-0.6B-ONNX-INT8 that NemotronTranscriber loads.
+
+    static let nemotronFiles = ["encoder.onnx", "decoder.onnx", "decoder.onnx.data", "joint.onnx",
+                                "joint.onnx.data", "vocab.json", "languages.json"]
+    static let nemotronModelBytes: Int64 = 755_386_679
+
+    static func nemotronDirectoryURL() -> URL? {
+        let directory = voiceModelsRoot().appendingPathComponent("Nemotron", isDirectory: true)
+        let complete = nemotronFiles.allSatisfy {
+            FileManager.default.fileExists(atPath: directory.appendingPathComponent($0).path)
+        }
+        return complete ? directory : nil
+    }
+
+    static func isNemotronAvailable() -> Bool {
+        nemotronDirectoryURL() != nil
+    }
+
     // MARK: - Silero VAD
     //
     // Voice-activity-detection model for the listening pipeline. Bundled

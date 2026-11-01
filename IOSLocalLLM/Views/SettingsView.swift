@@ -1843,7 +1843,8 @@ private struct WhisperSTTBlock: View {
     private var omniAvailable: Bool { LFM3Catalog.isEnabled && LFM3Catalog.omniRuntimeAvailable }
     private var analyzerAvailable: Bool { AppleSpeechAnalyzerTranscriber.isAvailable }
     private var parakeetInstalled: Bool { VoiceModelBundleValidator.isParakeetAvailable() }
-    private var hasDownloadFreeChoice: Bool { omniAvailable || analyzerAvailable || parakeetInstalled }
+    private var nemotronInstalled: Bool { VoiceModelBundleValidator.isNemotronAvailable() }
+    private var hasDownloadFreeChoice: Bool { omniAvailable || analyzerAvailable || parakeetInstalled || nemotronInstalled }
 
     private var isInstalled: Bool {
         observer.state == .ready || WhisperModelCatalog.isInstalled
@@ -1862,6 +1863,7 @@ private struct WhisperSTTBlock: View {
                     if isInstalled || !hasDownloadFreeChoice { Text("whisper").tag("whisper") }
                     if omniAvailable { Text("omni").tag("omni") }
                     if parakeetInstalled { Text("parakeet").tag("parakeet") }
+                    if nemotronInstalled { Text("nemotron").tag("nemotron") }
                 }
                 .pickerStyle(.menu)
                 .disabled(!isInstalled && !hasDownloadFreeChoice)

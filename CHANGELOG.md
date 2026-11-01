@@ -14,6 +14,11 @@ and intends to use semantic version tags for source releases.
   choice that needs no download.
 - Parakeet TDT 0.6B v3 (~670 MB) is a downloadable speech-to-text choice
   for 25 European languages, detected automatically.
+- Nemotron 3.5 ASR (~755 MB) is a downloadable speech-to-text choice that
+  covers every interface language, Turkish, Hindi, Arabic and Japanese
+  included. ONNX Runtime moves from 1.23.0 to 1.30.0 to run it.
+- An optional whisper.cpp v1.9.5 runtime can be built beside 1.8.4 and
+  selected with ONDEVICE_WHISPER_ROOT.
 - Whisper tiny, small and large-v3-turbo can be downloaded alongside base;
   dictation uses the most accurate one installed.
 - Research builds download the same audited Kokoro revision as the App

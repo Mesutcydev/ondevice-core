@@ -270,8 +270,13 @@ final class SpeechDictationService: ObservableObject {
         AppSettings.shared.sttProvider == "parakeet" && VoiceModelBundleValidator.isParakeetAvailable()
     }
 
+    /// Nemotron 3.5 ASR: chosen in Settings once downloaded; hold-to-talk only.
+    static var usesNemotron: Bool {
+        AppSettings.shared.sttProvider == "nemotron" && VoiceModelBundleValidator.isNemotronAvailable()
+    }
+
     var supportsLocalDictation: Bool {
-        Self.usesOmni || Self.usesAnalyzer || Self.usesParakeet
+        Self.usesOmni || Self.usesAnalyzer || Self.usesParakeet || Self.usesNemotron
             || (AppSettings.shared.sttProvider == "whisper" && WhisperModelCatalog.isInstalled)
             || (recognizer?.isAvailable == true && recognizer?.supportsOnDeviceRecognition == true)
     }
@@ -308,7 +313,8 @@ final class SpeechDictationService: ObservableObject {
         // user isn't silently broken if they enabled the toggle then
         // deleted the model.
         let wantsWhisper = AppSettings.shared.sttProvider == "whisper"
-        if (wantsWhisper && WhisperModelCatalog.isInstalled) || Self.usesOmni || Self.usesAnalyzer || Self.usesParakeet, !continuous {
+        if (wantsWhisper && WhisperModelCatalog.isInstalled) || Self.usesOmni || Self.usesAnalyzer || Self.usesParakeet
+            || Self.usesNemotron, !continuous {
             // Same 16 kHz hold-to-talk capture; the provider picks the transcriber.
             try startWhisperSingleShot(onTranscript)
             return
@@ -816,6 +822,35 @@ final class SpeechDictationService: ObservableObject {
                     Diagnostics.shared.error("transcription failed: \(error)", category: "parakeet")
                     await MainActor.run {
                         ToastCenter.shared.error("Parakeet transcription failed", detail: error.localizedDescription)
+                        callback?("", true)
+                    }
+                }
+            }
+            return
+        }
+        if Self.usesNemotron, let directory = VoiceModelBundleValidator.nemotronDirectoryURL() {
+            cleanup()
+            // Same per-dictation load and gates as Parakeet (~1.2 GB at peak).
+            let needed = Int64(Double(VoiceModelBundleValidator.nemotronModelBytes) * MemoryAdvisor.loadSpikeMultiplier)
+                + MemoryAdvisor.loadHeadroomReserve
+            guard !DeviceSafetyMonitor.shared.shouldStopHeavyWork,
+                  MemoryAdvisor.availableMemoryForModel >= needed else {
+                ToastCenter.shared.error("Nemotron can't run right now",
+                                         detail: "The phone is too warm or low on memory. Try again, or switch speech-to-text to System.")
+                callback?("", true)
+                return
+            }
+            // The language prompt follows the device locale (e.g. tr_TR); an
+            // unknown one falls back to the model's automatic slot.
+            let language = Locale.current.identifier
+            Task.detached(priority: .userInitiated) { [callback] in
+                do {
+                    let text = try NemotronTranscriber(directory: directory).transcribe(buffer, language: language)
+                    await MainActor.run { callback?(text, true) }
+                } catch {
+                    Diagnostics.shared.error("transcription failed: \(error)", category: "nemotron")
+                    await MainActor.run {
+                        ToastCenter.shared.error("Nemotron transcription failed", detail: error.localizedDescription)
                         callback?("", true)
                     }
                 }
