@@ -1,0 +1,21 @@
+flag provided but not defined: -id
+DESCRIPTION
+  View details for an app store version.
+
+USAGE
+  asc versions view [flags]
+
+Examples:
+  asc versions view --version-id "VERSION_ID"
+  asc versions view --version-id "VERSION_ID" --include-build --include-submission
+  asc versions view --version-id "VERSION_ID" --include "ageRatingDeclaration,appStoreReviewDetail"
+
+FLAGS
+  --include      Include related resources: ageRatingDeclaration, appStoreReviewDetail, appClipDefaultExperience, appStoreVersionExperiments, appStoreVersionExperimentsV2, appStoreVersionSubmission, customerReviews, routingAppCoverage, alternativeDistributionPackage, gameCenterAppVersion
+  --include-build Include attached build information (default: false)
+  --include-submission Include submission information (default: false)
+  --output       Output format: json, table, markdown (default: json)
+  --pretty       Pretty-print JSON output (default: false)
+  --version-id   App Store version ID (required)
+
+

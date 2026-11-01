@@ -1,0 +1,46 @@
+{
+ "de-DE": {
+  "whatsNew": "• Der Assistent erstellt jetzt nur dann ein Bild, wenn du darum bittest. Wenn du direkt nach einem Bild nach Code oder Text fragst, zum Beispiel nach einem animierten Hintergrund in HTML, bekommst du die Antwort statt eines weiteren Bildes.\n• Die App friert nicht mehr ein und schließt sich nicht mehr, wenn du die Spracheinstellungen öffnest oder die Systemstimme auswählst.",
+  "promotionalText": "Lokale KI auf deinem iPhone. LFM3 Omni versteht Videos samt Ton, beantwortet Fragen zu Lens-Clips und spricht mit dir – alles auf dem Gerät."
+ },
+ "ro": {
+  "whatsNew": "• Asistentul creează acum o imagine doar când i-o cereți. Dacă cereți cod sau text imediat după o imagine, de exemplu un fundal animat în HTML, primiți răspunsul în loc de încă o imagine.\n• Aplicația nu se mai blochează și nu se mai închide când deschideți setările vocii sau alegeți vocea Sistem.",
+  "promotionalText": "AI local pe iPhone. LFM3 Omni înțelege videoclipuri cu sunet, răspunde despre clipurile Lens și vă vorbește, totul pe dispozitiv."
+ },
+ "en-US": {
+  "whatsNew": "• The assistant now creates an image only when you ask for one. If you ask for code or text right after an image, for example an animated background in HTML, you get the answer instead of another picture.\n• Opening Voice settings or choosing the System voice no longer freezes and closes the app.",
+  "promotionalText": "Local AI on your iPhone. LFM3 Omni understands videos with their sound, answers about Lens clips and talks back — all on device."
+ },
+ "el": {
+  "whatsNew": "• Ο βοηθός δημιουργεί πλέον εικόνα μόνο όταν του το ζητάτε. Αν ζητήσετε κώδικα ή κείμενο αμέσως μετά από μια εικόνα, για παράδειγμα ένα κινούμενο φόντο σε HTML, λαμβάνετε την απάντηση αντί για άλλη εικόνα.\n• Η εφαρμογή δεν παγώνει πλέον ούτε κλείνει όταν ανοίγετε τις ρυθμίσεις φωνής ή επιλέγετε τη φωνή του Συστήματος.",
+  "promotionalText": "Τοπική τεχνητή νοημοσύνη στο iPhone. Το LFM3 Omni κατανοεί βίντεο με ήχο, απαντά για κλιπ του Lens και σας μιλά, όλα στη συσκευή."
+ },
+ "hi": {
+  "whatsNew": "• सहायक अब तभी इमेज बनाता है जब आप माँगते हैं। इमेज के ठीक बाद कोड या टेक्स्ट माँगने पर, जैसे HTML में एनिमेटेड बैकग्राउंड, आपको दूसरी तस्वीर के बजाय जवाब मिलता है।\n• आवाज़ सेटिंग खोलने या सिस्टम आवाज़ चुनने पर ऐप अब रुककर बंद नहीं होता।",
+  "promotionalText": "आपके iPhone पर लोकल AI। LFM3 Omni आवाज़ सहित वीडियो समझता है, Lens क्लिप के बारे में बताता है और बोलकर जवाब देता है — सब डिवाइस पर।"
+ },
+ "tr": {
+  "whatsNew": "• Asistan artık yalnızca siz istediğinizde görsel oluşturuyor. Bir görselin hemen ardından kod veya metin istediğinizde, örneğin HTML ile animasyonlu bir arka plan, başka bir görsel yerine yanıtı alırsınız.\n• Ses ayarlarını açtığınızda veya Sistem sesini seçtiğinizde uygulama artık donup kapanmıyor.",
+  "promotionalText": "iPhone'unuzda yerel yapay zekâ. LFM3 Omni videoları sesiyle birlikte anlar, Lens kliplerini yanıtlar ve sizinle konuşur; hepsi cihazda."
+ },
+ "ru": {
+  "whatsNew": "• Теперь ассистент создаёт изображение, только когда вы его просите. Если сразу после изображения попросить код или текст, например анимированный фон на HTML, вы получите ответ, а не ещё одну картинку.\n• Приложение больше не зависает и не закрывается, когда вы открываете настройки голоса или выбираете системный голос.",
+  "promotionalText": "Локальный ИИ на iPhone. LFM3 Omni понимает видео со звуком, отвечает о клипах Lens и говорит с вами — всё на устройстве."
+ },
+ "ar-SA": {
+  "whatsNew": "• أصبح المساعد ينشئ صورة فقط عندما تطلبها. إذا طلبت شيفرة أو نصًا مباشرة بعد صورة، مثل خلفية متحركة بلغة HTML، تحصل على الإجابة بدلًا من صورة أخرى.\n• لم يعد التطبيق يتجمّد ويُغلق عند فتح إعدادات الصوت أو اختيار صوت النظام.",
+  "promotionalText": "ذكاء اصطناعي محلي على iPhone. يفهم LFM3 Omni مقاطع الفيديو مع صوتها، ويجيب عن مقاطع Lens، ويتحدث إليك، وكل ذلك على الجهاز."
+ },
+ "pt-PT": {
+  "whatsNew": "• O assistente agora só cria uma imagem quando a pede. Se pedir código ou texto logo a seguir a uma imagem, por exemplo um fundo animado em HTML, recebe a resposta em vez de outra imagem.\n• A app já não bloqueia nem fecha ao abrir as definições de voz ou ao escolher a voz do Sistema.",
+  "promotionalText": "IA local no iPhone. O LFM3 Omni entende vídeos com som, responde sobre clips do Lens e fala consigo, tudo no dispositivo."
+ },
+ "ja": {
+  "whatsNew": "• アシスタントは、画像を頼んだときだけ画像を作成するようになりました。画像の直後にコードや文章を頼んだ場合（例：HTMLのアニメーション背景）、別の画像ではなく回答が返ります。\n• 音声設定を開いたり、システムの音声を選んだりしたときに、アプリがフリーズして終了しなくなりました。",
+  "promotionalText": "iPhoneでローカルAI。LFM3 Omniが音声付きの動画を理解し、Lensのクリップについて答え、話しかけます。すべてデバイス上で。"
+ },
+ "es-ES": {
+  "whatsNew": "• El asistente ahora crea una imagen solo cuando se la pides. Si pides código o texto justo después de una imagen, por ejemplo un fondo animado en HTML, recibes la respuesta en lugar de otra imagen.\n• La app ya no se congela ni se cierra al abrir los Ajustes de voz o elegir la voz del Sistema.",
+  "promotionalText": "IA local en tu iPhone. LFM3 Omni entiende vídeos con su sonido, responde sobre clips de Lens y te habla, todo en el dispositivo."
+ }
+}

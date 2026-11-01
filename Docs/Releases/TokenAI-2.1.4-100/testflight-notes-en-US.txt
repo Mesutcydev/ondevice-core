@@ -1,0 +1,4 @@
+• Fix: opening Voice settings or tapping the System voice engine no longer freezes and closes the app. Apple voices now load in the background.
+• Everything else is the same as 2.1.4 (99).
+
+Please try: Settings → Voice settings, tap "tts engine", select Apple System Voice, then pick a voice and tap "preview voice".
