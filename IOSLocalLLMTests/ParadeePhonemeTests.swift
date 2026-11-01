@@ -1,14 +1,29 @@
 import XCTest
 @testable import IOSLocalLLM
 
-/// Paradee reads Kokoro's vocabulary spelled the way misaki writes it.
+/// Phoneme spelling each speech model was trained on.
 final class ParadeePhonemeTests: XCTestCase {
     func testDiphthongsBecomeOneSymbolAndKeepTheirStress() {
         XCTAssertEqual(KokoroPhonemizer.misakiSpelling(Array("ˈaɪ ɡˈoʊ hˈaʊ bˈɔɪ dˈeɪ")), Array("ˈI ɡˈO hˈW bˈY dˈA"))
     }
 
-    func testRColouredVowelIsSpelledWithSymbolsInTheVocabulary() {
-        XCTAssertEqual(KokoroPhonemizer.misakiSpelling(Array("hˈɝd")), Array("hˈɜɹd"))
+    /// The r-coloured vowel in each model's own spelling: misaki for Kokoro
+    /// and Paradee (ɝ is not in their vocabulary), espeak for Kitten.
+    func testKokoroSpellsErTheMisakiWay() {
+        _ = KokoroPhonemizer.shared.phonemeIDs(for: "load")   // loads CMUdict
+        let her = String(KokoroPhonemizer.shared.phonemes(for: "her"))
+        let water = String(KokoroPhonemizer.shared.phonemes(for: "water"))
+        XCTAssertTrue(her.contains("ɜɹ"), her)
+        XCTAssertTrue(water.hasSuffix("əɹ"), water)
+        XCTAssertFalse((her + water).contains("ɝ"))
+    }
+
+    func testKittenSpellsErTheEspeakWay() {
+        let her = PhonemizerEN.shared.phonemeString(for: "her")
+        let water = PhonemizerEN.shared.phonemeString(for: "water")
+        XCTAssertTrue(her.contains("ɜː"), her)
+        XCTAssertTrue(water.contains("ɚ"), water)
+        XCTAssertFalse((her + water).contains("ɝ"))
     }
 
     func testUnrelatedNeighboursAreLeftAlone() {

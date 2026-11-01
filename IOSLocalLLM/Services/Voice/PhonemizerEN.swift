@@ -291,6 +291,13 @@ final class PhonemizerEN: @unchecked Sendable {
                 out.append(stress == nil ? "ə" : "ʌ")
                 continue
             }
+            // espeak, which Kitten was trained on, writes stressed ER as ɜː
+            // and unstressed ER as ɚ; the old ɝ almost never occurs there,
+            // so "her bird heard" came out as "her bed head".
+            if code == "ER" {
+                out.append(contentsOf: stress == nil ? ["ɚ"] : ["ɜ", "ː"])
+                continue
+            }
             for ch in Self.arpabetToIPATable[code] ?? [] {
                 out.append(ch)
             }
@@ -313,7 +320,6 @@ final class PhonemizerEN: @unchecked Sendable {
         "AE": ["æ"],
         "AO": ["ɔ"],
         "EH": ["ɛ"],
-        "ER": ["ɝ"],
         "IH": ["ɪ"],
         "IY": ["i"],
         "UH": ["ʊ"],
@@ -406,7 +412,7 @@ final class PhonemizerEN: @unchecked Sendable {
             case "o" where next == "r":
                 placeStressIfNeeded(); out.append("ɔ"); out.append("ɹ"); i += 2; continue
             case "e" where next == "r", "i" where next == "r", "u" where next == "r":
-                placeStressIfNeeded(); out.append("ɝ"); i += 2; continue
+                placeStressIfNeeded(); out.append("ɜ"); out.append("ː"); i += 2; continue
             // Single vowels
             case "a": placeStressIfNeeded(); out.append("æ")
             case "e":

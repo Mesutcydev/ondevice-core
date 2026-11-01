@@ -83,8 +83,8 @@ final class KokoroPhonemizer {
         return [Int64(padTokenID)] + ids.prefix(510) + [Int64(padTokenID)]
     }
 
-    /// misaki writes diphthongs as one symbol and the American r-coloured
-    /// vowel as ɜɹ (ɝ is not in the vocabulary at all).
+    /// misaki writes diphthongs as one symbol (the r-coloured vowel is
+    /// already spelled its way by arpabetToIPA).
     static func misakiSpelling(_ chars: [Character]) -> [Character] {
         let diphthongs: [String: Character] = ["aɪ": "I", "eɪ": "A", "oʊ": "O", "aʊ": "W", "ɔɪ": "Y"]
         var out: [Character] = []
@@ -95,7 +95,7 @@ final class KokoroPhonemizer {
                 i += 2
                 continue
             }
-            if chars[i] == "ɝ" { out += ["ɜ", "ɹ"] } else { out.append(chars[i]) }
+            out.append(chars[i])
             i += 1
         }
         return out
@@ -190,7 +190,7 @@ final class KokoroPhonemizer {
     // Same pipeline as PhonemizerEN: word-level CMUdict lookup with
     // ARPAbet → IPA conversion, LTS fallback for OOV words.
 
-    private func phonemes(for text: String) -> [Character] {
+    func phonemes(for text: String) -> [Character] {
         var out: [Character] = []
         var word = ""
         var firstTokenEmitted = false
@@ -278,6 +278,13 @@ final class KokoroPhonemizer {
                 out.append(stress == nil ? "ə" : "ʌ")
                 continue
             }
+            // misaki, Kokoro's own G2P, writes stressed ER as ɜɹ and
+            // unstressed ER as əɹ. ɝ is not in Kokoro's vocabulary, so the
+            // r-coloured vowel used to vanish ("her bird heard").
+            if code == "ER" {
+                out.append(contentsOf: stress == nil ? ["ə", "ɹ"] : ["ɜ", "ɹ"])
+                continue
+            }
             for ch in Self.arpabetToIPATable[code] ?? [] {
                 out.append(ch)
             }
@@ -296,7 +303,7 @@ final class KokoroPhonemizer {
 
     private static let arpabetToIPATable: [String: [Character]] = [
         "AA": ["ɑ"], "AE": ["æ"], "AO": ["ɔ"],
-        "EH": ["ɛ"], "ER": ["ɝ"], "IH": ["ɪ"],
+        "EH": ["ɛ"], "IH": ["ɪ"],
         "IY": ["i"], "UH": ["ʊ"], "UW": ["u"],
         "AW": ["a", "ʊ"], "AY": ["a", "ɪ"],
         "EY": ["e", "ɪ"], "OW": ["o", "ʊ"],

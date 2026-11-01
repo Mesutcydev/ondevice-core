@@ -21,6 +21,9 @@ and intends to use semantic version tags for source releases.
   selected with ONDEVICE_WHISPER_ROOT.
 - Whisper tiny, small and large-v3-turbo can be downloaded alongside base;
   dictation uses the most accurate one installed.
+- KittenTTS and Kokoro say "er" sounds again: "her bird heard" used to come
+  out as "her bed head" because the phonemizers spelled the vowel in a way
+  neither model was trained on.
 - Research builds download the same audited Kokoro revision as the App
   Store build, and the catalog shows its real size (~330 MB).
 
