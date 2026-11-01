@@ -1269,6 +1269,24 @@ final class ModelDownloadCenter: ObservableObject {
                 fileAllowlist: ["ggml-base.bin"]
             )
         ))
+
+        // ── 6b. More whisper.cpp sizes — same runtime, same staged dir ───────
+        // WhisperModelCatalog.preferredFilenames picks the best one on disk.
+        for extra in Self.whisperExtras {
+            models.append(DownloadableModel(
+                id: extra.id,
+                displayName: extra.name,
+                subtitle: "ggerganov/whisper.cpp · \(extra.detail)",
+                sizeLabel: extra.size,
+                category: .voice,
+                docURL: "https://huggingface.co/ggerganov/whisper.cpp",
+                downloader: HFModelDownloadManager(
+                    repoID: "ggerganov/whisper.cpp",
+                    destination: whisperDest,
+                    fileAllowlist: [extra.file]
+                )
+            ))
+        }
         models.removeAll { AppStoreModelPolicy.restriction(for: $0.sourceRepoID) != nil
             || AppStoreModelPolicy.restriction(for: $0.id) != nil
             || (AppStoreModelPolicy.isPublicDistribution && $0.downloader != nil
@@ -1676,4 +1694,17 @@ extension FileManager {
         }
         return total
     }
+}
+
+extension ModelDownloadCenter {
+    /// whisper.cpp files beyond base/base.en, all in the pinned
+    /// ggerganov/whisper.cpp revision. Quantized small/turbo keep the
+    /// download and Metal footprint phone-sized.
+    static let whisperExtras: [(id: String, name: String, detail: String, file: String, size: String)] = [
+        ("whisper-tiny-en", "Whisper tiny.en", "English STT, fastest", "ggml-tiny.en.bin", "~78 MB"),
+        ("whisper-tiny-multi", "Whisper tiny (multilingual)", "99 languages, fastest", "ggml-tiny.bin", "~78 MB"),
+        ("whisper-small-en", "Whisper small.en", "English STT, more accurate", "ggml-small.en-q5_1.bin", "~190 MB"),
+        ("whisper-small-multi", "Whisper small (multilingual)", "99 languages, more accurate", "ggml-small-q5_1.bin", "~190 MB"),
+        ("whisper-large-v3-turbo", "Whisper large-v3-turbo", "99 languages, most accurate", "ggml-large-v3-turbo-q5_0.bin", "~574 MB"),
+    ]
 }

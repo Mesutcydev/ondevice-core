@@ -132,6 +132,25 @@ enum WhisperModelCatalog {
     /// Multilingual variant — populated by the second catalog row in
     /// ModelDownloadCenter.buildCatalog. Same repo, different file.
     static let baseMultiFilename = "ggml-base.bin"
+    /// Every whisper.cpp file the catalog offers, best first. The extra
+    /// sizes are downloads of their own (ModelDownloadCenter.whisperExtras).
+    static let filenamesByPreference = [
+        "ggml-large-v3-turbo-q5_0.bin",
+        "ggml-small.en-q5_1.bin", "ggml-small-q5_1.bin",
+        baseEnFilename, baseMultiFilename,
+        "ggml-tiny.en.bin", "ggml-tiny.bin",
+    ]
+
+    /// Preference order for this device: English-only files only lead when
+    /// the device language is English, so a Turkish phone with both small
+    /// files installed transcribes with the multilingual one.
+    static var preferredFilenames: [String] {
+        let english = (Locale.current.language.languageCode?.identifier ?? "en") == "en"
+        if english { return filenamesByPreference }
+        let isEnglishOnly = { (name: String) in name.contains(".en") }
+        return filenamesByPreference.filter { !isEnglishOnly($0) }
+            + filenamesByPreference.filter(isEnglishOnly)
+    }
 
     /// Resolve the first installed whisper model on disk. Returns nil
     /// if the user hasn't downloaded one yet — SpeechProvider must
@@ -147,7 +166,7 @@ enum WhisperModelCatalog {
     ///   3. The pre-HFModels `WhisperModels/<file>.bin` layout.
     static func installedModelPath() -> String? {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let names = [baseEnFilename, baseMultiFilename]
+        let names = preferredFilenames
         var candidates: [URL] = []
         for name in names {
             candidates.append(
