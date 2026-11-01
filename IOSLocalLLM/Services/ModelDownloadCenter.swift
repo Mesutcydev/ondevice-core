@@ -1204,12 +1204,16 @@ final class ModelDownloadCenter: ObservableObject {
             id: "kokoro-82m",
             displayName: "Kokoro-82M",
             subtitle: "aufklarer/Kokoro-82M-CoreML · 57 voices, 9 languages",
-            sizeLabel: "~100 MB",
+            sizeLabel: "~330 MB",
             category: .voice,
             docURL: "https://huggingface.co/aufklarer/Kokoro-82M-CoreML",
             downloader: HFModelDownloadManager(
                 repoID: "aufklarer/Kokoro-82M-CoreML",
                 destination: kokoroDest,
+                // Same revision AuditedModelRevisions.json pins for App Store
+                // builds. Upstream re-exported kokoro_5s on 2026-10-23; research
+                // builds stay on the export KokoroTTSService was tested with.
+                branch: "f8ff771e4cab0bb3368e8af3a090a7e847485401",
                 fileAllowlist: [
                     "kokoro_5s.mlmodelc/",
                     "G2PEncoder.mlmodelc/",
