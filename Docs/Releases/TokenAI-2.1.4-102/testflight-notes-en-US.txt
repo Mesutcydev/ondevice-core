@@ -1,0 +1,7 @@
+Fix: the Voices page showed no voices ("Voices · 0") even with voices installed. It now lists them as soon as they load. Please open Voices, pick a voice and start a conversation.
+
+New in this test build (App Store review still uses build 100):
+• Voices: Supertonic 3 speaks 31 languages, Turkish included, with 10 voices; Paradee is a 9 MB English voice. KittenTTS and Kokoro now say "er" sounds (her, bird, water).
+• Speech-to-text for hold-to-talk: "apple" (Apple's on-device model, no download), "parakeet" (25 European languages), "nemotron" (every app language), and Whisper tiny/small/large-v3-turbo. Whisper's engine is updated too.
+
+Please try: Settings → Voice settings → tts engine → download Supertonic 3, pick a voice, preview it. Then download Nemotron in the voice catalog, set Settings → Voice → speech-to-text to "nemotron", and dictate in your language.
