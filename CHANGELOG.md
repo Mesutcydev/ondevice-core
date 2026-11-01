@@ -3,6 +3,25 @@
 This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and intends to use semantic version tags for source releases.
 
+## [Unreleased]
+
+- Supertonic 3 joins the voice catalog: one downloadable neural voice model
+  (~400 MB) that speaks 31 languages, every interface language among them,
+  with ten voices. Replies are read in their own language.
+- Apple's on-device SpeechAnalyzer is a new hold-to-talk speech-to-text
+  choice that needs no download.
+- Whisper tiny, small and large-v3-turbo can be downloaded alongside base;
+  dictation uses the most accurate one installed.
+- Research builds download the same audited Kokoro revision as the App
+  Store build, and the catalog shows its real size (~330 MB).
+
+## [2.1.4] - 2026-10-31
+
+- The assistant starts an image only when the user asked for one, so a
+  request for code or text right after an image gets an answer.
+- Opening Voice settings or choosing the System voice no longer freezes the
+  app on iOS 27.2: Apple's voice list now loads off the main thread.
+
 ## [2.1.1] - 2026-10-28
 
 - Added optional Liquid AI LFM3 1.7B (text) and LFM3 VL 2B (images)
