@@ -11,7 +11,7 @@ import NaturalLanguage
 // tensors instead of nested arrays and batch size 1.
 //
 // No app types live here, so the Mac harness that checks the port against
-// the real model (scripts/supertonic-harness) compiles this same file.
+// the real model (scripts/onnx-harness) compiles this same file.
 
 final class SupertonicPipeline: @unchecked Sendable {
     /// Languages Supertonic 3 reads. Text in anything else is read as English.

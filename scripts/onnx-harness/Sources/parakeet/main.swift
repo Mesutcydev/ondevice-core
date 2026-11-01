@@ -3,7 +3,7 @@ import AVFoundation
 import Foundation
 
 // Mac check for the app's ParakeetTranscriber (same source file, symlinked):
-//   swift run -c release harness <model dir> <16 kHz mono .wav>...
+//   swift run -c release parakeet <model dir> <16 kHz mono .wav>...
 // <model dir> is a download of istupakov/parakeet-tdt-0.6b-v3-onnx
 // (nemo128.onnx, encoder/decoder_joint int8, vocab.txt). Compare the output
 // with `onnx_asr.load_model("nemo-parakeet-tdt-0.6b-v3", dir, quantization="int8")`.

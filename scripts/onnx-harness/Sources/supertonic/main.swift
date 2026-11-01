@@ -2,8 +2,8 @@
 import Foundation
 
 // Mac check for the app's SupertonicPipeline (same source file, symlinked):
-//   swift run -c release harness selftest            text normalizer and chunker
-//   swift run -c release harness <model dir> <out>   one WAV per language
+//   swift run -c release supertonic selftest            text normalizer and chunker
+//   swift run -c release supertonic <model dir> <out>   one WAV per language
 // <model dir> is a download of Supertone/supertonic-3 (onnx/, voice_styles/).
 // Transcribe the WAVs (e.g. whisper-cli) to confirm they say the input text.
 if CommandLine.arguments.count > 1, CommandLine.arguments[1] == "selftest" { selftest(); exit(0) }

@@ -2,7 +2,7 @@ import XCTest
 @testable import IOSLocalLLM
 
 /// Supertonic's text front end. The ONNX path itself is checked against the
-/// real model on a Mac by scripts/supertonic-harness.
+/// real model on a Mac by scripts/onnx-harness.
 final class SupertonicTextTests: XCTestCase {
     func testPreprocessNormalizesDashesAndClosesTheSentence() {
         XCTAssertEqual(SupertonicPipeline.preprocess("Hello — world", lang: "en"), "<en>Hello - world.</en>")

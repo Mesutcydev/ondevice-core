@@ -8,7 +8,7 @@ import Foundation
 // token-and-duration (TDT) decoding with the joint network. The decoding
 // loop follows onnx-asr's `_AsrWithTransducerDecoding` (MIT, istupakov).
 //
-// No app types live here, so scripts/parakeet-harness compiles this same
+// No app types live here, so scripts/onnx-harness compiles this same
 // file on a Mac and compares its transcripts with onnx-asr's.
 
 final class ParakeetTranscriber: @unchecked Sendable {
