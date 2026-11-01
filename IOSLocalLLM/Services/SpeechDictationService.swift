@@ -259,8 +259,14 @@ final class SpeechDictationService: ObservableObject {
         AppSettings.shared.sttProvider == "omni" && LFM3Catalog.isEnabled && LFM3Catalog.omniRuntimeAvailable
     }
 
+    /// Apple SpeechAnalyzer: chosen in Settings; hold-to-talk records the
+    /// clip like Whisper, conversation keeps SFSpeechRecognizer streaming.
+    static var usesAnalyzer: Bool {
+        AppSettings.shared.sttProvider == "analyzer" && AppleSpeechAnalyzerTranscriber.isAvailable
+    }
+
     var supportsLocalDictation: Bool {
-        Self.usesOmni
+        Self.usesOmni || Self.usesAnalyzer
             || (AppSettings.shared.sttProvider == "whisper" && WhisperModelCatalog.isInstalled)
             || (recognizer?.isAvailable == true && recognizer?.supportsOnDeviceRecognition == true)
     }
@@ -297,7 +303,7 @@ final class SpeechDictationService: ObservableObject {
         // user isn't silently broken if they enabled the toggle then
         // deleted the model.
         let wantsWhisper = AppSettings.shared.sttProvider == "whisper"
-        if (wantsWhisper && WhisperModelCatalog.isInstalled) || Self.usesOmni, !continuous {
+        if (wantsWhisper && WhisperModelCatalog.isInstalled) || Self.usesOmni || Self.usesAnalyzer, !continuous {
             // Same 16 kHz hold-to-talk capture; the provider picks the transcriber.
             try startWhisperSingleShot(onTranscript)
             return
@@ -768,6 +774,22 @@ final class SpeechDictationService: ObservableObject {
             return
         }
         #endif
+        if Self.usesAnalyzer {
+            cleanup()
+            Task { @MainActor in
+                do {
+                    let text = try await AppleSpeechAnalyzerTranscriber.transcribe(samples: buffer) {
+                        ToastCenter.shared.info("Downloading Apple's speech model",
+                                                detail: "iOS installs it once for this language.")
+                    }
+                    callback?(text, true)
+                } catch {
+                    ToastCenter.shared.error("Apple transcription failed", detail: error.localizedDescription)
+                    callback?("", true)
+                }
+            }
+            return
+        }
         guard let modelPath = WhisperModelCatalog.installedModelPath() else {
             cleanup()
             lastError = "No whisper model installed."
@@ -813,5 +835,89 @@ final class SpeechDictationService: ObservableObject {
                 }
             }
         }
+    }
+}
+
+// MARK: - Apple SpeechAnalyzer (hold-to-talk)
+//
+// iOS 26+ on-device transcription: the system owns and updates the model,
+// so there is nothing for the app to download. Hold-to-talk records the
+// same 16 kHz clip as Whisper and hands it over when the user lets go;
+// conversation mode keeps SFSpeechRecognizer's streaming partials.
+
+enum AppleSpeechAnalyzerTranscriber {
+    enum Failure: LocalizedError {
+        case unsupportedLocale(String)
+        case noAudioFormat
+
+        var errorDescription: String? {
+            switch self {
+            case .unsupportedLocale(let id):
+                return "Apple's on-device transcriber doesn't support \(id) yet. Switch speech-to-text back to System."
+            case .noAudioFormat:
+                return "Apple's on-device transcriber couldn't agree on an audio format."
+            }
+        }
+    }
+
+    static var isAvailable: Bool { SpeechTranscriber.isAvailable }
+
+    /// Transcribes 16 kHz mono Float32 samples. When iOS hasn't installed
+    /// this language's speech model yet, `onAssetDownload` runs first so the
+    /// caller can tell the user Apple is downloading it.
+    static func transcribe(samples: [Float],
+                           locale: Locale = .current,
+                           onAssetDownload: @escaping @MainActor () -> Void) async throws -> String {
+        guard let supported = await SpeechTranscriber.supportedLocale(equivalentTo: locale) else {
+            throw Failure.unsupportedLocale(locale.identifier)
+        }
+        let transcriber = SpeechTranscriber(locale: supported, preset: .transcription)
+        if let request = try await AssetInventory.assetInstallationRequest(supporting: [transcriber]) {
+            await onAssetDownload()
+            try await request.downloadAndInstall()
+        }
+        guard let format = await SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith: [transcriber]),
+              let buffer = pcmBuffer(samples, in: format) else {
+            throw Failure.noAudioFormat
+        }
+
+        let analyzer = SpeechAnalyzer(modules: [transcriber])
+        let (input, feed) = AsyncStream<AnalyzerInput>.makeStream()
+        async let text = transcriber.results.reduce(into: "") { text, result in
+            text += String(result.text.characters)
+        }
+        try await analyzer.start(inputSequence: input)
+        feed.yield(AnalyzerInput(buffer: buffer))
+        feed.finish()
+        try await analyzer.finalizeAndFinishThroughEndOfInput()
+        return try await text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// The recorded clip as one buffer in the analyzer's preferred format.
+    private static func pcmBuffer(_ samples: [Float], in format: AVAudioFormat) -> AVAudioPCMBuffer? {
+        guard !samples.isEmpty,
+              let source = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16_000,
+                                         channels: 1, interleaved: false),
+              let clip = AVAudioPCMBuffer(pcmFormat: source, frameCapacity: AVAudioFrameCount(samples.count)),
+              let channel = clip.floatChannelData?[0] else { return nil }
+        clip.frameLength = AVAudioFrameCount(samples.count)
+        samples.withUnsafeBufferPointer { channel.update(from: $0.baseAddress!, count: samples.count) }
+        if format == source { return clip }
+
+        guard let converter = AVAudioConverter(from: source, to: format) else { return nil }
+        let capacity = AVAudioFrameCount(Double(samples.count) * format.sampleRate / 16_000 + 1024)
+        guard let out = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity) else { return nil }
+        var error: NSError?
+        var fed = false
+        let status = converter.convert(to: out, error: &error) { _, inputStatus in
+            if fed {
+                inputStatus.pointee = .endOfStream
+                return nil
+            }
+            fed = true
+            inputStatus.pointee = .haveData
+            return clip
+        }
+        return error == nil && status != .error ? out : nil
     }
 }

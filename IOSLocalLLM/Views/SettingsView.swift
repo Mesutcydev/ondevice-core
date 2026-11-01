@@ -1825,6 +1825,8 @@ private struct WhisperSTTBlock: View {
     /// LFM3-Omni transcribes in builds that can load it (it downloads with
     /// the visual models).
     private var omniAvailable: Bool { LFM3Catalog.isEnabled && LFM3Catalog.omniRuntimeAvailable }
+    private var analyzerAvailable: Bool { AppleSpeechAnalyzerTranscriber.isAvailable }
+    private var hasDownloadFreeChoice: Bool { omniAvailable || analyzerAvailable }
 
     private var isInstalled: Bool {
         observer.state == .ready || WhisperModelCatalog.isInstalled
@@ -1836,14 +1838,15 @@ private struct WhisperSTTBlock: View {
             KRow(label: "speech-to-text", trailing: {
                 Picker("", selection: $settings.sttProvider) {
                     Text("system").tag("system")
-                    // Without Omni the whole picker waits for the Whisper
-                    // download; with Omni only the whisper choice does.
-                    if isInstalled || !omniAvailable { Text("whisper").tag("whisper") }
+                    // Apple SpeechAnalyzer: on device, no app download.
+                    if analyzerAvailable { Text("apple").tag("analyzer") }
+                    // Without another choice the whole picker waits for the
+                    // Whisper download; otherwise only the whisper choice does.
+                    if isInstalled || !hasDownloadFreeChoice { Text("whisper").tag("whisper") }
                     if omniAvailable { Text("omni").tag("omni") }
                 }
-                .pickerStyle(.segmented)
-                .frame(width: omniAvailable ? 210 : 140)
-                .disabled(!isInstalled && !omniAvailable)
+                .pickerStyle(.menu)
+                .disabled(!isInstalled && !hasDownloadFreeChoice)
             }, last: !speaking && isInstalled && !observer.isActive)
 
             if !isInstalled {
