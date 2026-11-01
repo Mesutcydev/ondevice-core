@@ -830,6 +830,7 @@ enum LocalModelRegistry {
         let haystack = "\(repoID) \(displayName)".lowercased()
         if haystack.contains("kitten") { return .kittenTTS }
         if haystack.contains("kokoro") { return .kokoro }
+        if haystack.contains("supertonic") { return .supertonic }
         return nil
     }
 
@@ -927,6 +928,8 @@ enum LocalModelRegistry {
                     return 400_000_000
                 case .lfm3Omni:
                     return 0   // counted with the LFM3 Omni visual model
+                case .supertonic:
+                    return 700_000_000
                 }
             }
             return 0

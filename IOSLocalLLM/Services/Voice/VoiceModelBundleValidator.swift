@@ -236,6 +236,28 @@ struct VoiceModelBundleValidator {
         }
     }
 
+    // MARK: - Supertonic 3
+    //
+    // Documents/VoiceModels/Supertonic/ mirrors Supertone/supertonic-3:
+    //   onnx/{duration_predictor,text_encoder,vector_estimator,vocoder}.onnx,
+    //   onnx/tts.json, onnx/unicode_indexer.json, voice_styles/<F1…M5>.json
+
+    /// The model folder when every file SupertonicTTSService loads is there.
+    static func supertonicDirectoryURL() -> URL? {
+        let required = ["duration_predictor.onnx", "text_encoder.onnx", "vector_estimator.onnx",
+                        "vocoder.onnx", "tts.json", "unicode_indexer.json"].map { "onnx/\($0)" }
+            + SupertonicTTSService.styleNames.map { "voice_styles/\($0).json" }
+        let directory = voiceModelsRoot().appendingPathComponent("Supertonic", isDirectory: true)
+        let complete = required.allSatisfy {
+            FileManager.default.fileExists(atPath: directory.appendingPathComponent($0).path)
+        }
+        return complete ? directory : nil
+    }
+
+    static func isSupertonicAvailable() -> Bool {
+        supertonicDirectoryURL() != nil
+    }
+
     // MARK: - Silero VAD
     //
     // Voice-activity-detection model for the listening pipeline. Bundled

@@ -41,6 +41,7 @@ final class VoiceService: ObservableObject {
     @Published private(set) var kittenState:  VoiceModelState = .unloaded
     @Published private(set) var kokoroState:  VoiceModelState = .unloaded
     @Published private(set) var omniState:    VoiceModelState = .unloaded
+    @Published private(set) var supertonicState: VoiceModelState = .unloaded
 
     // MARK: - Engines
 
@@ -48,6 +49,7 @@ final class VoiceService: ObservableObject {
     let kittenEngine  = KittenTTSService()
     let kokoroEngine  = KokoroTTSService()
     let omniEngine    = OmniVoiceEngine()
+    let supertonicEngine = SupertonicTTSService()
 
     /// All voices the user could currently select — the active engine's
     /// voices plus the always-available system voices, deduplicated by id.
@@ -90,6 +92,7 @@ final class VoiceService: ObservableObject {
             let isVoiceDownload =
                 lower.contains("kitten") ||
                 lower.contains("kokoro") ||
+                lower.contains("supertonic") ||
                 lower.contains("tts")
             guard isVoiceDownload else { return }
 
@@ -110,6 +113,14 @@ final class VoiceService: ObservableObject {
                     self.kokoroState = self.kokoroEngine.modelState
                     if self.kokoroState == .ready {
                         ToastCenter.shared.success("Kokoro ready (experimental)")
+                    }
+                }
+                if preferred == .supertonic && VoiceModelBundleValidator.isSupertonicAvailable() {
+                    self.supertonicState = .loading
+                    await self.supertonicEngine.load()
+                    self.supertonicState = self.supertonicEngine.modelState
+                    if self.supertonicState == .ready {
+                        ToastCenter.shared.success("Supertonic ready")
                     }
                 }
             }
@@ -144,6 +155,11 @@ final class VoiceService: ObservableObject {
             await omniEngine.load()
             omniState = omniEngine.modelState
 
+        case .supertonic:
+            supertonicState = .loading
+            await supertonicEngine.load()
+            supertonicState = supertonicEngine.modelState
+
         case .appleSystem:
             break   // always ready
         }
@@ -165,6 +181,7 @@ final class VoiceService: ObservableObject {
         var available: Set<VoiceEngineKind> = [.appleSystem]
         if VoiceModelBundleValidator.isKittenTTSAvailable() { available.insert(.kittenTTS) }
         if VoiceModelBundleValidator.isKokoroAvailable() { available.insert(.kokoro) }
+        if VoiceModelBundleValidator.isSupertonicAvailable() { available.insert(.supertonic) }
         Diagnostics.shared.debug("installed neural engines discovered=\(available.map(\.rawValue).sorted())", category: "voiceservice")
         VoiceSettingsStore.shared.completeAvailabilityCheck(availableEngines: available)
         if restored != .appleSystem,
@@ -187,6 +204,11 @@ final class VoiceService: ObservableObject {
             kokoroState = .loading
             await kokoroEngine.load()
             kokoroState = kokoroEngine.modelState
+        }
+        if VoiceModelBundleValidator.isSupertonicAvailable() {
+            supertonicState = .loading
+            await supertonicEngine.load()
+            supertonicState = supertonicEngine.modelState
         }
         refreshStates()
     }
@@ -696,6 +718,8 @@ final class VoiceService: ObservableObject {
             return kokoroEngine.isReady ? kokoroEngine : nil
         case .lfm3Omni:
             return omniEngine.isReady ? omniEngine : nil
+        case .supertonic:
+            return supertonicEngine.isReady ? supertonicEngine : nil
         case .appleSystem:
             return systemEngine
         }
@@ -942,6 +966,16 @@ final class VoiceService: ObservableObject {
             omniState = .loading
             await omniEngine.load()
             omniState = omniEngine.modelState
+
+        case .supertonic:
+            guard !supertonicEngine.isReady, supertonicState != .loading else { return }
+            guard VoiceModelBundleValidator.isSupertonicAvailable() else {
+                refreshStates()
+                return
+            }
+            supertonicState = .loading
+            await supertonicEngine.load()
+            supertonicState = supertonicEngine.modelState
         }
         refreshStates()
     }
@@ -953,6 +987,7 @@ final class VoiceService: ObservableObject {
         kittenState = kittenEngine.modelState
         kokoroState = kokoroEngine.modelState
         omniState = omniEngine.modelState
+        supertonicState = supertonicEngine.modelState
     }
 
     // MARK: - Unload
@@ -962,6 +997,7 @@ final class VoiceService: ObservableObject {
         kittenEngine.unload()
         kokoroEngine.unload()
         omniEngine.unload()
+        supertonicEngine.unload()
         refreshStates()
     }
 }

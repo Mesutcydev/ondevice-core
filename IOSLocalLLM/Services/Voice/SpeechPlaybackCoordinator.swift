@@ -148,7 +148,7 @@ final class SpeechPlaybackCoordinator: ObservableObject {
     var isMuted: Bool { isOutputMuted }
 
     func notePreferredEngine(_ kind: VoiceEngineKind, isFallback: Bool) {
-        preferredEngineIsNeural = (kind == .kittenTTS || kind == .kokoro)
+        preferredEngineIsNeural = (kind == .kittenTTS || kind == .kokoro || kind == .supertonic)
         controls.isFallbackEngine = isFallback && preferredEngineIsNeural
         var snap = snapshot
         snap.isFallbackEngine = controls.isFallbackEngine

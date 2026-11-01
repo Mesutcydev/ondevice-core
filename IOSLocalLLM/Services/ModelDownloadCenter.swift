@@ -1229,6 +1229,26 @@ final class ModelDownloadCenter: ObservableObject {
             supportedVoiceEngine: .kokoro
         ))
 
+        // ── 5b. Supertonic 3 — multilingual neural TTS on ONNX Runtime ───────
+        // Supertone/supertonic-3 (OpenRAIL-M weights): four ONNX models plus
+        // ten preset voice styles; 31 languages, 44.1 kHz.
+        models.append(DownloadableModel(
+            id: "supertonic-3",
+            displayName: "Supertonic 3",
+            subtitle: "Supertone/supertonic-3 · 10 voices, 31 languages",
+            sizeLabel: "~400 MB",
+            category: .voice,
+            docURL: "https://huggingface.co/Supertone/supertonic-3",
+            downloader: HFModelDownloadManager(
+                repoID: "Supertone/supertonic-3",
+                destination: docs.appendingPathComponent("VoiceModels/Supertonic"),
+                branch: "3cadd1ee6394adea1bd021217a0e650ede09a323",
+                fileAllowlist: ["onnx/", "voice_styles/", "LICENSE"]
+            ),
+            approxRAMBytes: 700_000_000,
+            supportedVoiceEngine: .supertonic
+        ))
+
         // ── 6. Whisper.cpp base.en — on-device English STT ────────────────────
         // Replaces SFSpeechRecognizer's network-dependent path for users who
         // download this model. ~142 MB, ~3× realtime on A17 Pro. Lives in

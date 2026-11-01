@@ -72,6 +72,7 @@ private enum VoiceCatalogFallback {
     static let entries: [VoiceCatalogEntry] = [
         e("tts.apple.system", "Apple System Voices", .textToSpeech, "Built-in Apple voices managed in system settings.", nil, .production, true, nil),
         e("tts.kokoro.82m.official", "Kokoro-82M", .textToSpeech, "Compact multilingual neural speech synthesis.", "https://huggingface.co/hexgrad/Kokoro-82M", .production, true, "kokoro-82m"),
+        e("tts.supertonic.3", "Supertonic 3", .textToSpeech, "Multilingual neural speech in 31 languages, ten voices.", "https://huggingface.co/Supertone/supertonic-3", .production, true, "supertonic-3"),
         e("tts.kitten.micro.0_8", "KittenTTS Micro", .textToSpeech, "Official KittenML ONNX · 8 English voices.", "https://huggingface.co/KittenML/kitten-tts-micro-0.8", .production, true, "tts.kitten.micro.0_8"),
         e("tts.kitten.nano.0_8.int8", "KittenTTS Nano INT8", .textToSpeech, "Official quantized KittenML ONNX · 8 English voices.", "https://huggingface.co/KittenML/kitten-tts-nano-0.8-int8", .production, true, "tts.kitten.nano.0_8.int8"),
         e("tts.kitten.nano.0_8.fp32", "KittenTTS Nano FP32", .textToSpeech, "Full-precision KittenTTS Nano.", "https://huggingface.co/KittenML/kitten-tts-nano-0.8-fp32", .catalogOnly, false, nil),

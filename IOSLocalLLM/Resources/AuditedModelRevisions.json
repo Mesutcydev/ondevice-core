@@ -1,5 +1,4 @@
 {
-  "prism-ml/Ternary-Bonsai-2-9B-mlx-2bit": "f4e28a59531731c41b6dfac88cf271bd58f0a287",
   "Edge0/Edge0-35B-A3B-preview": "3fe15cbf2bd5bbcdfd611035e1ac88971ff1cdab",
   "Edge0/Edge0-8B-A1B-preview": "269b9a2c4a69d897c50e9f4e125328481d7c0fcf",
   "FluidInference/laya-coreml": "7b8d7a2b7e28e746c6ecaad44bbcd5cf251a4fcc",
@@ -12,6 +11,7 @@
   "LiquidAI/LFM3-Omni-2B-GGUF": "3d29af2ad166f8299c2d820937e47dc0add20ffc",
   "LiquidAI/LFM3-VL-2B-GGUF": "7c3b4a43c9023e80bf234fec5e826a3365c8dda8",
   "Lykon/dreamshaper-8": "a7e52b98680b1ba8ff7bce97c7f9f2e2e5337917",
+  "Supertone/supertonic-3": "3cadd1ee6394adea1bd021217a0e650ede09a323",
   "aether-models/eurollm-1.7b-instruct": "3ed1743a0b15f6d4950d523562aa42b114969fd8",
   "aether-models/granite-4.0-1b": "2b5d83696b7455ee02a79596cd077a93a2e78ba9",
   "aether-models/granite-4.0-h-350m": "ea24ac837112b7b082e52cd51bc83b38467ae659",
@@ -83,6 +83,7 @@
   "prism-ml/Bonsai-4B-mlx-1bit": "3d25c52f7fa171affb188e27796be61be3df52db",
   "prism-ml/Bonsai-8B-mlx-1bit": "019934f87a61a654e3960ea22f53688e0d2c49ba",
   "prism-ml/Ternary-Bonsai-1.7B-mlx-2bit": "5f3e306330f636cfc6c6241b4850fae6711c5985",
+  "prism-ml/Ternary-Bonsai-2-9B-mlx-2bit": "f4e28a59531731c41b6dfac88cf271bd58f0a287",
   "prism-ml/Ternary-Bonsai-27B-mlx-2bit": "70f75f3ad081ab840a42f3304c02c27e7f89bfb7",
   "prism-ml/Ternary-Bonsai-4B-mlx-2bit": "e1374ad6bf9b1b56afd743936b8faa33c409a75f",
   "prism-ml/Ternary-Bonsai-8B-mlx-2bit": "9260b24298e4211e804663e9f519962cf59f34be",

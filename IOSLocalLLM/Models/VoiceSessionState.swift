@@ -163,6 +163,9 @@ struct TTSEngineCapabilities: OptionSet, Sendable, Equatable {
         case .lfm3Omni:
             // One WAV per sentence from the Omni audio generator.
             return [.completePCMBuffers, .playbackMetering, .immediateCancellation]
+        case .supertonic:
+            // Durations stay inside the ONNX graphs; one buffer per utterance.
+            return [.completePCMBuffers, .playbackMetering, .immediateCancellation]
         }
     }
 }

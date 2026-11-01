@@ -230,6 +230,23 @@ The bundled weight SHA-256 is `45846d0738d3bf5e4b6e9e7d2fddda7b1ad07da33d473f040
 See `LICENSES/Silero-VAD-MIT.txt` for the upstream Silero Team notice.
 This compiled model stays outside Git. Large chat, vision, and speech models
 are downloaded separately by the app.
+
+## Supertonic 3 text-to-speech (downloaded on request)
+
+`IOSLocalLLM/Services/Voice/SupertonicPipeline.swift` adapts the MIT-licensed
+Swift reference implementation from
+<https://github.com/supertone-inc/supertonic> (`swift/Sources/Helper.swift` at
+`1e9799e964ea4c0dad7cde993b65c3c813a7b373`, Copyright 2025 Supertone Inc.;
+see `LICENSES/Supertonic-MIT.txt`). It was changed to flat tensors, batch size
+one, and an NLTokenizer sentence chunker.
+
+The Supertonic 3 weights are not in Git or the IPA. When the user chooses the
+voice, the app downloads them from
+<https://huggingface.co/Supertone/supertonic-3/tree/3cadd1ee6394adea1bd021217a0e650ede09a323>
+(`onnx/`, `voice_styles/`, `LICENSE`). They are licensed under the OpenRAIL-M
+license in `LICENSES/Models/Supertone--supertonic-3/LICENSE`, including the
+use-based restrictions in its Attachment A, which apply to every use of the
+model in this app.
 # Model license evidence for public-distribution review
 
 The 2026-10-01 source/revision inventory is in

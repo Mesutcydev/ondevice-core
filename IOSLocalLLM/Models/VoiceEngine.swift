@@ -8,6 +8,7 @@ enum VoiceEngineKind: String, CaseIterable, Identifiable, Codable {
     case kittenTTS   = "kitten_tts"     // KittenTTS CoreML — requires download
     case kokoro      = "kokoro"         // Kokoro-82M CoreML — experimental
     case lfm3Omni    = "lfm3_omni"      // LFM3-Omni's own voice — LFM3_OMNI builds
+    case supertonic  = "supertonic"     // Supertonic 3 ONNX — 31 languages, requires download
 
     var id: String { rawValue }
 
@@ -24,6 +25,7 @@ enum VoiceEngineKind: String, CaseIterable, Identifiable, Codable {
             case .appleSystem, .kittenTTS: return true
             case .kokoro:                   return VoiceModelBundleValidator.isKokoroAvailable()
             case .lfm3Omni:                 return LFM3Catalog.isEnabled && LFM3Catalog.omniRuntimeAvailable
+            case .supertonic:               return VoiceModelBundleValidator.isSupertonicAvailable()
             }
         }
     }
@@ -34,6 +36,7 @@ enum VoiceEngineKind: String, CaseIterable, Identifiable, Codable {
         case .kittenTTS:   return "KittenTTS — Tiny Neural"
         case .kokoro:      return "Kokoro — Neural"
         case .lfm3Omni:    return "LFM3 Omni — Multilingual"
+        case .supertonic:  return "Supertonic 3 — Multilingual Neural"
         }
     }
 
@@ -43,12 +46,13 @@ enum VoiceEngineKind: String, CaseIterable, Identifiable, Codable {
         case .kittenTTS:   return "KittenTTS"
         case .kokoro:      return "Kokoro"
         case .lfm3Omni:    return "LFM3 Omni"
+        case .supertonic:  return "Supertonic"
         }
     }
 
     /// Whether this engine requires a model download before first use.
     var requiresDownload: Bool {
-        self == .kittenTTS || self == .kokoro || self == .lfm3Omni
+        self == .kittenTTS || self == .kokoro || self == .lfm3Omni || self == .supertonic
     }
 
     /// Whether this engine is labelled experimental in the UI.
@@ -76,6 +80,7 @@ enum VoiceEngineKind: String, CaseIterable, Identifiable, Codable {
         case .kittenTTS:   return 24000
         case .kokoro:      return 24000
         case .lfm3Omni:    return 24000
+        case .supertonic:  return 44100
         }
     }
 }
