@@ -1249,6 +1249,26 @@ final class ModelDownloadCenter: ObservableObject {
             supportedVoiceEngine: .supertonic
         ))
 
+        // ── 5c. Paradee-8M — tiny English neural TTS on ONNX Runtime ─────────
+        // sahilmahendrakar/Paradee-8M-v1.2 (Apache-2.0): Kokoro distilled
+        // into one 8.5 MB int8 graph; uses the app's own phonemizer.
+        models.append(DownloadableModel(
+            id: "paradee-8m",
+            displayName: "Paradee-8M",
+            subtitle: "sahilmahendrakar/Paradee-8M-v1.2 · 2 English voices",
+            sizeLabel: "~9 MB",
+            category: .voice,
+            docURL: "https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.2",
+            downloader: HFModelDownloadManager(
+                repoID: "sahilmahendrakar/Paradee-8M-v1.2",
+                destination: docs.appendingPathComponent("VoiceModels/Paradee"),
+                branch: "ed2934d4df8a4fd891e29584c5e1104649409765",
+                fileAllowlist: ["onnx/paradee_int8.onnx", "config.json", "LICENSE"]
+            ),
+            approxRAMBytes: 60_000_000,
+            supportedVoiceEngine: .paradee
+        ))
+
         // ── 6. Whisper.cpp base.en — on-device English STT ────────────────────
         // Replaces SFSpeechRecognizer's network-dependent path for users who
         // download this model. ~142 MB, ~3× realtime on A17 Pro. Lives in

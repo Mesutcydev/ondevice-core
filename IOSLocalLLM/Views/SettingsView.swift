@@ -595,6 +595,7 @@ struct SettingsView: View {
         case .kokoro:      return "Kokoro (neural)"
         case .lfm3Omni:    return "LFM3 Omni (voice)"
         case .supertonic:  return "Supertonic 3 (neural)"
+        case .paradee:  return "Paradee (neural)"
         }
     }
 
@@ -631,6 +632,13 @@ struct SettingsView: View {
             }
         case .supertonic:
             switch voiceServiceObs.supertonicState {
+            case .ready:    KStatusBadge(glyph: .ready, label: "ready", color: T.good)
+            case .loading:  KStatusBadge(glyph: .streaming, label: "loading", color: T.warn)
+            case .failed:   KStatusBadge(glyph: .remote, label: "error", color: T.bad)
+            case .unloaded: KStatusBadge(glyph: .remote, label: "off", color: T.ink3)
+            }
+        case .paradee:
+            switch voiceServiceObs.paradeeState {
             case .ready:    KStatusBadge(glyph: .ready, label: "ready", color: T.good)
             case .loading:  KStatusBadge(glyph: .streaming, label: "loading", color: T.warn)
             case .failed:   KStatusBadge(glyph: .remote, label: "error", color: T.bad)

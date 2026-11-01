@@ -417,6 +417,7 @@ final class ODBridge: ObservableObject {
         case .kokoro: voice.kokoroState
         case .lfm3Omni: voice.omniState
         case .supertonic: voice.supertonicState
+        case .paradee: voice.paradeeState
         }
         switch preferredVoiceState {
         case .ready: store.voiceAvailabilityMessage = nil

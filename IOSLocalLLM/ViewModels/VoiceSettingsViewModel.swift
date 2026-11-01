@@ -115,6 +115,7 @@ final class VoiceSettingsViewModel: ObservableObject {
         case .kokoro:      return voiceService.kokoroState
         case .lfm3Omni:    return voiceService.omniState
         case .supertonic:  return voiceService.supertonicState
+        case .paradee:  return voiceService.paradeeState
         }
     }
 
@@ -127,6 +128,7 @@ final class VoiceSettingsViewModel: ObservableObject {
         case .kokoro:      return VoiceModelBundleValidator.isKokoroAvailable()
         case .lfm3Omni:    return LFM3Catalog.isEnabled && LFM3Catalog.omniRuntimeAvailable
         case .supertonic:  return VoiceModelBundleValidator.isSupertonicAvailable()
+        case .paradee:  return VoiceModelBundleValidator.isParadeeAvailable()
         }
     }
 
@@ -141,6 +143,8 @@ final class VoiceSettingsViewModel: ObservableObject {
             return "LFM3 Omni speaks with the LFM3 Omni 2B model. Download it under Models → visual models."
         case .supertonic:
             return "Supertonic 3 isn't installed. Download it from the voice model catalog (~400 MB)."
+        case .paradee:
+            return "Paradee isn't installed. Download it from the voice model catalog (~9 MB)."
         }
     }
 
@@ -166,6 +170,7 @@ final class VoiceSettingsViewModel: ObservableObject {
         case .kokoro:      return KokoroTTSService.kokoroVoices
         case .lfm3Omni:    return OmniVoiceEngine.voices
         case .supertonic:  return SupertonicTTSService.supertonicVoices
+        case .paradee:  return ParadeeTTSService.paradeeVoices
         }
     }
 }

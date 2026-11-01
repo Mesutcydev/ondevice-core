@@ -1966,6 +1966,7 @@ struct ModelsManagerView: View {
         case .kokoro:      return "Kokoro (neural)"
         case .lfm3Omni:    return "LFM3 Omni (voice)"
         case .supertonic:  return "Supertonic 3 (neural)"
+        case .paradee:  return "Paradee (neural)"
         }
     }
 
@@ -1976,6 +1977,7 @@ struct ModelsManagerView: View {
         case .kokoro:      return "hexgrad/Kokoro-82M"
         case .lfm3Omni:    return LFM3Catalog.omni.repoID
         case .supertonic:  return "Supertone/supertonic-3"
+        case .paradee:  return "sahilmahendrakar/Paradee-8M-v1.2"
         }
     }
 
@@ -1994,6 +1996,8 @@ struct ModelsManagerView: View {
             return loadPhase(for: voiceSvc.omniState)
         case .supertonic:
             return loadPhase(for: voiceSvc.supertonicState)
+        case .paradee:
+            return loadPhase(for: voiceSvc.paradeeState)
         }
     }
 

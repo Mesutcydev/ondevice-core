@@ -831,6 +831,7 @@ enum LocalModelRegistry {
         if haystack.contains("kitten") { return .kittenTTS }
         if haystack.contains("kokoro") { return .kokoro }
         if haystack.contains("supertonic") { return .supertonic }
+        if haystack.contains("paradee") { return .paradee }
         return nil
     }
 
@@ -930,6 +931,8 @@ enum LocalModelRegistry {
                     return 0   // counted with the LFM3 Omni visual model
                 case .supertonic:
                     return 700_000_000
+                case .paradee:
+                    return 60_000_000
                 }
             }
             return 0

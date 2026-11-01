@@ -19,6 +19,7 @@ final class VoiceSettingsStore: ObservableObject {
     static let selectedKokoroVoiceKey = "voice.selectedKokoroVoiceID"
     static let selectedOmniVoiceKey = "voice.selectedOmniVoiceID"
     static let selectedSupertonicVoiceKey = "voice.selectedSupertonicVoiceID"
+    static let selectedParadeeVoiceKey = "voice.selectedParadeeVoiceID"
     static let selectedKittenVoiceKey = "voice.selectedKittenVoiceID"
     static let selectedKittenVariantKey = "voice.selectedKittenVariantID"
     static let selectedAppleVoiceKey = "voice.selectedAppleVoiceID"
@@ -123,6 +124,7 @@ final class VoiceSettingsStore: ObservableObject {
         case .kokoro:      return selectedKokoroVoiceKey
         case .lfm3Omni:    return selectedOmniVoiceKey
         case .supertonic:  return selectedSupertonicVoiceKey
+        case .paradee:  return selectedParadeeVoiceKey
         }
     }
 }

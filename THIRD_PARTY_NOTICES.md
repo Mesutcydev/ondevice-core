@@ -247,6 +247,14 @@ voice, the app downloads them from
 license in `LICENSES/Models/Supertone--supertonic-3/LICENSE`, including the
 use-based restrictions in its Attachment A, which apply to every use of the
 model in this app.
+
+## Paradee-8M text-to-speech (downloaded on request)
+
+The Paradee-8M v1.2 weights (Sahil Mahendrakar; Apache-2.0, distilled from
+Kokoro-82M) are not in Git or the IPA. When the user chooses the voice, the
+app downloads `onnx/paradee_int8.onnx`, `config.json` and `LICENSE` from
+<https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.2/tree/ed2934d4df8a4fd891e29584c5e1104649409765>.
+The license is in `LICENSES/Models/sahilmahendrakar--Paradee-8M-v1.2/LICENSE`.
 # Model license evidence for public-distribution review
 
 The 2026-10-01 source/revision inventory is in

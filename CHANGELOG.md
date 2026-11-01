@@ -8,6 +8,8 @@ and intends to use semantic version tags for source releases.
 - Supertonic 3 joins the voice catalog: one downloadable neural voice model
   (~400 MB) that speaks 31 languages, every interface language among them,
   with ten voices. Replies are read in their own language.
+- Paradee-8M is a 9 MB English neural voice (two voices) that reads far
+  faster than real time.
 - Apple's on-device SpeechAnalyzer is a new hold-to-talk speech-to-text
   choice that needs no download.
 - Whisper tiny, small and large-v3-turbo can be downloaded alongside base;

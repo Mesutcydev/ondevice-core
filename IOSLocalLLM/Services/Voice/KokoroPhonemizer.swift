@@ -74,6 +74,33 @@ final class KokoroPhonemizer {
         return ids
     }
 
+    /// Paradee-8M's input. Same vocabulary as Kokoro, but phonemes spelled
+    /// the way misaki (Kokoro's own G2P) writes them, which is what Paradee
+    /// was trained on, framed by the 0 pad token; at most 512 ids.
+    func misakiIDs(for text: String) -> [Int64] {
+        loadIfNeeded()
+        let ids = Self.misakiSpelling(phonemes(for: text)).compactMap { charToID[$0].map(Int64.init) }
+        return [Int64(padTokenID)] + ids.prefix(510) + [Int64(padTokenID)]
+    }
+
+    /// misaki writes diphthongs as one symbol and the American r-coloured
+    /// vowel as ɜɹ (ɝ is not in the vocabulary at all).
+    static func misakiSpelling(_ chars: [Character]) -> [Character] {
+        let diphthongs: [String: Character] = ["aɪ": "I", "eɪ": "A", "oʊ": "O", "aʊ": "W", "ɔɪ": "Y"]
+        var out: [Character] = []
+        var i = 0
+        while i < chars.count {
+            if i + 1 < chars.count, let single = diphthongs[String([chars[i], chars[i + 1]])] {
+                out.append(single)
+                i += 2
+                continue
+            }
+            if chars[i] == "ɝ" { out += ["ɜ", "ɹ"] } else { out.append(chars[i]) }
+            i += 1
+        }
+        return out
+    }
+
     // MARK: - Loading
 
     private func loadIfNeeded() {
@@ -82,7 +109,9 @@ final class KokoroPhonemizer {
         if loaded { return }
         loadVocabIndex()
         loadCMUdict()
-        loaded = true
+        // Retry next time when no vocabulary was on disk yet (e.g. first use
+        // before the Paradee or Kokoro download finished).
+        loaded = !charToID.isEmpty
     }
 
     /// Load vocab_index.json — the phoneme symbol → ID table.
@@ -101,10 +130,13 @@ final class KokoroPhonemizer {
             return urls
         }()
 
-        for root in roots {
-            let url = root
-                .appendingPathComponent("Kokoro", isDirectory: true)
-                .appendingPathComponent("vocab_index.json")
+        // Paradee's config.json carries the same "vocab" table, so Paradee
+        // works without a Kokoro download.
+        let files = roots.flatMap { root in
+            [root.appendingPathComponent("Kokoro/vocab_index.json"),
+             root.appendingPathComponent("Paradee/config.json")]
+        }
+        for url in files {
             guard fm.fileExists(atPath: url.path),
                   let data = try? Data(contentsOf: url),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

@@ -23,6 +23,10 @@ struct VoiceStatusView: View {
             engineRow("supertonic 3 (multilingual)", state: voiceService.supertonicState,
                       note: VoiceModelBundleValidator.isSupertonicAvailable()
                           ? "31 languages, 10 voices" : "not downloaded")
+            Rectangle().fill(T.rule).frame(height: 1)
+            engineRow("paradee (tiny english)", state: voiceService.paradeeState,
+                      note: VoiceModelBundleValidator.isParadeeAvailable()
+                          ? "2 voices, 9 MB" : "not downloaded")
         }
         .padding(.vertical, 6)
     }

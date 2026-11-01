@@ -284,6 +284,7 @@ struct VoiceModelPickerView: View {
         case .kokoro:      return VoiceModelBundleValidator.isKokoroAvailable()
         case .lfm3Omni:    return LFM3Catalog.isEnabled && LFM3Catalog.omniRuntimeAvailable
         case .supertonic:  return VoiceModelBundleValidator.isSupertonicAvailable()
+        case .paradee:  return VoiceModelBundleValidator.isParadeeAvailable()
         }
     }
 
@@ -294,6 +295,7 @@ struct VoiceModelPickerView: View {
         case .kokoro:      return voiceService.kokoroState
         case .lfm3Omni:    return voiceService.omniState
         case .supertonic:  return voiceService.supertonicState
+        case .paradee:  return voiceService.paradeeState
         }
     }
 
@@ -304,6 +306,7 @@ struct VoiceModelPickerView: View {
         case .kokoro:      return KokoroTTSService.kokoroVoices
         case .lfm3Omni:    return OmniVoiceEngine.voices
         case .supertonic:  return SupertonicTTSService.supertonicVoices
+        case .paradee:  return ParadeeTTSService.paradeeVoices
         }
     }
 

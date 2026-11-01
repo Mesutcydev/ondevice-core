@@ -9,6 +9,7 @@ enum VoiceEngineKind: String, CaseIterable, Identifiable, Codable {
     case kokoro      = "kokoro"         // Kokoro-82M CoreML — experimental
     case lfm3Omni    = "lfm3_omni"      // LFM3-Omni's own voice — LFM3_OMNI builds
     case supertonic  = "supertonic"     // Supertonic 3 ONNX — 31 languages, requires download
+    case paradee     = "paradee"        // Paradee-8M ONNX — tiny English, requires download
 
     var id: String { rawValue }
 
@@ -26,6 +27,7 @@ enum VoiceEngineKind: String, CaseIterable, Identifiable, Codable {
             case .kokoro:                   return VoiceModelBundleValidator.isKokoroAvailable()
             case .lfm3Omni:                 return LFM3Catalog.isEnabled && LFM3Catalog.omniRuntimeAvailable
             case .supertonic:               return VoiceModelBundleValidator.isSupertonicAvailable()
+            case .paradee:               return VoiceModelBundleValidator.isParadeeAvailable()
             }
         }
     }
@@ -37,6 +39,7 @@ enum VoiceEngineKind: String, CaseIterable, Identifiable, Codable {
         case .kokoro:      return "Kokoro — Neural"
         case .lfm3Omni:    return "LFM3 Omni — Multilingual"
         case .supertonic:  return "Supertonic 3 — Multilingual Neural"
+        case .paradee:  return "Paradee — Tiny English Neural"
         }
     }
 
@@ -47,12 +50,13 @@ enum VoiceEngineKind: String, CaseIterable, Identifiable, Codable {
         case .kokoro:      return "Kokoro"
         case .lfm3Omni:    return "LFM3 Omni"
         case .supertonic:  return "Supertonic"
+        case .paradee:  return "Paradee"
         }
     }
 
     /// Whether this engine requires a model download before first use.
     var requiresDownload: Bool {
-        self == .kittenTTS || self == .kokoro || self == .lfm3Omni || self == .supertonic
+        self == .kittenTTS || self == .kokoro || self == .lfm3Omni || self == .supertonic || self == .paradee
     }
 
     /// Whether this engine is labelled experimental in the UI.
@@ -81,6 +85,7 @@ enum VoiceEngineKind: String, CaseIterable, Identifiable, Codable {
         case .kokoro:      return 24000
         case .lfm3Omni:    return 24000
         case .supertonic:  return 44100
+        case .paradee:  return 24000
         }
     }
 }

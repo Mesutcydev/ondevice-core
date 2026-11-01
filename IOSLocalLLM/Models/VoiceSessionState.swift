@@ -166,6 +166,9 @@ struct TTSEngineCapabilities: OptionSet, Sendable, Equatable {
         case .supertonic:
             // Durations stay inside the ONNX graphs; one buffer per utterance.
             return [.completePCMBuffers, .playbackMetering, .immediateCancellation]
+        case .paradee:
+            // One ONNX graph, one buffer per utterance.
+            return [.completePCMBuffers, .playbackMetering, .immediateCancellation]
         }
     }
 }

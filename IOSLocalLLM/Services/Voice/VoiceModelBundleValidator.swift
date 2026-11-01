@@ -258,6 +258,24 @@ struct VoiceModelBundleValidator {
         supertonicDirectoryURL() != nil
     }
 
+    // MARK: - Paradee-8M
+    //
+    // Documents/VoiceModels/Paradee/ mirrors sahilmahendrakar/Paradee-8M-v1.2:
+    //   onnx/paradee_int8.onnx, config.json (Kokoro's phoneme vocabulary)
+
+    /// The int8 model when it and the vocabulary KokoroPhonemizer reads are there.
+    static func paradeeModelURL() -> URL? {
+        let directory = voiceModelsRoot().appendingPathComponent("Paradee", isDirectory: true)
+        let model = directory.appendingPathComponent("onnx/paradee_int8.onnx")
+        let fm = FileManager.default
+        return fm.fileExists(atPath: model.path)
+            && fm.fileExists(atPath: directory.appendingPathComponent("config.json").path) ? model : nil
+    }
+
+    static func isParadeeAvailable() -> Bool {
+        paradeeModelURL() != nil
+    }
+
     // MARK: - Silero VAD
     //
     // Voice-activity-detection model for the listening pipeline. Bundled
