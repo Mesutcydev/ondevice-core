@@ -1,0 +1,90 @@
+{
+ "en-US": {
+  "whatsNew": true,
+  "promotionalText": true,
+  "description": true,
+  "keywords": true,
+  "marketingUrl": true,
+  "supportUrl": true
+ },
+ "tr": {
+  "whatsNew": true,
+  "promotionalText": true,
+  "description": true,
+  "keywords": true,
+  "marketingUrl": true,
+  "supportUrl": true
+ },
+ "de-DE": {
+  "whatsNew": true,
+  "promotionalText": true,
+  "description": true,
+  "keywords": true,
+  "marketingUrl": true,
+  "supportUrl": true
+ },
+ "es-ES": {
+  "whatsNew": true,
+  "promotionalText": true,
+  "description": true,
+  "keywords": true,
+  "marketingUrl": true,
+  "supportUrl": true
+ },
+ "pt-PT": {
+  "whatsNew": true,
+  "promotionalText": true,
+  "description": true,
+  "keywords": true,
+  "marketingUrl": true,
+  "supportUrl": true
+ },
+ "ro": {
+  "whatsNew": true,
+  "promotionalText": true,
+  "description": true,
+  "keywords": true,
+  "marketingUrl": true,
+  "supportUrl": true
+ },
+ "el": {
+  "whatsNew": true,
+  "promotionalText": true,
+  "description": true,
+  "keywords": true,
+  "marketingUrl": true,
+  "supportUrl": true
+ },
+ "ru": {
+  "whatsNew": true,
+  "promotionalText": true,
+  "description": true,
+  "keywords": true,
+  "marketingUrl": true,
+  "supportUrl": true
+ },
+ "hi": {
+  "whatsNew": true,
+  "promotionalText": true,
+  "description": true,
+  "keywords": true,
+  "marketingUrl": true,
+  "supportUrl": true
+ },
+ "ar-SA": {
+  "whatsNew": true,
+  "promotionalText": true,
+  "description": true,
+  "keywords": true,
+  "marketingUrl": true,
+  "supportUrl": true
+ },
+ "ja": {
+  "whatsNew": true,
+  "promotionalText": true,
+  "description": true,
+  "keywords": true,
+  "marketingUrl": true,
+  "supportUrl": true
+ }
+}
