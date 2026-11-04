@@ -170,3 +170,11 @@ struct AssistantModelPickerView: View {
         }
     }
 }
+
+/// AssistantActivity reads tool calls through ToolRunner; the real runner also
+/// pulls in every tool service, so the review host gets only its parser entry.
+enum ToolRunner {
+    static func extractCall(from reply: String) -> ToolCall? {
+        AssistantToolCallParser.extractCall(from: AssistantOutputSanitizer.normalizeReasoningMarkup(reply))
+    }
+}
