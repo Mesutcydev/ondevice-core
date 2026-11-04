@@ -1,0 +1,6 @@
+Uploading TokenAI.ipa (98836611 bytes) to App Store Connect...
+Upload committed in App Store Connect.
+Waiting for build 104 (2.1.5) to appear in App Store Connect...
+Skipped internal group "Test" (7879d475-100f-4c7c-bf49-5b5446be9b56) because it already receives all builds
+{"mode":"ipa_upload","buildId":"7b89875e-1bc4-4a77-91ce-faac63a2508b","buildVersion":"2.1.5","buildNumber":"104","groupIds":["7879d475-100f-4c7c-bf49-5b5446be9b56"],"uploaded":true,"processingState":"VALID"}
+rc=0
