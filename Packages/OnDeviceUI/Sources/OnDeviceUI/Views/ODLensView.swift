@@ -8,6 +8,7 @@ struct ODLensView: View {
     @Environment(\.odSidebarPinned) private var sidebarPinned
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.displayScale) private var displayScale
+    @Environment(\.locale) private var locale
     @FocusState private var questionFocused: Bool
     @State private var panelContentHeight: CGFloat = 74 * ODLayout.unit
     @State private var accessoryHeight: CGFloat = 0
@@ -249,7 +250,7 @@ struct ODLensView: View {
                         if store.lensHasSelectedImage { store.send(store.lensModelInstalled ? .analyzeLens : .selectLensModel) }
                         else { store.send(.capture(mode: store.cameraMode, question: store.lensQuestion)) }
                     } label: {
-                        Image(systemName: store.lensHasSelectedImage ? "arrow.up" : "camera.fill")
+                        Image(systemName: store.lensHasSelectedImage ? "arrow.up" : primaryCapture.symbol)
                             .font(.system(size: captureIconSize, weight: .medium))
                             .frame(width: captureIconSize + ODLayout.elementGap,
                                    height: captureIconSize + ODLayout.elementGap)
@@ -260,10 +261,10 @@ struct ODLensView: View {
                     .odInkProminent()
                     .frame(minWidth: 15 * ODLayout.unit, minHeight: 15 * ODLayout.unit)
                     .disabled(!store.canPerformActions || store.lensIsAnalyzing || (!store.lensHasSelectedImage && !store.capabilities.canCapture))
-                    .accessibilityLabel(Text(odKey: store.lensHasSelectedImage ? (store.lensModelInstalled ? "Analyze selected image" : "Choose vision model") : "Capture image"))
+                    .accessibilityLabel(Text(odKey: store.lensHasSelectedImage ? (store.lensModelInstalled ? "Analyze selected image" : "Choose vision model") : primaryCapture.label))
                     .accessibilityIdentifier("lens.primary")
-                    .accessibilityHint(Text(odKey: store.lensHasSelectedImage ? "Uses this reviewed image and your editable instructions" : "Takes a still image for review before analysis"))
-                    Text(odKey: store.lensHasSelectedImage ? (store.lensModelInstalled ? "Analyze" : "Choose model") : "Capture")
+                    .accessibilityHint(Text(odKey: store.lensHasSelectedImage ? "Uses this reviewed image and your editable instructions" : primaryCapture.hint))
+                    Text(odKey: store.lensHasSelectedImage ? (store.lensModelInstalled ? "Analyze" : "Choose model") : primaryCapture.title)
                         .font(.caption.weight(.medium))
                         .foregroundStyle(ODPalette.text)
                         .fixedSize(horizontal: false, vertical: true)
@@ -295,7 +296,8 @@ struct ODLensView: View {
 
     @ViewBuilder
     private func modeSelector(availableWidth: CGFloat) -> some View {
-        if dynamicTypeSize >= .xxLarge || availableWidth < 76 * ODLayout.unit {
+        if dynamicTypeSize >= .xxLarge || availableWidth < 76 * ODLayout.unit
+            || !segmentsFit(width: availableWidth) {
             modePicker
                 .pickerStyle(.menu)
                 .frame(maxWidth: .infinity, minHeight: ODLayout.minimumHit, alignment: .leading)
@@ -306,9 +308,34 @@ struct ODLensView: View {
         }
     }
 
+    /// The shutter's look for the current mode when no photo is selected.
+    private var primaryCapture: (symbol: String, title: String, label: String, hint: String) {
+        switch store.cameraMode {
+        case .clip: return ("record.circle", "Record", "Record clip", ODLensMode.clip.instruction)
+        case .live: return ("eye", "Start live", "Start live commentary", ODLensMode.live.instruction)
+        default: return ("camera.fill", "Capture", "Capture image", "Takes a still image for review before analysis")
+        }
+    }
+
+    private var visibleModes: [ODLensMode] {
+        ODLensMode.allCases.filter { !$0.needsOmni || store.capabilities.canRecordLensClips }
+    }
+
+    /// Segments split the width equally and UIKit truncates a title that does
+    /// not fit its share ("Übersetzen" among the six Omni modes); the menu fits.
+    private func segmentsFit(width: CGFloat) -> Bool {
+        let font = UIFontMetrics.default.scaledFont(for: .systemFont(ofSize: 13, weight: .semibold))
+        let widest = visibleModes.map { mode -> CGFloat in
+            var title = ODLocalizedString(key: mode.title)
+            title.locale = locale
+            return (String(localized: title) as NSString).size(withAttributes: [.font: font]).width
+        }.max() ?? 0
+        return widest + 4 <= width / CGFloat(max(1, visibleModes.count))
+    }
+
     private var modePicker: some View {
         Picker(ODLocalizedString("Lens mode"), selection: $store.cameraMode) {
-            ForEach(ODLensMode.allCases.filter { $0 != .clip || store.capabilities.canRecordLensClips }) { mode in
+            ForEach(visibleModes) { mode in
                 Text(odKey: mode.title).tag(mode)
             }
         }

@@ -277,7 +277,9 @@ public enum ODVoicePhase: Equatable {
 public enum ODLensMode: String, CaseIterable, Identifiable {
     case ask, translate, scan, solve
     /// Listed only when the host sets `canRecordLensClips` (LFM3-Omni).
-    case clip
+    case clip, live
+    /// Modes that need LFM3-Omni's video input.
+    public var needsOmni: Bool { self == .clip || self == .live }
     public var id: String { rawValue }
     public var title: String { rawValue.capitalized }
     public var instruction: String {
@@ -287,6 +289,7 @@ public enum ODLensMode: String, CaseIterable, Identifiable {
         case .scan: return "Capture text or a document"
         case .solve: return "Frame the problem to solve"
         case .clip: return "Record a few seconds to ask about"
+        case .live: return "Comments on what the camera sees until you stop"
         }
     }
 }

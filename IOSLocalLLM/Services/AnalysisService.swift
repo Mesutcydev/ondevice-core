@@ -23,6 +23,8 @@ final class AnalysisService: ObservableObject {
     // MARK: - Published state
 
     @Published private(set) var selectedImage: UIImage?
+    /// Detection label of a Live result; its comments are spoken one by one.
+    static let liveLabel = "Live"
     private var requestSettings: [UUID: (modelID: String, prompt: String)] = [:]
     private var selectedImageBuffer: CVPixelBuffer?
 
@@ -54,23 +56,11 @@ final class AnalysisService: ObservableObject {
         isAnalyzing = true
         analysisStartedAt = .now
         statusMessage = "Recording a \(seconds) s clip…"
+        inferenceStage = .readingImage
         analysisTask = Task {
             let recorder = OmniClipRecorder()
             let audio = await recorder.start()
-            var frames: [CGImage] = []
-            let orientation = Self.cgOrientation(for: UIDevice.current.orientation)
-            let context = CIContext()
-            for _ in 0..<(seconds * 2) {
-                guard !Task.isCancelled else { break }
-                if let live = latestPixelBuffer, let copy = Self.deepCopyPixelBuffer(live) {
-                    let frame = CIImage(cvPixelBuffer: copy).oriented(orientation)
-                    // Omni frames are ~700 px; do not hold 12 full camera frames.
-                    let scale = min(1, 1_024 / max(frame.extent.width, frame.extent.height))
-                    let small = frame.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
-                    if let image = context.createCGImage(small, from: small.extent) { frames.append(image) }
-                }
-                try? await Task.sleep(for: .milliseconds(500))
-            }
+            let frames = await sampleLiveFrames(seconds: seconds)
             recorder.stop()
             let removeAudio: @Sendable () -> Void = { if let audio { try? FileManager.default.removeItem(at: audio) } }
             guard !Task.isCancelled, frames.count >= 4, let first = frames.first else {
@@ -98,6 +88,7 @@ final class AnalysisService: ObservableObject {
             let llama = LlamaCppVLMService.shared
             if llama.activeRepoID != LFM3Catalog.omni.repoID {
                 statusMessage = "Loading LFM3 Omni…"
+                inferenceStage = .loadingModel
                 await llama.switchTo(repoID: LFM3Catalog.omni.repoID)
             }
             guard ownsAnalysis(resultID), !Task.isCancelled else {
@@ -114,12 +105,14 @@ final class AnalysisService: ObservableObject {
                 return
             }
             statusMessage = "Watching the clip…"
+            inferenceStage = .preparingAnswer
             llama.describeVideo(
                 source: .live(frames: frames, fps: 2, audio: audio),
                 prompt: ask,
                 onToken: { token in
                     Task { @MainActor in
                         guard self.ownsAnalysis(resultID) else { return }
+                        if self.inferenceStage != .writingAnswer { self.inferenceStage = .writingAnswer }
                         self.updateResult(id: resultID) { $0.extractedCode += token }
                     }
                 },
@@ -137,6 +130,136 @@ final class AnalysisService: ObservableObject {
                 }
             )
         }
+    }
+
+    /// Preview frames at 2 fps for `seconds`, downscaled for Omni (~700 px
+    /// frames; do not hold full camera frames).
+    private func sampleLiveFrames(seconds: Int) async -> [CGImage] {
+        var frames: [CGImage] = []
+        let orientation = Self.cgOrientation(for: UIDevice.current.orientation)
+        let context = CIContext()
+        for _ in 0..<(seconds * 2) {
+            guard !Task.isCancelled else { break }
+            if let live = latestPixelBuffer, let copy = Self.deepCopyPixelBuffer(live) {
+                let frame = CIImage(cvPixelBuffer: copy).oriented(orientation)
+                let scale = min(1, 1_024 / max(frame.extent.width, frame.extent.height))
+                let small = frame.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+                if let image = context.createCGImage(small, from: small.extent) { frames.append(image) }
+            }
+            try? await Task.sleep(for: .milliseconds(500))
+        }
+        return frames
+    }
+
+    /// Set while Lens Live runs, so the host can stop it when Lens hides.
+    private var liveSession: UUID?
+    /// Newest first; `[0]` is the comment being written.
+    private var liveComments: [String] = []
+
+    /// Lens Live for LFM3-Omni: watches the preview in 3 s windows and writes
+    /// a short comment for each, newest first, until stopped, Lens hides, or
+    /// the device gets too hot. Comments are spoken when "Speak in Lens" is on.
+    /// ponytail: frames only. A looping microphone would also hear the spoken
+    /// comments; Clip mode covers sound.
+    func startLiveCommentary(question: String) {
+        guard !isAnalyzing, latestPixelBuffer != nil else {
+            ToastCenter.shared.info("Camera not ready", detail: "Wait for the preview.")
+            return
+        }
+        cancelCurrentAnalysis()
+        dismissActiveResult()
+        let typed = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        isAnalyzing = true
+        let session = UUID()
+        liveSession = session
+        analysisStartedAt = .now
+        inferenceStage = .loadingModel
+        liveComments = []
+        analysisTask = Task {
+            defer { if liveSession == session { liveSession = nil } }
+            await CodingAssistantService.shared.unloadAndWaitForCleanup()
+            let llama = LlamaCppVLMService.shared
+            if llama.activeRepoID != LFM3Catalog.omni.repoID {
+                await llama.switchTo(repoID: LFM3Catalog.omni.repoID)
+            }
+            guard !Task.isCancelled else { return }
+            guard case .ready = llama.state else {
+                ToastCenter.shared.info("LFM3 Omni needed", detail: "Download LFM3 Omni 2B under Models to use Live.")
+                isAnalyzing = false
+                return
+            }
+            var resultID: UUID?
+            while !Task.isCancelled {
+                inferenceStage = .readingImage
+                let frames = await sampleLiveFrames(seconds: 3)
+                guard !Task.isCancelled, frames.count >= 4 else { break }
+                if resultID == nil {
+                    let preview = CIImage(cgImage: frames[0])
+                    let result = AnalysisResult(
+                        id: UUID(),
+                        detection: Detection(boundingBox: CGRect(x: 0, y: 0, width: 1, height: 1),
+                                             confidence: 1, label: Self.liveLabel, classIndex: -1),
+                        extractedCode: "", reviewMarkdown: "", mode: .visual, ocrFallback: false,
+                        fallbackReason: nil, thumbnail: Self.makeThumbnail(from: preview, maxDim: 240),
+                        ciImage: preview, isStreaming: true
+                    )
+                    analysisResults.insert(result, at: 0)
+                    if analysisResults.count > 10 { analysisResults.removeLast() }
+                    activeResult = result
+                    resultID = result.id
+                }
+                guard let id = resultID, ownsAnalysis(id) else { break }
+                // A spoken comment in the Omni voice holds the model; wait for it.
+                while case .generating = llama.state, !Task.isCancelled {
+                    try? await Task.sleep(for: .milliseconds(200))
+                }
+                let previous = liveComments.first
+                let ask = (typed.isEmpty ? "In one or two short sentences, say what is happening right now." : typed)
+                    + (previous.map { " Your last comment was: \"\($0)\". Mention only what changed." } ?? "")
+                liveComments.insert("", at: 0)
+                if liveComments.count > 20 { liveComments.removeLast() }
+                inferenceStage = .preparingAnswer
+                let rate: Double = await withCheckedContinuation { done in
+                    llama.describeVideo(
+                        source: .live(frames: frames, fps: 2, audio: nil),
+                        prompt: ask,
+                        maxTokens: 96,
+                        onToken: { token in
+                            Task { @MainActor in
+                                guard self.ownsAnalysis(id), !self.liveComments.isEmpty else { return }
+                                if self.inferenceStage != .writingAnswer { self.inferenceStage = .writingAnswer }
+                                self.liveComments[0] += token
+                                let text = self.liveComments.joined(separator: "\n\n")
+                                self.updateResult(id: id) { $0.extractedCode = text }
+                            }
+                        },
+                        onComplete: { done.resume(returning: $0) }
+                    )
+                }
+                // Zero means refused (too hot, backgrounded), failed or cancelled.
+                guard rate > 0, !Task.isCancelled else { break }
+                // Let the last token updates land before speaking the comment.
+                await Task.yield()
+                if AppSettings.shared.voiceSpeakInLens, let comment = liveComments.first {
+                    LensVoiceNarrator.shared.activate()
+                    LensVoiceNarrator.shared.narrate(comment)
+                }
+            }
+            if DeviceSafetyMonitor.shared.shouldStopHeavyWork {
+                ToastCenter.shared.info("Live stopped", detail: "The phone is too warm. Let it cool, then start again.")
+            }
+            if let id = resultID {
+                updateResult(id: id) { $0.isStreaming = false }
+                if ownsAnalysis(id) { isAnalyzing = false }
+            } else if !Task.isCancelled {
+                isAnalyzing = false
+            }
+        }
+    }
+
+    /// Ends Lens Live, keeping its comments in the result.
+    func stopLiveCommentary() {
+        if liveSession != nil { cancelCurrentAnalysis() }
     }
     #endif
 

@@ -123,8 +123,8 @@ struct ContentView: View {
                 if selectedTab != mapped { selectedTab = mapped }
             },
             onCameraModeSelection: { mode in
-                guard let lens = LensMode(rawValue: mode.rawValue) else { return }
-                settings.lensPromptPresetID = lens.preset.rawValue
+                // Clip and Live have no prompt preset but still reset the result.
+                if let lens = LensMode(rawValue: mode.rawValue) { settings.lensPromptPresetID = lens.preset.rawValue }
                 settings.lensCustomPrompt = odBridge.store.lensQuestion
                 analysis.cancelCurrentAnalysis()
                 analysis.dismissActiveResult()
@@ -159,6 +159,14 @@ struct ContentView: View {
         }
         .onChange(of: analysis.activeResult?.extractedCode) { _, text in
             odBridge.store.lensResultText = text
+        }
+        // "Speak in Lens": read each finished result aloud. Live speaks its
+        // comments one at a time instead.
+        .onChange(of: analysis.activeResult?.isStreaming) { was, streaming in
+            guard was == true, streaming == false, settings.voiceSpeakInLens, selectedTab == .camera,
+                  let result = analysis.activeResult, result.detection.label != AnalysisService.liveLabel else { return }
+            LensVoiceNarrator.shared.activate()
+            LensVoiceNarrator.shared.narrate(result.extractedCode)
         }
         // CameraRootView used to own this. The capture pipeline still has to be
         // configured before a capture can succeed, and it must start only when
@@ -472,7 +480,13 @@ struct ContentView: View {
         if visible {
             camera.configure()
             camera.start()
-        } else { camera.stop() }
+        } else {
+            camera.stop()
+            #if LFM3_OMNI
+            // Live reads the preview; a stopped camera would only repeat its last frame.
+            analysis.stopLiveCommentary()
+            #endif
+        }
     }
 
     /// Point every ODAction at a real route. Presentation stays here — the
@@ -534,6 +548,10 @@ struct ContentView: View {
             #if LFM3_OMNI
             if mode == .clip {
                 analysis.captureClipAndAnalyze(question: question)
+                return
+            }
+            if mode == .live {
+                analysis.startLiveCommentary(question: question)
                 return
             }
             #endif
