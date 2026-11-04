@@ -1,0 +1,10 @@
+New: Lens Live with LFM3 Omni. Omni keeps watching the camera and writes a short comment every few seconds, newest first, until you tap Stop.
+
+Please try: download LFM3 Omni 2B under Models. Open Lens, choose Live in the mode bar (or the mode menu) and tap "Start live". Point the camera at a few different things and check that the comments follow. You can first type what to watch for, for example "Tell me when a person appears". Live should end when you tap Stop, when you leave Lens, and when the phone gets too warm.
+
+Also in this build:
+• Settings → Voice settings → "speak in lens" now works: Lens results and each Live comment are read aloud.
+• Clip's button now says "Record".
+• Live uses the camera only; Clip still records sound.
+
+2.1.4 is on the App Store; this is a 2.1.5 test build.
