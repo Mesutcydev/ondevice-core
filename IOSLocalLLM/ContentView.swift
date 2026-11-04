@@ -158,7 +158,10 @@ struct ContentView: View {
             odBridge.noteCameraState(error)
         }
         .onChange(of: analysis.activeResult?.extractedCode) { _, text in
-            odBridge.store.lensResultText = text
+            // Live keeps every comment, newest first; the panel shows the newest
+            // (the previous one until the next starts streaming), the sheet all.
+            odBridge.store.lensResultText = analysis.activeResult?.detection.label == AnalysisService.liveLabel
+                ? text?.components(separatedBy: "\n\n").first { !$0.isEmpty } : text
         }
         // "Speak in Lens": read each finished result aloud. Live speaks its
         // comments one at a time instead.

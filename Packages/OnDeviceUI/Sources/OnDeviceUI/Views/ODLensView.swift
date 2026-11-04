@@ -225,7 +225,8 @@ struct ODLensView: View {
             if let result = store.lensResultText, !result.isEmpty {
                 Button { store.lensResultPresented = true } label: {
                     HStack(alignment: .top) {
-                        Text(result).font(.body).lineLimit(3).multilineTextAlignment(.leading)
+                        // Live shows one whole comment; others preview the start of the answer.
+                        Text(result).font(.body).lineLimit(store.cameraMode == .live ? 4...8 : 1...3).multilineTextAlignment(.leading)
                         Spacer(minLength: ODLayout.elementGap)
                         Image(systemName: "arrow.up.right")
                     }

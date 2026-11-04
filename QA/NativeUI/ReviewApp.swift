@@ -315,6 +315,7 @@ final class ReviewFixture: ObservableObject {
             // Omni builds list Clip and Live; `-lens-mode live` selects one.
             if args.contains("-lens-omni") { store.capabilities.canRecordLensClips = true }
             if let mode = value("-lens-mode").flatMap(ODLensMode.init(rawValue:)) { store.cameraMode = mode }
+            if let text = value("-lens-result") { store.lensResultText = text }
             if let stage = value("-lens-waiting-stage") {
                 store.lensIsAnalyzing = true
                 store.lensAnalysisStartedAt = .now.addingTimeInterval(-45)
