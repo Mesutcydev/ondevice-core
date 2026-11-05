@@ -977,7 +977,8 @@ enum LocalModelRegistry {
             capabilities: supportsThinking(repoID: repoID) ? [.thinking] : [],
             runtime: installedEdge0Directory(forRepoID: repoID)
                 ? .edge0MLX
-                : (repoID.lowercased().contains("gguf") ? .llamaCpp : .mlx),
+                : (repoID.lowercased().contains("gguf") || installedGGUFDirectory(forRepoID: repoID)
+                    ? .llamaCpp : .mlx),
             approxRAMBytes: inferredAssistantRAMBytes(for: repoID),
             contextWindowTokens: inferredAssistantContextWindow(for: repoID),
             supportsTools: inferredAssistantSupportsTools(for: repoID),
@@ -1006,6 +1007,22 @@ enum LocalModelRegistry {
             }
         }
         return false
+    }
+
+    /// The chat model is resolved at launch, before ModelDownloadCenter's
+    /// deferred scan registers Files imports. An imported GGUF's folder
+    /// (`local_<name>`) usually has no "gguf" in it, so the name check alone
+    /// sent it to MLX, and voice mode failed reading a config.json it never had.
+    static func installedGGUFDirectory(forRepoID repoID: String) -> Bool {
+        let docs = ModelStoragePaths.documents
+        let names = [ModelStoragePaths.directoryName(forRepoID: repoID),
+                     ModelStoragePaths.flattenedRepoID(repoID)]
+        return ["LLMModels", "HFModels"].contains { root in
+            names.contains { name in
+                LocalModelFileValidator.hasValidGGUFTextModel(
+                    in: docs.appendingPathComponent(root).appendingPathComponent(name))
+            }
+        }
     }
 
     private static func fallbackSubtitle(for role: LocalModelRole,

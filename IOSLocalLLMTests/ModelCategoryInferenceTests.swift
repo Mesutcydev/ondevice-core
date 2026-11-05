@@ -10,6 +10,24 @@ import OnDeviceUI
 // per-category headers in the Models tab.
 
 final class ModelCategoryInferenceTests: XCTestCase {
+    /// Launch resolves the chat model before the Files-import scan, so the
+    /// fallback descriptor must find an imported GGUF on disk, not by name.
+    @MainActor
+    func test_importedGGUFWithoutGGUFInNameResolvesToLlamaCpp() throws {
+        let name = "local_Test-\(UUID().uuidString)-Q6_K"
+        let dir = ModelStoragePaths.documents
+            .appendingPathComponent("HFModels").appendingPathComponent(name)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try Data("GGUF....".utf8).write(to: dir.appendingPathComponent("model.gguf"))
+
+        let descriptor = LocalModelRegistry.customAssistantDescriptor(
+            repoID: "local/\(name)", origin: .imported)
+        XCTAssertEqual(descriptor.runtime, .llamaCpp)
+        XCTAssertEqual(LocalModelRegistry.customAssistantDescriptor(
+            repoID: "local/local_Missing-\(UUID().uuidString)", origin: .imported).runtime, .mlx)
+    }
+
     @MainActor
     func test_interruptedDownloadDoesNotBecomeReadyFromWeightsAlone() throws {
         let directory = FileManager.default.temporaryDirectory
