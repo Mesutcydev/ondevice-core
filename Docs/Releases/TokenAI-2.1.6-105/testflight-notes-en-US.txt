@@ -1,0 +1,3 @@
+Fix: Voice chat failed with "Error reading 'config.json'" when the chat model was a GGUF imported from Files (for example an LFM3 GGUF). Voice chat now loads it the same way chat does.
+
+2.1.5 is on the App Store; this is a 2.1.6 test build.
