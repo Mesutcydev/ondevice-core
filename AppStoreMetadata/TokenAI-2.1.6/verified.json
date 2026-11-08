@@ -101,5 +101,10 @@
    "marketingUrl": true,
    "supportUrl": true
   }
- ]
+ ],
+ "whatsNewUpdatedFor107": {
+  "match": 11,
+  "of": 11,
+  "mismatch": []
+ }
 }

@@ -1,0 +1,46 @@
+{
+  "en-US": {
+    "promotionalText": "Local AI on your iPhone. Steadier voice chat in 2.1.6: fixes for freezes and silent replies, and imported GGUF models now work in voice mode. All on device.",
+    "whatsNew": "• Voice chat is steadier. Fixed a freeze on iOS 27 that could close the app in the middle of a voice conversation.\n• Spoken replies no longer go silent when Apple's voice stalls: the microphone turns back on by itself.\n• Voice chat answers directly, without hidden reasoning, so replies start sooner.\n• If a voice reply fails, a message now tells you why.\n• When a downloaded voice doesn't fit in memory next to the chat model, Token AI speaks with the Apple voice instead.\n• Fixed: voice chat failed with \"Error reading 'config.json'\" when the chat model was a GGUF imported from Files."
+  },
+  "tr": {
+    "promotionalText": "iPhone'unuzda yerel yapay zekâ. 2.1.6'da daha kararlı sesli sohbet: donmalar ve sessiz yanıtlar düzeltildi, içe aktarılan GGUF'ler sesli modda çalışıyor. Tümü cihazda.",
+    "whatsNew": "• Sesli sohbet daha kararlı. iOS 27'de sesli sohbetin ortasında uygulamayı kapatabilen bir donma düzeltildi.\n• Apple sesi takıldığında sesli yanıtlar artık sessiz kalmıyor: mikrofon kendiliğinden yeniden açılıyor.\n• Sesli sohbet gizli akıl yürütme olmadan doğrudan yanıt veriyor; yanıtlar daha erken başlıyor.\n• Sesli bir yanıt başarısız olursa artık nedenini bir mesajla görürsünüz.\n• İndirdiğiniz bir ses sohbet modeliyle birlikte belleğe sığmazsa Token AI bunun yerine Apple sesiyle konuşur.\n• Düzeltildi: Sohbet modeli Dosyalar'dan içe aktarılmış bir GGUF olduğunda sesli sohbet \"Error reading 'config.json'\" hatasıyla başarısız oluyordu."
+  },
+  "de-DE": {
+    "promotionalText": "Lokale KI auf deinem iPhone. Stabilerer Sprachchat in 2.1.6: Hänger und stumme Antworten behoben, importierte GGUF-Modelle laufen im Sprachmodus. Alles auf dem Gerät.",
+    "whatsNew": "• Der Sprachchat läuft stabiler. Ein Hänger unter iOS 27, der die App mitten im Gespräch schließen konnte, ist behoben.\n• Gesprochene Antworten bleiben nicht mehr stumm, wenn die Apple-Stimme hängt: Das Mikrofon schaltet sich von selbst wieder ein.\n• Der Sprachchat antwortet direkt, ohne verborgenes Nachdenken, damit Antworten früher beginnen.\n• Schlägt eine gesprochene Antwort fehl, sagt dir jetzt eine Meldung, warum.\n• Passt eine heruntergeladene Stimme nicht neben dem Chatmodell in den Speicher, spricht Token AI stattdessen mit der Apple-Stimme.\n• Behoben: Der Sprachchat schlug mit „Error reading 'config.json'“ fehl, wenn das Chatmodell ein aus „Dateien“ importiertes GGUF war."
+  },
+  "es-ES": {
+    "promotionalText": "IA local en tu iPhone. Chat de voz más estable en 2.1.6: bloqueos y respuestas mudas corregidos, y los GGUF importados ya funcionan en modo voz. Todo en el dispositivo.",
+    "whatsNew": "• El chat de voz es más estable. Se corrigió un bloqueo en iOS 27 que podía cerrar la app en mitad de una conversación de voz.\n• Las respuestas habladas ya no se quedan en silencio cuando la voz de Apple se atasca: el micrófono vuelve a activarse solo.\n• El chat de voz responde directamente, sin razonamiento oculto, así que las respuestas empiezan antes.\n• Si una respuesta de voz falla, ahora un mensaje te dice por qué.\n• Si una voz descargada no cabe en la memoria junto al modelo de chat, Token AI habla con la voz de Apple.\n• Corregido: el chat de voz fallaba con «Error reading 'config.json'» cuando el modelo de chat era un GGUF importado desde Archivos."
+  },
+  "pt-PT": {
+    "promotionalText": "IA local no seu iPhone. Chat de voz mais estável na 2.1.6: bloqueios e respostas mudas corrigidos, e os GGUF importados já funcionam no modo de voz. Tudo no dispositivo.",
+    "whatsNew": "• O chat de voz está mais estável. Corrigido um bloqueio no iOS 27 que podia fechar a app a meio de uma conversa de voz.\n• As respostas faladas já não ficam em silêncio quando a voz da Apple encrava: o microfone volta a ligar-se sozinho.\n• O chat de voz responde diretamente, sem raciocínio oculto, por isso as respostas começam mais cedo.\n• Se uma resposta de voz falhar, uma mensagem indica agora porquê.\n• Se uma voz transferida não couber na memória junto ao modelo de chat, o Token AI fala com a voz da Apple.\n• Corrigido: o chat de voz falhava com \"Error reading 'config.json'\" quando o modelo de chat era um GGUF importado da app Ficheiros."
+  },
+  "ro": {
+    "promotionalText": "IA locală pe iPhone. Chat vocal mai stabil în 2.1.6: blocări și răspunsuri mute remediate, iar modelele GGUF importate merg acum în modul vocal. Totul pe dispozitiv.",
+    "whatsNew": "• Chatul vocal e mai stabil. S-a remediat o blocare pe iOS 27 care putea închide aplicația în mijlocul unei conversații vocale.\n• Răspunsurile vorbite nu mai rămân mute când vocea Apple se blochează: microfonul pornește din nou singur.\n• Chatul vocal răspunde direct, fără raționament ascuns, așa că răspunsurile încep mai repede.\n• Dacă un răspuns vocal eșuează, un mesaj îți spune acum de ce.\n• Dacă o voce descărcată nu încape în memorie lângă modelul de chat, Token AI vorbește cu vocea Apple.\n• Remediat: chatul vocal eșua cu „Error reading 'config.json'” când modelul de chat era un GGUF importat din Fișiere."
+  },
+  "el": {
+    "promotionalText": "Τοπική AI στο iPhone σας. Πιο σταθερή φωνητική συνομιλία στην 2.1.6: λιγότερα παγώματα, όχι βουβές απαντήσεις, και τα εισαγόμενα GGUF δουλεύουν στη φωνή.",
+    "whatsNew": "• Η φωνητική συνομιλία είναι πιο σταθερή. Διορθώθηκε ένα πάγωμα στο iOS 27 που μπορούσε να κλείσει την εφαρμογή στη μέση μιας φωνητικής συνομιλίας.\n• Οι προφορικές απαντήσεις δεν μένουν πια βουβές όταν η φωνή της Apple κολλάει: το μικρόφωνο ανοίγει ξανά μόνο του.\n• Η φωνητική συνομιλία απαντά απευθείας, χωρίς κρυφό συλλογισμό, οπότε οι απαντήσεις ξεκινούν νωρίτερα.\n• Αν μια φωνητική απάντηση αποτύχει, ένα μήνυμα σας λέει πλέον γιατί.\n• Αν μια ληφθείσα φωνή δεν χωράει στη μνήμη δίπλα στο μοντέλο συνομιλίας, το Token AI μιλά με τη φωνή της Apple.\n• Διορθώθηκε: η φωνητική συνομιλία αποτύγχανε με «Error reading 'config.json'» όταν το μοντέλο συνομιλίας ήταν GGUF που εισήχθη από τα Αρχεία."
+  },
+  "ru": {
+    "promotionalText": "Локальный ИИ на iPhone. Голосовой чат в 2.1.6 стабильнее: исправлены зависания и тихие ответы, а импортированные GGUF работают в голосовом режиме. Всё на устройстве.",
+    "whatsNew": "• Голосовой чат стал стабильнее. Исправлено зависание в iOS 27, из-за которого приложение могло закрыться посреди голосового разговора.\n• Ответы больше не обрываются тишиной, когда голос Apple зависает: микрофон снова включается сам.\n• Голосовой чат отвечает сразу, без скрытых рассуждений, поэтому ответы начинаются быстрее.\n• Если голосовой ответ не удался, теперь появляется сообщение с причиной.\n• Если загруженный голос не помещается в память рядом с моделью чата, Token AI говорит голосом Apple.\n• Исправлено: голосовой чат завершался ошибкой «Error reading 'config.json'», если моделью чата была GGUF, импортированная из «Файлов»."
+  },
+  "hi": {
+    "promotionalText": "आपके iPhone पर लोकल AI। 2.1.6 में ज़्यादा स्थिर वॉइस चैट: फ़्रीज़ और चुप जवाब ठीक किए गए, और इम्पोर्ट किए गए GGUF मॉडल अब वॉइस मोड में चलते हैं। सब कुछ डिवाइस पर।",
+    "whatsNew": "• वॉइस चैट अब ज़्यादा स्थिर है। iOS 27 पर एक फ़्रीज़ ठीक किया गया जो वॉइस बातचीत के बीच ऐप को बंद कर सकता था।\n• Apple की आवाज़ अटकने पर बोले गए जवाब अब चुप नहीं रहते: माइक्रोफ़ोन अपने-आप फिर से चालू हो जाता है।\n• वॉइस चैट छिपी हुई सोच के बिना सीधे जवाब देता है, इसलिए जवाब जल्दी शुरू होते हैं।\n• अगर कोई वॉइस जवाब विफल होता है, तो अब एक संदेश बताता है कि क्यों।\n• अगर डाउनलोड की गई आवाज़ चैट मॉडल के साथ मेमोरी में नहीं समाती, तो Token AI उसकी जगह Apple की आवाज़ में बोलता है।\n• ठीक किया गया: जब चैट मॉडल Files से इम्पोर्ट किया गया GGUF होता था, तो वॉइस चैट \"Error reading 'config.json'\" के साथ विफल हो जाता था।"
+  },
+  "ar-SA": {
+    "promotionalText": "ذكاء اصطناعي محلي على iPhone. دردشة صوتية أكثر استقرارًا في 2.1.6: إصلاح التجمد والردود الصامتة، ونماذج GGUF المستوردة تعمل الآن في الوضع الصوتي. كل شيء على الجهاز.",
+    "whatsNew": "• أصبحت الدردشة الصوتية أكثر استقرارًا. تم إصلاح تجمّد على iOS 27 كان قد يغلق التطبيق في منتصف محادثة صوتية.\n• لم تعد الردود المنطوقة تصمت عندما يتعطل صوت Apple: يعود الميكروفون للعمل تلقائيًا.\n• تجيب الدردشة الصوتية مباشرة دون تفكير مخفي، فتبدأ الردود أسرع.\n• إذا فشل رد صوتي، تخبرك رسالة الآن بالسبب.\n• إذا لم يتسع صوت تم تنزيله في الذاكرة بجانب نموذج الدردشة، يتحدث Token AI بصوت Apple بدلًا منه.\n• تم الإصلاح: كانت الدردشة الصوتية تفشل مع \"Error reading 'config.json'\" عندما يكون نموذج الدردشة ملف GGUF مستوردًا من تطبيق الملفات."
+  },
+  "ja": {
+    "promotionalText": "iPhoneでローカルAI。2.1.6では音声チャットがより安定:フリーズや無音の返答を修正し、読み込んだGGUFモデルも音声モードで使えます。すべてデバイス上で。",
+    "whatsNew": "• 音声チャットがより安定しました。iOS 27で、音声会話の途中にアプリが終了することがあるフリーズを修正しました。\n• Appleの音声が止まっても、返答が無音のままになることはなくなりました。マイクは自動的に再びオンになります。\n• 音声チャットは隠れた推論を行わずに直接答えるため、返答が早く始まります。\n• 音声での返答に失敗した場合、その理由がメッセージで表示されるようになりました。\n• ダウンロードした音声がチャットモデルと一緒にメモリに収まらない場合、Token AIは代わりにAppleの音声で話します。\n• 修正:チャットモデルが「ファイル」から読み込んだGGUFのとき、音声チャットが「Error reading 'config.json'」で失敗していた問題。"
+  }
+}

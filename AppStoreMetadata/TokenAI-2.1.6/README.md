@@ -11,3 +11,8 @@ submitted for review.
 
 The developer reply to the 1-star "Voice is broken" review was posted the same day
 (`review-response.json`, PENDING_PUBLISH), in the first person at the owner's request.
+
+Later the same day build 107 replaced 106 on the version. What's New was extended for
+107's changes (AirPods/Siri recovery, shorter replies, background pause) in all 11
+locales; `copy-106.json` keeps the earlier text, `copy.json` the current one, and
+`verified.json` → `whatsNewUpdatedFor107` records the 11/11 read-back.
