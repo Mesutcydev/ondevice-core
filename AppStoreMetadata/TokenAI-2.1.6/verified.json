@@ -1,0 +1,105 @@
+{
+ "localesChecked": 11,
+ "allMatch": 11,
+ "rows": [
+  {
+   "locale": "en-US",
+   "whatsNew": true,
+   "promotionalText": true,
+   "description": true,
+   "keywords": true,
+   "marketingUrl": true,
+   "supportUrl": true
+  },
+  {
+   "locale": "tr",
+   "whatsNew": true,
+   "promotionalText": true,
+   "description": true,
+   "keywords": true,
+   "marketingUrl": true,
+   "supportUrl": true
+  },
+  {
+   "locale": "de-DE",
+   "whatsNew": true,
+   "promotionalText": true,
+   "description": true,
+   "keywords": true,
+   "marketingUrl": true,
+   "supportUrl": true
+  },
+  {
+   "locale": "es-ES",
+   "whatsNew": true,
+   "promotionalText": true,
+   "description": true,
+   "keywords": true,
+   "marketingUrl": true,
+   "supportUrl": true
+  },
+  {
+   "locale": "pt-PT",
+   "whatsNew": true,
+   "promotionalText": true,
+   "description": true,
+   "keywords": true,
+   "marketingUrl": true,
+   "supportUrl": true
+  },
+  {
+   "locale": "ro",
+   "whatsNew": true,
+   "promotionalText": true,
+   "description": true,
+   "keywords": true,
+   "marketingUrl": true,
+   "supportUrl": true
+  },
+  {
+   "locale": "el",
+   "whatsNew": true,
+   "promotionalText": true,
+   "description": true,
+   "keywords": true,
+   "marketingUrl": true,
+   "supportUrl": true
+  },
+  {
+   "locale": "ru",
+   "whatsNew": true,
+   "promotionalText": true,
+   "description": true,
+   "keywords": true,
+   "marketingUrl": true,
+   "supportUrl": true
+  },
+  {
+   "locale": "hi",
+   "whatsNew": true,
+   "promotionalText": true,
+   "description": true,
+   "keywords": true,
+   "marketingUrl": true,
+   "supportUrl": true
+  },
+  {
+   "locale": "ar-SA",
+   "whatsNew": true,
+   "promotionalText": true,
+   "description": true,
+   "keywords": true,
+   "marketingUrl": true,
+   "supportUrl": true
+  },
+  {
+   "locale": "ja",
+   "whatsNew": true,
+   "promotionalText": true,
+   "description": true,
+   "keywords": true,
+   "marketingUrl": true,
+   "supportUrl": true
+  }
+ ]
+}
