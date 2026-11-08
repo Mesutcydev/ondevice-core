@@ -72,8 +72,8 @@ final class SystemSpeechService: NSObject, LocalVoiceEngine, ObservableObject {
         // language (e.g. Samantha for en-US) beats alphabetical order.
         let avVoices = usableAVVoices
             .sorted { a, b in
-                let aScore = qualityScore(a)
-                let bScore = qualityScore(b)
+                let aScore = Self.qualityScore(a)
+                let bScore = Self.qualityScore(b)
                 let aIsEn = a.language.hasPrefix("en")
                 let bIsEn = b.language.hasPrefix("en")
                 let aIsDevice = a.language.hasPrefix(deviceLang)
@@ -202,34 +202,15 @@ final class SystemSpeechService: NSObject, LocalVoiceEngine, ObservableObject {
         let avIdentifier = voice.id.hasPrefix("system:")
             ? String(voice.id.dropFirst("system:".count))
             : voice.id
-        // Three-tier fallback so we never hand AVSpeechSynthesizer a nil
-        // voice — when `voice` is nil iOS sometimes uses the default,
-        // sometimes silently drops the utterance (most reliably on iOS
-        // 18+ when the session was reconfigured after the synthesizer was
-        // created). The last fallback uses the current language code,
-        // which is always backed by a system voice on every iOS device.
-        // Resolve, then refuse a compact Default when a better voice for
-        // the same language is installed. Handing AVSpeech a Default
-        // voice is the most common "zombie / synthetic" complaint even
-        // with a clean audio session.
-        var avVoice = AVSpeechSynthesisVoice(identifier: avIdentifier)
-            ?? AVSpeechSynthesisVoice(language: voice.locale)
-            ?? AVSpeechSynthesisVoice(language: AVSpeechSynthesisVoice.currentLanguageCode())
-            ?? AVSpeechSynthesisVoice(language: "en-US")
-        if let resolved = avVoice,
-           resolved.quality == .default || Self.isRoboticSynth(resolved) {
-            let langPrefix = String(resolved.language.prefix(2))
-            let candidates = usableAVVoices
-                .filter { $0.language.hasPrefix(langPrefix) }
-                .sorted { qualityScore($0) > qualityScore($1) }
-            // Prefer Enhanced/Premium; a robotic resolve (persisted novelty /
-            // Eloquence ID from an older build) is replaced even by a compact
-            // normal voice — Samantha beats Zarvox.
-            if let better = candidates.first(where: { $0.quality != .default })
-                ?? (Self.isRoboticSynth(resolved) ? candidates.first : nil) {
-                avVoice = better
-            }
-        }
+        // Resolve off the main thread. Voice lookups by identifier or language
+        // go through the same TextToSpeech forced-sync that watchdog-killed
+        // the Voice settings picker on iOS 27.2 (0x8BADF00D). Run on main once
+        // per spoken sentence, they could freeze voice mode mid-reply.
+        let installed = usableAVVoices
+        let locale = voice.locale
+        let avVoice = await Task.detached(priority: .userInitiated) {
+            Self.resolveVoice(identifier: avIdentifier, locale: locale, installed: installed)
+        }.value
 
         let utterance = AVSpeechUtterance(string: text)
         utterance.voice  = avVoice
@@ -255,6 +236,18 @@ final class SystemSpeechService: NSObject, LocalVoiceEngine, ObservableObject {
         defer {
             if activeRenderRequest === request { activeRenderRequest = nil }
         }
+        // Apple's renderer can stall without sending its final empty buffer.
+        // With no deadline the turn sat in "speaking" with the mic off until
+        // the 5-minute safety net. Cancelling ends this reply's speech and
+        // VoiceConversationService hands the mic back.
+        // ponytail: fixed 20 s per sentence; scale with text length if long Premium renders ever trip it.
+        let renderDeadline = Task { [request] in
+            try? await Task.sleep(nanoseconds: 20_000_000_000)
+            guard !Task.isCancelled else { return }
+            Diagnostics.shared.error("Apple TTS render timed out", category: "voice")
+            request.cancel()
+        }
+        defer { renderDeadline.cancel() }
 
         let pcm = try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
@@ -316,7 +309,35 @@ final class SystemSpeechService: NSObject, LocalVoiceEngine, ObservableObject {
 
     // MARK: - Helpers
 
-    private func qualityScore(_ voice: AVSpeechSynthesisVoice) -> Int {
+    /// Never hands AVSpeechSynthesizer a nil voice: with nil, iOS sometimes
+    /// silently drops the utterance (most reliably on iOS 18+ after the
+    /// session was reconfigured). Then refuses a compact Default when a better
+    /// same-language voice is installed, the most common "zombie / synthetic"
+    /// complaint. A robotic resolve (persisted novelty / Eloquence ID from an
+    /// older build) is replaced even by a compact normal voice.
+    nonisolated private static func resolveVoice(
+        identifier: String,
+        locale: String,
+        installed: [AVSpeechSynthesisVoice]
+    ) -> AVSpeechSynthesisVoice? {
+        let resolved = installed.first(where: { $0.identifier == identifier })
+            ?? AVSpeechSynthesisVoice(identifier: identifier)
+            ?? AVSpeechSynthesisVoice(language: locale)
+            ?? AVSpeechSynthesisVoice(language: AVSpeechSynthesisVoice.currentLanguageCode())
+            ?? AVSpeechSynthesisVoice(language: "en-US")
+        guard let resolved, resolved.quality == .default || isRoboticSynth(resolved) else {
+            return resolved
+        }
+        let langPrefix = String(resolved.language.prefix(2))
+        let candidates = installed
+            .filter { $0.language.hasPrefix(langPrefix) }
+            .sorted { qualityScore($0) > qualityScore($1) }
+        return candidates.first(where: { $0.quality != .default })
+            ?? (isRoboticSynth(resolved) ? candidates.first : nil)
+            ?? resolved
+    }
+
+    nonisolated private static func qualityScore(_ voice: AVSpeechSynthesisVoice) -> Int {
         switch voice.quality {
         case .premium:  return 3
         case .enhanced: return 2

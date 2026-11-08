@@ -154,6 +154,10 @@ final class SpeechDictationService: ObservableObject {
     /// session down (`isRecording = false`) and `resumeRecognition()` becomes
     /// a silent no-op — UI shows Listening but the mic never comes back.
     private var recognitionGeneration: UInt64 = 0
+    /// When the current recognition request started, and how many requests in
+    /// a row failed within a second of starting (see `restartAfterRecognitionError`).
+    private var recognitionStartedAt = Date()
+    private var fastRecognitionFailures = 0
 
     /// When true (continuous / voice-conversation mode) the tap resamples each
     /// buffer to 16 kHz mono and accumulates it for the neural VAD. Kept hot
@@ -343,6 +347,7 @@ final class SpeechDictationService: ObservableObject {
         _ = takeTurnAudio()
         vadFrameLock.lock(); vadFrames.removeAll(keepingCapacity: true); vadFrameLock.unlock()
         lastError = nil
+        fastRecognitionFailures = 0
 
         let session = AVAudioSession.sharedInstance()
         if continuous {
@@ -465,6 +470,7 @@ final class SpeechDictationService: ObservableObject {
         req.shouldReportPartialResults = true
         req.requiresOnDeviceRecognition = true
         request = req
+        recognitionStartedAt = Date()
 
         task = recognizer.recognitionTask(with: req) { [weak self] result, error in
             Task { @MainActor [weak self] in
@@ -472,6 +478,7 @@ final class SpeechDictationService: ObservableObject {
                 // Stale callback from a paused/rotated/stopped request.
                 guard generation == self.recognitionGeneration else { return }
                 if let result {
+                    self.fastRecognitionFailures = 0
                     let text = result.bestTranscription.formattedString
                     self.onTranscript?(text, result.isFinal)
                 }
@@ -489,13 +496,43 @@ final class SpeechDictationService: ObservableObject {
                         // Transient recognizer failure must not kill the
                         // conversation loop (that was the "listening but dead
                         // mic after first reply" path when cancel → cleanup).
-                        self.startRecognitionRequest()
+                        self.restartAfterRecognitionError()
                     }
                 } else {
                     self.cleanup()
                 }
             }
         }
+    }
+
+    /// A request that ran a while and then errored (a silence timeout, a
+    /// dropped phrase) restarts at once, as before. One that failed within a
+    /// second of starting means the recognizer itself is failing: restarting
+    /// at once spun up a new task per callback, so back off and tell the user.
+    private func restartAfterRecognitionError() {
+        let failedFast = Date().timeIntervalSince(recognitionStartedAt) < 1
+        fastRecognitionFailures = failedFast ? fastRecognitionFailures + 1 : 0
+        let delay = Self.recognitionRetryDelay(fastFailures: fastRecognitionFailures)
+        guard delay > 0 else { startRecognitionRequest(); return }
+        if fastRecognitionFailures == 5 {
+            lastError = "Speech recognition keeps failing."
+            ToastCenter.shared.error("Speech recognition isn't responding",
+                                     detail: "Still retrying. End and restart voice mode if it doesn't recover.")
+        }
+        let generation = recognitionGeneration
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            // A pause, resume or stop in the meantime owns the next request.
+            guard let self, generation == self.recognitionGeneration,
+                  self.isRecording, self.continuous, !self.inputPaused else { return }
+            self.startRecognitionRequest()
+        }
+    }
+
+    /// 0 for an ordinary restart; then 0.25, 0.5, 1, 2, 2… seconds.
+    nonisolated static func recognitionRetryDelay(fastFailures: Int) -> Double {
+        guard fastFailures > 0 else { return 0 }
+        return min(2, 0.25 * pow(2, Double(min(fastFailures, 8) - 1)))
     }
 
     private func rotateRecognitionRequest() {

@@ -13,3 +13,15 @@ final class SystemSpeechServiceTests: XCTestCase {
         XCTAssertFalse(service.availableVoices.isEmpty)
     }
 }
+
+/// A recognizer that keeps failing right away backs off instead of spinning
+/// up a new task per callback; an ordinary silence timeout restarts at once.
+final class SpeechDictationRetryTests: XCTestCase {
+    func testFastFailuresBackOffUpToTwoSeconds() {
+        XCTAssertEqual(SpeechDictationService.recognitionRetryDelay(fastFailures: 0), 0)
+        XCTAssertEqual(SpeechDictationService.recognitionRetryDelay(fastFailures: 1), 0.25)
+        XCTAssertEqual(SpeechDictationService.recognitionRetryDelay(fastFailures: 2), 0.5)
+        XCTAssertEqual(SpeechDictationService.recognitionRetryDelay(fastFailures: 4), 2)
+        XCTAssertEqual(SpeechDictationService.recognitionRetryDelay(fastFailures: 500), 2)
+    }
+}

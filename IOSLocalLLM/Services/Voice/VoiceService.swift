@@ -102,6 +102,8 @@ final class VoiceService: ObservableObject {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 let preferred = VoiceEngineKind(rawValue: self.settings.voiceEngine) ?? .appleSystem
+                // It loads on first use instead (with an Apple Voice fallback).
+                guard !self.lacksMemory(for: preferred) else { return }
                 if preferred == .kittenTTS && VoiceModelBundleValidator.isKittenTTSAvailable() {
                     self.kittenState = .loading
                     await self.kittenEngine.load()
@@ -147,8 +149,12 @@ final class VoiceService: ObservableObject {
 
     /// Loads the preferred engine if it requires a model download.
     /// System voice is always ready and needs no loading.
-    func load() async {
+    /// Returns true when the preferred neural voice was left unloaded for lack
+    /// of memory (speech falls back to Apple Voice).
+    @discardableResult
+    func load() async -> Bool {
         let preferred = VoiceEngineKind(rawValue: settings.voiceEngine) ?? .appleSystem
+        if lacksMemory(for: preferred) { return true }
 
         switch preferred {
         case .kittenTTS:
@@ -182,6 +188,7 @@ final class VoiceService: ObservableObject {
 
         refreshStates()
         currentEngineKind = preferred
+        return false
     }
 
     var isPreferredEngineReady: Bool {
@@ -300,9 +307,10 @@ final class VoiceService: ObservableObject {
         let myGeneration = streamGeneration
         currentTask = Task {
             let preferredKind = VoiceEngineKind(rawValue: self.settings.voiceEngine) ?? .appleSystem
-            await self.ensureEngineReadyIfNeeded(for: preferredKind)
+            let refusedForMemory = await self.ensureEngineReadyIfNeeded(for: preferredKind)
             guard !Task.isCancelled, self.streamGeneration == myGeneration else { return }
-            guard let engine = self.preferredEngineIfReady(for: preferredKind) else {
+            guard let engine = self.preferredEngineIfReady(for: preferredKind)
+                    ?? (refusedForMemory ? self.systemEngine : nil) else {
                 await MainActor.run {
                     self.isPlaying = false
                     SpeechPlaybackCoordinator.shared.reset()
@@ -330,7 +338,10 @@ final class VoiceService: ObservableObject {
                                description: nil)
             if engine.kind == .appleSystem {
                 voice = self.systemEngine.upgradedVoice(for: voice)
-                if previewVoiceID == nil, voice.id != voiceID, !voice.id.isEmpty {
+                // Never save an Apple voice over a neural voice choice
+                // during a low-memory fallback.
+                if previewVoiceID == nil, preferredKind == .appleSystem,
+                   voice.id != voiceID, !voice.id.isEmpty {
                     self.settings.voiceID = voice.id
                 }
             }
@@ -517,9 +528,10 @@ final class VoiceService: ObservableObject {
         currentTask = Task { [weak self] in
             guard let self else { return }
             let preferredEngineKind = VoiceEngineKind(rawValue: self.settings.voiceEngine) ?? .appleSystem
-            await self.ensureEngineReadyIfNeeded(for: preferredEngineKind)
+            let refusedForMemory = await self.ensureEngineReadyIfNeeded(for: preferredEngineKind)
             guard !Task.isCancelled, self.streamGeneration == myGeneration else { return }
-            guard let preferredEngine = self.preferredEngineIfReady(for: preferredEngineKind) else {
+            guard let preferredEngine = self.preferredEngineIfReady(for: preferredEngineKind)
+                    ?? (refusedForMemory ? self.systemEngine : nil) else {
                 await MainActor.run {
                     self.isPlaying = false
                     self.activeStreamSession = nil
@@ -543,7 +555,10 @@ final class VoiceService: ObservableObject {
                                description: nil)
             if preferredEngine.kind == .appleSystem {
                 preferredVoice = self.systemEngine.upgradedVoice(for: preferredVoice)
-                if preferredVoice.id != voiceID, !preferredVoice.id.isEmpty {
+                // Never save an Apple voice over a neural voice choice
+                // during a low-memory fallback.
+                if preferredEngineKind == .appleSystem,
+                   preferredVoice.id != voiceID, !preferredVoice.id.isEmpty {
                     self.settings.voiceID = preferredVoice.id
                 }
             }
@@ -960,57 +975,97 @@ final class VoiceService: ObservableObject {
     /// `resolvedEngine(for:)` only returned the neural engine AFTER it had
     /// been loaded once. Load on first use so a valid bundled/downloaded
     /// neural model actually speaks in voice mode.
-    private func ensureEngineReadyIfNeeded(for kind: VoiceEngineKind) async {
+    /// Rough runtime size of a neural voice (about twice its download). It
+    /// loads next to the resident chat model, so on an 8 GB phone with a 3–4B
+    /// model it could push the app past its memory limit. nil: no check here
+    /// (Apple voice runs in a system process; LlamaCppVLMService admits Omni).
+    // ponytail: fixed estimates; measure the installed bundle if a refusal ever shows up where the voice would have fit.
+    private static func estimatedRuntimeBytes(for kind: VoiceEngineKind) -> Int64? {
+        switch kind {
+        case .kokoro:     return 700 << 20
+        case .supertonic: return 800 << 20
+        case .kittenTTS:  return 600 << 20
+        case .paradee:    return 64 << 20
+        case .appleSystem, .lfm3Omni: return nil
+        }
+    }
+    private var warnedLowMemoryVoice = false
+
+    /// True when `kind` is a neural voice that isn't loaded and doesn't fit
+    /// in the memory left. Callers then speak with Apple Voice instead.
+    private func lacksMemory(for kind: VoiceEngineKind) -> Bool {
+        guard let needed = Self.estimatedRuntimeBytes(for: kind),
+              preferredEngineIfReady(for: kind) == nil else { return false }
+        let free = MemoryAdvisor.availableMemoryForModel
+        guard free < needed else { return false }
+        Diagnostics.shared.warning(
+            "\(kind.shortName) not loaded: \(free >> 20) MB free, needs ~\(needed >> 20) MB",
+            category: "voiceservice")
+        if !warnedLowMemoryVoice {
+            warnedLowMemoryVoice = true
+            ToastCenter.shared.info(
+                "Using Apple Voice",
+                detail: "Not enough free memory for \(kind.shortName) next to the chat model.")
+        }
+        return true
+    }
+
+    /// Returns true when a neural voice was not loaded for lack of memory;
+    /// callers then speak with Apple Voice instead of going silent.
+    @discardableResult
+    private func ensureEngineReadyIfNeeded(for kind: VoiceEngineKind) async -> Bool {
+        if lacksMemory(for: kind) { return true }
         switch kind {
         case .appleSystem:
-            return
+            return false
 
         case .kittenTTS:
-            guard !kittenEngine.isReady, kittenState != .loading else { return }
+            guard !kittenEngine.isReady, kittenState != .loading else { return false }
             guard VoiceModelBundleValidator.isKittenTTSAvailable() else {
                 refreshStates()
-                return
+                return false
             }
             kittenState = .loading
             await kittenEngine.load()
             kittenState = kittenEngine.modelState
 
         case .kokoro:
-            guard !kokoroEngine.isReady, kokoroState != .loading else { return }
+            guard !kokoroEngine.isReady, kokoroState != .loading else { return false }
             guard VoiceModelBundleValidator.isKokoroAvailable() else {
                 refreshStates()
-                return
+                return false
             }
             kokoroState = .loading
             await kokoroEngine.load()
             kokoroState = kokoroEngine.modelState
 
         case .lfm3Omni:
-            guard !omniEngine.isReady, omniState != .loading else { return }
+            guard !omniEngine.isReady, omniState != .loading else { return false }
             omniState = .loading
             await omniEngine.load()
             omniState = omniEngine.modelState
 
         case .supertonic:
-            guard !supertonicEngine.isReady, supertonicState != .loading else { return }
+            guard !supertonicEngine.isReady, supertonicState != .loading else { return false }
             guard VoiceModelBundleValidator.isSupertonicAvailable() else {
                 refreshStates()
-                return
+                return false
             }
             supertonicState = .loading
             await supertonicEngine.load()
             supertonicState = supertonicEngine.modelState
         case .paradee:
-            guard !paradeeEngine.isReady, paradeeState != .loading else { return }
+            guard !paradeeEngine.isReady, paradeeState != .loading else { return false }
             guard VoiceModelBundleValidator.isParadeeAvailable() else {
                 refreshStates()
-                return
+                return false
             }
             paradeeState = .loading
             await paradeeEngine.load()
             paradeeState = paradeeEngine.modelState
         }
         refreshStates()
+        return false
     }
 
     // MARK: - State sync

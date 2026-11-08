@@ -91,7 +91,26 @@ final class VoiceConversationService: ObservableObject {
             return
         }
         #endif
-        assistant.generate(messages: messages, onToken: onToken, onComplete: onComplete)
+        // No hidden reasoning in voice: the reply is only spoken after the
+        // whole <think> block, which meant long silences, or nothing at all
+        // when the reasoning used up the token budget.
+        assistant.generate(
+            messages: messages,
+            forceNoThinking: true,
+            onToken: onToken,
+            onComplete: onComplete,
+            onError: { message in
+                // Without this a failed voice turn was silent: empty bubble,
+                // no audio, no reason. Keep a more specific toast (thermal,
+                // memory, load failure) if one is already up.
+                Task { @MainActor in
+                    Diagnostics.shared.error("voice reply failed: \(message)", category: "voiceconversation")
+                    if ToastCenter.shared.current == nil {
+                        ToastCenter.shared.error("Couldn't answer", detail: message)
+                    }
+                }
+            }
+        )
     }
     private func event(_ name: String, operation: UUID) {
         #if DEBUG
@@ -284,11 +303,13 @@ final class VoiceConversationService: ObservableObject {
 
         await applyVoiceModelOverrideIfNeeded()
         guard owns(operation), !Task.isCancelled else { return false }
-        await voice.load()
+        // A neural voice that doesn't fit next to the chat model is left
+        // unloaded; replies are then spoken with Apple Voice.
+        let voiceLacksMemory = await voice.load()
         guard owns(operation), !Task.isCancelled else { return false }
 
         let preferredVoice = VoiceEngineKind(rawValue: AppSettings.shared.voiceEngine) ?? .appleSystem
-        if preferredVoice != .appleSystem, !voice.isPreferredEngineReady {
+        if preferredVoice != .appleSystem, !voice.isPreferredEngineReady, !voiceLacksMemory {
             teardownPlaybackSession()
             phase = .failed("Download \(preferredVoice.shortName) in Voice settings before starting a conversation.")
             return false
