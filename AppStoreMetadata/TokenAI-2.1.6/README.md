@@ -26,3 +26,10 @@ APP_IPHONE_DUO screenshot-type warning as 2.1.5). App Review contact and notes c
 unchanged from 2.1.5. Release type is manual: after approval the version waits for the
 owner to release it. Build 107 was not tried on a device before submission. Files are in
 `review/`.
+
+Later the same day, on the owner's request, the App Review notes (review detail
+`5fa1a955…`) were rewritten while the version was WAITING_FOR_REVIEW: removed the iCloud
+sync mention (removed in 2.0.1), the stale "Version 2.0 (72)" line and the "beta
+validation areas" paragraph; added how to test the 2.1.6 voice fixes. Text in
+`review/notes-2.1.6.txt`; `review/details-2.1.6-after.json` is the read-back (exact match).
+Contact details unchanged.

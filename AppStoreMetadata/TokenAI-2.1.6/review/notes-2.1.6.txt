@@ -1,0 +1,11 @@
+Token AI is an iPhone app for iOS 27 or later that runs open AI models on the device. No account, login, subscription or in-app purchase is required. Model weights are downloaded separately, so the first download needs a network connection and free storage.
+
+To try it: complete onboarding and accept the terms. Open the leading menu, choose Models, then Discover. A small compatible model is "Qwen3 0.6B · Official iOS". Download it, activate it for the Assistant, and start a conversation. Lens and Image Studio use their own models from the same screen. Camera and microphone access are requested only when those features are opened.
+
+New in 2.1.6: voice conversation fixes. To test, keep a chat model active, open Voice from the leading menu and start a conversation. Replies are spoken with the built-in Apple voice, which needs no download, and speech recognition runs on the device. Microphone and speech recognition permission are requested on first use.
+
+The Local API Server is optional, off by default, bearer-authenticated, limited to the device or a trusted local network, and stops when the app goes to the background. Optional remote API providers and web tools are separately controlled, and their network use is shown to the user. The app has no iCloud sync. The App Store build does not include Private Cloud Compute authorization.
+
+The main interface is localized in Hindi, German, Spanish, Arabic, Turkish and Japanese, with language switching and Arabic right-to-left layout in Settings > Appearance > Language. Some longer help and diagnostics remain in English. iPhone Duo layouts are supported.
+
+Screenshots show the production interface with sample conversations; they are not performance measurements. Speed and which models fit depend on the iPhone's memory.
