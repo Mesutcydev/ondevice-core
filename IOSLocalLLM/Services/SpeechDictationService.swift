@@ -157,6 +157,9 @@ final class SpeechDictationService: ObservableObject {
     /// When the current recognition request started, and how many requests in
     /// a row failed within a second of starting (see `restartAfterRecognitionError`).
     private var recognitionStartedAt = Date()
+    /// False when iOS stopped the input engine behind our back (route
+    /// change, Siri, another app taking the mic); voice mode then rebuilds it.
+    var isEngineRunning: Bool { audioEngine.isRunning }
     private var fastRecognitionFailures = 0
 
     /// When true (continuous / voice-conversation mode) the tap resamples each

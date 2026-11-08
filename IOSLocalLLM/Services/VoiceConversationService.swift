@@ -96,6 +96,7 @@ final class VoiceConversationService: ObservableObject {
         // when the reasoning used up the token budget.
         assistant.generate(
             messages: messages,
+            maxTokensOverride: Self.voiceMaxTokens,
             forceNoThinking: true,
             onToken: onToken,
             onComplete: onComplete,
@@ -199,6 +200,35 @@ final class VoiceConversationService: ObservableObject {
     /// Phase we were in when an interruption began — used to restore the
     /// state machine to the same point once iOS hands the session back.
     private var phaseBeforeInterruption: Phase?
+    /// Last time the VAD loop tried to revive a dead mic (rate limit).
+    private var lastMicRecovery = Date.distantPast
+    /// Set by `suspendForBackground()`: the next start() keeps the history.
+    private var resumeKeepsHistory = false
+
+    /// Output cap for one spoken turn (about two minutes of speech). Chat's
+    /// default (2K tokens) made each turn a long, hot decode on a 3–4B model.
+    static var voiceMaxTokens: Int { min(AppSettings.shared.assistantMaxTokens, 512) }
+
+    /// Voice turns can end without a reply (barge-in before the first token,
+    /// a refused or failed generation). Drop empty assistant turns and merge
+    /// the user turns they leave back to back: some chat templates (Gemma,
+    /// Mistral) reject non-alternating roles, and an empty assistant turn
+    /// teaches the model to answer with nothing.
+    nonisolated static func sanitizedHistory(_ messages: [ChatMessage]) -> [ChatMessage] {
+        var out: [ChatMessage] = []
+        for message in messages {
+            if message.role == .assistant,
+               message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                continue
+            }
+            if message.role == .user, let last = out.last, last.role == .user {
+                out[out.count - 1].content += "\n" + message.content
+                continue
+            }
+            out.append(message)
+        }
+        return out
+    }
     /// Continuous-dictation transcript sink. Kept so a hard resume after TTS
     /// can rebuild the recognition session when `resumeRecognition()` fails
     /// (the "Listening but dead mic after first reply" path).
@@ -252,6 +282,8 @@ final class VoiceConversationService: ObservableObject {
     /// first use. Returns false if either is denied.
     func start() async -> Bool {
         guard !isStarting else { return false }
+        // Read before stop() clears it: a background pause resumes with history.
+        let keepHistory = resumeKeepsHistory
         if case .failed = phase { stop() }
         modelRestoreTask?.cancel()
         modelRestoreTask = nil
@@ -329,17 +361,21 @@ final class VoiceConversationService: ObservableObject {
         }
 
         // Same builder as chat, in spoken mode: replies are read aloud, so
-        // Markdown, lists and code would be spoken literally.
+        // Markdown, lists and code would be spoken literally. After a
+        // background pause the conversation continues with its history.
         let persona = PersonaStore.shared.active
-        session = [ChatMessage(
-            role: .system,
-            content: CodingAssistantService.composeSystemPrompt(.init(
-                persona: persona.systemPrompt,
-                memory: MemoryStore.shared.contextBlock(forPersonaID: persona.id),
-                inputBudget: assistant.currentInputBudget,
-                spoken: true
-            ))
-        )]
+        if !(keepHistory && session.contains(where: { $0.role == .user })) {
+            session = [ChatMessage(
+                role: .system,
+                content: CodingAssistantService.composeSystemPrompt(.init(
+                    persona: persona.systemPrompt,
+                    memory: MemoryStore.shared.contextBlock(forPersonaID: persona.id),
+                    inputBudget: assistant.currentInputBudget,
+                    spoken: true
+                ))
+            )]
+        }
+        resumeKeepsHistory = false
         resetLiveReply()
         liveTranscript = ""
         pendingTranscript = ""
@@ -365,9 +401,19 @@ final class VoiceConversationService: ObservableObject {
         do {
             try dictation.start(continuous: true, handler)
         } catch {
-            teardownPlaybackSession()
-            phase = .failed(error.localizedDescription)
-            return false
+            // Right after the first permission prompt the input route can
+            // still report 0 Hz for a moment, so first-time users got
+            // "Microphone isn't ready" on their first try. One short retry.
+            try? await Task.sleep(nanoseconds: 600_000_000)
+            guard owns(operation), !Task.isCancelled else { return false }
+            do {
+                try applyConversationSession(forSpeaking: false)
+                try dictation.start(continuous: true, handler)
+            } catch {
+                teardownPlaybackSession()
+                phase = .failed(error.localizedDescription)
+                return false
+            }
         }
 
         if microphoneMuted { dictation.pauseEngineForTTS() }
@@ -407,8 +453,24 @@ final class VoiceConversationService: ObservableObject {
     }
     private let liveUserPresentationID = UUID()
 
+    /// App went to the background. The mic can't record there (no background
+    /// audio mode) and LifecycleController cancels generation; the reply's
+    /// completion then tried to reopen the mic and the session came back
+    /// broken. End it cleanly but keep the history: "Try again" continues
+    /// the same conversation.
+    func suspendForBackground() {
+        guard sessionOperationID != nil else { return }
+        if case .failed = phase { return }
+        let kept = session
+        stop()
+        session = kept
+        resumeKeepsHistory = true
+        phase = .failed("Voice mode paused while Token AI was in the background.")
+    }
+
     /// End the conversation entirely — closes mic, stops playback, resets.
     func stop() {
+        resumeKeepsHistory = false
         guard let operation = sessionOperationID else { return }
         // Invalidate before stopping: synchronous and queued callbacks now have no owner.
         sessionOperationID = nil
@@ -496,6 +558,10 @@ final class VoiceConversationService: ObservableObject {
     func prepareForTTSPlayback() {
         guard sessionOperationID != nil else { return }
         try? applyConversationSession(forSpeaking: true)
+        // A one-shot (Test audio / Replay) is the assistant speaking with the
+        // mic off. Staying `.listening` would trip the dead-mic watchdog into
+        // reopening the mic mid-playback.
+        if phase == .listening { phase = .speaking }
         // Standalone speak()/Test audio never went through streamReply's
         // phase bind — without this the orb stayed on listening and ignored
         // playback levels (glass output gate stayed closed).
@@ -505,7 +571,7 @@ final class VoiceConversationService: ObservableObject {
     /// Restore mic-capable session after a one-shot TTS (Test audio) while
     /// still in voice mode. No-op when conversation isn't listening.
     func restoreListeningAfterTTS() {
-        guard sessionOperationID != nil, !isInterrupted, case .listening = phase else { return }
+        guard sessionOperationID != nil, !isInterrupted, phase == .listening || phase == .speaking else { return }
         try? applyConversationSession(forSpeaking: false)
         _ = resumeListeningOrFail()
     }
@@ -603,7 +669,13 @@ final class VoiceConversationService: ObservableObject {
     func setVoiceModel(_ id: String?) async {
         AppSettings.shared.voiceConversationModelID = id ?? ""
         if phase != .idle {
-            await applyVoiceModelOverrideIfNeeded(force: true)
+            if id == nil {
+                // "Match chat": the override path is a no-op for nil, so the
+                // voice model used to stay active for the rest of the session.
+                await restoreChatModelIfNeeded()
+            } else {
+                await applyVoiceModelOverrideIfNeeded(force: true)
+            }
         }
     }
 
@@ -685,6 +757,22 @@ final class VoiceConversationService: ObservableObject {
                 default:         break
                 }
                 lastPhase = current
+            }
+
+            // Dead-mic watchdog. iOS stops the input engine on route changes
+            // (AirPods connect/disconnect), Siri, or another app taking the
+            // mic, with no callback to us: the transcript never moved and the
+            // screen said "Listening" forever. Rebuild it, at most once a second.
+            if current == .listening, !microphoneMuted, !isInterrupted,
+               !dictation.isEngineRunning,
+               Date().timeIntervalSince(lastMicRecovery) > 1 {
+                lastMicRecovery = Date()
+                Diagnostics.shared.warning("mic engine stopped while listening; restarting", category: "voiceconversation")
+                pendingTranscript = ""
+                liveTranscript = ""
+                try? applyConversationSession(forSpeaking: false)
+                _ = resumeListeningOrFail()
+                continue
             }
 
             // VAD only matters while listening (turn-taking) or speaking
@@ -877,7 +965,7 @@ final class VoiceConversationService: ObservableObject {
         }
         guard owns(operation), turnOperationID == turn, !Task.isCancelled else { return }
 
-        let history = session.dropLast()
+        let history = Self.sanitizedHistory(Array(session.dropLast()))
         let speakAloud = AppSettings.shared.voiceAnswerEnabled
         let audioQueue: AudioQueue?
         if speakAloud {
@@ -924,7 +1012,7 @@ final class VoiceConversationService: ObservableObject {
 
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             generateReply(
-                messages: Array(history),
+                messages: history,
                 onToken: { [weak self] token in
                     Task { @MainActor [weak self] in
                         guard let self, self.owns(operation), self.turnOperationID == turn else { return }
@@ -1170,6 +1258,10 @@ final class VoiceConversationService: ObservableObject {
         phaseBeforeInterruption = phase
         isInterrupted = true
         turnOperationID = UUID()
+        // A half-heard sentence must not become a turn when the call ends.
+        pendingTranscript = ""
+        liveTranscript = ""
+        lastTranscriptChangeAt = nil
         replyTask?.cancel()
         editedTurnTask?.cancel()
         currentAudioQueue.stop()

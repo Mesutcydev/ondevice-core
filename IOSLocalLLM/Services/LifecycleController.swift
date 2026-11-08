@@ -105,6 +105,10 @@ final class LifecycleController: Sendable {
         // termination as a jetsam/watchdog crash on the next launch.
         CrashReporter.shared.markCleanShutdown()
 
+        // Before generation is cancelled below: a cancelled voice reply would
+        // otherwise try to reopen the mic in the background.
+        VoiceConversationService.shared.suspendForBackground()
+
         await LocalAPIManager.shared.stop()
 
         // Cancel any previous background transition.

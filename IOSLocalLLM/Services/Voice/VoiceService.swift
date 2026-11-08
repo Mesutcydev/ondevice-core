@@ -154,6 +154,7 @@ final class VoiceService: ObservableObject {
     @discardableResult
     func load() async -> Bool {
         let preferred = VoiceEngineKind(rawValue: settings.voiceEngine) ?? .appleSystem
+        unloadNeuralEngines(except: preferred)
         if lacksMemory(for: preferred) { return true }
 
         switch preferred {
@@ -1010,10 +1011,23 @@ final class VoiceService: ObservableObject {
         return true
     }
 
+    /// Only the selected neural voice stays resident: switching voices used to
+    /// leave the previous one (Kokoro ~300 MB) loaded next to the chat model.
+    /// Omni is left alone; its model is shared with Lens.
+    private func unloadNeuralEngines(except kind: VoiceEngineKind) {
+        var unloaded = false
+        if kind != .kittenTTS, kittenEngine.isReady { kittenEngine.unload(); unloaded = true }
+        if kind != .kokoro, kokoroEngine.isReady { kokoroEngine.unload(); unloaded = true }
+        if kind != .supertonic, supertonicEngine.isReady { supertonicEngine.unload(); unloaded = true }
+        if kind != .paradee, paradeeEngine.isReady { paradeeEngine.unload(); unloaded = true }
+        if unloaded { refreshStates() }
+    }
+
     /// Returns true when a neural voice was not loaded for lack of memory;
     /// callers then speak with Apple Voice instead of going silent.
     @discardableResult
     private func ensureEngineReadyIfNeeded(for kind: VoiceEngineKind) async -> Bool {
+        unloadNeuralEngines(except: kind)
         if lacksMemory(for: kind) { return true }
         switch kind {
         case .appleSystem:

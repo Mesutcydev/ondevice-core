@@ -25,3 +25,20 @@ final class SpeechDictationRetryTests: XCTestCase {
         XCTAssertEqual(SpeechDictationService.recognitionRetryDelay(fastFailures: 500), 2)
     }
 }
+
+/// Failed or interrupted voice turns leave empty replies behind; the history
+/// sent to the model must still alternate user and assistant turns.
+final class VoiceHistorySanitizerTests: XCTestCase {
+    func testDropsEmptyRepliesAndMergesUserTurns() {
+        let history = VoiceConversationService.sanitizedHistory([
+            ChatMessage(role: .system, content: "sys"),
+            ChatMessage(role: .user, content: "hi"),
+            ChatMessage(role: .assistant, content: "  "),
+            ChatMessage(role: .user, content: "again"),
+            ChatMessage(role: .assistant, content: "hello"),
+        ])
+        XCTAssertEqual(history.map(\.role), [.system, .user, .assistant])
+        XCTAssertEqual(history[1].content, "hi\nagain")
+        XCTAssertEqual(history[2].content, "hello")
+    }
+}
