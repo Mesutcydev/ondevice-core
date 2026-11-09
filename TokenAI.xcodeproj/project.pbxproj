@@ -3521,7 +3521,7 @@
 					"$(SDKROOT)/System/iOSSupport/usr/lib",
 					"$(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/maccatalyst",
 				);
-				MARKETING_VERSION = 2.1.6;
+				MARKETING_VERSION = 2.1.7;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				ONDEVICE_LFM3_OMNI_SWIFT_FLAG = "";
@@ -3716,7 +3716,7 @@
 					"$(SDKROOT)/System/iOSSupport/usr/lib",
 					"$(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/maccatalyst",
 				);
-				MARKETING_VERSION = 2.1.6;
+				MARKETING_VERSION = 2.1.7;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONDEVICE_LFM3_OMNI_SWIFT_FLAG = "";
