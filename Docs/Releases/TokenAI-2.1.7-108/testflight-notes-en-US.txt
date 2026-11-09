@@ -1,0 +1,9 @@
+Voice mode fixes on top of 2.1.6 (107):
+• The voice screen no longer closes by itself after an audio interruption. After a call or Siri, tap Resume.
+• A neural voice that isn't downloaded or fails to load now falls back to Apple Voice (with a notice) instead of blocking voice mode or going silent.
+• If speech stalls after a reply, the mic comes back within 15 seconds. The mic also waits for the reply to finish playing, so it doesn't hear itself.
+• JSON mode in Settings no longer affects voice replies.
+• Voice engines screen redesigned: one card per engine, "in use" check, size shown, confirmation before downloading, progress bar, unavailable models folded away. Picking a KittenTTS size now sticks; speech-recognition models can be selected for hold-to-talk.
+• Large downloads no longer risk the app being closed when they finish.
+
+Please try: a voice chat of several turns; switch to AirPods mid-reply; leave and reopen the app; change the voice engine.
