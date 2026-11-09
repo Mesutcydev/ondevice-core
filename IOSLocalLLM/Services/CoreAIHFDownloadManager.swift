@@ -742,12 +742,15 @@ final class CoreAIHFDownloadManager: ObservableObject, Identifiable {
             let handle = try FileHandle(forReadingFrom: url)
             defer { try? handle.close() }
             var hasher = SHA256()
-            while true {
+            // One autorelease pool per chunk, or every chunk stays alive
+            // until the loop ends and a multi-GB hash gets the app killed.
+            while try autoreleasepool(invoking: { () throws -> Bool in
                 try Task.checkCancellation()
                 guard let chunk = try handle.read(upToCount: 8 * 1_024 * 1_024),
-                      !chunk.isEmpty else { break }
+                      !chunk.isEmpty else { return false }
                 hasher.update(data: chunk)
-            }
+                return true
+            }) {}
             return hasher.finalize().map { String(format: "%02x", $0) }.joined()
         }
         return try await withTaskCancellationHandler {

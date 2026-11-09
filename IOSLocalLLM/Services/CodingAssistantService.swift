@@ -1567,6 +1567,7 @@ final class CodingAssistantService: ObservableObject {
         topPOverride: Double?,
         jsonMode: Bool,
         forceNoThinking: Bool,
+        ignoreGlobalJSONMode: Bool = false,
         onToken: @escaping @Sendable (String) -> Void,
         onComplete: @escaping @Sendable (Double) -> Void,
         onError: (@Sendable (String) -> Void)?
@@ -1603,7 +1604,7 @@ final class CodingAssistantService: ObservableObject {
             topP: min(1, max(0, topPOverride ?? settings.topP)),
             repetitionPenalty: settings.repetitionPenalty,
             seed: app.assistantSeed != 0 ? app.assistantSeed : nil,
-            jsonMode: jsonMode || app.jsonModeEnabled,
+            jsonMode: jsonMode || (!ignoreGlobalJSONMode && app.jsonModeEnabled),
             thinkingMode: enableThinking ? .enabled : .disabled,
             toolMode: .disabled,
             kvCacheBits: nil,
@@ -2453,6 +2454,7 @@ final class CodingAssistantService: ObservableObject {
         jsonMode: Bool = false,
         collectLogprobs: Bool = false,
         forceNoThinking: Bool = false,
+        ignoreGlobalJSONMode: Bool = false,
         resumeTruncatedReply: Bool = false,
         onToken: @escaping @Sendable (String) -> Void,
         // Optional logprob stream sits before onComplete so call sites that
@@ -2473,7 +2475,7 @@ final class CodingAssistantService: ObservableObject {
         let messages = Self.applyingContentPolicy(to: messages)
         if activeExecutionLocation == .externalCloud {
             generateWithAPIProvider(messages: messages, maxTokensOverride: maxTokensOverride,
-                                    jsonMode: jsonMode, resumeTruncatedReply: resumeTruncatedReply, onToken: onToken,
+                                    jsonMode: jsonMode, ignoreGlobalJSONMode: ignoreGlobalJSONMode, resumeTruncatedReply: resumeTruncatedReply, onToken: onToken,
                                     onComplete: onComplete, onError: onError)
             return
         }
@@ -2484,6 +2486,7 @@ final class CodingAssistantService: ObservableObject {
                 temperatureOverride: temperatureOverride,
                 jsonMode: jsonMode,
                 forceNoThinking: forceNoThinking,
+                ignoreGlobalJSONMode: ignoreGlobalJSONMode,
                 onToken: onToken,
                 onComplete: onComplete,
                 onError: onError
@@ -2498,6 +2501,7 @@ final class CodingAssistantService: ObservableObject {
                 temperatureOverride: temperatureOverride,
                 jsonMode: jsonMode,
                 forceNoThinking: forceNoThinking,
+                ignoreGlobalJSONMode: ignoreGlobalJSONMode,
                 onToken: onToken,
                 onComplete: onComplete,
                 onError: onError
@@ -2513,6 +2517,7 @@ final class CodingAssistantService: ObservableObject {
                 topPOverride: topPOverride,
                 jsonMode: jsonMode,
                 forceNoThinking: forceNoThinking,
+                ignoreGlobalJSONMode: ignoreGlobalJSONMode,
                 onToken: onToken,
                 onComplete: onComplete,
                 onError: onError
@@ -2557,6 +2562,7 @@ final class CodingAssistantService: ObservableObject {
                     jsonMode: jsonMode,
                     collectLogprobs: collectLogprobs,
                     forceNoThinking: forceNoThinking,
+                    ignoreGlobalJSONMode: ignoreGlobalJSONMode,
                     resumeTruncatedReply: resumeTruncatedReply,
                     onToken: onToken,
                     onLogprobToken: onLogprobToken,
@@ -2623,6 +2629,7 @@ final class CodingAssistantService: ObservableObject {
                         jsonMode: jsonMode,
                         collectLogprobs: collectLogprobs,
                         forceNoThinking: forceNoThinking,
+                        ignoreGlobalJSONMode: ignoreGlobalJSONMode,
                         resumeTruncatedReply: resumeTruncatedReply,
                         onToken: onToken,
                         onLogprobToken: onLogprobToken,
@@ -2773,7 +2780,7 @@ final class CodingAssistantService: ObservableObject {
         // --- JSON Mode (Feature #2) ---
         // Inject JSON-output instructions into the last system message.
         var effectiveMessages = messages
-        let useJSONMode = jsonMode || s.jsonModeEnabled
+        let useJSONMode = jsonMode || (!ignoreGlobalJSONMode && s.jsonModeEnabled)
         if useJSONMode {
             let jsonHint = s.jsonSchemaHint.isEmpty
                 ? "Respond with valid JSON only. No markdown fences, no commentary."
@@ -3398,6 +3405,7 @@ final class CodingAssistantService: ObservableObject {
         temperatureOverride: Double?,
         jsonMode: Bool,
         forceNoThinking: Bool,
+        ignoreGlobalJSONMode: Bool = false,
         onToken: @escaping @Sendable (String) -> Void,
         onComplete: @escaping @Sendable (Double) -> Void,
         onError: (@Sendable (String) -> Void)?
@@ -3487,7 +3495,7 @@ final class CodingAssistantService: ObservableObject {
                     at: 0
                 )
             }
-            if jsonMode || appSettings.jsonModeEnabled {
+            if jsonMode || (!ignoreGlobalJSONMode && appSettings.jsonModeEnabled) {
                 let hint = appSettings.jsonSchemaHint.isEmpty
                     ? "Respond with valid JSON only. No markdown fences or commentary."
                     : "Respond with valid JSON matching this schema. No markdown fences or commentary:\n\(appSettings.jsonSchemaHint)"
@@ -3696,6 +3704,7 @@ final class CodingAssistantService: ObservableObject {
         temperatureOverride: Double?,
         jsonMode: Bool,
         forceNoThinking: Bool,
+        ignoreGlobalJSONMode: Bool = false,
         onToken: @escaping @Sendable (String) -> Void,
         onComplete: @escaping @Sendable (Double) -> Void,
         onError: (@Sendable (String) -> Void)? = nil
@@ -3776,7 +3785,7 @@ final class CodingAssistantService: ObservableObject {
                 maximumResponseTokens: maximumResponseTokens
             )
             var effectiveMessages = messages
-            if jsonMode || settings.jsonModeEnabled {
+            if jsonMode || (!ignoreGlobalJSONMode && settings.jsonModeEnabled) {
                 let jsonHint = settings.jsonSchemaHint.isEmpty
                     ? "Respond with valid JSON only. No markdown fences or commentary."
                     : "Respond with valid JSON matching this schema. No markdown fences or commentary:\n\(settings.jsonSchemaHint)"
@@ -4059,7 +4068,7 @@ final class CodingAssistantService: ObservableObject {
     }
 
     private func generateWithAPIProvider(
-        messages: [ChatMessage], maxTokensOverride: Int?, jsonMode: Bool, resumeTruncatedReply: Bool,
+        messages: [ChatMessage], maxTokensOverride: Int?, jsonMode: Bool, ignoreGlobalJSONMode: Bool = false, resumeTruncatedReply: Bool,
         onToken: @escaping @Sendable (String) -> Void,
         onComplete: @escaping @Sendable (Double) -> Void,
         onError: (@Sendable (String) -> Void)?
@@ -4091,7 +4100,7 @@ final class CodingAssistantService: ObservableObject {
             effectiveMessages.append(ChatMessage(role: .user,
                 content: "Continue the previous incomplete answer from where it ended. Do not repeat earlier text."))
         }
-        if jsonMode || AppSettings.shared.jsonModeEnabled {
+        if jsonMode || (!ignoreGlobalJSONMode && AppSettings.shared.jsonModeEnabled) {
             let hint = AppSettings.shared.jsonSchemaHint
             effectiveMessages.insert(ChatMessage(role: .system, content: hint.isEmpty
                 ? "Respond with valid JSON only, without markdown fences or commentary."

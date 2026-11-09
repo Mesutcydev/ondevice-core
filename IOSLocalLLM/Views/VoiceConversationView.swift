@@ -63,13 +63,20 @@ struct VoiceConversationView: View {
                 }
                 .buttonStyle(.glass).controlSize(.large)
             }
+            if conv.isInterrupted {
+                // iOS doesn't always say when a call or Siri is over.
+                Button(L("Resume"), systemImage: "play.fill") {
+                    conv.resumeAfterInterruption()
+                }
+                .buttonStyle(.glass).controlSize(.large)
+            }
             if case .failed = conv.phase {
                 if AVAudioApplication.shared.recordPermission == .denied || SFSpeechRecognizer.authorizationStatus() == .denied {
                     Button("Open permission settings", systemImage: "gearshape") {
                         if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                     }.buttonStyle(.glass)
                 }
-                Button("Try again", systemImage: "arrow.clockwise") {
+                Button(L("Try again"), systemImage: "arrow.clockwise") {
                     Task { _ = await conv.start() }
                 }.buttonStyle(.glass)
             }

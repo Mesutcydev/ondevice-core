@@ -36,7 +36,12 @@ struct VoiceModelPickerView: View {
     @State private var selectedCatalogEntry: VoiceCatalogEntry?
     @State private var pendingEngine: VoiceEngineKind?
     @State private var pendingModel: DownloadableModel?
+    @State private var pendingKittenVariant: KittenVariant?
     @State private var confirmInterruption = false
+    @State private var downloadEntry: VoiceCatalogEntry?
+    @State private var downloadModelCandidate: DownloadableModel?
+    @State private var confirmDownload = false
+    @ObservedObject private var loc = LocalizationService.shared
 
     var body: some View {
         NavigationStack {
@@ -53,7 +58,7 @@ struct VoiceModelPickerView: View {
 
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }.foregroundColor(T.ink)
+                    Button(loc.t("Done")) { dismiss() }.foregroundColor(T.ink)
                 }
             }
             .onAppear { center.refreshAllStates() }
@@ -66,19 +71,38 @@ struct VoiceModelPickerView: View {
                 Button("End voice and continue", role: .destructive) {
                     guard let kind = pendingEngine else { return }
                     let model = pendingModel
+                    let variant = pendingKittenVariant
                     pendingEngine = nil
                     pendingModel = nil
+                    pendingKittenVariant = nil
                     Task { @MainActor in
                         await VoiceConversationService.shared.stopAndRestoreSelection()
-                        choose(kind, model: model)
+                        choose(kind, model: model, kittenVariant: variant)
                     }
                 }
                 Button("Keep voice conversation", role: .cancel) {
                     pendingEngine = nil
                     pendingModel = nil
+                    pendingKittenVariant = nil
                 }
             } message: {
                 Text("This changes the speech engine used by the ongoing conversation.")
+            }
+            .confirmationDialog(
+                downloadEntry.map { "Download \($0.name)?" } ?? "",
+                isPresented: $confirmDownload, titleVisibility: .visible
+            ) {
+                Button(downloadEntry?.sizeLabel.map { "Download \($0)" } ?? "Download") {
+                    if let entry = downloadEntry, let model = downloadModelCandidate { activate(entry, model: model) }
+                    downloadEntry = nil
+                    downloadModelCandidate = nil
+                }
+                Button("Cancel", role: .cancel) {
+                    downloadEntry = nil
+                    downloadModelCandidate = nil
+                }
+            } message: {
+                Text("The model downloads once and then runs on this iPhone without a network connection.")
             }
             .sheet(item: $selectedCatalogEntry) { entry in
                 VoiceCatalogDetailView(entry: entry)
@@ -158,6 +182,8 @@ struct VoiceModelPickerView: View {
 
     private func catalogCard(_ entry: VoiceCatalogEntry) -> some View {
         let downloadable = entry.legacyDownloadID.flatMap(downloadModel)
+        let inUse = isInUse(entry, model: downloadable)
+        let rowStatus = status(entry, model: downloadable, inUse: inUse)
         return VStack(alignment: .leading, spacing: 9) {
             Button { selectedCatalogEntry = entry } label: {
                 HStack(alignment: .top, spacing: 10) {
@@ -168,42 +194,91 @@ struct VoiceModelPickerView: View {
                         Text(entry.name).font(T.mono(13, .semibold)).foregroundColor(T.ink)
                         Text(entry.summary).font(T.sans(11)).foregroundColor(T.ink3)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text(entry.statusLabel.uppercased())
+                        Text([rowStatus.text, entry.sizeLabel].compactMap { $0 }.joined(separator: " · ").uppercased())
                             .font(T.mono(9, .semibold))
-                            .foregroundColor(entry.isDownloadEnabled ? T.good : T.warn)
+                            .foregroundColor(rowStatus.color)
                     }
                     Spacer()
-                    Image(systemName: "chevron.right").foregroundColor(T.ink3)
+                    Image(systemName: inUse ? "checkmark.circle.fill" : "info.circle")
+                        .foregroundColor(inUse ? T.good : T.ink3)
+                        .accessibilityHidden(true)
                 }
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityHint("Shows details")
 
-            HStack(spacing: 8) {
-                if entry.id == "tts.apple.system" {
-                    StudioCompactPrimaryButton(title: "Select", height: 32) {
-                        choose(.appleSystem, model: nil)
-                    }
-                } else if entry.isDownloadEnabled, let model = downloadable {
-                    StudioCompactPrimaryButton(title: primaryTitle(for: model), height: 32) {
-                        activate(entry, model: model)
-                    }
-                } else {
-                    StudioCompactSecondaryButton(title: entry.statusLabel, enabled: false, height: 32) {}
-                }
-                StudioCompactSecondaryButton(title: "Details", height: 32) {
-                    selectedCatalogEntry = entry
-                }
-                if let source = entry.sourceURL, let url = URL(string: source) {
-                    Link("Open Project", destination: url)
-                        .font(T.sans(11, .semibold))
-                        .foregroundStyle(T.ink2)
-                }
-            }
+            primaryAction(entry, model: downloadable, inUse: inUse)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .accessibilityIdentifier("voiceCatalogCard.\(entry.id)")
+    }
+
+    @ViewBuilder
+    private func primaryAction(_ entry: VoiceCatalogEntry, model: DownloadableModel?, inUse: Bool) -> some View {
+        if inUse {
+            StudioCompactSecondaryButton(title: "In use", enabled: false, height: 32) {}
+        } else if entry.id == "tts.apple.system" {
+            StudioCompactPrimaryButton(title: "Use", height: 32) { choose(.appleSystem, model: nil) }
+        } else if entry.isDownloadEnabled, let model {
+            switch model.state {
+            case .ready:
+                StudioCompactPrimaryButton(title: "Use", height: 32) { activate(entry, model: model) }
+            case .downloading, .enumerating:
+                StudioCompactSecondaryButton(title: "Downloading…", enabled: false, height: 32) {}
+            case .paused:
+                StudioCompactPrimaryButton(title: "Resume download", height: 32) { activate(entry, model: model) }
+            case .idle, .failed:
+                StudioCompactPrimaryButton(title: entry.sizeLabel.map { "Download \($0)" } ?? "Download", height: 32) {
+                    downloadEntry = entry
+                    downloadModelCandidate = model
+                    confirmDownload = true
+                }
+            }
+        } else {
+            StudioCompactSecondaryButton(title: entry.statusLabel, enabled: false, height: 32) {}
+        }
+    }
+
+    /// Hold-to-talk provider for a speech-recognition entry. Conversations
+    /// always use Apple's streaming recognizer.
+    private static func sttProvider(for entry: VoiceCatalogEntry) -> String? {
+        if entry.id.hasPrefix("stt.whisper") { return "whisper" }
+        if entry.id.hasPrefix("stt.parakeet") { return "parakeet" }
+        if entry.id.hasPrefix("stt.nemotron") { return "nemotron" }
+        return nil
+    }
+
+    /// The row the app actually uses. Whisper sizes share one provider (the
+    /// best installed file wins), so no single Whisper row is marked.
+    private func isInUse(_ entry: VoiceCatalogEntry, model: DownloadableModel?) -> Bool {
+        if entry.id == "tts.apple.system" { return voiceSettings.selectedEngine == .appleSystem }
+        if let variant = KittenVariant(rawValue: entry.id) {
+            return voiceSettings.selectedEngine == .kittenTTS
+                && voiceSettings.selectedKittenVariant == variant
+                && model?.state == .ready
+        }
+        if let model, let kind = LocalModelRegistry.voiceEngine(for: model) {
+            return voiceSettings.selectedEngine == kind && model.state == .ready
+        }
+        if let provider = Self.sttProvider(for: entry), provider != "whisper" {
+            return settings.sttProvider == provider && model?.state == .ready
+        }
+        return false
+    }
+
+    private func status(_ entry: VoiceCatalogEntry, model: DownloadableModel?, inUse: Bool) -> (text: String, color: Color) {
+        if inUse { return ("In use", T.good) }
+        if entry.id == "tts.apple.system" { return ("Built in", T.ink3) }
+        guard entry.isDownloadEnabled, let model else { return (entry.statusLabel, T.warn) }
+        switch model.state {
+        case .ready: return ("Installed", T.ink2)
+        case .downloading, .enumerating: return ("Downloading", T.accent)
+        case .paused: return ("Paused", T.warn)
+        case .failed: return ("Download failed", T.bad)
+        case .idle: return ("Not downloaded", T.ink3)
+        }
     }
 
     private func downloadModel(id: String) -> DownloadableModel? {
@@ -220,19 +295,28 @@ struct VoiceModelPickerView: View {
     }
 
     private func activate(_ entry: VoiceCatalogEntry, model: DownloadableModel) {
-        if let kind = LocalModelRegistry.voiceEngine(for: model) {
+        if let variant = KittenVariant(rawValue: entry.id) {
+            // Catalog ids are the variant raw values. Selecting only the
+            // engine kept the old variant, so voice could load a different
+            // (maybe undownloaded) one and quietly fall back to Apple Voice.
+            choose(.kittenTTS, model: model, kittenVariant: variant)
+        } else if let kind = LocalModelRegistry.voiceEngine(for: model) {
             choose(kind, model: model)
-        } else if model.state != .ready {
-            model.start()
+        } else {
+            // Speech recognition: committed now so the finished download is
+            // used for hold-to-talk; "Use" on an installed model used to do nothing.
+            if let provider = Self.sttProvider(for: entry) { settings.sttProvider = provider }
+            if model.state != .ready { model.start() }
         }
     }
 
     // MARK: - One-tap action
 
-    private func choose(_ kind: VoiceEngineKind, model: DownloadableModel?) {
+    private func choose(_ kind: VoiceEngineKind, model: DownloadableModel?, kittenVariant: KittenVariant? = nil) {
         if VoiceConversationService.shared.hasSession {
             pendingEngine = kind
             pendingModel = model
+            pendingKittenVariant = kittenVariant
             confirmInterruption = true
             return
         }
@@ -243,7 +327,13 @@ struct VoiceModelPickerView: View {
         // that's still downloading/loading never breaks playback — and the
         // download-complete observer keys off `voiceEngine`, so we must set
         // it BEFORE kicking the download.
-        voiceSettings.selectEngine(kind)
+        if let kittenVariant {
+            // A loaded Kitten keeps its variant until unloaded.
+            if voiceSettings.selectedKittenVariant != kittenVariant { voiceService.unloadAll() }
+            voiceSettings.selectKittenVariant(kittenVariant)
+        } else {
+            voiceSettings.selectEngine(kind)
+        }
         let voices = voiceList(for: kind)
         if !voices.contains(where: { $0.id == settings.voiceID }),
            let first = voices.first {
@@ -318,7 +408,7 @@ struct VoiceModelPickerView: View {
                 .font(T.mono(9, .semibold))
                 .tracking(0.5)
                 .foregroundColor(T.ink3)
-            Text("Apple System Voice ships with iOS premium voices and works offline out of the box — it's the most reliable choice. On-device neural voices (KittenTTS, Kokoro) are smaller English voices that some people prefer; if one ever fails its self-check, the app reads replies through System Voice automatically. Pick the specific voice and speed in Voice settings.")
+            Text("Apple System Voice ships with iOS premium voices and works offline out of the box — it's the most reliable choice. On-device neural voices (KittenTTS, Kokoro) are smaller English voices that some people prefer; if one ever fails its self-check, the app reads replies through System Voice automatically. Pick the specific voice and speed in Voice settings. Speech recognition models here are for hold-to-talk dictation; voice conversations always use Apple's on-device recognizer.")
                 .font(T.sans(11))
                 .foregroundColor(T.ink2)
                 .fixedSize(horizontal: false, vertical: true)

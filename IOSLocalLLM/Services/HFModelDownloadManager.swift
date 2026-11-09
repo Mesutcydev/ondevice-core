@@ -1434,9 +1434,14 @@ final class HFModelDownloadManager: ObservableObject, Identifiable {
             let handle = try FileHandle(forReadingFrom: url)
             defer { try? handle.close() }
             var hasher = SHA256()
-            while let chunk = try handle.read(upToCount: 4 << 20), !chunk.isEmpty {
+            // One autorelease pool per chunk: without it every chunk stayed
+            // alive until the loop ended (2 GB hashed peaked at 2.2 GB), and
+            // iOS killed the app right as a big download finished.
+            while try autoreleasepool(invoking: { () throws -> Bool in
+                guard let chunk = try handle.read(upToCount: 4 << 20), !chunk.isEmpty else { return false }
                 hasher.update(data: chunk)
-            }
+                return true
+            }) {}
             return hasher.finalize().map { String(format: "%02x", $0) }.joined()
         }.value
     }

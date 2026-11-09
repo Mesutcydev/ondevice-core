@@ -5900,43 +5900,43 @@
       },
       "generatesSymbol" : false
     },
-    "Audio was interrupted. Return to your session to continue." : {
+    "Audio was interrupted. Tap Resume to continue." : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Audio wurde unterbrochen. Kehre zum Fortsetzen zur Sitzung zurück."
+            "value" : "Audio wurde unterbrochen. Tippe auf „Fortsetzen“, um weiterzumachen."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El audio se interrumpió. Vuelve a la sesión para continuar."
+            "value" : "El audio se interrumpió. Toca Reanudar para continuar."
           }
         },
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تمت مقاطعة الصوت. عد إلى جلستك للمتابعة."
+            "value" : "تمت مقاطعة الصوت. اضغط استئناف للمتابعة."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ses kesildi. Devam etmek için oturumunuza dönün."
+            "value" : "Ses kesildi. Devam etmek için Devam et'e dokunun."
           }
         },
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ऑडियो बाधित हुआ। जारी रखने के लिए सत्र पर लौटें।"
+            "value" : "ऑडियो बाधित हुआ। जारी रखने के लिए जारी रखें पर टैप करें।"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "音声が中断されました。セッションに戻って続けてください。"
+            "value" : "音声が中断されました。「再開」をタップして続けてください。"
           }
         }
       },

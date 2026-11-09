@@ -531,8 +531,14 @@ final class VoiceService: ObservableObject {
             let preferredEngineKind = VoiceEngineKind(rawValue: self.settings.voiceEngine) ?? .appleSystem
             let refusedForMemory = await self.ensureEngineReadyIfNeeded(for: preferredEngineKind)
             guard !Task.isCancelled, self.streamGeneration == myGeneration else { return }
+            // In a conversation a missing or failed neural voice must not
+            // mean a silent reply: speak with Apple Voice and say so once.
+            let fallBack = refusedForMemory || VoiceConversationService.shared.hasSession
+            if fallBack, self.preferredEngineIfReady(for: preferredEngineKind) == nil, !refusedForMemory {
+                self.noteFallbackToAppleVoice(preferredEngineKind)
+            }
             guard let preferredEngine = self.preferredEngineIfReady(for: preferredEngineKind)
-                    ?? (refusedForMemory ? self.systemEngine : nil) else {
+                    ?? (fallBack ? self.systemEngine : nil) else {
                 await MainActor.run {
                     self.isPlaying = false
                     self.activeStreamSession = nil
@@ -991,6 +997,23 @@ final class VoiceService: ObservableObject {
         }
     }
     private var warnedLowMemoryVoice = false
+    private var warnedFallbackVoice = false
+
+    /// An engine still loading counts as progress for the conversation's
+    /// speech-stall watchdog.
+    var isLoadingEngine: Bool {
+        [kittenState, kokoroState, supertonicState, paradeeState, omniState].contains(.loading)
+    }
+
+    /// Once per run: a conversation reply spoken with Apple Voice because the
+    /// chosen neural voice isn't downloaded or failed to load.
+    private func noteFallbackToAppleVoice(_ kind: VoiceEngineKind) {
+        guard kind != .appleSystem, !warnedFallbackVoice else { return }
+        warnedFallbackVoice = true
+        ToastCenter.shared.info(
+            "Using Apple Voice",
+            detail: "\(kind.shortName) isn't ready. Check it in Voice engines.")
+    }
 
     /// True when `kind` is a neural voice that isn't loaded and doesn't fit
     /// in the memory left. Callers then speak with Apple Voice instead.

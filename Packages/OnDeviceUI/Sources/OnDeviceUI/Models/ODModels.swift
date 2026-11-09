@@ -261,7 +261,7 @@ public enum ODVoicePhase: Equatable {
     public var subtitle: String {
         switch self {
         case .idle: return "Your conversation is ready."
-        case .interrupted: return "Audio was interrupted. Return to your session to continue."
+        case .interrupted: return "Audio was interrupted. Tap Resume to continue."
         case .preparing: return "Getting your voice session ready."
         case .listening: return "Go ahead, I’m listening."
         case .thinking: return "Working on your response."

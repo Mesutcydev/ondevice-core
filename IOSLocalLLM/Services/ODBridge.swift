@@ -407,6 +407,13 @@ final class ODBridge: ObservableObject {
         store.voiceSessionActive = sessionRunning
         if !sessionRunning && conversation.phase == .idle && !startingVoice { store.voiceSessionPresented = false }
 
+        // A cold multi-GB model can take a while before the first reply; say
+        // so instead of a bare "Thinking".
+        if sessionRunning, case .loading(let message) = assistant.state {
+            store.voiceSessionNotice = message
+        } else {
+            store.voiceSessionNotice = nil
+        }
         store.speakerEnabled = AppSettings.shared.voiceAnswerEnabled
         store.microphoneEnabled = sessionRunning && !conversation.microphoneMuted
         store.microphoneCapturing = conversation.isCapturingInput

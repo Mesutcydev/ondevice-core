@@ -16,9 +16,10 @@ struct VoiceSettingsView: View {
     @Environment(\.koduTheme) private var T
 
     /// Echo-cancellation / voice-processing toggle for the
-    /// voice-conversation mic. ON: barge-in works (mic ignores the
-    /// assistant's own TTS). OFF: a safety valve for users hearing
-    /// distorted TTS on unusual audio routes.
+    /// voice-conversation mic. ON: noise and echo suppression while
+    /// listening. OFF: a safety valve for users hearing distorted TTS on
+    /// unusual audio routes. Neither enables barge-in: the mic is paused
+    /// while a reply plays.
     // Must match AppSettings.voiceProcessingEnabled default (false).
     // A `true` default here used to write the key on first Voice Settings
     // open and force VPIO on — a known zombie-voice path on some routes.
@@ -221,14 +222,16 @@ struct VoiceSettingsView: View {
                     .padding(14)
             }
             Rectangle().fill(T.rule).frame(height: 1)
-            KRow(label: "echo cancellation (barge-in)", trailing: {
+            KRow(label: "echo cancellation", trailing: {
                 KToggle(isOn: $voiceProcessingEnabled)
             }, last: true)
             Rectangle().fill(T.rule).frame(height: 1)
+            // The mic is paused while a reply plays (that keeps Apple voices
+            // clean), so speaking over a reply can't interrupt it.
             KMono(
                 text: voiceProcessingEnabled
-                    ? "mic ignores the assistant's own voice — you can interrupt by speaking."
-                    : "off for clean tts on routes that distort voice processing. barge-in is disabled.",
+                    ? "cleaner mic input from background noise and echo. to stop a reply, tap interrupt."
+                    : "off for clean tts on routes that distort voice processing. to stop a reply, tap interrupt.",
                 size: 10, color: T.ink3
             )
             .padding(14)

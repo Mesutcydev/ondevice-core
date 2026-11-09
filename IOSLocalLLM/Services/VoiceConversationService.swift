@@ -98,6 +98,8 @@ final class VoiceConversationService: ObservableObject {
             messages: messages,
             maxTokensOverride: Self.voiceMaxTokens,
             forceNoThinking: true,
+            // Settings' JSON mode would make TTS read braces aloud.
+            ignoreGlobalJSONMode: true,
             onToken: onToken,
             onComplete: onComplete,
             onError: { message in
@@ -335,17 +337,11 @@ final class VoiceConversationService: ObservableObject {
 
         await applyVoiceModelOverrideIfNeeded()
         guard owns(operation), !Task.isCancelled else { return false }
-        // A neural voice that doesn't fit next to the chat model is left
-        // unloaded; replies are then spoken with Apple Voice.
-        let voiceLacksMemory = await voice.load()
+        // A neural voice that doesn't fit next to the chat model, isn't
+        // downloaded or failed to load no longer blocks voice mode: replies
+        // fall back to Apple Voice with a notice (VoiceService.speakStream).
+        await voice.load()
         guard owns(operation), !Task.isCancelled else { return false }
-
-        let preferredVoice = VoiceEngineKind(rawValue: AppSettings.shared.voiceEngine) ?? .appleSystem
-        if preferredVoice != .appleSystem, !voice.isPreferredEngineReady, !voiceLacksMemory {
-            teardownPlaybackSession()
-            phase = .failed("Download \(preferredVoice.shortName) in Voice settings before starting a conversation.")
-            return false
-        }
 
         // The assistant LLM must be resident to answer — start() previously
         // loaded only the TTS engine, so first-use voice (no chat model
@@ -459,13 +455,27 @@ final class VoiceConversationService: ObservableObject {
     /// broken. End it cleanly but keep the history: "Try again" continues
     /// the same conversation.
     func suspendForBackground() {
+        pauseKeepingHistory("Voice mode paused while Token AI was in the background.")
+    }
+
+    /// Ends capture and playback but keeps the conversation on screen with
+    /// its history; "Try again" continues it.
+    private func pauseKeepingHistory(_ message: String) {
         guard sessionOperationID != nil else { return }
         if case .failed = phase { return }
         let kept = session
         stop()
         session = kept
         resumeKeepsHistory = true
-        phase = .failed("Voice mode paused while Token AI was in the background.")
+        phase = .failed(message)
+    }
+
+    /// The "Resume" button while interrupted. iOS doesn't always send a
+    /// resumption recommendation after Siri or a call, and without this the
+    /// screen sat on "Interrupted" with only End available.
+    func resumeAfterInterruption() {
+        guard isInterrupted else { return }
+        reactivateSessionAndResume()
     }
 
     /// End the conversation entirely — closes mic, stops playback, resets.
@@ -1116,6 +1126,14 @@ final class VoiceConversationService: ObservableObject {
                                 self.voice.speakStream(audioQueue)
                             }
                             await self.waitForSpeechCompletion(operation: operation, turn: turn)
+                            // A buffer counts as done once consumed, before its
+                            // end leaves the speaker (longer on Bluetooth).
+                            // Reopening the mic at once let the recognizer hear
+                            // the reply's own tail as a new turn.
+                            if startedSpeaking {
+                                try? await Task.sleep(nanoseconds: UInt64(
+                                    (AudioVisualClock.currentOutputPresentationLatency() + 0.25) * 1_000_000_000))
+                            }
                             // Always return the mic after a spoken reply unless
                             // the user already interrupted back to listening or
                             // ended the session. Previously we required
@@ -1156,11 +1174,22 @@ final class VoiceConversationService: ObservableObject {
         // path means we're only blocking until the queue drains — not
         // generation). The deadline is a safety net against deadlocks.
         let deadline = Date().addingTimeInterval(300)
+        // Generation is done by now, so a long stretch with no audio and no
+        // engine load means synthesis or playback hung; the 5-minute
+        // deadline alone left a silent "speaking" orb with the mic closed.
+        var lastAudio = Date()
         while !Task.isCancelled
                 && owns(operation) && turnOperationID == turn
                 && voice.isPlaying
                 && phase == .speaking
                 && Date() < deadline {
+            if AudioPlaybackService.shared.isPlaying || voice.isLoadingEngine {
+                lastAudio = Date()
+            } else if Date().timeIntervalSince(lastAudio) > 15 {
+                Diagnostics.shared.warning("no speech audio for 15 s; giving the mic back", category: "voiceconversation")
+                voice.stop()
+                return
+            }
             do {
                 try await Task.sleep(nanoseconds: 100_000_000)
             } catch {
@@ -1274,11 +1303,13 @@ final class VoiceConversationService: ObservableObject {
     }
 
     private func handleInterruptionEnded(shouldResume: Bool) {
+        // Only answer an interruption we saw begin. A stray recommendation
+        // used to reach stop(), which closed the whole voice screen.
+        guard isInterrupted else { return }
         guard shouldResume else {
-            // iOS says don't resume automatically. Stop cleanly so the
-            // user can re-enter voice mode when they're ready instead
-            // of leaving a half-dead session on screen.
-            stop()
+            // iOS says don't resume automatically. Keep the conversation and
+            // let the user continue when they're ready.
+            pauseKeepingHistory("Audio was interrupted. Tap Try again to continue.")
             return
         }
         reactivateSessionAndResume()
