@@ -41,11 +41,12 @@ struct KCaption: View {
     let text: String
     var color: Color? = nil
     @Environment(\.koduTheme) private var T
+    @Environment(\.locale) private var locale
 
     var body: some View {
         // Neutral ink by default — colour is reserved for state; callers pass
         // `color:` for the rare intentional accent eyebrow.
-        Text(text)
+        Text(verbatim: KLocalizedLabel.text(text, locale: locale))
             .font(.footnote)
             .foregroundColor(color ?? T.ink3)
             .tracking(0)
@@ -53,6 +54,28 @@ struct KCaption: View {
 }
 
 // MARK: - Status dot (●, ◐, ○)
+
+/// Translates a caller-supplied label from the app's string catalog, using the
+/// in-app language (the SwiftUI locale). A label with no catalog entry comes
+/// back unchanged, so dynamic text such as a model name is never altered.
+/// `Text(_ label: String)` shows its argument as typed, which left every label
+/// passed through these shared components in English.
+enum KLocalizedLabel {
+    private static let lock = NSLock()
+    private nonisolated(unsafe) static var bundles: [String: Bundle] = [:]
+
+    static func text(_ label: String, locale: Locale) -> String {
+        guard !label.isEmpty,
+              let code = Bundle.preferredLocalizations(from: Bundle.main.localizations,
+                                                       forPreferences: [locale.identifier]).first,
+              code != "en" else { return label }
+        lock.lock(); defer { lock.unlock() }
+        if bundles[code] == nil, let path = Bundle.main.path(forResource: code, ofType: "lproj") {
+            bundles[code] = Bundle(path: path)
+        }
+        return bundles[code]?.localizedString(forKey: label, value: label, table: nil) ?? label
+    }
+}
 
 enum KStatusGlyph: String {
     case ready = "●"        // filled
@@ -67,11 +90,13 @@ struct KStatusBadge: View {
     let color: Color
 
     @Environment(\.koduTheme) private var T
+    @Environment(\.locale) private var locale
 
     var body: some View {
+        let shown = KLocalizedLabel.text(label, locale: locale)
         HStack(spacing: 4) {
             Text(glyph.rawValue)
-            Text(label)
+            Text(verbatim: shown)
         }
         .font(T.mono(10))
         .foregroundColor(color)
@@ -79,7 +104,7 @@ struct KStatusBadge: View {
         // indistinguishable to color-blind users — collapse the badge into a
         // single element that announces just the status word.
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(label)
+        .accessibilityLabel(shown)
     }
 }
 
@@ -120,12 +145,13 @@ struct KPrimaryButton: View {
     var disabled: Bool = false
 
     @Environment(\.koduTheme) private var T
+    @Environment(\.locale) private var locale
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: ODLayout.elementGap) {
                 if let systemImage { Image(systemName: systemImage) }
-                Text(label).font(.body)
+                Text(verbatim: KLocalizedLabel.text(label, locale: locale)).font(.body)
                 if let trailing { Text(trailing).font(.footnote) }
             }
             .frame(maxWidth: .infinity, minHeight: 44)
@@ -146,12 +172,13 @@ struct KSecondaryButton: View {
     var action: () -> Void = {}
 
     @Environment(\.koduTheme) private var T
+    @Environment(\.locale) private var locale
 
     var body: some View {
         Button(role: destructive ? .destructive : nil, action: action) {
             HStack(spacing: ODLayout.elementGap) {
                 if let systemImage { Image(systemName: systemImage) }
-                Text(label).font(.body)
+                Text(verbatim: KLocalizedLabel.text(label, locale: locale)).font(.body)
                 if let trailing { Text(trailing).font(.footnote) }
             }
             .frame(maxWidth: .infinity, minHeight: 44)
@@ -173,6 +200,7 @@ struct KSection<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     @Environment(\.koduTheme) private var T
+    @Environment(\.locale) private var locale
 
     var body: some View {
         Section {
@@ -197,7 +225,8 @@ struct KSection<Content: View>: View {
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
         } header: {
-            Text(title.replacingOccurrences(of: "_", with: " ").uppercased())
+            Text(KLocalizedLabel.text(title, locale: locale)
+                .replacingOccurrences(of: "_", with: " ").uppercased(with: locale))
                 .font(T.sans(11, .semibold))
                 .tracking(1.1)
                 .foregroundColor(T.ink3)
@@ -222,6 +251,7 @@ struct KCollapsibleSection<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     @Environment(\.koduTheme) private var T
+    @Environment(\.locale) private var locale
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var localExpanded: Bool
 
@@ -240,7 +270,11 @@ struct KCollapsibleSection<Content: View>: View {
         DisclosureGroup(isExpanded: $localExpanded) {
             content()
         } label: {
-            Text(title.replacingOccurrences(of: "_", with: " ").capitalized)
+            // Title-case only an untranslated key; a translation keeps its own casing.
+            let translated = KLocalizedLabel.text(title, locale: locale)
+            Text(translated == title
+                 ? title.replacingOccurrences(of: "_", with: " ").capitalized
+                 : translated)
                 .font(.body).foregroundStyle(ODPalette.text)
                 .frame(minHeight: ODLayout.minimumHit)
         }
@@ -255,18 +289,20 @@ struct KRow<Trailing: View>: View {
     var stack: Bool = false
 
     @Environment(\.koduTheme) private var T
+    @Environment(\.locale) private var locale
 
     var body: some View {
+        let shown = KLocalizedLabel.text(label, locale: locale)
         VStack(spacing: 0) {
             Group {
                 if stack {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(label).font(T.sans(15)).foregroundColor(T.ink)
+                        Text(verbatim: shown).font(T.sans(15)).foregroundColor(T.ink)
                         trailing()
                     }
                 } else {
                     HStack(spacing: 12) {
-                        Text(label).font(T.sans(15)).foregroundColor(T.ink)
+                        Text(verbatim: shown).font(T.sans(15)).foregroundColor(T.ink)
                             .fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 8)
                         trailing()
@@ -325,9 +361,10 @@ struct KTag: View {
     let text: String
     var size: CGFloat = 10
     @Environment(\.koduTheme) private var T
+    @Environment(\.locale) private var locale
 
     var body: some View {
-        Text(text)
+        Text(verbatim: KLocalizedLabel.text(text, locale: locale))
             .font(T.mono(size))
             .foregroundColor(T.ink2)
             .padding(.horizontal, 7)
@@ -419,8 +456,9 @@ struct KFlowLayout: Layout {
 struct KActivePill: View {
     let text: String
     @Environment(\.koduTheme) private var T
+    @Environment(\.locale) private var locale
     var body: some View {
-        Text(text)
+        Text(verbatim: KLocalizedLabel.text(text, locale: locale))
             .font(T.mono(9, .semibold))
             .tracking(0.4)
             .foregroundColor(T.accent)
@@ -571,8 +609,9 @@ struct KDisclosureRows<Content: View>: View {
 struct KPageTitle: View {
     let title: String
     var size: CGFloat = 30
+    @Environment(\.locale) private var locale
     var body: some View {
-        Text(title).font(.title2.weight(.semibold))
+        Text(verbatim: KLocalizedLabel.text(title, locale: locale)).font(.title2.weight(.semibold))
             .foregroundStyle(ODPalette.text)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityAddTraits(.isHeader)

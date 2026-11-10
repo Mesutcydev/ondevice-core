@@ -5,7 +5,7 @@ and intends to use semantic version tags for source releases.
 
 ## [Unreleased]
 
-## [2.1.7] - 2026-11-10
+## [2.1.7] - 2026-11-10 (TestFlight, not yet on the App Store)
 
 - The voice screen no longer closes by itself after an audio interruption;
   after a call or Siri, tap Resume.
@@ -18,14 +18,16 @@ and intends to use semantic version tags for source releases.
   use" check, a confirmation before downloading and a progress bar.
 - Large downloads no longer risk the app being closed when they finish.
 - Storage Cleanup no longer removes an image model that is still
-  downloading, starts with every model kept, reports freed space from
-  measured sizes, and lists image, Core AI and classifier models.
+  downloading, starts with every model and partial download kept (clearing
+  partial downloads restarts paused ones), reports freed space from measured
+  sizes, lists image, Core AI and classifier models, and says so when a model
+  could not be removed instead of reporting success.
 - Image-model downloads can be cancelled from Models, Downloads and Image
   studio.
 - Deleting the loaded GGUF Lens model now unloads it, so its memory and disk
   space are released.
 - The Models page no longer re-reads download receipts from disk for every
-  streamed token.
+  streamed token or download progress tick.
 - A download that failed because the repository needs a Hugging Face token
   opens the token sheet from its Resume button, then retries.
 - Model search keeps "Search Hugging Face" visible while typing and passes
@@ -33,8 +35,19 @@ and intends to use semantic version tags for source releases.
 - Importing a model shows the Import button as busy until the copy ends.
 - Hub downloads show the amount transferred and an estimate of time left.
 - French, Portuguese, Italian, Greek, Romanian, Russian, Simplified Chinese
-  and Korean now cover the whole interface and the permission prompts;
-  mistranslated Greek and Romanian buttons are corrected.
+  and Korean are translated across the main interface, model management,
+  settings, chat, the coding workspace and the permission prompts.
+  Developer diagnostics, the voice validation tools, parts of the GitHub
+  workspace and the text of toasts are still English. Mistranslated Greek
+  and Romanian buttons are corrected.
+- Titles, rows and captions built from the app's shared components now take
+  their text from the translation catalog.
+- The drawer's destination grid switches to two columns when a language's
+  labels would not fit three, so names such as "Студия изображений" are no
+  longer cut off.
+- Cancelling an image-model download while that model is generating now
+  explains why nothing happened, and a gated-model retry only follows a newly
+  saved token.
 - The "Manage model storage" subtitle is translated, and model summaries are
   no longer cut short at the largest text sizes.
 - Removed the unused legacy model manager and repository repair sheet.

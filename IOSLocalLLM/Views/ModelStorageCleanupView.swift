@@ -3,9 +3,10 @@ import SwiftUI
 // MARK: - Guided model storage cleanup
 
 /// Lets people decide what remains on-device in one pass. Everything starts
-/// kept, so nothing is removed unless it is unticked or "Active only" is
-/// chosen. Required models are locked on; active models may be removed because
-/// the download center safely resets their role before deleting the files.
+/// kept, including partial downloads, so nothing is removed unless it is
+/// unticked, ticked, or "Active only" is chosen. Required models are locked on;
+/// active models may be removed because the download center safely resets
+/// their role before deleting the files.
 struct ModelStorageCleanupView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.koduTheme) private var T
@@ -14,7 +15,9 @@ struct ModelStorageCleanupView: View {
     @ObservedObject private var center = ModelDownloadCenter.shared
     @State private var items: [ModelStorageCleanupItem] = []
     @State private var keepIDs: Set<String> = []
-    @State private var removePartialDownloads = true
+    /// Off by default: clearing resume data restarts every paused download.
+    @State private var removePartialDownloads = false
+    @State private var isRemoving = false
     @State private var showRemovalConfirmation = false
     @State private var didLoad = false
 
@@ -86,8 +89,9 @@ struct ModelStorageCleanupView: View {
                 ModelStorageCleanupActionBar(
                     removalCount: removableItems.count,
                     reclaimableBytes: reclaimableBytes,
-                    enabled: !removableItems.isEmpty
-                        || (removePartialDownloads && center.orphanedDownloadBytes > 0),
+                    enabled: !isRemoving && (!removableItems.isEmpty
+                        || (removePartialDownloads && center.orphanedDownloadBytes > 0)),
+                    isBusy: isRemoving,
                     onRemove: { showRemovalConfirmation = true }
                 )
                 .padding(.horizontal, 16)
@@ -137,7 +141,8 @@ struct ModelStorageCleanupView: View {
                 detail: "\(model.sizeLabel) · \(model.id)", glyph: "wand.and.stars",
                 estimatedBytes: images.installedBytes(model),
                 isActive: images.selectedModelID == model.id,
-                remove: { images.deleteModel(model) })
+                remove: { images.deleteModel(model) },
+                isRemoved: { !images.isInstalled(model) })
         } + CoreAIModelStore.shared.installations.map { pack in
             ModelStorageCleanupItem(
                 id: pack.assistantSelectionID, displayName: pack.manifest.displayName,
@@ -145,7 +150,8 @@ struct ModelStorageCleanupView: View {
                 estimatedBytes: max(0, pack.manifest.totalDownloadBytes),
                 isActive: settings.assistantModelID == pack.assistantSelectionID
                     || workbench.selectedModelID == pack.assistantSelectionID,
-                remove: { CoreAIDownloadCenter.shared.handleDeletion(id: pack.id) })
+                remove: { CoreAIDownloadCenter.shared.handleDeletion(id: pack.id) },
+                isRemoved: { CoreAIModelStore.shared.installedModel(id: pack.id) == nil })
         } + ClassifierCatalog.models.filter {
             ClassifierModelStore.shared.installedIDs.contains($0.selectionID)
         }.map { entry in
@@ -155,7 +161,8 @@ struct ModelStorageCleanupView: View {
                 detail: "\(bytes.formattedBytes) · \(entry.repo)", glyph: "checklist",
                 estimatedBytes: bytes,
                 isActive: workbench.selectedModelID == entry.selectionID,
-                remove: { ClassifierModelStore.shared.remove(entry) })
+                remove: { ClassifierModelStore.shared.remove(entry) },
+                isRemoved: { !ClassifierModelStore.shared.installedIDs.contains(entry.selectionID) })
         }
     }
 
@@ -180,16 +187,37 @@ struct ModelStorageCleanupView: View {
     }
 
     private func performCleanup() {
+        guard !isRemoving else { return }
+        isRemoving = true
         let removed = removableItems
-        for item in removed { item.remove() }
-        var freed = removed.reduce(Int64(0)) { $0 + $1.estimatedBytes }
-        if removePartialDownloads {
-            freed += center.cleanupOrphanedDownloads()
+        let includePartials = removePartialDownloads
+        Task { @MainActor in
+            for item in removed { item.remove() }
+            // Core AI packs and classifiers finish removing in the background,
+            // and a model in use can be refused. Wait (bounded) so the result
+            // below reports what is actually gone.
+            let deadline = Date().addingTimeInterval(20)
+            while removed.contains(where: { !$0.isRemoved() }) && Date() < deadline {
+                try? await Task.sleep(nanoseconds: 250_000_000)
+            }
+            let gone = removed.filter { $0.isRemoved() }
+            var freed = gone.reduce(Int64(0)) { $0 + $1.estimatedBytes }
+            if includePartials {
+                freed += center.cleanupOrphanedDownloads()
+            }
+            center.refreshAllStates()
+            let remaining = removed.count - gone.count
+            if remaining == 0 {
+                HapticManager.impact(.medium)
+                ToastCenter.shared.success("Storage cleaned", detail: "Freed about \(freed.formattedBytes)")
+            } else {
+                HapticManager.error()
+                ToastCenter.shared.error("Some models were not removed",
+                                         detail: "\(remaining) still on this device. Freed about \(freed.formattedBytes).")
+            }
+            isRemoving = false
+            dismiss()
         }
-        center.refreshAllStates()
-        HapticManager.impact(.medium)
-        ToastCenter.shared.success("Storage cleaned", detail: "Freed about \(freed.formattedBytes)")
-        dismiss()
     }
 }
 
@@ -202,9 +230,12 @@ private struct ModelStorageCleanupItem: Identifiable {
     let isRequired: Bool
     let isActive: Bool
     let remove: @MainActor () -> Void
+    /// True once the files are gone. Some removals finish after `remove` returns.
+    let isRemoved: @MainActor () -> Bool
 
     init(id: String, displayName: String, detail: String, glyph: String,
-         estimatedBytes: Int64, isActive: Bool, remove: @escaping @MainActor () -> Void) {
+         estimatedBytes: Int64, isActive: Bool,
+         remove: @escaping @MainActor () -> Void, isRemoved: @escaping @MainActor () -> Bool) {
         self.id = id
         self.displayName = displayName
         self.detail = detail
@@ -213,6 +244,7 @@ private struct ModelStorageCleanupItem: Identifiable {
         self.isRequired = false
         self.isActive = isActive
         self.remove = remove
+        self.isRemoved = isRemoved
     }
 
     @MainActor
@@ -234,6 +266,7 @@ private struct ModelStorageCleanupItem: Identifiable {
         // Same entry point as a model card: it resets active selections and
         // unloads the owning service before the files go.
         remove = { ModelDownloadCenter.shared.handleDeletion(of: model) }
+        isRemoved = { !model.isReady }
     }
 
     @MainActor
@@ -391,7 +424,7 @@ private struct ModelPartialDownloadCleanupRow: View {
                     Text("Partial downloads")
                         .font(T.sans(14, .semibold))
                         .foregroundColor(T.ink)
-                    Text("Cancelled files and resumable transfer cache · \(bytes.formattedBytes)")
+                    Text("Cancelled files and resumable transfer cache · \(bytes.formattedBytes). Paused downloads may restart.")
                         .font(T.mono(9))
                         .foregroundColor(T.ink3)
                         .fixedSize(horizontal: false, vertical: true)
@@ -412,13 +445,14 @@ private struct ModelStorageCleanupActionBar: View {
     let removalCount: Int
     let reclaimableBytes: Int64
     let enabled: Bool
+    var isBusy = false
     let onRemove: () -> Void
 
     var body: some View {
         Button(action: onRemove) {
             HStack {
-                Image(systemName: "trash")
-                Text(removalCount > 0 ? "Remove \(removalCount) models" : "Clear partial downloads")
+                if isBusy { ProgressView().tint(.white) } else { Image(systemName: "trash") }
+                Text(isBusy ? "Removing…" : removalCount > 0 ? "Remove \(removalCount) models" : "Clear partial downloads")
                 Spacer()
                 Text(reclaimableBytes.formattedBytes)
             }

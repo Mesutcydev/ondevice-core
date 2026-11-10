@@ -106,8 +106,29 @@ private struct ODSidebarDestinations: View {
         return items
     }
 
+    @Environment(\.locale) private var locale
+    @State private var gridWidth: CGFloat = 0
+
+    /// Whether every label fits a three-column tile once it has scaled down as
+    /// far as the tile allows. Longer translations, such as "Студия
+    /// изображений" or "Estudio de imágenes", would otherwise be cut off.
+    private var labelsFitThreeColumns: Bool {
+        guard gridWidth > 0 else { return true }
+        let spacing: CGFloat = 8
+        let textWidth = (gridWidth - 2 * spacing) / 3 - 2 * ODLayout.elementGap
+        let base = UIFont.preferredFont(forTextStyle: .caption1)
+        let font = UIFont.systemFont(ofSize: base.pointSize, weight: .medium)
+        let widest = destinations.map { item -> CGFloat in
+            var resource = ODLocalizedString(key: item.title)
+            resource.locale = locale
+            return (String(localized: resource) as NSString).size(withAttributes: [.font: font]).width
+        }.max() ?? 0
+        return widest * ODSidebarTile.minimumLabelScale <= textWidth
+    }
+
     var body: some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: usesListLayout || typeSize.isAccessibilitySize ? 1 : 3)
+        let count = usesListLayout || typeSize.isAccessibilitySize ? 1 : (labelsFitThreeColumns ? 3 : 2)
+        let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: count)
         LazyVGrid(columns: columns, spacing: usesListLayout ? 4 : 8) {
             ForEach(destinations, id: \.id) { item in
                 ODSidebarTile(title: item.title, symbol: item.symbol,
@@ -117,10 +138,13 @@ private struct ODSidebarDestinations: View {
                 }
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { gridWidth = $0 }
     }
 }
 
 private struct ODSidebarTile: View {
+    /// How far a grid label may shrink before the grid moves to two columns.
+    static let minimumLabelScale: CGFloat = 0.8
     let title: String
     let symbol: String
     let selected: Bool
@@ -138,7 +162,7 @@ private struct ODSidebarTile: View {
             layout {
                 Image(systemName: symbol).font(.body.weight(.medium)).frame(width: usesListLayout || typeSize.isAccessibilitySize ? listIconWidth : nil, height: typeSize.isAccessibilitySize ? nil : ODLayout.panelCorner).accessibilityHidden(true)
                 Text(odKey: title).font(usesListLayout ? .body.weight(.medium) : .caption.weight(.medium))
-                    .lineLimit(typeSize.isAccessibilitySize ? nil : 1).minimumScaleFactor(0.8)
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 1).minimumScaleFactor(Self.minimumLabelScale)
                 if usesListLayout || typeSize.isAccessibilitySize { Spacer(minLength: 0) }
             }
             .foregroundStyle(ODPalette.text)

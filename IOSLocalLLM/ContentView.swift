@@ -42,6 +42,8 @@ struct ContentView: View {
     @State private var showHFTokenSheet = false
     /// The gated download that asked for a token; retried when the sheet closes.
     @State private var tokenRetryModelID: String?
+    /// The saved token's preview when the sheet opened, so a retry only follows a new token.
+    @State private var tokenRetryBaseline: String?
     @State private var modelImportError: String?
     @State private var modelSettingsTarget: AssistantModelSettingsTarget?
     @State private var exportingModel: DownloadableModel?
@@ -323,6 +325,9 @@ struct ContentView: View {
         .sheet(isPresented: $showHFTokenSheet, onDismiss: {
             guard let id = tokenRetryModelID else { return }
             tokenRetryModelID = nil
+            // Closing the sheet without saving a new token would only repeat the failure.
+            guard HFTokenStore.shared.hasToken,
+                  HFTokenStore.shared.maskedPreview != tokenRetryBaseline else { return }
             Self.downloadableModel(matching: id)?.start()
         }) {
             HFTokenSheet()
@@ -672,6 +677,7 @@ struct ContentView: View {
                         // A gated repository fails the same way on every retry
                         // until a token is saved, so ask for it, then retry.
                         tokenRetryModelID = downloadable.id
+                        tokenRetryBaseline = HFTokenStore.shared.maskedPreview
                         // One sheet at a time: Resume may come from the Downloads sheet.
                         showModelDownloads = false
                         showHFTokenSheet = true

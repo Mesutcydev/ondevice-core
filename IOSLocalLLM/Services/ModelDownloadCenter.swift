@@ -249,8 +249,14 @@ final class ModelDownloadCenter: ObservableObject {
 
     // All registered downloadable models in display order.
     @Published private(set) var models: [DownloadableModel] = [] {
-        didSet { rebindDownloaders() }
+        didSet { rebindDownloaders(); receiptChanges.send() }
     }
+
+    /// Fires when a download's state or file changes, which is when its resume
+    /// receipt on disk can change. Unlike `objectWillChange` it stays quiet for
+    /// the throttled progress ticks, so a listener can re-read receipts without
+    /// doing so several times a second during a transfer.
+    let receiptChanges = PassthroughSubject<Void, Never>()
 
     private var cancellables: Set<AnyCancellable> = []
 
@@ -270,7 +276,10 @@ final class ModelDownloadCenter: ObservableObject {
         for m in models {
             m.downloader?.$state
                 .removeDuplicates()
-                .sink { [weak self] _ in self?.objectWillChange.send() }
+                .sink { [weak self] _ in
+                    self?.objectWillChange.send()
+                    self?.receiptChanges.send()
+                }
                 .store(in: &downloaderBindings)
             m.downloader?.$progress
                 .dropFirst()
@@ -279,7 +288,10 @@ final class ModelDownloadCenter: ObservableObject {
                 .sink { [weak self] _ in self?.objectWillChange.send() }
                 .store(in: &downloaderBindings)
             m.downloader?.$currentFile.removeDuplicates()
-                .sink { [weak self] _ in self?.objectWillChange.send() }
+                .sink { [weak self] _ in
+                    self?.objectWillChange.send()
+                    self?.receiptChanges.send()
+                }
                 .store(in: &downloaderBindings)
         }
     }

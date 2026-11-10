@@ -167,11 +167,23 @@ final class ODBridge: ObservableObject {
                 .sink { [weak self] _ in self?.scheduleRefresh() }
                 .store(in: &bag)
         }
-        // Only these two change what the disk checks would find.
-        for publisher in [ModelDownloadCenter.shared.objectWillChange,
-                          ImageGenerationService.shared.objectWillChange] {
+        // Only these change what the disk checks would find. Progress ticks do
+        // not: a download's receipt changes when its state or file changes, and
+        // an image model is installed or removed at the edges of a download.
+        let images = ImageGenerationService.shared
+        let diskChanges: [AnyPublisher<Void, Never>] = [
+            ModelDownloadCenter.shared.receiptChanges.eraseToAnyPublisher(),
+            images.installChanges.eraseToAnyPublisher(),
+            images.$directDownloadProgress.map { Set($0.keys) }.removeDuplicates()
+                .map { _ in () }.eraseToAnyPublisher(),
+            images.$state.map { state -> Bool in
+                if case .downloading = state { return true }
+                return false
+            }.removeDuplicates().map { _ in () }.eraseToAnyPublisher(),
+        ]
+        for publisher in diskChanges {
             publisher
-                .sink { [weak self] _ in self?.diskFlagsDirty = true }
+                .sink { [weak self] in self?.diskFlagsDirty = true }
                 .store(in: &bag)
         }
     }

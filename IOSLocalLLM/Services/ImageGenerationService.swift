@@ -176,6 +176,9 @@ final class ImageGenerationService: ObservableObject {
     @Published private(set) var statusMessage: String = ""
     @Published private(set) var directDownloadProgress: [String: Double] = [:]
     @Published private(set) var directDownloadErrors: [String: String] = [:]
+    /// Fires when a model is deleted, the one install change that no published
+    /// property announces on its own.
+    let installChanges = PassthroughSubject<Void, Never>()
 
     var isWorking: Bool {
         if generationLifetime.isRunning { return true }
@@ -308,8 +311,14 @@ final class ImageGenerationService: ObservableObject {
     /// Hub downloader's cancel. A download begun by a generation is stopped by
     /// `cancel()` instead and keeps its files for the next attempt.
     func cancelDownload(_ model: Model) {
-        guard !isInstalled(model), !isWorking || model.id != selectedModelID,
-              cancellingDownloadIDs.insert(model.id).inserted else { return }
+        guard !isInstalled(model) else { return }
+        // A generation that is using this model owns its download: say so
+        // instead of ignoring the tap.
+        guard !isWorking || model.id != selectedModelID else {
+            ToastCenter.shared.info("Image in progress", detail: "Stop the image first, then cancel the download.")
+            return
+        }
+        guard cancellingDownloadIDs.insert(model.id).inserted else { return }
         let dir = repoDirectory(model.id)
         let activityID = BackgroundDownloadJob.identifier(root: dir, ownerID: model.id)
         BackgroundDownloadCoordinator.shared.abandon(matching: dir.path)
@@ -368,6 +377,7 @@ final class ImageGenerationService: ObservableObject {
         try? FileManager.default.removeItem(at: dir)
         if model.id == selectedModelID { state = .idle }
         objectWillChange.send()
+        installChanges.send()
     }
 
     // MARK: - Generation
