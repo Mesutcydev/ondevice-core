@@ -1,0 +1,10 @@
+Model management and languages, on top of 2.1.7 (108):
+• French, Portuguese, Italian, Greek, Romanian, Russian, Simplified Chinese and Korean now cover the whole app, not just a quarter of it.
+• Image-model downloads can be cancelled from Models, Downloads and Image studio.
+• Storage Cleanup no longer preselects models for removal, lists image, Core AI and classifier models too, and leaves an image model alone while it is still downloading.
+• Downloads show how much has transferred and roughly how long is left.
+• A gated model that needs a Hugging Face token: Resume opens the token sheet, then retries.
+• Model search keeps "Search Hugging Face" available while you type; Import shows that it is working.
+• Deleting the Lens model that is loaded now frees its memory.
+
+Please try: switch the app language to one of the eight and look through Models and Settings; start an image-model download and cancel it; open Storage Cleanup; watch the time-left label on a model download.
