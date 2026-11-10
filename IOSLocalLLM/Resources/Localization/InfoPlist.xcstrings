@@ -1,294 +1,582 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "NSCameraUsageDescription": {
-      "extractionState": "manual",
-      "generatesSymbol": false,
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI uses the camera so Lens can read text and describe objects, documents, and scenes you choose to capture."
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSCameraUsageDescription" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false,
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI uses the camera so Lens can read text and describe objects, documents, and scenes you choose to capture."
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI nutzt die Kamera, damit Lens Texte lesen und von dir aufgenommene Objekte, Dokumente und Szenen beschreiben kann."
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI nutzt die Kamera, damit Lens Texte lesen und von dir aufgenommene Objekte, Dokumente und Szenen beschreiben kann."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI usa la cámara para que Lens lea texto y describa los objetos, documentos y escenas que elijas capturar."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI usa la cámara para que Lens lea texto y describa los objetos, documentos y escenas que elijas capturar."
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يستخدم Token AI الكاميرا لتقرأ العدسة النصوص وتصف الأشياء والمستندات والمشاهد التي تختار التقاطها."
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يستخدم Token AI الكاميرا لتقرأ العدسة النصوص وتصف الأشياء والمستندات والمشاهد التي تختار التقاطها."
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI, Lens'in çekmeyi seçtiğiniz nesne, belge ve sahneleri açıklaması ve metinleri okuması için kamerayı kullanır."
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI, Lens'in çekmeyi seçtiğiniz nesne, belge ve sahneleri açıklaması ve metinleri okuması için kamerayı kullanır."
           }
         },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI कैमरे का उपयोग करता है ताकि लेंस पाठ पढ़ सके और आपके चुने हुए ऑब्जेक्ट, दस्तावेज़ और दृश्यों का वर्णन कर सके।"
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI कैमरे का उपयोग करता है ताकि लेंस पाठ पढ़ सके और आपके चुने हुए ऑब्जेक्ट, दस्तावेज़ और दृश्यों का वर्णन कर सके।"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AIはカメラを使い、レンズでテキストを読み取ったり、撮影した物、文書、風景を説明したりします。"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AIはカメラを使い、レンズでテキストを読み取ったり、撮影した物、文書、風景を説明したりします。"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI utilise la caméra pour que Lens puisse lire du texte et décrire les objets, documents et scènes que vous choisissez de capturer."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Token AI usa a câmera para que o Lens possa ler textos e descrever objetos, documentos e cenas que você escolher capturar."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI usa la fotocamera perché Lens possa leggere il testo e descrivere oggetti, documenti e scene che scegli di acquisire."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Token AI χρησιμοποιεί την κάμερα ώστε το Lens να διαβάζει κείμενο και να περιγράφει αντικείμενα, έγγραφα και σκηνές που επιλέγετε να καταγράψετε."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI folosește camera pentru ca Lens să poată citi text și descrie obiectele, documentele și scenele pe care alegeți să le capturați."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI использует камеру, чтобы Lens мог читать текст и описывать объекты, документы и сцены, которые вы решили снять."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI 使用相机，以便 Lens 读取文字并描述你选择拍摄的物体、文稿和场景。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI는 Lens가 텍스트를 읽고 사용자가 촬영한 사물, 문서, 장면을 설명할 수 있도록 카메라를 사용합니다."
           }
         }
       }
     },
-    "NSPhotoLibraryUsageDescription": {
-      "extractionState": "manual",
-      "generatesSymbol": false,
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI uses photos you select for image understanding and conversations with compatible vision models."
+    "NSPhotoLibraryUsageDescription" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false,
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI uses photos you select for image understanding and conversations with compatible vision models."
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI nutzt ausgewählte Fotos zur Bilderkennung und für Unterhaltungen mit kompatiblen Bildmodellen."
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI nutzt ausgewählte Fotos zur Bilderkennung und für Unterhaltungen mit kompatiblen Bildmodellen."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI usa las fotos que seleccionas para comprender imágenes y conversar con modelos de visión compatibles."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI usa las fotos que seleccionas para comprender imágenes y conversar con modelos de visión compatibles."
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يستخدم Token AI الصور التي تختارها لفهم الصور والمحادثات مع نماذج الرؤية المتوافقة."
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يستخدم Token AI الصور التي تختارها لفهم الصور والمحادثات مع نماذج الرؤية المتوافقة."
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI, seçtiğiniz fotoğrafları görsel anlama ve uyumlu görme modelleriyle sohbet için kullanır."
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI, seçtiğiniz fotoğrafları görsel anlama ve uyumlu görme modelleriyle sohbet için kullanır."
           }
         },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI आपकी चुनी हुई फ़ोटो का उपयोग छवि समझने और संगत दृष्टि मॉडल से बातचीत के लिए करता है।"
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI आपकी चुनी हुई फ़ोटो का उपयोग छवि समझने और संगत दृष्टि मॉडल से बातचीत के लिए करता है।"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AIは選択した写真を、対応する画像認識モデルでの画像理解や会話に使用します。"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AIは選択した写真を、対応する画像認識モデルでの画像理解や会話に使用します。"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI utilise les photos que vous sélectionnez pour la compréhension d'images et les conversations avec des modèles de vision compatibles."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Token AI usa as fotos que você seleciona para compreensão de imagens e conversas com modelos de visão compatíveis."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI usa le foto che selezioni per la comprensione delle immagini e le conversazioni con modelli di visione compatibili."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Token AI χρησιμοποιεί τις φωτογραφίες που επιλέγετε για κατανόηση εικόνων και συνομιλίες με συμβατά μοντέλα όρασης."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI folosește pozele pe care le selectați pentru înțelegerea imaginilor și conversații cu modele de viziune compatibile."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI использует выбранные вами фото для понимания изображений и разговоров с совместимыми моделями зрения."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI 使用你选择的照片进行图像理解，并与兼容的视觉模型对话。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI는 이미지 이해와 호환되는 비전 모델과의 대화에 사용자가 선택한 사진을 사용합니다."
           }
         }
       }
     },
-    "NSMicrophoneUsageDescription": {
-      "extractionState": "manual",
-      "generatesSymbol": false,
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control."
+    "NSMicrophoneUsageDescription" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false,
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI uses the microphone for voice conversations and dictation. Recording starts when you choose a voice or microphone control."
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI nutzt das Mikrofon für Sprachunterhaltungen und Diktat. Die Aufnahme startet, wenn du eine Sprach- oder Mikrofonsteuerung wählst."
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI nutzt das Mikrofon für Sprachunterhaltungen und Diktat. Die Aufnahme startet, wenn du eine Sprach- oder Mikrofonsteuerung wählst."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI usa el micrófono para conversaciones por voz y dictado. La grabación comienza al elegir un control de voz o micrófono."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI usa el micrófono para conversaciones por voz y dictado. La grabación comienza al elegir un control de voz o micrófono."
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يستخدم Token AI الميكروفون للمحادثات الصوتية والإملاء. يبدأ التسجيل عندما تختار أحد عناصر التحكم بالصوت أو الميكروفون."
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يستخدم Token AI الميكروفون للمحادثات الصوتية والإملاء. يبدأ التسجيل عندما تختار أحد عناصر التحكم بالصوت أو الميكروفون."
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI, mikrofonu sesli sohbetler ve dikte için kullanır. Kayıt, ses veya mikrofon denetimini seçtiğinizde başlar."
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI, mikrofonu sesli sohbetler ve dikte için kullanır. Kayıt, ses veya mikrofon denetimini seçtiğinizde başlar."
           }
         },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI माइक्रोफ़ोन का उपयोग आवाज़ से बातचीत और डिक्टेशन के लिए करता है। आवाज़ या माइक्रोफ़ोन नियंत्रण चुनने पर रिकॉर्डिंग शुरू होती है।"
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI माइक्रोफ़ोन का उपयोग आवाज़ से बातचीत और डिक्टेशन के लिए करता है। आवाज़ या माइक्रोफ़ोन नियंत्रण चुनने पर रिकॉर्डिंग शुरू होती है।"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AIはマイクを音声会話と音声入力に使用します。音声またはマイクの操作を選ぶと録音を開始します。"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AIはマイクを音声会話と音声入力に使用します。音声またはマイクの操作を選ぶと録音を開始します。"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI utilise le microphone pour les conversations vocales et la dictée. L'enregistrement démarre lorsque vous choisissez une voix ou une commande de microphone."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Token AI usa o microfone para conversas por voz e ditado. A gravação começa quando você escolhe uma voz ou um controle de microfone."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI usa il microfono per le conversazioni vocali e la dettatura. La registrazione inizia quando scegli una voce o un controllo del microfono."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Token AI χρησιμοποιεί το μικρόφωνο για φωνητικές συνομιλίες και υπαγόρευση. Η εγγραφή ξεκινά όταν επιλέξετε μια φωνή ή ένα στοιχείο ελέγχου μικροφώνου."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI folosește microfonul pentru conversații vocale și dictare. Înregistrarea începe când alegeți o voce sau un control de microfon."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI использует микрофон для голосовых разговоров и диктовки. Запись начинается, когда вы выбираете голос или элемент управления микрофоном."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI 使用麦克风进行语音对话和听写。当你选择语音或麦克风控件时开始录音。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI는 음성 대화와 받아쓰기에 마이크를 사용합니다. 음성이나 마이크 제어를 선택하면 녹음이 시작됩니다."
           }
         }
       }
     },
-    "NSLocalNetworkUsageDescription": {
-      "extractionState": "manual",
-      "generatesSymbol": false,
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI uses your local network when you enable the Local API Server, pair a Mac, or choose a custom API provider on your network."
+    "NSLocalNetworkUsageDescription" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false,
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI uses your local network when you enable the Local API Server, pair a Mac, or choose a custom API provider on your network."
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI nutzt dein lokales Netzwerk, wenn du den lokalen API-Server aktivierst, einen Mac koppelst oder einen eigenen API-Anbieter im Netzwerk auswählst."
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI nutzt dein lokales Netzwerk, wenn du den lokalen API-Server aktivierst, einen Mac koppelst oder einen eigenen API-Anbieter im Netzwerk auswählst."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI usa la red local al activar el servidor API local, enlazar un Mac o elegir un proveedor API personalizado en tu red."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI usa la red local al activar el servidor API local, enlazar un Mac o elegir un proveedor API personalizado en tu red."
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يستخدم Token AI شبكتك المحلية عند تفعيل خادم API المحلي أو إقران Mac أو اختيار مزوّد API مخصص على شبكتك."
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يستخدم Token AI شبكتك المحلية عند تفعيل خادم API المحلي أو إقران Mac أو اختيار مزوّد API مخصص على شبكتك."
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI, Yerel API Sunucusu'nu etkinleştirdiğinizde, Mac eşlediğinizde veya ağınızda özel API sağlayıcısı seçtiğinizde yerel ağınızı kullanır."
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI, Yerel API Sunucusu'nu etkinleştirdiğinizde, Mac eşlediğinizde veya ağınızda özel API sağlayıcısı seçtiğinizde yerel ağınızı kullanır."
           }
         },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI स्थानीय नेटवर्क का उपयोग तब करता है जब आप स्थानीय API सर्वर चालू करते हैं, Mac जोड़ते हैं या अपने नेटवर्क पर कस्टम API प्रदाता चुनते हैं।"
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI स्थानीय नेटवर्क का उपयोग तब करता है जब आप स्थानीय API सर्वर चालू करते हैं, Mac जोड़ते हैं या अपने नेटवर्क पर कस्टम API प्रदाता चुनते हैं।"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AIはローカルAPIサーバーの有効化、Macとのペアリング、ネットワーク上のカスタムAPIプロバイダーの選択時にローカルネットワークを使用します。"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AIはローカルAPIサーバーの有効化、Macとのペアリング、ネットワーク上のカスタムAPIプロバイダーの選択時にローカルネットワークを使用します。"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI utilise votre réseau local lorsque vous activez le serveur API local, jumelez un Mac ou choisissez un fournisseur d'API personnalisé sur votre réseau."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Token AI usa sua rede local quando você ativa o servidor de API local, pareia um Mac ou escolhe um provedor de API personalizado na sua rede."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI usa la rete locale quando attivi il server API locale, abbini un Mac o scegli un provider API personalizzato sulla tua rete."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Token AI χρησιμοποιεί το τοπικό σας δίκτυο όταν ενεργοποιείτε τον τοπικό διακομιστή API, ζευγοποιείτε ένα Mac ή επιλέγετε προσαρμοσμένο πάροχο API στο δίκτυό σας."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI folosește rețeaua locală când activați serverul API local, asociați un Mac sau alegeți un furnizor API personalizat din rețeaua dvs."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI использует локальную сеть, когда вы включаете локальный сервер API, сопрягаете Mac или выбираете собственного провайдера API в своей сети."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当你启用本地 API 服务器、配对 Mac 或选择网络上的自定 API 提供商时，Token AI 会使用你的本地网络。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI는 로컬 API 서버를 켜거나, Mac을 페어링하거나, 네트워크의 사용자 지정 API 제공업체를 선택할 때 로컬 네트워크를 사용합니다."
           }
         }
       }
     },
-    "NSSpeechRecognitionUsageDescription": {
-      "extractionState": "manual",
-      "generatesSymbol": false,
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI uses speech recognition to turn your speech into text for voice conversations and dictation."
+    "NSSpeechRecognitionUsageDescription" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false,
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI uses speech recognition to turn your speech into text for voice conversations and dictation."
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI nutzt Spracherkennung, um deine Sprache für Unterhaltungen und Diktat in Text umzuwandeln."
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI nutzt Spracherkennung, um deine Sprache für Unterhaltungen und Diktat in Text umzuwandeln."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI usa reconocimiento de voz para convertir tu voz en texto en conversaciones y dictado."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI usa reconocimiento de voz para convertir tu voz en texto en conversaciones y dictado."
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يستخدم Token AI التعرف على الكلام لتحويل كلامك إلى نص في المحادثات الصوتية والإملاء."
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يستخدم Token AI التعرف على الكلام لتحويل كلامك إلى نص في المحادثات الصوتية والإملاء."
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI, sesli sohbet ve dikte için konuşmanızı metne dönüştürmek üzere konuşma tanımayı kullanır."
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI, sesli sohbet ve dikte için konuşmanızı metne dönüştürmek üzere konuşma tanımayı kullanır."
           }
         },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI वाक् पहचान का उपयोग आवाज़ से बातचीत और डिक्टेशन में आपकी आवाज़ को पाठ में बदलने के लिए करता है।"
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI वाक् पहचान का उपयोग आवाज़ से बातचीत और डिक्टेशन में आपकी आवाज़ को पाठ में बदलने के लिए करता है।"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AIは音声認識を使い、音声会話と音声入力で話した内容をテキストに変換します。"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AIは音声認識を使い、音声会話と音声入力で話した内容をテキストに変換します。"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI utilise la reconnaissance vocale pour transformer votre voix en texte pour les conversations vocales et la dictée."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Token AI usa o reconhecimento de fala para transformar sua fala em texto em conversas por voz e ditado."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI usa il riconoscimento vocale per trasformare la tua voce in testo per le conversazioni vocali e la dettatura."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Token AI χρησιμοποιεί την αναγνώριση ομιλίας για να μετατρέπει την ομιλία σας σε κείμενο για φωνητικές συνομιλίες και υπαγόρευση."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI folosește recunoașterea vocală pentru a transforma vorbirea în text pentru conversații vocale și dictare."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI использует распознавание речи, чтобы превращать вашу речь в текст для голосовых разговоров и диктовки."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI 使用语音识别将你的语音转成文字，用于语音对话和听写。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI는 음성 대화와 받아쓰기를 위해 음성 인식으로 말을 텍스트로 변환합니다."
           }
         }
       }
     },
-    "NSPhotoLibraryAddUsageDescription": {
-      "extractionState": "manual",
-      "generatesSymbol": false,
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI saves images you create to your photo library when you choose Save Image."
+    "NSPhotoLibraryAddUsageDescription" : {
+      "extractionState" : "manual",
+      "generatesSymbol" : false,
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI saves images you create to your photo library when you choose Save Image."
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI speichert erstellte Bilder in deiner Fotomediathek, wenn du „Bild sichern“ auswählst."
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI speichert erstellte Bilder in deiner Fotomediathek, wenn du „Bild sichern“ auswählst."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI guarda las imágenes que creas en tu fototeca al elegir Guardar imagen."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI guarda las imágenes que creas en tu fototeca al elegir Guardar imagen."
           }
         },
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "يحفظ Token AI الصور التي تنشئها في مكتبة الصور عند اختيار حفظ الصورة."
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يحفظ Token AI الصور التي تنشئها في مكتبة الصور عند اختيار حفظ الصورة."
           }
         },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI, Görseli Kaydet'i seçtiğinizde oluşturduğunuz görselleri fotoğraf arşivinize kaydeder."
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI, Görseli Kaydet'i seçtiğinizde oluşturduğunuz görselleri fotoğraf arşivinize kaydeder."
           }
         },
-        "hi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AI आपके बनाए चित्र फ़ोटो लाइब्रेरी में सहेजता है, जब आप छवि सहेजें चुनते हैं।"
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI आपके बनाए चित्र फ़ोटो लाइब्रेरी में सहेजता है, जब आप छवि सहेजें चुनते हैं।"
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Token AIは「画像を保存」を選択すると、作成した画像を写真ライブラリに保存します。"
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AIは「画像を保存」を選択すると、作成した画像を写真ライブラリに保存します。"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI enregistre les images que vous créez dans votre photothèque lorsque vous choisissez Enregistrer l'image."
+          }
+        },
+        "pt" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Token AI salva as imagens que você cria na sua fototeca quando você escolhe Salvar Imagem."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI salva le immagini che crei nella libreria foto quando scegli Salva immagine."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Token AI αποθηκεύει τις εικόνες που δημιουργείτε στη βιβλιοθήκη φωτογραφιών σας όταν επιλέγετε «Αποθήκευση εικόνας»."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI salvează imaginile pe care le creați în biblioteca foto când alegeți Salvați imaginea."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI сохраняет созданные вами изображения в медиатеку, когда вы выбираете «Сохранить изображение»."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "当你选择“存储图像”时，Token AI 会将你创建的图片存储到照片图库。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token AI는 이미지 저장을 선택하면 사용자가 만든 이미지를 사진 보관함에 저장합니다."
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

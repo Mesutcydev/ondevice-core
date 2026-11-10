@@ -11,7 +11,7 @@ import MLXLMCommon
 // ⚠️  BACKWARD-COMPAT SHIM — DO NOT ADD NEW CALLERS.
 //
 // This class is a thin shim re-publishing `LensInferenceLoop`'s
-// state for legacy UI bindings (ContentView, ModelsManagerView,
+// state for legacy UI bindings (ContentView,
 // VisualModelPickerView, SettingsView, IOSLocalLLMApp, AnalysisService,
 // DeviceTierAdvisor — roughly 14 callsites). Container ownership,
 // streaming pipeline, capabilities resolution, and one-shot

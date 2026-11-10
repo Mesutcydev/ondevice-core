@@ -296,6 +296,8 @@ struct ImageGenerationView: View {
                             ProgressView(value: service.downloadProgress(for: model))
                                 .accessibilityLabel("Model download progress")
                                 .accessibilityIdentifier("image.models.progress.\(model.id)")
+                            Button("Cancel download", role: .destructive) { service.cancelDownload(model) }
+                                .accessibilityIdentifier("image.models.cancel.\(model.id)")
                         } else {
                             Button("Download model", systemImage: "arrow.down.circle") { service.startDownload(model) }
                                 .accessibilityIdentifier("image.models.download.\(model.id)")

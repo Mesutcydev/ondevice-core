@@ -100,6 +100,10 @@ private struct ODModelTransferRow: View {
                 Text(detail).font(.footnote).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            if let transfer = model.downloadTransferLabel {
+                Text(verbatim: transfer).font(.footnote.monospacedDigit()).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             if commands.contains(.download) || commands.contains(.pauseDownload) || commands.contains(.cancelDownload) {
                 HStack(spacing: 12) {
                     if commands.contains(.pauseDownload) && !model.isDownloadPaused && model.downloadStatus != "Download failed" {

@@ -9,7 +9,11 @@ public enum ODImageModelLibrary {
         let downloading = downloadProgress != nil
         return ODModel(
             id: id, name: name, metadata: subtitle, kind: .image, isInstalled: isInstalled,
-            availableCommands: isInstalled ? [.details, .delete] : (downloading ? [.details] : [.details, .download]),
+            // A transfer can always be abandoned; a failed one keeps its partial
+            // files until it is resumed or cancelled.
+            availableCommands: isInstalled ? [.details, .delete]
+                : downloading ? [.details, .cancelDownload]
+                : downloadError == nil ? [.details, .download] : [.details, .download, .cancelDownload],
             downloadStatus: downloading ? "Downloading" : (downloadError == nil ? nil : "Download failed"),
             downloadDetail: downloadError, downloadProgress: downloadProgress,
             estimatedMemoryBytes: estimatedMemoryBytes,

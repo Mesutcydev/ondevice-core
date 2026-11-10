@@ -5,6 +5,61 @@ and intends to use semantic version tags for source releases.
 
 ## [Unreleased]
 
+## [2.1.7] - 2026-11-10
+
+- The voice screen no longer closes by itself after an audio interruption;
+  after a call or Siri, tap Resume.
+- A neural voice that is not downloaded or fails to load falls back to
+  Apple Voice with a notice instead of blocking voice mode or going silent.
+- If speech stalls after a reply, the microphone returns within 15 seconds,
+  and it waits for the reply to finish playing.
+- JSON mode in Settings no longer affects voice replies.
+- The Voice engines screen shows one card per engine, with size, an "in
+  use" check, a confirmation before downloading and a progress bar.
+- Large downloads no longer risk the app being closed when they finish.
+- Storage Cleanup no longer removes an image model that is still
+  downloading, starts with every model kept, reports freed space from
+  measured sizes, and lists image, Core AI and classifier models.
+- Image-model downloads can be cancelled from Models, Downloads and Image
+  studio.
+- Deleting the loaded GGUF Lens model now unloads it, so its memory and disk
+  space are released.
+- The Models page no longer re-reads download receipts from disk for every
+  streamed token.
+- A download that failed because the repository needs a Hugging Face token
+  opens the token sheet from its Resume button, then retries.
+- Model search keeps "Search Hugging Face" visible while typing and passes
+  the query on; an empty "On device" search offers the catalog.
+- Importing a model shows the Import button as busy until the copy ends.
+- Hub downloads show the amount transferred and an estimate of time left.
+- French, Portuguese, Italian, Greek, Romanian, Russian, Simplified Chinese
+  and Korean now cover the whole interface and the permission prompts;
+  mistranslated Greek and Romanian buttons are corrected.
+- The "Manage model storage" subtitle is translated, and model summaries are
+  no longer cut short at the largest text sizes.
+- Removed the unused legacy model manager and repository repair sheet.
+
+## [2.1.6] - 2026-11-08
+
+- Fixed a freeze on iOS 27 that could close the app in the middle of a
+  voice conversation.
+- Spoken replies no longer go silent when Apple's voice stalls or audio
+  switches to AirPods: voice mode recovers and the microphone turns back on.
+- Voice chat answers directly and briefly, without hidden reasoning.
+- Leaving the app pauses voice mode; "Try again" continues the same
+  conversation. A failed voice reply now says why.
+- When a downloaded voice does not fit in memory beside the chat model, the
+  Apple voice speaks instead.
+- Fixed voice chat failing with "Error reading 'config.json'" when the chat
+  model was a GGUF imported from Files.
+
+## [2.1.5] - 2026-11-04
+
+- Lens Live: LFM3 Omni watches the camera and writes a short comment every
+  few seconds, newest first, until stopped.
+- Lens results and Live comments can be read aloud with "speak in lens" in
+  Voice settings.
+- The Voices page shows installed voices again.
 - Supertonic 3 joins the voice catalog: one downloadable neural voice model
   (~400 MB) that speaks 31 languages, every interface language among them,
   with ten voices. Replies are read in their own language.

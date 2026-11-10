@@ -68,9 +68,10 @@ struct ODModelsView: View {
                             }
                     }
 
-                    if scope == .discover && trimmedQuery.isEmpty {
-                        Button { store.send(.openDiscovery) } label: {
-                            ODLibraryRow(title: "Search Hugging Face", detail: "Find a model beyond the curated list",
+                    if scope == .discover {
+                        // Stays while a query is typed, and carries it to the Hub search.
+                        Button { store.discoveryQuery = trimmedQuery; store.send(.openDiscovery) } label: {
+                            ODLibraryRow(title: "Search Hugging Face", detail: Text(odKey: "Find a model beyond the curated list"),
                                          symbol: "magnifyingglass")
                         }
                         .buttonStyle(ODPressButtonStyle())
@@ -80,7 +81,7 @@ struct ODModelsView: View {
 
                     if showsCoreAIPacks {
                         Button { store.send(.openCoreAIPacks) } label: {
-                            ODLibraryRow(title: "Browse Core AI packs", detail: "Find on-device models for iOS 27",
+                            ODLibraryRow(title: "Browse Core AI packs", detail: Text(odKey: "Find on-device models for iOS 27"),
                                          symbol: "cpu")
                         }
                         .buttonStyle(ODPressButtonStyle())
@@ -123,8 +124,7 @@ struct ODModelsView: View {
 
                     if scope == .installed && trimmedQuery.isEmpty {
                         Button { store.send(.manageStorage) } label: {
-                            ODLibraryRow(title: "Manage model storage",
-                                         detail: "\(installedCount) on device · \(store.metrics.modelStorageBytes.map { "\(ODFormat.bytes($0)) used" } ?? "Storage not measured")",
+                            ODLibraryRow(title: "Manage model storage", detail: storageDetail,
                                          symbol: "internaldrive")
                         }
                         .buttonStyle(ODPressButtonStyle())
@@ -193,6 +193,13 @@ struct ODModelsView: View {
         }
     }
 
+    private var storageDetail: Text {
+        if let bytes = store.metrics.modelStorageBytes {
+            return Text("\(installedCount) on device · \(ODFormat.bytes(bytes)) used", bundle: .module)
+        }
+        return Text("\(installedCount) on device · Storage not measured", bundle: .module)
+    }
+
     @ViewBuilder private var modelActions: some View {
         if dynamicType.isAccessibilitySize {
             VStack(spacing: 10) { modelActionButtons }
@@ -202,10 +209,12 @@ struct ODModelsView: View {
     }
 
     @ViewBuilder private var modelActionButtons: some View {
-        ODModelTopAction(title: "Import model", symbol: "square.and.arrow.down", isPrimary: true) {
+        ODModelTopAction(title: store.modelImportInProgress ? "Importing model…" : "Import model",
+                         symbol: "square.and.arrow.down", isPrimary: true,
+                         isBusy: store.modelImportInProgress) {
             store.send(.importModel)
         }
-        .disabled(!store.canPerformActions)
+        .disabled(!store.canPerformActions || store.modelImportInProgress)
         .accessibilityHint(Text("Choose a model from Files", bundle: .module))
         .accessibilityIdentifier("models.import")
 
@@ -225,7 +234,9 @@ struct ODModelsView: View {
             if !searchText.isEmpty || kind != nil {
                 Button(ODLocalizedString("Clear filters")) { searchText = ""; kind = nil }
                     .buttonStyle(.glass)
-            } else if scope == .installed {
+            }
+            if scope == .installed {
+                // Keeps the query and filter, so the same search continues in the catalog.
                 Button(ODLocalizedString("Find a model")) { scope = .discover }
                     .buttonStyle(.glassProminent).odInkProminent()
             }
@@ -278,13 +289,18 @@ private struct ODModelTopAction: View {
     let symbol: String
     var count = 0
     var isPrimary = false
+    var isBusy = false
     let action: () -> Void
     @Environment(\.dynamicTypeSize) private var dynamicType
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
-                Image(systemName: symbol).accessibilityHidden(true)
+                if isBusy {
+                    ProgressView().tint(isPrimary ? ODPalette.onSend : ODPalette.text)
+                } else {
+                    Image(systemName: symbol).accessibilityHidden(true)
+                }
                 Text(odKey: title)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -353,7 +369,7 @@ private struct ODCapabilityChips: View {
 /// A navigation row in the card language: icon tile, title, detail, chevron.
 private struct ODLibraryRow: View {
     let title: String
-    let detail: String
+    let detail: Text
     let symbol: String
     var trailing: String? = nil
 
@@ -362,7 +378,7 @@ private struct ODLibraryRow: View {
             ODModelIconTile(symbol: symbol)
             VStack(alignment: .leading, spacing: 2) {
                 Text(odKey: title).font(.body.weight(.semibold)).foregroundStyle(ODPalette.text)
-                Text(odKey: detail).font(.footnote).foregroundStyle(ODPalette.secondary)
+                detail.font(.footnote).foregroundStyle(ODPalette.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -500,7 +516,7 @@ private struct ODModelCard: View {
                              : (summary.isEmpty ? model.workspaceLabel : summary))
                             .font(.subheadline)
                             .foregroundStyle(ODPalette.secondary)
-                            .lineLimit(2)
+                            .lineLimit(dynamicType.isAccessibilitySize ? 5 : 2)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         if model.declaredKinds.contains(.language)
                             && model.declaredKinds.contains(.vision) {
@@ -572,6 +588,10 @@ private struct ODModelCard: View {
                     }
                     if let detail = model.downloadDetail {
                         Text(odKey: detail).font(.footnote).foregroundStyle(ODPalette.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    if let transfer = model.downloadTransferLabel {
+                        Text(verbatim: transfer).font(.footnote.monospacedDigit()).foregroundStyle(ODPalette.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 }

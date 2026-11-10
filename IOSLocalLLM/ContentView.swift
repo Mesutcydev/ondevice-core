@@ -39,6 +39,9 @@ struct ContentView: View {
     @State private var showCoreAIPacks = false
     @State private var showModelImport = false
     @State private var showModelDownloads = false
+    @State private var showHFTokenSheet = false
+    /// The gated download that asked for a token; retried when the sheet closes.
+    @State private var tokenRetryModelID: String?
     @State private var modelImportError: String?
     @State private var modelSettingsTarget: AssistantModelSettingsTarget?
     @State private var exportingModel: DownloadableModel?
@@ -315,7 +318,14 @@ struct ContentView: View {
         // nothing new was written for them, they simply had no entry point from
         // the redesigned shell.
         .sheet(isPresented: $showDiscovery) {
-            HFSearchView()
+            HFSearchView(initialQuery: odBridge.store.discoveryQuery)
+        }
+        .sheet(isPresented: $showHFTokenSheet, onDismiss: {
+            guard let id = tokenRetryModelID else { return }
+            tokenRetryModelID = nil
+            Self.downloadableModel(matching: id)?.start()
+        }) {
+            HFTokenSheet()
         }
         .sheet(isPresented: $showStorageCleanup) {
             ModelStorageCleanupView()
@@ -426,6 +436,9 @@ struct ContentView: View {
     // MARK: - Workbench bridge
 
     private func importModel(from urls: [URL]) async {
+        // A multi-GB copy can run for minutes; the Models page shows it as busy.
+        odBridge.store.modelImportInProgress = true
+        defer { odBridge.store.modelImportInProgress = false }
         do {
             // The service posts the success toast with the model's name.
             _ = try await LocalModelImportService.shared.importModel(from: urls)
@@ -472,6 +485,7 @@ struct ContentView: View {
         showLensPhotoPicker || showVisualModelPicker || showLensPresets || showLensHistory
             || showSettings || showHistory || showAssistantPicker || showVoiceEnginePicker
             || showDiscovery || showStorageCleanup || showCoreAIPacks || showModelImport || showModelDownloads
+            || showHFTokenSheet
             || modelSettingsTarget != nil || exportingModel != nil
     }
 
@@ -633,6 +647,8 @@ struct ContentView: View {
                     HapticManager.impact(.medium)
                 case .delete:
                     ImageGenerationService.shared.deleteModel(image)
+                case .cancelDownload:
+                    ImageGenerationService.shared.cancelDownload(image)
                 default:
                     ImageGenerationService.shared.select(modelID)
                     odBridge.store.secondaryRoute = .imageStudio
@@ -651,6 +667,14 @@ struct ContentView: View {
                         ToastCenter.shared.info("\(downloadable.displayName) is already installed")
                     } else if downloadable.state.isActive {
                         // Already transferring — the card shows live progress.
+                    } else if case .failed = downloadable.state,
+                              [.tokenRequired, .tokenRejected].contains(downloadable.lastFailureKind) {
+                        // A gated repository fails the same way on every retry
+                        // until a token is saved, so ask for it, then retry.
+                        tokenRetryModelID = downloadable.id
+                        // One sheet at a time: Resume may come from the Downloads sheet.
+                        showModelDownloads = false
+                        showHFTokenSheet = true
                     } else {
                         downloadable.start()
                         HapticManager.impact(.medium)

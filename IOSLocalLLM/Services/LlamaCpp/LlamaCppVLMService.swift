@@ -65,7 +65,7 @@ struct LlamaCppVLMExecutionProfile: Equatable, Sendable {
 // extension); routes to LensInferenceLoop otherwise.
 //
 // State machine matches LensInferenceLoop's so the UI bindings
-// in ContentView / ModelsManagerView can switch backends without
+// in ContentView can switch backends without
 // caring which one is active.
 //
 // Memory ownership: one native vision backend at a time. Switching to a

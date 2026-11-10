@@ -58,10 +58,10 @@ struct PresentationContractsTests {
         #expect(available.supportedKinds == [.image] && available.availableCommands == [.details, .download])
         let active = image(progress: 0.42)
         #expect(active.id == available.id && active.downloadStatus == "Downloading" && active.downloadProgress == 0.42)
-        #expect(active.availableCommands == [.details])
+        #expect(active.availableCommands == [.details, .cancelDownload])
         let failed = image(error: "Connection lost")
         #expect(failed.downloadStatus == "Download failed" && failed.downloadDetail == "Connection lost")
-        #expect(failed.availableCommands?.contains(.download) == true)
+        #expect(failed.availableCommands == [.details, .download, .cancelDownload])
         let installed = image(installed: true)
         #expect(installed.isInstalled && installed.downloadStatus == nil && installed.availableCommands == [.details, .delete])
     }

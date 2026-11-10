@@ -19,7 +19,7 @@
     {
       "name": "ios-local-llm",
       "SPDXID": "SPDXRef-Package-ios-local-llm",
-      "versionInfo": "2.1.4",
+      "versionInfo": "2.1.7",
       "downloadLocation": "git+https://github.com/Mesutcydev/ios-local-llm.git",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT AND LicenseRef-Apple-Sample-Code AND LicenseRef-CMUdict",

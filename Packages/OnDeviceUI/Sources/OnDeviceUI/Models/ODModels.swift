@@ -84,6 +84,8 @@ public struct ODModel: Identifiable, Equatable {
     public var downloadStatus: String?
     public var downloadDetail: String?
     public var downloadProgress: Double?
+    /// Already formatted transfer amount and time left, such as "1.2 GB / 4.7 GB · ~4 min".
+    public var downloadTransferLabel: String?
     public var isDownloadPaused: Bool
     public var availableCommands: [ODModelCommand]?
     public init(id: String, name: String, metadata: String, byteCount: Int64? = nil,
@@ -94,7 +96,8 @@ public struct ODModel: Identifiable, Equatable {
                 availableCommands: [ODModelCommand]? = nil, isLibraryEntry: Bool = true,
                 downloadStatus: String? = nil, downloadDetail: String? = nil, downloadProgress: Double? = nil, estimatedMemoryBytes: Int64? = nil,
                 isDownloadPaused: Bool = false, summary: String? = nil, vendor: String? = nil,
-                badges: [String] = [], downloadSizeLabel: String? = nil) {
+                badges: [String] = [], downloadSizeLabel: String? = nil,
+                downloadTransferLabel: String? = nil) {
         self.id = id
         self.name = ODPresentation.modelName(name)
         self.metadata = metadata.hasPrefix("local/") ? "Imported on this device" : metadata
@@ -117,6 +120,7 @@ public struct ODModel: Identifiable, Equatable {
             $0.isFinite ? min(1, max(0, $0)) : nil
         }
         self.estimatedMemoryBytes = estimatedMemoryBytes
+        self.downloadTransferLabel = downloadTransferLabel
         self.isDownloadPaused = isDownloadPaused
     }
     public var sizeLabel: String? { byteCount.map(ODFormat.bytes) ?? downloadSizeLabel }

@@ -64,6 +64,11 @@ final class ImageGenerationService: ObservableObject {
         ODBridge.shared.refresh()
     }
     func deleteModel(_ model: Model) {}
+    func cancelDownload(_ model: Model) {
+        directDownloadProgress[model.id] = nil
+        directDownloadErrors[model.id] = nil
+        ODBridge.shared.refresh()
+    }
     func generate(prompt: String, negativePrompt: String, steps: Int?) {
         if let restriction = AIContentPolicy.imageRequestRestriction(prompt) {
             state = .failed(restriction)
@@ -114,7 +119,6 @@ final class CodingAssistantService: ObservableObject {
 }
 struct SystemStatusView: View { var body: some View { Text("Review destination: SystemStatusView") } }
 struct DiagnosticsView: View { var body: some View { Text("Review destination: DiagnosticsView") } }
-struct ModelsManagerView: View { var body: some View { Text("Review destination: ModelsManagerView") } }
 struct ModelStorageCleanupView: View { var body: some View { Text("Review destination: ModelStorageCleanupView") } }
 struct ModelDownloadCenterView: View { var body: some View { Text("Review destination: ModelDownloadCenterView") } }
 struct BenchmarkView: View { var body: some View { Text("Review destination: BenchmarkView") } }

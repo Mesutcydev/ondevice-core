@@ -22,6 +22,10 @@ public final class ODStore: ObservableObject {
     @Published public var selectedModelID: String?
     @Published public var loadedModelID: String?
     @Published public var modelPhase: ODModelPhase = .unloaded
+    /// True while the host copies an imported model into place.
+    @Published public var modelImportInProgress = false
+    /// What the user had typed in Models when they opened Hub search.
+    public var discoveryQuery = ""
     @Published public var metrics = ODDeviceMetrics()
     @Published public var recentConversations: [ODRecentConversation] = []
     /// Host transcript search: ids of conversations whose messages contain the

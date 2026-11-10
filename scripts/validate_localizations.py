@@ -9,7 +9,7 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-LANGUAGES = ("hi", "de", "es", "ar", "tr", "ja")
+LANGUAGES = ("hi", "de", "es", "ar", "tr", "ja", "fr", "pt", "it", "el", "ro", "ru", "zh-Hans", "ko")
 CATALOGS = (
     ROOT / "Packages/OnDeviceUI/Sources/OnDeviceUI/Resources/Localizable.xcstrings",
     ROOT / "IOSLocalLLM/Resources/Localization/InfoPlist.xcstrings",

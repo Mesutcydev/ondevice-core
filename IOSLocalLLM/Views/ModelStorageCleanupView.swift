@@ -2,9 +2,10 @@ import SwiftUI
 
 // MARK: - Guided model storage cleanup
 
-/// Lets people decide what remains on-device in one pass. Required models are
-/// locked on; active models start selected but may be removed because the
-/// download center safely resets their role before deleting the files.
+/// Lets people decide what remains on-device in one pass. Everything starts
+/// kept, so nothing is removed unless it is unticked or "Active only" is
+/// chosen. Required models are locked on; active models may be removed because
+/// the download center safely resets their role before deleting the files.
 struct ModelStorageCleanupView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.koduTheme) private var T
@@ -36,6 +37,8 @@ struct ModelStorageCleanupView: View {
                             installedCount: items.count,
                             selectedCount: keepIDs.count,
                             storageUsed: center.totalStorageUsed
+                                + CoreAIModelStore.shared.installations.reduce(0) { $0 + max(0, $1.manifest.totalDownloadBytes) }
+                                + ClassifierModelStore.shared.storageBytes
                         )
 
                         if items.isEmpty {
@@ -112,15 +115,48 @@ struct ModelStorageCleanupView: View {
         guard !didLoad else { return }
         didLoad = true
         center.refreshAllStates()
-        items = center.models
-            .filter(\.isReady)
-            .map(ModelStorageCleanupItem.init)
+        items = (center.models.filter(\.isReady).map(ModelStorageCleanupItem.init) + Self.otherInstalledItems())
             .sorted {
                 if $0.isRequired != $1.isRequired { return $0.isRequired }
                 if $0.isActive != $1.isActive { return $0.isActive }
                 return $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending
             }
-        keepActiveAndRequiredOnly()
+        keepIDs = Set(items.map(\.id))
+    }
+
+    /// Image, Core AI and classifier models live outside the download center,
+    /// each with its own store and removal path.
+    @MainActor
+    private static func otherInstalledItems() -> [ModelStorageCleanupItem] {
+        let images = ImageGenerationService.shared
+        let settings = AppSettings.shared
+        let workbench = CoreAIClassifierHost.workbench
+        return ImageGenerationService.catalog.filter { images.isInstalled($0) }.map { model in
+            ModelStorageCleanupItem(
+                id: "image:\(model.id)", displayName: model.displayName,
+                detail: "\(model.sizeLabel) · \(model.id)", glyph: "wand.and.stars",
+                estimatedBytes: images.installedBytes(model),
+                isActive: images.selectedModelID == model.id,
+                remove: { images.deleteModel(model) })
+        } + CoreAIModelStore.shared.installations.map { pack in
+            ModelStorageCleanupItem(
+                id: pack.assistantSelectionID, displayName: pack.manifest.displayName,
+                detail: "\(pack.manifest.totalDownloadBytes.formattedBytes) · Core AI", glyph: "cpu",
+                estimatedBytes: max(0, pack.manifest.totalDownloadBytes),
+                isActive: settings.assistantModelID == pack.assistantSelectionID
+                    || workbench.selectedModelID == pack.assistantSelectionID,
+                remove: { CoreAIDownloadCenter.shared.handleDeletion(id: pack.id) })
+        } + ClassifierCatalog.models.filter {
+            ClassifierModelStore.shared.installedIDs.contains($0.selectionID)
+        }.map { entry in
+            let bytes = ClassifierModelStore.shared.installedSizes[entry.selectionID] ?? entry.bytes
+            return ModelStorageCleanupItem(
+                id: entry.selectionID, displayName: entry.name,
+                detail: "\(bytes.formattedBytes) · \(entry.repo)", glyph: "checklist",
+                estimatedBytes: bytes,
+                isActive: workbench.selectedModelID == entry.selectionID,
+                remove: { ClassifierModelStore.shared.remove(entry) })
+        }
     }
 
     private func selectAll() {
@@ -145,10 +181,7 @@ struct ModelStorageCleanupView: View {
 
     private func performCleanup() {
         let removed = removableItems
-        for item in removed {
-            guard let model = center.models.first(where: { $0.id == item.id }) else { continue }
-            center.handleDeletion(of: model)
-        }
+        for item in removed { item.remove() }
         var freed = removed.reduce(Int64(0)) { $0 + $1.estimatedBytes }
         if removePartialDownloads {
             freed += center.cleanupOrphanedDownloads()
@@ -164,20 +197,43 @@ private struct ModelStorageCleanupItem: Identifiable {
     let id: String
     let displayName: String
     let detail: String
-    let category: DownloadableModel.Category
+    let glyph: String
     let estimatedBytes: Int64
     let isRequired: Bool
     let isActive: Bool
+    let remove: @MainActor () -> Void
+
+    init(id: String, displayName: String, detail: String, glyph: String,
+         estimatedBytes: Int64, isActive: Bool, remove: @escaping @MainActor () -> Void) {
+        self.id = id
+        self.displayName = displayName
+        self.detail = detail
+        self.glyph = glyph
+        self.estimatedBytes = estimatedBytes
+        self.isRequired = false
+        self.isActive = isActive
+        self.remove = remove
+    }
 
     @MainActor
     init(model: DownloadableModel) {
         id = model.id
         displayName = model.displayName
         detail = "\(model.sizeLabel) · \(model.sourceRepoID)"
-        category = model.category
-        estimatedBytes = Self.parseBytes(model.sizeLabel)
+        switch model.category {
+        case .assistant: glyph = "brain"
+        case .vlm: glyph = "eye"
+        case .voice: glyph = "waveform"
+        case .imageGen: glyph = "wand.and.stars"
+        }
+        // Measured bytes when the downloader has them; the label is a display
+        // string ("~2.3 GB", "—") and only a fallback.
+        estimatedBytes = model.totalBytes > 0 ? model.totalBytes : Self.parseBytes(model.sizeLabel)
         isRequired = model.isRequired
         isActive = Self.isActive(model)
+        // Same entry point as a model card: it resets active selections and
+        // unloads the owning service before the files go.
+        remove = { ModelDownloadCenter.shared.handleDeletion(of: model) }
     }
 
     @MainActor
@@ -194,7 +250,9 @@ private struct ModelStorageCleanupItem: Identifiable {
     }
 
     private static func parseBytes(_ label: String) -> Int64 {
+        // Byte labels follow the device locale, where the decimal mark may be a comma.
         let normalized = label.lowercased().replacingOccurrences(of: "~", with: "")
+            .replacingOccurrences(of: ",", with: ".")
         let scanner = Scanner(string: normalized)
         guard let value = scanner.scanDouble() else { return 0 }
         if normalized.contains("gb") { return Int64(value * 1_000_000_000) }
@@ -218,7 +276,7 @@ private struct ModelStorageCleanupHeader: View {
                 .font(T.sans(24, .semibold))
                 .foregroundColor(T.ink)
                 .fixedSize(horizontal: false, vertical: true)
-            Text("Select the models you want to keep. Required and currently active models start selected; everything else can be removed in one step.")
+            Text("Everything starts selected. Untick the models you no longer need, or choose Active only to keep just the ones in use.")
                 .font(T.sans(13))
                 .foregroundColor(T.ink2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -268,7 +326,7 @@ private struct ModelStorageCleanupRow: View {
     var body: some View {
         Button(action: onToggle) {
             HStack(spacing: 12) {
-                Image(systemName: categoryGlyph)
+                Image(systemName: item.glyph)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundColor(isKept ? T.accent : T.ink3)
                     .frame(width: 42, height: 42)
@@ -310,15 +368,6 @@ private struct ModelStorageCleanupRow: View {
         .buttonStyle(.plain)
         .disabled(item.isRequired)
         .accessibilityLabel("\(item.displayName), \(isKept ? "keep" : "remove")")
-    }
-
-    private var categoryGlyph: String {
-        switch item.category {
-        case .assistant: return "brain"
-        case .vlm: return "eye"
-        case .voice: return "waveform"
-        case .imageGen: return "wand.and.stars"
-        }
     }
 }
 

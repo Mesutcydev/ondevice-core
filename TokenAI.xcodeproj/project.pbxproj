@@ -213,7 +213,6 @@
 		5BC25E6F58BABC7A782D09F4 /* CoreAIClassifierHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3883545E0167A9A5A101F8 /* CoreAIClassifierHost.swift */; };
 		5BE2AE784511580BE005594A /* VoiceService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F407B5AEFC6C818BA36D2B6 /* VoiceService.swift */; };
 		5C6802A74F35B5835AD15A79 /* MicDictationButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4D11AFE89DB6F774A8C8316 /* MicDictationButton.swift */; };
-		5C78D091DF017B61C77E338E /* FixRepoSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E4C09CA96A30026ACDEEAC4 /* FixRepoSheet.swift */; };
 		5D53E114C2A4BC2D29F99B54 /* GGUFDecisionClassifierRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 297224651635B6CDAC170D6B /* GGUFDecisionClassifierRuntime.swift */; };
 		5D7826A73E2732AFD9E1C40B /* ParentalControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1140B0E80082D3718EA6C218 /* ParentalControlsView.swift */; };
 		5DD9000FE1A0008E93C21CE4 /* HFDownloadCancellationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32C9BE64D8C360669AA90110 /* HFDownloadCancellationTests.swift */; };
@@ -586,7 +585,6 @@
 		FD6EF63DC1C00E231642F78F /* VoicePresentationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80CF9C4BC0AABE4DD0F97B1 /* VoicePresentationModels.swift */; };
 		FDF4D0E1D1714C447261507B /* CoreAIZooCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C26887F63BBD34D5AFE5C2A4 /* CoreAIZooCatalog.swift */; };
 		FEB302C10909D9E1A1C39141 /* SystemSpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A37E6BF4A69B70E687883B16 /* SystemSpeechService.swift */; };
-		FF0EE9C5C6650CA1953B18EA /* ModelsManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D94D527E307CB91B09AE01E /* ModelsManagerView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -908,8 +906,6 @@
 		6B062BB80646FD425D1EE1FD /* ImageGenerationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageGenerationView.swift; sourceTree = "<group>"; };
 		6B0B160A43F49B21FC135E66 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		6C8C52D7CF08FD1F791DB1DD /* CodingWorkspaceVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodingWorkspaceVault.swift; sourceTree = "<group>"; };
-		6D94D527E307CB91B09AE01E /* ModelsManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsManagerView.swift; sourceTree = "<group>"; };
-		6E4C09CA96A30026ACDEEAC4 /* FixRepoSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FixRepoSheet.swift; sourceTree = "<group>"; };
 		6E5C8C46C6B150E0F1BCCF14 /* WebTriggerKeywords.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = WebTriggerKeywords.json; sourceTree = "<group>"; };
 		6EA3179B1522B6D30F3127FC /* LlamaCppBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LlamaCppBridge.swift; sourceTree = "<group>"; };
 		6EFBE333A4FA88639E95BCC4 /* FileAttachmentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileAttachmentService.swift; sourceTree = "<group>"; };
@@ -2211,7 +2207,6 @@
 				D69ED73B1D0846A41601C9FA /* DiffView.swift */,
 				1FD53EA872A3450B0C87A55C /* ExperimentalKVCacheSettingsRow.swift */,
 				5C0EBE11B7AF2D49D34C7D3B /* FileAttachmentPicker.swift */,
-				6E4C09CA96A30026ACDEEAC4 /* FixRepoSheet.swift */,
 				CCC1EEF8E4F1B4B8CFEBDACE /* GitHubWorkspaceView.swift */,
 				5969D0495C40149FEC0BAD69 /* GlassEffects.swift */,
 				224DB253CE5226218AC37AE6 /* HFSearchView.swift */,
@@ -2227,7 +2222,6 @@
 				F86672E6A488D71DAF63201F /* MacroChainView.swift */,
 				B4D11AFE89DB6F774A8C8316 /* MicDictationButton.swift */,
 				56B9E373F3B54015C044A2FD /* ModelDownloadCenterView.swift */,
-				6D94D527E307CB91B09AE01E /* ModelsManagerView.swift */,
 				21255AA6EEE0C936A918618E /* ModelStorageCleanupView.swift */,
 				B47B1EBDB841EAD6FE97FA0C /* OnboardingModelPickerView.swift */,
 				DDBCCA6CF8D87841AAF04E8C /* OnboardingOnePager.swift */,
@@ -2999,7 +2993,6 @@
 				7D55C2B58A483FFD4B289781 /* FastVLMService.swift in Sources */,
 				A2D5B16BEEBC6DCDFF843C02 /* FileAttachmentPicker.swift in Sources */,
 				21439C47CB124C0E35816A77 /* FileAttachmentService.swift in Sources */,
-				5C78D091DF017B61C77E338E /* FixRepoSheet.swift in Sources */,
 				5D53E114C2A4BC2D29F99B54 /* GGUFDecisionClassifierRuntime.swift in Sources */,
 				4315E75F0C46077779E67CD5 /* GitHubClient.swift in Sources */,
 				E42C521B62030EA7D1BF08B0 /* GitHubConnectionStore.swift in Sources */,
@@ -3096,7 +3089,6 @@
 				7DEC17CF348272BEAAB00B6D /* ModelStorageCleanupView.swift in Sources */,
 				8A61B2945D6A9032E8AE2565 /* ModelStoragePaths.swift in Sources */,
 				8EE3D86266CBBCE4EEB0EA77 /* ModelUsageTracker.swift in Sources */,
-				FF0EE9C5C6650CA1953B18EA /* ModelsManagerView.swift in Sources */,
 				747AE2FE2A0BEE8D25444522 /* NanbeigeMLXModel.swift in Sources */,
 				FC823C8B26C1439A1D1CDA1C /* NemotronTranscriber.swift in Sources */,
 				84A26022ECBBD00AA1139210 /* NetworkActivityMonitor.swift in Sources */,

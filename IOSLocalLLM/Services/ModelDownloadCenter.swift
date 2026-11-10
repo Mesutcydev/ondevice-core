@@ -1413,6 +1413,9 @@ final class ModelDownloadCenter: ObservableObject {
                 FastVLMService.shared.unload()
             } else {
                 MLXVisionService.shared.unload()
+                // A GGUF Lens model runs in llama.cpp, not MLX. Left loaded, its
+                // unlinked weights keep their memory and disk space.
+                LlamaCppVLMService.shared.unload()
             }
         }
         if let variant = KittenVariant(rawValue: model.id),
@@ -1642,8 +1645,12 @@ final class ModelDownloadCenter: ObservableObject {
             protected.insert(hf.appendingPathComponent("hub/models--\(parts[0])--\(parts[1])").standardizedFileURL.path)
         }
 
+        // An image model that is still downloading is in flight, not an orphan:
+        // from the Models card, or as the first step of a generation.
         let imageGen = ImageGenerationService.shared
-        for m in ImageGenerationService.catalog where imageGen.isInstalled(m) {
+        for m in ImageGenerationService.catalog
+        where imageGen.isInstalled(m) || imageGen.isDownloading(m)
+            || (imageGen.isWorking && m.id == imageGen.selectedModelID) {
             protected.insert(imageGen.repoDirectory(m.id).standardizedFileURL.path)
         }
         return protected

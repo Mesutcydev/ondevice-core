@@ -93,6 +93,19 @@ final class ODBridge: ObservableObject {
     private var diskFreeStamp: Date = .distantPast
     private static let diskFreeInterval: TimeInterval = 5
 
+    // Resume receipts and image installs are read from disk. Checking them for
+    // every catalog entry on each streamed token put dozens of file reads on
+    // the main thread per refresh. They are re-read when a download service
+    // reports a change or the host asks for a refresh, with a short interval
+    // as the backstop for a change nothing announced.
+    private var diskFlagsDirty = true
+    private var diskFlagsStamp: Date = .distantPast
+    private var resumableReceiptIDs = Set<String>()
+    private var installedImageIDs = Set<String>()
+    private static let diskFlagsInterval: TimeInterval = 2
+    /// Where each Hub download stood when this session first saw it running.
+    private var transferStarts: [String: (bytes: Int64, date: Date)] = [:]
+
     private init() {
         // The store holds the closure; the closure must not hold the store's
         // owner strongly or the pair never deallocates.
@@ -154,6 +167,13 @@ final class ODBridge: ObservableObject {
                 .sink { [weak self] _ in self?.scheduleRefresh() }
                 .store(in: &bag)
         }
+        // Only these two change what the disk checks would find.
+        for publisher in [ModelDownloadCenter.shared.objectWillChange,
+                          ImageGenerationService.shared.objectWillChange] {
+            publisher
+                .sink { [weak self] _ in self?.diskFlagsDirty = true }
+                .store(in: &bag)
+        }
     }
 
     private func scheduleRefresh() {
@@ -161,14 +181,20 @@ final class ODBridge: ObservableObject {
         refreshScheduled = true
         Task { @MainActor [weak self] in
             self?.refreshScheduled = false
-            self?.refresh()
+            self?.publishSnapshot()
         }
     }
 
     // MARK: - Snapshot
 
-    /// Publish the app's real state onto the presentation store.
+    /// Publish the app's real state onto the presentation store. A direct call
+    /// may follow a change no service announced, so it re-reads the disk.
     func refresh() {
+        diskFlagsDirty = true
+        publishSnapshot()
+    }
+
+    private func publishSnapshot() {
         let assistant = CodingAssistantService.shared
         let center = ModelDownloadCenter.shared
         let coreAIInstallations = CoreAIModelStore.shared.installations
@@ -185,8 +211,16 @@ final class ODBridge: ObservableObject {
             : assistant.activeExecutionLocation == .externalCloud ? loc.t("API provider") : loc.t("On-device")
 
         // ── Models ───────────────────────────────────────────────────────
+        if diskFlagsDirty || Date().timeIntervalSince(diskFlagsStamp) >= Self.diskFlagsInterval {
+            diskFlagsDirty = false
+            diskFlagsStamp = Date()
+            resumableReceiptIDs = Set(center.models.lazy
+                .filter { $0.downloader?.hasResumableDownloadReceipt == true }.map(\.id))
+            installedImageIDs = Set(ImageGenerationService.catalog.lazy
+                .filter { imageService.isInstalled($0) }.map(\.id))
+        }
         let modelsSig = center.models
-            .map { "\($0.id):\($0.state):\($0.progress):\($0.currentFile):\($0.downloader?.isPreparingModel ?? false):\($0.totalBytes):\($0.declaredCategories.contains(.assistant)):\($0.declaredCategories.contains(.vlm)):\($0.supportsCategory(.assistant)):\($0.supportsCategory(.vlm)):\($0.downloader?.hasResumableDownloadReceipt ?? false):\($0.downloader?.isCancellingDownload ?? false)" }
+            .map { "\($0.id):\($0.state):\($0.progress):\($0.currentFile):\($0.downloader?.isPreparingModel ?? false):\($0.totalBytes):\($0.declaredCategories.contains(.assistant)):\($0.declaredCategories.contains(.vlm)):\($0.supportsCategory(.assistant)):\($0.supportsCategory(.vlm)):\(resumableReceiptIDs.contains($0.id)):\($0.downloader?.isCancellingDownload ?? false)" }
             .joined(separator: "|") + "#" + coreAIInstallations
             .map { "\($0.assistantSelectionID):\($0.manifest.version):\($0.manifest.totalDownloadBytes)" }
             .joined(separator: "|") + "#" + coreAIDownloads
@@ -194,13 +228,12 @@ final class ODBridge: ObservableObject {
             + "#" + ClassifierModelStore.shared.installedIDs.sorted().joined(separator: "|")
             + "#\(assistant.activeSelectionID)#\(AppSettings.shared.assistantModelID)#\(assistant.canGenerateSelectedTarget)"
             + "#" + ImageGenerationService.catalog
-            .map { "\($0.id):\(imageService.isInstalled($0)):\(imageService.directDownloadProgress[$0.id] ?? -1):\(imageService.directDownloadErrors[$0.id] ?? "")" }
+            .map { "\($0.id):\(installedImageIDs.contains($0.id)):\(imageService.directDownloadProgress[$0.id] ?? -1):\(imageService.directDownloadErrors[$0.id] ?? "")" }
             .joined(separator: "|")
         if modelsSig != modelsSignature {
             modelsSignature = modelsSig
             store.models = center.models.map { model in
-                let interrupted = model.state == .idle
-                    && model.downloader?.hasResumableDownloadReceipt == true
+                let interrupted = model.state == .idle && resumableReceiptIDs.contains(model.id)
                 let failed: Bool = { if case .failed = model.state { return true }; return false }()
                 let supportedKinds = Self.supportedKinds(for: model)
                 let unsupported = model.isReady && supportedKinds.isEmpty
@@ -259,7 +292,8 @@ final class ODBridge: ObservableObject {
                     summary: model.longDescription ?? Self.modelSummary(for: model),
                     vendor: model.vendor.rawValue,
                     badges: Self.modelBadges(for: model),
-                    downloadSizeLabel: model.sizeLabel
+                    downloadSizeLabel: model.sizeLabel,
+                    downloadTransferLabel: transferLabel(for: model)
                 )
             }
             store.models += CoreAIModelLibrary.catalog.map { pack in
@@ -305,7 +339,7 @@ final class ODBridge: ObservableObject {
             store.models += ImageGenerationService.catalog.map { model in
                 ODImageModelLibrary.entry(
                     id: model.id, name: model.displayName, subtitle: model.subtitle, sizeLabel: model.sizeLabel,
-                    estimatedMemoryBytes: model.approxRAMBytes, isInstalled: imageService.isInstalled(model),
+                    estimatedMemoryBytes: model.approxRAMBytes, isInstalled: installedImageIDs.contains(model.id),
                     downloadProgress: imageService.directDownloadProgress[model.id],
                     downloadError: imageService.directDownloadErrors[model.id]
                 )
@@ -539,6 +573,30 @@ final class ODBridge: ObservableObject {
         VoiceConversationService.shared.stop()
         store.voiceSessionPresented = false
         refresh()
+    }
+
+    /// "1.2 GB / 4.7 GB · ~4 min" for a Hub download in flight. Formatted by
+    /// the system, so it needs no translation.
+    private func transferLabel(for model: DownloadableModel) -> String? {
+        let done = model.downloadedBytes, total = model.totalBytes
+        guard model.state == .downloading, model.downloader?.isPreparingModel != true, total > 0 else {
+            transferStarts[model.id] = nil
+            return nil
+        }
+        let start = transferStarts[model.id] ?? (done, Date())
+        transferStarts[model.id] = start
+        var label = "\(done.formattedBytes) / \(total.formattedBytes)"
+        let elapsed = Date().timeIntervalSince(start.date)
+        // ponytail: average rate since this session first saw the download.
+        // Use a moving average if the estimate turns out jumpy.
+        if elapsed >= 5, done > start.bytes, total > done {
+            let secondsLeft = Double(total - done) * elapsed / Double(done - start.bytes)
+            if secondsLeft.isFinite {
+                label += " · ~" + Duration.seconds(max(60, secondsLeft))
+                    .formatted(.units(allowed: [.hours, .minutes], width: .abbreviated, maximumUnitCount: 2))
+            }
+        }
+        return label
     }
 
     private func cachedDiskFree() -> Int64? {

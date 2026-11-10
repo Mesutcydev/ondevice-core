@@ -203,6 +203,8 @@ final class ImageGenerationService: ObservableObject {
     private var genTask: Task<Void, Never>?
     private var cancellationTask: Task<Void, Never>?
     private var directDownloadTasks: [String: Task<Void, Never>] = [:]
+    /// Blocks a restart until a cancelled download's files are gone.
+    private var cancellingDownloadIDs = Set<String>()
 
     private var parentalObserver: AnyCancellable?
     private init() {
@@ -278,7 +280,8 @@ final class ImageGenerationService: ObservableObject {
     /// an image. The Models screen uses this for setup cards, where "Get"
     /// should mean exactly that and should not require a prompt.
     func startDownload(_ model: Model) {
-        guard !isInstalled(model), directDownloadProgress[model.id] == nil else { return }
+        guard !isInstalled(model), directDownloadProgress[model.id] == nil,
+              !cancellingDownloadIDs.contains(model.id) else { return }
 
         _ = DownloadLiveActivityManager.shared.start(
             repoID: BackgroundDownloadJob.identifier(root: repoDirectory(model.id), ownerID: model.id), displayName: model.displayName)
@@ -298,6 +301,31 @@ final class ImageGenerationService: ObservableObject {
         case .transferring, .verifying: startDownload(model)
         case .paused: directDownloadErrors[model.id] = "Download paused. Download again to resume."
         case .failed: directDownloadErrors[model.id] = "Download interrupted. Download again to resume."
+        }
+    }
+
+    /// Abandons a Models-card download and removes its partial files, like the
+    /// Hub downloader's cancel. A download begun by a generation is stopped by
+    /// `cancel()` instead and keeps its files for the next attempt.
+    func cancelDownload(_ model: Model) {
+        guard !isInstalled(model), !isWorking || model.id != selectedModelID,
+              cancellingDownloadIDs.insert(model.id).inserted else { return }
+        let dir = repoDirectory(model.id)
+        let activityID = BackgroundDownloadJob.identifier(root: dir, ownerID: model.id)
+        BackgroundDownloadCoordinator.shared.abandon(matching: dir.path)
+        let running = directDownloadTasks.removeValue(forKey: model.id)
+        running?.cancel()
+        Task { [weak self] in
+            // Remove files only after every writer has stopped, so a late
+            // completed transfer cannot land in the deleted folder.
+            await BackgroundDownloadCoordinator.shared.cancelTasks(matching: dir.path)
+            await running?.value
+            try? FileManager.default.removeItem(at: dir)
+            DownloadLiveActivityManager.shared.cancel(repoID: activityID)
+            guard let self else { return }
+            self.directDownloadProgress[model.id] = nil
+            self.directDownloadErrors[model.id] = nil
+            self.cancellingDownloadIDs.remove(model.id)
         }
     }
 

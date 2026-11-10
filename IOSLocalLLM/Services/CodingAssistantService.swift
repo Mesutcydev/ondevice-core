@@ -1059,8 +1059,7 @@ final class CodingAssistantService: ObservableObject {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let dirName = ModelStoragePaths.directoryName(forRepoID: model.repoID)
         // HF Search downloads land at `HFModels/<author>_<name>/` (slash
-        // flattened to underscore) — see ModelsManagerView.registerAndDownload
-        // and HFSearchRow.init. LocalModelImport drops to `HFModels/<tail>/`
+        // flattened to underscore) — see HFSearchRow.init. LocalModelImport drops to `HFModels/<tail>/`
         // where tail is the repoID's last path component. Without both
         // variants, every launch fell through to the HubApi fetch path and
         // re-downloaded the weights even though they were already on disk.
