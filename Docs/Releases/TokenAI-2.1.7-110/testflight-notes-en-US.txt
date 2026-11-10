@@ -1,0 +1,8 @@
+Fixes and more languages, on top of 2.1.7 (109):
+• Many more screens are now translated in French, Portuguese, Italian, Greek, Romanian, Russian, Simplified Chinese and Korean: Storage Cleanup, Hugging Face search and token, Core AI packs, the voice and assistant pickers, Local API server, Knowledge Base, User Guide, the coding workspace and the permission prompts. Diagnostics, the voice validation tools, parts of the GitHub workspace and toast messages are still English.
+• The sidebar switches to two columns when names such as "Студия изображений" or "Στούντιο εικόνων" would not fit three, so they are no longer cut off.
+• Storage Cleanup: "Partial downloads" now starts unticked (clearing it restarts paused downloads). It waits for removals to finish and tells you when a model could not be removed instead of saying "Storage cleaned".
+• Model downloads no longer re-read files from disk on every progress update.
+• Cancelling an image download while that model is generating now explains why nothing happens, and the token sheet retries a download only after you save a new token.
+
+Please try: switch to Russian or Greek and open the sidebar; open Storage Cleanup and remove a model; start and cancel an image-model download; look through Settings, Models and the coding workspace in French or Korean.
