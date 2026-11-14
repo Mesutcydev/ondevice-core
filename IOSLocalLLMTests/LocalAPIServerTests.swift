@@ -794,6 +794,27 @@ final class LocalAPIServerTests: XCTestCase {
         XCTAssertEqual(LocalAPIServer.chunkFrame(Data("hi".utf8)), Data("2\r\nhi\r\n".utf8))
     }
 
+    /// The server's receive buffer keeps its indices after `removeFirst`, so
+    /// every request after the first on a kept-alive connection starts above
+    /// index zero. Parsing mixed those indices with byte counts and never
+    /// returned the second request (the client waited out the 30 s timeout).
+    func testHTTPRequestParsesSecondRequestFromReusedBuffer() throws {
+        let body = Data("{\"a\":1}".utf8)
+        var buffer = Data("GET /v1/models HTTP/1.1\r\nHost: x\r\n\r\n".utf8)
+        let first = try XCTUnwrap(HTTPRequest.parse(data: buffer))
+        buffer.removeFirst(first.consumedBytes)
+        XCTAssertTrue(buffer.isEmpty)
+        buffer.append(Data("POST /api/chat HTTP/1.1\r\nContent-Length: \(body.count)\r\n\r\n".utf8))
+        buffer.append(body)
+        let head = try XCTUnwrap(HTTPRequest.parseHeader(data: buffer))
+        XCTAssertEqual(head.headerBytes + head.contentLength, buffer.count)
+        let second = try XCTUnwrap(HTTPRequest.parse(data: buffer))
+        XCTAssertEqual(second.request.path, "/api/chat")
+        XCTAssertEqual(second.request.body, body)
+        buffer.removeFirst(second.consumedBytes)
+        XCTAssertTrue(buffer.isEmpty)
+    }
+
     func testHeaderCanBeAuthenticatedBeforeImageBodyArrives() throws {
         let head = try XCTUnwrap(HTTPRequest.parseHeader(data: Data(
             "POST /v1/chat/completions HTTP/1.1\r\nAuthorization: Bearer secret\r\nContent-Length: 1000000\r\n\r\n".utf8

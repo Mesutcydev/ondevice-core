@@ -122,6 +122,9 @@ final class ConversationStore: ObservableObject {
         var drafts = conversations[index].unsentDrafts ?? []
         guard !drafts.contains(draft) else { return }
         drafts.append(draft)
+        // ponytail: newest five only. Each draft carries its attachments and
+        // the whole store is re-encoded on every save; raise if users miss older ones.
+        if drafts.count > 5 { drafts.removeFirst(drafts.count - 5) }
         conversations[index].unsentDrafts = drafts
         scheduleSave()
     }

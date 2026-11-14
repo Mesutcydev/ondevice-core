@@ -809,6 +809,9 @@ final class LlamaCppVLM: @unchecked Sendable {
         // before this fix. data: false drops only the position-tracking
         // metadata; the underlying KV tensor storage is reused.
         llama_memory_clear(llama_get_memory(c), false)
+        // The long-lived sampler's repetition window must not carry the
+        // previous caption into this one.
+        llama_sampler_reset(samp)
         invalidateTokenCache()
 
         // 1. Convert UIImage → RGB-packed bytes for mtmd_bitmap.

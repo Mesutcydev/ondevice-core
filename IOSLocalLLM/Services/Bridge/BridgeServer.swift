@@ -364,8 +364,11 @@ struct HTTPRequest {
     static func parse(data: Data) -> (request: Self, consumedBytes: Int)? {
         guard let head = parseHeader(data: data),
               head.contentLength <= data.count - head.headerBytes else { return nil }
+        // headerBytes is a count. A buffer that had earlier requests removed
+        // keeps its parent's indices, so slice relative to startIndex.
+        let bodyStart = data.startIndex + head.headerBytes
         let body: Data? = head.contentLength > 0
-            ? Data(data[head.headerBytes..<(head.headerBytes + head.contentLength)]) : nil
+            ? Data(data[bodyStart..<(bodyStart + head.contentLength)]) : nil
         return (Self(method: head.request.method, path: head.request.path,
                      version: head.request.version, headers: head.request.headers,
                      body: body), head.headerBytes + head.contentLength)
@@ -398,7 +401,7 @@ struct HTTPRequest {
         }
         guard let contentLength = Int(hdrs["content-length"] ?? "0") else { return nil }
         guard contentLength >= 0 else { return nil }
-        let headerByteCount = separator.upperBound
+        let headerByteCount = separator.upperBound - data.startIndex
         return (Self(method: method, path: path, version: version,
                      headers: hdrs, body: nil), headerByteCount, contentLength)
     }

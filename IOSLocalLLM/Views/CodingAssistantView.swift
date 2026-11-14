@@ -785,7 +785,16 @@ struct CodingAssistantView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background || phase == .inactive {
-                if gitHub.isRunning || pendingToolGitHub != nil { stopGeneration() }
+                if gitHub.isRunning || pendingToolGitHub != nil {
+                    stopGeneration()
+                } else if phase == .background,
+                          webPreparationTask != nil || documentSearchTask != nil
+                            || isPreparingImageContext || submissionPreparing {
+                    // A lookup still in flight would finish in the background
+                    // and then send, loading the model after cleanup unloaded
+                    // it. Stopping keeps the prompt as a draft.
+                    stopGeneration()
+                }
                 persistCurrentConversation()
                 savePresentation()
                 store.flush()

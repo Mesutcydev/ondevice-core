@@ -7,6 +7,20 @@ and intends to use semantic version tags for source releases.
 
 ## [2.1.7] - 2026-11-10 (TestFlight, not yet on the App Store)
 
+- The Local API Server answers every request on a reused connection; the
+  second request used to wait 30 seconds and then fail.
+- "Wipe all on-device data" also stops downloads in progress, so a wiped
+  model no longer comes back.
+- Leaving the app while a web lookup, document search or image is being
+  prepared returns the prompt to the input box instead of starting the model
+  in the background, and background cleanup always ends its background task.
+- Web pages larger than 2 MB are refused while loading, not after.
+- Lens captions on LFM3 vision models no longer carry the previous caption's
+  repetition penalty.
+- A tool call is recognised when the text before it has an unpaired quote.
+- Voice history drops a turn that never got a reply, Lens Live stops when
+  Stop is tapped while the model is busy, and a chat keeps its newest five
+  unsent drafts.
 - The voice screen no longer closes by itself after an audio interruption;
   after a call or Siri, tap Resume.
 - A neural voice that is not downloaded or fails to load falls back to

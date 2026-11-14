@@ -915,6 +915,13 @@ final class VoiceConversationService: ObservableObject {
         session.append(ChatMessage(role: .user, content: trimmed))
         let assistantMsg = ChatMessage(role: .assistant, content: "", isStreaming: true)
         session.append(assistantMsg)
+        // Until a reply starts this turn is provisional. Every early exit
+        // below backs it out, so the history never keeps an unanswered user
+        // turn with an empty reply that streams forever.
+        func discardProvisionalTurn() {
+            guard session.last?.id == assistantMsg.id else { return }
+            session.removeLast(2)
+        }
 
         // Ensure the assistant LLM is resident before generating. If it isn't
         // (first turn before the proactive load finished, or a prior load
@@ -927,14 +934,15 @@ final class VoiceConversationService: ObservableObject {
             }
             var waited = 0
             while assistant.state != .ready && waited < 100 {   // up to ~10 s
-                guard owns(operation), !isInterrupted, !Task.isCancelled else { return }
+                guard owns(operation), !isInterrupted, !Task.isCancelled else { discardProvisionalTurn(); return }
                 if case .failed = assistant.state { break }
                 try? await Task.sleep(nanoseconds: 100_000_000)
                 waited += 1
             }
         }
-        guard owns(operation), !isInterrupted, !Task.isCancelled else { return }
+        guard owns(operation), !isInterrupted, !Task.isCancelled else { discardProvisionalTurn(); return }
         guard assistant.state == .ready || usesOmniVoiceChat else {
+            discardProvisionalTurn()
             if case .failed(let msg) = assistant.state {
                 // Genuine load failure (e.g. model too big for this device).
                 pendingTranscript = ""

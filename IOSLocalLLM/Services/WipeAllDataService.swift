@@ -29,6 +29,12 @@ enum WipeAllDataService {
         let docs = fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let caches = fm.urls(for: .cachesDirectory, in: .userDomainMask)[0]
 
+        // 0. Stop transfers first. A background download that outlived the
+        // wipe wrote its model back and resumed after relaunch. Dropping the
+        // jobs is synchronous; the cancel then stops the network tasks.
+        BackgroundDownloadCoordinator.shared.abandon(matching: NSHomeDirectory())
+        Task { await BackgroundDownloadCoordinator.shared.cancelTasks(matching: NSHomeDirectory()) }
+
         // 1. Models (HF + FastVLM + Voice + GGUF, plus the Edge0 and Whisper
         // folders the runtimes also load user-placed weights from)
         for sub in ["HFModels", "FastVLMModels", "LLMModels", "VoiceModels", "GGUFModels",

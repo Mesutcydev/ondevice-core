@@ -56,7 +56,7 @@ public actor WebPageFetchService {
         req.httpMethod = "GET"
 
         let started = Date()
-        let (data, response) = try await session.data(for: req)
+        let (bytes, response) = try await session.bytes(for: req)
 
         guard let http = response as? HTTPURLResponse else {
             throw WebToolError.parsingFailed(reason: "non-HTTP response")
@@ -78,9 +78,16 @@ public actor WebPageFetchService {
             throw WebToolError.unsupportedContentType(ctRaw.isEmpty ? "unknown" : ctRaw)
         }
 
-        // 5. Size cap.
-        if data.count > 2 * 1024 * 1024 {
-            throw WebToolError.tooLarge(bytes: data.count)
+        // 5. Size cap, enforced while reading so an oversized body is never
+        // buffered whole next to a loaded model.
+        let limit = 2 * 1024 * 1024
+        if http.expectedContentLength > Int64(limit) {
+            throw WebToolError.tooLarge(bytes: Int(http.expectedContentLength))
+        }
+        var data = Data()
+        for try await byte in bytes {
+            if data.count >= limit { throw WebToolError.tooLarge(bytes: data.count + 1) }
+            data.append(byte)
         }
 
         let finalURL = http.url ?? url

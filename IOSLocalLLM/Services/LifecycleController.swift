@@ -154,9 +154,17 @@ final class LifecycleController: Sendable {
             withName: "LifecycleCleanup"
         ) { [weak self] in
             Task { @MainActor [weak self] in
-                self?.bgTaskExpired = true
-                self?.backgroundTransitionTask?.cancel()
+                guard let self else { return }
+                self.bgTaskExpired = true
+                self.backgroundTransitionTask?.cancel()
                 Diagnostics.shared.breadcrumb("background task expired", category: "lifecycle")
+                // iOS kills an app whose expired task is still open, and the
+                // cleanup's own defer only runs once its awaits return. The
+                // flag stays set so the cleanup still sees the expiry.
+                if self.bgTaskID != .invalid {
+                    UIApplication.shared.endBackgroundTask(self.bgTaskID)
+                    self.bgTaskID = .invalid
+                }
             }
         }
 

@@ -100,7 +100,7 @@ nonisolated enum AssistantToolCallParser {
         return ToolCall(name: name, args: args)
     }
 
-    private static func candidateJSONObjects(in text: String) -> [Data] {
+    private static func candidateJSONObjects(in text: String, proseQuotes: Bool = true) -> [Data] {
         let bytes = Array(text.utf8)
         var candidates: [Data] = []
         var start: Int?
@@ -119,7 +119,7 @@ nonisolated enum AssistantToolCallParser {
                 continue
             }
             if byte == 0x22 {
-                inString = true
+                inString = proseQuotes || depth > 0
             } else if byte == 0x7B {
                 if depth == 0 { start = index }
                 depth += 1
@@ -129,6 +129,12 @@ nonisolated enum AssistantToolCallParser {
                     candidates.append(Data(bytes[start...index]))
                 }
             }
+        }
+        // Ending inside a string means the prose had an unpaired quote
+        // (12" panel), which swallowed every object after it. Rescan with
+        // quotes counted only inside an object.
+        if inString, proseQuotes {
+            return candidates + candidateJSONObjects(in: text, proseQuotes: false)
         }
         return candidates
     }

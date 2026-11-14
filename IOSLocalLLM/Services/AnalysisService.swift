@@ -213,6 +213,8 @@ final class AnalysisService: ObservableObject {
                 while case .generating = llama.state, !Task.isCancelled {
                     try? await Task.sleep(for: .milliseconds(200))
                 }
+                // Stop pressed during that wait must not start another cycle.
+                guard ownsAnalysis(id), !Task.isCancelled else { break }
                 let previous = liveComments.first
                 let ask = (typed.isEmpty ? "In one or two short sentences, say what is happening right now." : typed)
                     + (previous.map { " Your last comment was: \"\($0)\". Mention only what changed." } ?? "")

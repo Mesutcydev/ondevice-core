@@ -37,6 +37,15 @@ final class LFM3ToolCallingTests: XCTestCase {
         XCTAssertEqual(auditCall.args["limit"] as? Int, 3)
     }
 
+    func testUnpairedProseQuoteDoesNotHideAJSONCall() throws {
+        let call = try XCTUnwrap(AssistantToolCallParser.extractCall(
+            from: "For the 12\" panel: {\"name\":\"calculator\",\"args\":{\"expression\":\"12*2.54\"}}"))
+        XCTAssertEqual(call.name, "calculator")
+        XCTAssertEqual(call.args["expression"] as? String, "12*2.54")
+        // Paired quotes still shield a brace that is only quoted prose.
+        XCTAssertNil(AssistantToolCallParser.extractCall(from: "Type \"{\" to open a block."))
+    }
+
     func testIncompleteUnknownOrQuotedCallsNeverExecute() {
         let valid = "<tool_call><function=calculator><parameter=expression>2+2</parameter></function></tool_call>"
         XCTAssertNil(AssistantToolCallParser.extractCall(from: String(valid.dropLast(12))))
