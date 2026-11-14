@@ -1,0 +1,10 @@
+Fixes from a code audit, on top of 2.1.7 (110):
+• Local API Server: a client that reuses its connection (the OpenAI and Anthropic SDKs, Python requests, most coding agents) no longer has every second request hang for 30 seconds.
+• "Wipe all on-device data" now also stops downloads in progress, so a model that was downloading does not come back afterwards.
+• If you leave the app while a web lookup, document search or image is still being prepared, the prompt returns to the input box instead of the model starting in the background.
+• Web pages larger than 2 MB are refused while loading rather than after the whole page was downloaded.
+• Lens captions on LFM3 vision models no longer repeat-penalise words from the previous caption, and Lens Live stops when you tap Stop while the model is busy.
+• Voice: a turn that never got a reply (model still loading, or interrupted) no longer stays in the transcript with an empty answer.
+• A chat keeps its newest five unsent drafts.
+
+Please try: point an API client at the Local API Server and send several requests in a row; start a model download and then wipe all data; send a message with web search on and switch apps straight away; take several Lens captions in a row; start voice mode right after launch, before the model has loaded.
