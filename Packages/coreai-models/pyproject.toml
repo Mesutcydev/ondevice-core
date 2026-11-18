@@ -13,8 +13,8 @@ required-version = ">=0.9.0"
 # scripts, not specific to the `coreai-models` package itself.
 [dependency-groups]
 test = [
-    "pytest==8.4.0",
-    "pytest-asyncio==0.24.0",
+    "pytest==9.0.3",  # 9.0.3 fixes CVE-2025-71176 (GHSA-6w46-j5rx-g56g)
+    "pytest-asyncio==1.5.0",  # 0.24 caps pytest below 9
     "pytest-cov==7.1.0",
     "pytest-rerunfailures==15.1",
     "pytest-xdist==3.6.1",
